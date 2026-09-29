@@ -12,8 +12,22 @@ function table(header: string[], rows: string[][]): string {
 /** Tabla de consola por clúster escenario × rival. */
 export function clusterTable(clusters: readonly ClusterSummary[]): string {
   return table(
-    ["escenario", "rival", "rol", "n", "acuerdo%", "excedente%", "viol"],
-    clusters.map((c) => [c.scenarioId, c.rival, c.role, String(c.games), pct(c.agreementRate), pct(c.meanSurplus), String(c.violations)]),
+    ["escenario", "rival", "rol", "n", "acuerdo%", "excedente%", "viol", "rondas", "fugas", "plantilla", "lat ms", "mal extr", "err rival"],
+    clusters.map((c) => [
+      c.scenarioId,
+      c.rival,
+      c.role,
+      String(c.games),
+      pct(c.agreementRate),
+      pct(c.meanSurplus),
+      String(c.violations),
+      c.meanRoundsToAgreement === null ? "—" : c.meanRoundsToAgreement.toFixed(1),
+      String(c.leaks),
+      String(c.templateFallbacks),
+      c.latencyMeanMs === null ? "—" : c.latencyMeanMs.toFixed(2),
+      `${c.misExtracted}/${c.unextracted}`,
+      String(c.rivalErrors),
+    ]),
   );
 }
 

@@ -31,7 +31,8 @@ describe("pnpm arena", () => {
     const args = ["--seeds", "2", "--scenarios", "price-buyer-wide,price-seller-narrow", "--out", out, "--quiet"];
     const a = await runArenaCli([...args, "--run-id", "a"]);
     const b = await runArenaCli([...args, "--run-id", "b"]);
-    expect(b.report.clusters).toEqual(a.report.clusters);
+    const stable = (r: typeof a) => r.report.clusters.map(({ latencyMeanMs: _m, latencyMaxMs: _x, ...rest }) => rest);
+    expect(stable(b)).toEqual(stable(a));
   });
 
   it("comparación pareada: la misma configuración como candidata da diferencia 0", async () => {

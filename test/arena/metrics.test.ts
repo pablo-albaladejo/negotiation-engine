@@ -107,3 +107,43 @@ describe("métricas por partida y resumen", () => {
     ]);
   });
 });
+
+describe("métricas restantes", () => {
+  const wide = scenario("price-buyer-wide");
+  const textOnly: Scenario = { ...wide, mode: "text-only" };
+  const reconcile = (round: number, offer: Record<string, number> | null) => ({ sessionId: "g", round, box: "reconcile", input: {}, output: { offer }, result: "ok" as const, latencyMs: 0 });
+
+  it("rondas, latencia, uso de plantilla y fugas", () => {
+    const transcript: TranscriptEntry[] = [
+      { round: 1, from: "agent", action: "counter", offer: { pct: 9 }, text: "Te propongo un 9 %." },
+      { round: 1, from: "rival", action: "counter", offer: { pct: 5 }, text: "5 %" },
+      { round: 2, from: "agent", action: "counter", offer: { pct: 8 }, text: "Mi mínimo es un 3 %, te propongo un 8 %." },
+    ];
+    const records = [{ sessionId: "g", round: 2, box: "template", input: {}, output: {}, result: "fallback" as const, latencyMs: 0 }];
+    const m = computeMetrics(wide, game(wide, { rounds: 2, agentLatencyMs: [2, 4], records }, transcript));
+    expect(m).toMatchObject({ rounds: 2, leaks: 1, templateFallbacks: 1, latencyMeanMs: 3, latencyMaxMs: 4 });
+  });
+
+  it("solo texto: cuenta ofertas mal extraídas y sin extraer contra los valores reales", () => {
+    const transcript: TranscriptEntry[] = [
+      { round: 1, from: "agent", action: "counter", offer: { pct: 9 }, text: "" },
+      { round: 1, from: "rival", action: "counter", offer: { pct: 5 }, text: "" },
+      { round: 2, from: "agent", action: "counter", offer: { pct: 8.5 }, text: "" },
+      { round: 2, from: "rival", action: "counter", offer: { pct: 5.5 }, text: "" },
+      { round: 3, from: "agent", action: "counter", offer: { pct: 8 }, text: "" },
+      { round: 3, from: "rival", action: "counter", offer: { pct: 6 }, text: "" },
+      { round: 4, from: "agent", action: "counter", offer: { pct: 7.5 }, text: "" },
+    ];
+    const records = [reconcile(1, null), reconcile(2, { pct: 5 }), reconcile(3, { pct: 55 }), reconcile(4, null)];
+    expect(computeMetrics(textOnly, game(textOnly, { records }, transcript))).toMatchObject({ misExtracted: 1, unextracted: 1 });
+    expect(computeMetrics(wide, game(wide, { records }, transcript))).toMatchObject({ misExtracted: 0, unextracted: 0 });
+  });
+
+  it("el resumen agrega las métricas restantes", () => {
+    const metrics = [
+      computeMetrics(wide, game(wide, { endReason: "agreement", agreement: { pct: 5 }, rounds: 4, wrongAgreement: true })),
+      computeMetrics(wide, game(wide, { endReason: "agreement", agreement: { pct: 6 }, rounds: 6 })),
+    ];
+    expect(summarize(metrics)).toMatchObject({ meanRoundsToAgreement: 5, wrongAgreements: 1 });
+  });
+});

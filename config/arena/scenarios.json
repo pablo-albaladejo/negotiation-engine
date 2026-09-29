@@ -178,5 +178,143 @@
         }
       }
     }
+  },
+  {
+    "id": "pct-day-buyer-wide",
+    "description": "Pronto pago con 2 issues (pct y día de pago), jugamos de comprador, ZOPA amplia",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 0.7
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 60,
+        "direction": "higher-better",
+        "weight": 0.3
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 2,
+          "day": 15
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 6,
+          "day": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "pct-day-seller-wide",
+    "description": "Pronto pago con 2 issues (pct y día de pago), jugamos de vendedor, ZOPA amplia",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 0.7
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 60,
+        "direction": "higher-better",
+        "weight": 0.3
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 2,
+          "day": 15
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 6,
+          "day": 45
+        }
+      }
+    }
+  },
+  {
+    "id": "price-buyer-hidden-short",
+    "description": "Solo precio, límite oculto de 6 rondas (el agente usa defaultHorizon)",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 6,
+    "limitVisible": false,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
+  },
+  {
+    "id": "price-seller-hidden-long",
+    "description": "Solo precio, límite oculto de 14 rondas (más allá de defaultHorizon)",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 14,
+    "limitVisible": false,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
   }
 ]

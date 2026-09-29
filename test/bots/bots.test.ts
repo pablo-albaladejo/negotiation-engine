@@ -66,3 +66,27 @@ describe("bots Boulware y Conceder", () => {
     expect(out).toMatchObject({ action: "accept", offer: { pct: 7 } });
   });
 });
+
+describe("bot Tit-for-Tat", () => {
+  it("devuelve en su utilidad la concesión del rival y no concede si el rival no concede", async () => {
+    const session = await createBotByName("tit-for-tat").start(setup(4));
+    const offers: TurnOutput[] = [];
+    // El comprador concede 0,5, luego 0 y luego 1 punto de pct, siempre fuera del mandato del vendedor (> 7).
+    for (const [round, pct] of [[1, 10], [2, 9.5], [3, 9.5], [4, 8.5]] as const) {
+      offers.push(await session.respond({ sessionId: "b", round, roundLimit: 20, rivalAction: "offer", rivalOffer: { pct } }));
+    }
+    const u = offers.map((o) => utility(oriented, (o as { offer: Offer }).offer));
+    const rivalStep = 0.5 / 10; // 0,5 puntos de pct en un rango de 10, en utilidad
+    expect(u[0]! - u[1]!).toBeGreaterThan(rivalStep * 0.85);
+    expect(u[0]! - u[1]!).toBeLessThan(rivalStep * 1.15);
+    expect(u[2]).toBeCloseTo(u[1]!, 9);
+    expect(u[2]! - u[3]!).toBeGreaterThan(2 * rivalStep * 0.85);
+  });
+
+  it("nunca cruza su reserva y es determinista por semilla", async () => {
+    const run = () => curve(createBotByName("tit-for-tat"), 3, 10, { pct: 10 });
+    const outputs = await run();
+    for (const o of outputs) expect(withinOfferMandate(oriented, seller, (o as { offer: Offer }).offer)).toBe(true);
+    expect(await run()).toEqual(outputs);
+  });
+});

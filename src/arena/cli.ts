@@ -39,7 +39,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const { values } = parseArgs({
     args: argv,
     options: {
-      seeds: { type: "string", default: "21" },
+      seeds: { type: "string", default: "25" },
       "seed-start": { type: "string", default: "1" },
       scenarios: { type: "string" },
       rivals: { type: "string" },
@@ -125,7 +125,9 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     log(
       `\n${o.games} partidas en ${(durationMs / 1000).toFixed(1)} s · acuerdo ${(o.agreementRate * 100).toFixed(1)} % · ` +
         `excedente medio ${o.meanSurplus === null ? "—" : `${(o.meanSurplus * 100).toFixed(1)} %`} · violaciones ${o.violations} · ` +
-        `ZOPA vacía correcta ${o.emptyZopaCorrect === null ? "—" : `${(o.emptyZopaCorrect * 100).toFixed(0)} %`} · errores del rival ${o.rivalErrors}`,
+        `ZOPA vacía correcta ${o.emptyZopaCorrect === null ? "—" : `${(o.emptyZopaCorrect * 100).toFixed(0)} %`} · errores del rival ${o.rivalErrors}\n` +
+        `fugas ${o.leaks} · plantilla ${o.templateFallbacks} · latencia media ${o.latencyMeanMs === null ? "—" : `${o.latencyMeanMs.toFixed(2)} ms`} (máx ${o.latencyMaxMs.toFixed(1)} ms) · ` +
+        `mal extraídas ${o.misExtracted} · sin extraer ${o.unextracted} · acuerdos distintos de los reales ${o.wrongAgreements}`,
     );
     log(`resultados: ${runDir}`);
   }
