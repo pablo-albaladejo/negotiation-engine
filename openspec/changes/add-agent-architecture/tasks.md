@@ -28,10 +28,10 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 4. Normalizador numérico y texto saliente (antes del viernes)
 
-- [ ] 4.1 [Pablo] Tabla de fixtures por forma (cifras y palabras ES/EN, coma y punto decimal, `%`/"por ciento"/"percent", pb/bps, rangos "entre 2 y 4"/"2-4", fracciones "0.03", casos ambiguos) y luego el normalizador numérico compartido; verificar con `pnpm test`
-- [ ] 4.2 [Gerard] Plantillas deterministas `accept`/`counter`/`walk` en la persona "cálido-firme", con cifras en dígitos y `accept` repitiendo los valores de cada issue; verificar con la propiedad fast-check "la plantilla pasa validador y detector de fugas para toda decisión dentro del mandato" (se cierra tras 4.3 y 4.4)
-- [ ] 4.3 [Pablo] Fixtures de textos correctos, con cifra distinta, con cifra en palabras, con cifras extra o rangos, con acción incoherente y de `accept` sin repetir los valores, y luego el validador sobre el normalizador; verificar con `pnpm test`
-- [ ] 4.4 [Gerard] Fixtures de fugas (reserva exacta y cercana en todas las formas del normalizador, "mi máximo es", plazo, fragmentos de prompt) y de no-fugas (oferta final igual a la reserva), y luego el detector sobre el normalizador; verificar con `pnpm test`
+- [x] 4.1 [Pablo] Tabla de fixtures por forma (cifras y palabras ES/EN, coma y punto decimal, `%`/"por ciento"/"percent", pb/bps, rangos "entre 2 y 4"/"2-4", fracciones "0.03", casos ambiguos) y luego el normalizador numérico compartido; verificar con `pnpm test`
+- [x] 4.2 [Gerard] Plantillas deterministas `accept`/`counter`/`walk` en la persona "cálido-firme", con cifras en dígitos y `accept` repitiendo los valores de cada issue; verificar con la propiedad fast-check "la plantilla pasa validador y detector de fugas para toda decisión dentro del mandato" (se cierra tras 4.3 y 4.4)
+- [x] 4.3 [Pablo] Fixtures de textos correctos, con cifra distinta, con cifra en palabras, con cifras extra o rangos, con acción incoherente y de `accept` sin repetir los valores, y luego el validador sobre el normalizador; verificar con `pnpm test`
+- [x] 4.4 [Gerard] Fixtures de fugas (reserva exacta y cercana en todas las formas del normalizador, "mi máximo es", plazo, fragmentos de prompt) y de no-fugas (oferta final igual a la reserva), y luego el detector sobre el normalizador; verificar con `pnpm test`
 
 ## 5. Pipeline sin LLM (antes del viernes) [Pablo]
 
