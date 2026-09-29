@@ -5,7 +5,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 ## 1. Dependencias y configuración v1 (antes del viernes)
 
 - [x] 1.1 [Pablo] Añadir solo `hono` y `@hono/node-server`; verificar con `pnpm install && pnpm typecheck && pnpm test` en verde
-- [ ] 1.2 [Pablo/Paula] Tests de `AgentConfigSchema` v1 (`issues` con `n ≥ 1`, `min < max`, `direction`, pesos normalizados; `defaultHorizon ≥ 1`; `roleWeights` 1:1 por defecto; β ≥ 0; ruido `n ∈ [0, 1)`; márgenes; margen de seguridad del turno 500 ms y `turnBudgetMs`; `minEffectPp`; procedencia) y luego migrar el esquema y `config/champion.json` a `version: 1` (solo precio); verificar con vitest que la campeona carga y que una configuración inválida falla señalando el campo
+- [x] 1.2 [Pablo/Paula] Tests de `AgentConfigSchema` v1 (`issues` con `n ≥ 1`, `min < max`, `direction`, pesos normalizados; `defaultHorizon ≥ 1`; `roleWeights` 1:1 por defecto; β ≥ 0; ruido `n ∈ [0, 1)`; márgenes; margen de seguridad del turno 500 ms y `turnBudgetMs`; `minEffectPp`; procedencia) y luego migrar el esquema y `config/champion.json` a `version: 1` (solo precio); verificar con vitest que la campeona carga y que una configuración inválida falla señalando el campo
 - [ ] 1.3 [Pablo] Test del contrato `Box<I,O>` (valida entrada y salida con Zod, error tipado si no cumple) y luego el tipo, el registro de cajas y `ctx` (RNG, reloj inyectado, logger, traza); verificar con el test de una caja `echo`
 
 ## 2. Contrato del ring y adaptador HTTP JSON (antes del viernes)

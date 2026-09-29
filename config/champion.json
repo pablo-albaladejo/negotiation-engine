@@ -1,8 +1,16 @@
 {
-  "version": 0,
+  "version": 1,
+  "issues": [{ "name": "pct", "min": 0, "max": 10, "direction": "higher-better", "weight": 1 }],
+  "defaultHorizon": 10,
+  "roleWeights": { "buyer": 1, "seller": 1 },
   "beta": 0.2,
   "openingMargin": 0.9,
   "acceptMargin": 0.02,
-  "noise": 0.01,
-  "persona": "calido-firme"
+  "acTimeThreshold": 0.9,
+  "noise": 0.1,
+  "turnSafetyMarginMs": 500,
+  "turnBudgetMs": 4500,
+  "minEffectPp": 1,
+  "persona": "calido-firme",
+  "provenance": { "source": "manual", "parent": 0, "notes": "v1: esquema multi-issue, solo precio (pct)" }
 }
