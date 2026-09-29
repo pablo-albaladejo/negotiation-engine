@@ -55,6 +55,8 @@ function buildSchemas(offer: z.ZodType<Offer>) {
 const generic = buildSchemas(z.record(z.string(), z.number()));
 export type TurnInput = z.infer<typeof generic.turnInput>;
 export type TurnOutput = z.infer<typeof generic.turnOutput>;
+/** Esquema con oferta genérica: para validar la forma antes de conocer los issues de la sesión. */
+export const GenericTurnInputSchema = generic.turnInput;
 
 export interface ProtocolSchemas {
   issueNames: readonly string[];

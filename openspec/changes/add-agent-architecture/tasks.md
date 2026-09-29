@@ -14,7 +14,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 - [ ] 2.2 [Gerard] Batería común de tests de contrato para cualquier adaptador en modo servidor (`RingAdapter`) y modo cliente (`RingClient` + bucle de turnos), y adaptador en memoria que la pase en ambos modos; verificar con `pnpm test`
 - [ ] 2.3 [Gerard] Adaptador servidor HTTP JSON con Hono (`POST /turn`, `GET /health` sin datos del mandato, error de protocolo para JSON malformado sin caída); verificar con la batería común usando `app.request()`
 - [ ] 2.4 [Gerard] Cliente HTTP JSON (`RingClient`) con tiempo máximo y bucle de turnos por sondeo (nosotros conducimos); verificar con la batería común en modo cliente contra un ring simulado y jugando contra el servidor HTTP propio en un test de integración
-- [ ] 2.5 [Pablo] Tabla de casos de la aceptación del rival (sin cifras ⇒ acuerdo en nuestra última oferta; con cifras distintas ⇒ oferta nueva) y luego la regla de enlace en la traducción al estado; verificar con `pnpm test`
+- [x] 2.5 [Pablo] Tabla de casos de la aceptación del rival (sin cifras ⇒ acuerdo en nuestra última oferta; con cifras distintas ⇒ oferta nueva) y luego la regla de enlace en la traducción al estado; verificar con `pnpm test`
 
 ## 3. Motor determinista, solo precio primero (antes del viernes) [Paula]
 
@@ -35,8 +35,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 5. Pipeline sin LLM (antes del viernes) [Pablo]
 
-- [ ] 5.1 [Pablo] Tests de estado de sesión (aislamiento entre sesiones concurrentes, mandato y versión de configuración inmutables, última oferta nuestra y oferta actual del rival) y luego el almacén en memoria
-- [ ] 5.2 [Pablo] Tests de inyección de fallos (excepción, tiempo agotado y salida inválida en cada caja; 2 intentos en total y luego plantilla; presupuesto = tiempo del ring − 500 ms) y luego el orquestador con `try/catch` por caja, parser `none` que solo usa campos estructurados y ruta de emergencia (plantilla con la misma decisión; si falla el motor, última oferta válida o apertura); verificar que todos los turnos producen salida válida y el proceso sigue vivo
+- [x] 5.1 [Pablo] Tests de estado de sesión (aislamiento entre sesiones concurrentes, mandato y versión de configuración inmutables, última oferta nuestra y oferta actual del rival) y luego el almacén en memoria
+- [x] 5.2 [Pablo] Tests de inyección de fallos (excepción, tiempo agotado y salida inválida en cada caja; 2 intentos en total y luego plantilla; presupuesto = tiempo del ring − 500 ms) y luego el orquestador con `try/catch` por caja, parser `none` que solo usa campos estructurados y ruta de emergencia (plantilla con la misma decisión; si falla el motor, última oferta válida o apertura); verificar que todos los turnos producen salida válida y el proceso sigue vivo
 - [ ] 5.3 [Pablo] Crear el entrypoint `pnpm agent` = adaptador HTTP + pipeline + campeona con recarga al abrir sesión; verificar que arranca con la campeona y no arranca con una configuración inválida (error con el campo)
 
 ## 6. Humo de extremo a extremo (antes del viernes)
