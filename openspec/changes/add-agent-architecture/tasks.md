@@ -57,7 +57,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 - [x] 8.2 [Gerard] Bot de sparring de solo texto (ofertas solo en el texto en todas las formas del normalizador, aceptaciones sin cifras, valores reales expuestos a la arena) con tests de sus mensajes
 - [x] 8.3 [Paula] Bot Tit-for-Tat, métricas restantes (rondas, fugas, uso de plantilla, latencia, ofertas mal extraídas) y escenarios con 2 issues y con límite oculto; verificar con `pnpm test` y una ejecución de `pnpm arena`
 - [x] 8.4 [Gerard] Los 3 casos de Scribo (marco hipotético, identidad o mandato desde el texto, acción sensible sin contexto) como tests de vitest contra el pipeline con `LLM_PROVIDER=none`; verificar que un agente deliberadamente roto hace fallar `pnpm test`
-- [ ] 8.5 [todos] Hito minuto 0: partida completa por HTTP con `LLM_PROVIDER=none` contra un rival externo de sparring y 0 violaciones en 1000 partidas de arena; dejar constancia en el resumen de `results/`
+- [x] 8.5 [todos] Hito minuto 0: partida completa por HTTP con `LLM_PROVIDER=none` contra un rival externo de sparring y 0 violaciones en 1000 partidas de arena; dejar constancia en el resumen de `results/`
 
 ## 9. Modo solo texto, trazas, spike A2A y túnel (antes del viernes 18:45)
 
