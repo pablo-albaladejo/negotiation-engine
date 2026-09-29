@@ -1,0 +1,27 @@
+{
+  "name": "negotiation-ring",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agente negociador para el Negotiation Ring (hackathon Causa Prima). El LLM interpreta y redacta; el código decide la cifra.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "arena": "tsx src/arena/index.ts",
+    "agent": "tsx src/agent/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}
