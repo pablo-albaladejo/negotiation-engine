@@ -1,6 +1,7 @@
-import { loadConfig } from "../engine/config.js";
+import { runArenaCli } from "./cli.js";
 
-// Arena local de self-play: nuestro agente contra cada bot de src/bots, en los dos roles
-// y en varios escenarios. Pendiente de implementar.
-const config = loadConfig();
-console.log(`arena: config v${config.version} cargada; aún no hay partidas implementadas`);
+// Arena local de self-play: nuestro agente contra los bots de src/bots en los escenarios del catálogo.
+runArenaCli(process.argv.slice(2)).catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

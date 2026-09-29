@@ -45,11 +45,11 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 7. Arena mínima (antes del viernes)
 
-- [ ] 7.1 [Gerard] Esquema de escenario (issues, límite visible u oculto, estructurado o solo texto, mandatos) y subconjunto inicial (comprador y vendedor × ZOPA amplia, estrecha y vacía; solo precio); verificar con un test que carga y valida el catálogo
-- [ ] 7.2 [Pablo] Test "misma semilla ⇒ misma transcripción" y luego la interfaz `Participant` y el runner de partidas en proceso
-- [ ] 7.3 [Paula] Bots Boulware y Conceder con tests de su curva de concesión
-- [ ] 7.4 [Paula] Tests de métricas mínimas (acuerdo, fracción de excedente, violaciones; ZOPA vacía excluida de la media) y luego su implementación
-- [ ] 7.5 [Pablo] `pnpm arena` con tabla de consola y resumen JSON en `results/`; verificar 1000 partidas con `LLM_PROVIDER=none` en menos de 60 s en un portátil y sin red
+- [x] 7.1 [Gerard] Esquema de escenario (issues, límite visible u oculto, estructurado o solo texto, mandatos) y subconjunto inicial (comprador y vendedor × ZOPA amplia, estrecha y vacía; solo precio); verificar con un test que carga y valida el catálogo
+- [x] 7.2 [Pablo] Test "misma semilla ⇒ misma transcripción" y luego la interfaz `Participant` y el runner de partidas en proceso
+- [x] 7.3 [Paula] Bots Boulware y Conceder con tests de su curva de concesión
+- [x] 7.4 [Paula] Tests de métricas mínimas (acuerdo, fracción de excedente, violaciones; ZOPA vacía excluida de la media) y luego su implementación
+- [x] 7.5 [Pablo] `pnpm arena` con tabla de consola y resumen JSON en `results/`; verificar 1000 partidas con `LLM_PROVIDER=none` en menos de 60 s en un portátil y sin red
 
 ## 8. Sparring externo, bot de solo texto y resto de la arena básica (antes del viernes)
 

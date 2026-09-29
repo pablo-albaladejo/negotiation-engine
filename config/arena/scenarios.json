@@ -1,0 +1,182 @@
+[
+  {
+    "id": "price-buyer-wide",
+    "description": "Solo precio (pct de pronto pago), jugamos de comprador, ZOPA wide",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
+  },
+  {
+    "id": "price-seller-wide",
+    "description": "Solo precio (pct de pronto pago), jugamos de vendedor, ZOPA wide",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
+  },
+  {
+    "id": "price-buyer-narrow",
+    "description": "Solo precio (pct de pronto pago), jugamos de comprador, ZOPA narrow",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "narrow",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 4.5
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 5.25
+        }
+      }
+    }
+  },
+  {
+    "id": "price-seller-narrow",
+    "description": "Solo precio (pct de pronto pago), jugamos de vendedor, ZOPA narrow",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "narrow",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 4.5
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 5.25
+        }
+      }
+    }
+  },
+  {
+    "id": "price-buyer-empty",
+    "description": "Solo precio (pct de pronto pago), jugamos de comprador, ZOPA empty",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "empty",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 6
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 4
+        }
+      }
+    }
+  },
+  {
+    "id": "price-seller-empty",
+    "description": "Solo precio (pct de pronto pago), jugamos de vendedor, ZOPA empty",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "empty",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 6
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 4
+        }
+      }
+    }
+  }
+]
