@@ -1,0 +1,58 @@
+{
+  "description": "solo la oferta actual: 9.5 antes, 1.5 ahora ⇒ no acepta",
+  "input": {
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "mandate": {
+      "role": "buyer",
+      "reservation": {
+        "pct": 3
+      }
+    },
+    "params": {
+      "beta": 0.2,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0,
+      "defaultHorizon": 10
+    },
+    "state": {
+      "round": 5,
+      "ourOffers": [
+        {
+          "pct": 9.3
+        },
+        {
+          "pct": 9.2
+        }
+      ],
+      "rivalOffers": [
+        {
+          "pct": 9.5
+        },
+        {
+          "pct": 1.5
+        }
+      ],
+      "rivalAcceptedOurLast": false,
+      "rivalWalked": false,
+      "roundLimit": 10
+    },
+    "seed": 7
+  },
+  "expected": {
+    "action": "counter",
+    "offer": {
+      "pct": 9.11
+    },
+    "rule": "none"
+  }
+}
