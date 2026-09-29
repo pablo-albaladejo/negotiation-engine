@@ -8,15 +8,12 @@ import { currentProvider, type LlmProvider } from "../llm/provider.js";
 import type { Logger, TraceSink } from "../pipeline/box.js";
 import { createPipeline, type Brain } from "../pipeline/pipeline.js";
 import { SessionStore } from "../pipeline/session.js";
+import { createPinoLogger, levelFromEnv } from "../pipeline/log.js";
 import { JsonlSessionTrace } from "../pipeline/trace.js";
 import { createHttpApp } from "../protocol/http.js";
 
-/** Logger JSON por stderr. Los eventos nunca llevan el mandato ni la reserva. */
-export const stderrLogger: Logger = {
-  info: (event, data) => console.error(JSON.stringify({ level: "info", event, ...data })),
-  warn: (event, data) => console.error(JSON.stringify({ level: "warn", event, ...data })),
-  error: (event, data) => console.error(JSON.stringify({ level: "error", event, ...data })),
-};
+/** Logger JSON (pino) por stderr con `redact` del mandato; nivel por `LOG_LEVEL`. */
+export const stderrLogger: Logger = createPinoLogger({ level: levelFromEnv() });
 
 /**
  * Campeona con recarga: se relee al abrir cada sesión si cambió su mtime; nunca a mitad de sesión.

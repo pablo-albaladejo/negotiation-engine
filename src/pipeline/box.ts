@@ -6,6 +6,9 @@ export interface Logger {
   info(event: string, data?: Record<string, unknown>): void;
   warn(event: string, data?: Record<string, unknown>): void;
   error(event: string, data?: Record<string, unknown>): void;
+  debug?(event: string, data?: Record<string, unknown>): void;
+  /** Nivel más detallado: registros completos de cada caja. */
+  trace?(event: string, data?: Record<string, unknown>): void;
 }
 
 export const silentLogger: Logger = { info() {}, warn() {}, error() {} };
