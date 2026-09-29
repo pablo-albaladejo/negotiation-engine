@@ -1,10 +1,11 @@
 import { z } from "zod";
+import type { Offer } from "../engine/issues.js";
 
 /**
  * Contrato canónico entre los adaptadores del ring y el cerebro del agente.
  * Una oferta es un valor por cada issue declarado en la configuración (solo precio: un issue).
  */
-export type Offer = Record<string, number>;
+export type { Offer };
 
 export const RivalActionSchema = z.enum(["offer", "accept", "walk", "message"]);
 export type RivalAction = z.infer<typeof RivalActionSchema>;
