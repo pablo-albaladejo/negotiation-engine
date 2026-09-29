@@ -103,6 +103,17 @@ export function authFromEnv(env: NodeJS.ProcessEnv = process.env): { header: str
   return header ? { header, value: token } : { header: "authorization", value: `Bearer ${token}` };
 }
 
+/**
+ * Modo servidor: sin `AGENT_AUTH_TOKEN` cualquiera que alcance el endpoint podría escribir ronda,
+ * plazo u ofertas en una sesión real y crear sesiones sin límite. Por eso el agente se niega a
+ * arrancar sin token salvo que `AGENT_ALLOW_NOAUTH=1` lo permita explícitamente (solo en local).
+ */
+export function serverAuthFromEnv(env: NodeJS.ProcessEnv = process.env): { header: string; value: string } | undefined {
+  const auth = authFromEnv(env);
+  if (auth || env.AGENT_ALLOW_NOAUTH === "1") return auth;
+  throw new ConfigError("Modo servidor sin AGENT_AUTH_TOKEN: define el token o AGENT_ALLOW_NOAUTH=1 (solo para pruebas en local)");
+}
+
 export interface Agent {
   brain: Brain;
   app: ReturnType<typeof createHttpApp>;

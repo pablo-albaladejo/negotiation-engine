@@ -10,6 +10,8 @@ RING_PORT="${SMOKE_RING_PORT:-8788}"
 LOG_DIR="results/smoke"
 mkdir -p "$LOG_DIR"
 export LLM_PROVIDER=none
+# El modo servidor exige token: el humo usa uno propio y lo envía en cada turno.
+export AGENT_AUTH_TOKEN="smoke-$$"
 AGENT_PID=""
 RING_PID=""
 cleanup() {
@@ -35,7 +37,7 @@ curl -sf "http://localhost:$PORT/health"
 echo
 for round in 1 2 3; do
   body="{\"sessionId\":\"smoke\",\"round\":$round,\"roundLimit\":10,\"rivalAction\":\"offer\",\"rivalOffer\":{\"pct\":$round},\"text\":\"Puedo ofrecer un $round %.\"}"
-  curl -sf -X POST -H 'content-type: application/json' -d "$body" "http://localhost:$PORT/turn" | pnpm -s exec tsx scripts/check-turn.ts
+  curl -sf -X POST -H 'content-type: application/json' -H "Authorization: Bearer $AGENT_AUTH_TOKEN" -d "$body" "http://localhost:$PORT/turn" | pnpm -s exec tsx scripts/check-turn.ts
 done
 kill "$AGENT_PID"
 wait "$AGENT_PID" 2>/dev/null || true

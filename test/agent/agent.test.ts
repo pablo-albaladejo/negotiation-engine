@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { authFromEnv, createAgent } from "../../src/agent/agent.js";
+import { authFromEnv, createAgent, serverAuthFromEnv } from "../../src/agent/agent.js";
 import { ConfigError } from "../../src/engine/config.js";
 import { silentLogger } from "../../src/pipeline/box.js";
 
@@ -65,7 +65,7 @@ describe("entrypoint del agente", () => {
   it("`pnpm agent` con configuración inválida sale con código ≠ 0 y nombra el campo", async () => {
     const configPath = tmpCopy({ defaultHorizon: 0 });
     const error = await run("pnpm", ["-s", "agent"], {
-      env: { ...process.env, AGENT_CONFIG: configPath, LLM_PROVIDER: "none", PORT: "0" },
+      env: { ...process.env, AGENT_CONFIG: configPath, LLM_PROVIDER: "none", PORT: "0", AGENT_ALLOW_NOAUTH: "1" },
       timeout: 20_000,
     }).catch((e: { code: number; stderr: string }) => e);
     expect((error as { code: number }).code).not.toBe(0);
@@ -90,4 +90,22 @@ describe("autenticación por entorno", () => {
   it("AGENT_AUTH_HEADER cambia la cabecera", () => {
     expect(authFromEnv({ AGENT_AUTH_TOKEN: "t", AGENT_AUTH_HEADER: "X-Ring-Key" })).toEqual({ header: "x-ring-key", value: "t" });
   });
+});
+
+describe("modo servidor sin token", () => {
+  it("se niega salvo con AGENT_ALLOW_NOAUTH=1", () => {
+    expect(() => serverAuthFromEnv({})).toThrow(/AGENT_AUTH_TOKEN/);
+    expect(() => serverAuthFromEnv({ AGENT_ALLOW_NOAUTH: "true" })).toThrow(ConfigError);
+    expect(serverAuthFromEnv({ AGENT_ALLOW_NOAUTH: "1" })).toBeUndefined();
+    expect(serverAuthFromEnv({ AGENT_AUTH_TOKEN: "t" })).toEqual({ header: "authorization", value: "Bearer t" });
+  });
+
+  it("`pnpm agent` en modo servidor sin token sale con código ≠ 0 y lo explica", async () => {
+    const env: NodeJS.ProcessEnv = { ...process.env, LLM_PROVIDER: "none", PORT: "0", AGENT_TRACE: "off" };
+    delete env.AGENT_AUTH_TOKEN;
+    delete env.AGENT_ALLOW_NOAUTH;
+    const error = await run("pnpm", ["-s", "agent"], { env, timeout: 20_000 }).catch((e: { code: number; stderr: string }) => e);
+    expect((error as { code: number }).code).not.toBe(0);
+    expect((error as { stderr: string }).stderr).toMatch(/AGENT_AUTH_TOKEN/);
+  }, 30_000);
 });

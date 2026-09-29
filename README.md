@@ -52,10 +52,13 @@ cp .env.example .env
 pnpm test        # tests unitarios y de propiedades
 pnpm typecheck
 pnpm arena       # self-play local contra los bots
-pnpm agent       # arranca el agente con config/champion.json
+AGENT_AUTH_TOKEN=… pnpm agent   # agente con config/champion.json (en local sin token: AGENT_ALLOW_NOAUTH=1)
 pnpm bot:serve conceder --port 8790   # un bot como agente HTTP para sparring
 pnpm sparring    # pnpm agent contra un bot servido, la arena hace de ring
 ```
+
+En modo servidor el agente no arranca sin `AGENT_AUTH_TOKEN` (exige `Authorization: Bearer <token>`,
+o la cabecera de `AGENT_AUTH_HEADER`); `AGENT_ALLOW_NOAUTH=1` lo permite solo para pruebas en local.
 
 Despliegue por túnel: `AGENT_AUTH_TOKEN=… pnpm agent`, `cloudflared tunnel --url http://localhost:8787`
 (o `ngrok http 8787`) y, desde otra red, `scripts/tunnel-smoke.sh https://<url-del-túnel>`

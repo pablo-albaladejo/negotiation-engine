@@ -13,6 +13,8 @@ RUN_ID="${SPARRING_RUN_ID:-sparring-http-$BOT}"
 LOG_DIR="results/sparring"
 mkdir -p "$LOG_DIR"
 export LLM_PROVIDER=none
+# Solo en local: la arena llama al agente sin token.
+export AGENT_ALLOW_NOAUTH=1
 PIDS=()
 cleanup() { for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done; }
 trap cleanup EXIT
