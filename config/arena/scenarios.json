@@ -316,5 +316,65 @@
         }
       }
     }
+  },
+  {
+    "id": "text-buyer-wide",
+    "description": "Ring de solo texto (sin oferta estructurada), solo precio, jugamos de comprador",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "text-only",
+    "role": "buyer",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
+  },
+  {
+    "id": "text-seller-wide",
+    "description": "Ring de solo texto (sin oferta estructurada), solo precio, jugamos de vendedor",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "text-only",
+    "role": "seller",
+    "zopa": "wide",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 3
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 7
+        }
+      }
+    }
   }
 ]

@@ -58,6 +58,7 @@ describe("plantilla determinista", () => {
       pctRes: fc.double({ min: 0, max: 10, noNaN: true }),
       dayRes: fc.integer({ min: 0, max: 90 }),
       action: fc.constantFrom("accept" as const, "counter" as const, "walk" as const),
+      confirm: fc.boolean(),
     })
     .map((s) => {
       const issues = s.twoIssues ? [pct, day] : [{ ...pct, weight: 1 }];
@@ -66,15 +67,15 @@ describe("plantilla determinista", () => {
       const reservation: Offer = s.twoIssues
         ? { pct: Math.min(s.pctRes, s.pctValue), day: Math.max(s.dayRes, s.dayValue) }
         : { pct: Math.min(s.pctRes, s.pctValue) };
-      return { issues, offer, reservation, action: s.action };
+      return { issues, offer, reservation, action: s.action, confirm: s.confirm };
     });
 
   it("la plantilla pasa validador y detector de fugas para toda decisión dentro del mandato", () => {
     fc.assert(
-      fc.property(scenario, ({ issues, offer, reservation, action }) => {
+      fc.property(scenario, ({ issues, offer, reservation, action, confirm }) => {
         expect(withinOfferMandate(issues, { role: "buyer", reservation }, offer)).toBe(true);
         const decision = action === "walk" ? { action } : { action, offer };
-        const text = renderTemplate(decision);
+        const text = renderTemplate(action === "counter" && confirm ? { ...decision, ask: "confirm-figures" } : decision);
         const validation = validateText({ ...decision, text });
         expect(validation, text).toEqual({ ok: true });
         const leakCtx: LeakContext = { issues, reservation };

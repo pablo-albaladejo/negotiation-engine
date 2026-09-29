@@ -2,10 +2,12 @@ import { z } from "zod";
 import type { AgentConfig } from "../engine/config.js";
 import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInput } from "../engine/engine.js";
 import { enforceOfferGuardrails } from "../engine/guardrails.js";
-import { orientIssues, pickIssues, sameOffer, withinOfferMandate } from "../engine/issues.js";
+import { orientIssues, pickIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
-import { EMPTY_PARSE, noneParser, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
+import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
+import { normalizeNumbers } from "../llm/numbers.js";
+import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
 import { renderTemplate } from "../llm/template.js";
 import { CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
 import {
@@ -17,7 +19,8 @@ import {
   type TurnOutput,
 } from "../protocol/schemas.js";
 import { createContext, runBox, silentLogger, type BoxResult, type Logger, type TraceSink } from "./box.js";
-import { bindRivalMove } from "./binding.js";
+import { bindRivalMove, type BindingResult } from "./binding.js";
+import { reconcileTextOffer } from "./reconcile.js";
 import { ourLastOffer, type Session, type SessionStore } from "./session.js";
 
 /** El cerebro visto desde los adaptadores: un turno canónico y la ruta de emergencia. */
@@ -29,6 +32,7 @@ export interface Brain {
 
 export interface PipelineDeps {
   store: SessionStore;
+  /** Parser en cuarentena; por defecto el determinista (proveedor `none`). */
   parser?: TextParser;
   narrator?: Narrator;
   /** Motor inyectable (tests de fallos); por defecto la caja `engine`. */
@@ -93,7 +97,7 @@ export function emergencyDecision(session: Session): Decision & { action: "count
   return { action: "counter", offer: enforceOfferGuardrails(issues, mandate, base, last), rule: "emergency" };
 }
 
-function engineInputFor(session: Session, nowMs: number): EngineInput {
+function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed = false): EngineInput {
   const { config } = session;
   const state: EngineInput["state"] = {
     round: session.round,
@@ -103,6 +107,7 @@ function engineInputFor(session: Session, nowMs: number): EngineInput {
     rivalWalked: session.rivalWalked,
     rivalCanRespond: false,
   };
+  if (currentOfferUnconfirmed) state.currentOfferUnconfirmed = true;
   if (session.roundLimit !== undefined) state.roundLimit = session.roundLimit;
   if (session.deadlineMs !== undefined) {
     state.deadlineMs = session.deadlineMs;
@@ -128,7 +133,9 @@ function engineInputFor(session: Session, nowMs: number): EngineInput {
 export function createPipeline(deps: PipelineDeps): Brain {
   const now = deps.now ?? Date.now;
   const logger = deps.logger ?? silentLogger;
-  const parser = deps.parser ?? noneParser;
+  const parser = deps.parser ?? deterministicParser;
+  /** Con un parser distinto del determinista, el determinista es la segunda lectura obligatoria. */
+  const dual = parser.name !== deterministicParser.name;
   const narrator = deps.narrator ?? templateNarrator;
   const attempts = deps.attempts ?? 2;
   const engine =
@@ -199,20 +206,23 @@ export function createPipeline(deps: PipelineDeps): Brain {
 
     // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).
     let parse: ParserOutput = EMPTY_PARSE;
+    let parsed = false;
     if (input.text) {
       const schema = parserOutputSchema(schemas.issueNames);
       const text = input.text;
+      const context = { issueNames: schemas.issueNames };
       for (let attempt = 1; attempt <= attempts && remaining() > 0; attempt++) {
         const share = remaining() / 2 / (attempts - attempt + 1);
         const result = await guarded(
           "parser",
           { text },
-          async (signal) => schema.parse(await parser.parse(text, signal)),
+          async (signal) => schema.parse(await parser.parse(text, signal, context)),
           share,
           attempt < attempts ? "retry" : "fallback",
         );
         if (result.ok) {
           parse = result.value;
+          parsed = true;
           break;
         }
       }
@@ -221,13 +231,37 @@ export function createPipeline(deps: PipelineDeps): Brain {
       record("parser", { text: null }, EMPTY_PARSE, "ok", now());
     }
 
-    // 3. Reconciliación: la oferta estructurada manda; el texto solo lo lee el parser.
-    // En solo texto la oferta del texto exige acuerdo de parsers (tarea 9.2); hasta entonces, sin oferta.
-    const reconciled = input.rivalOffer ? pickIssues(issues, input.rivalOffer) : undefined;
-    record("reconcile", { structured: input.rivalOffer !== undefined, parserOffer: parse.offer !== undefined }, { offer: reconciled ?? null }, "ok", now());
+    // 3. Reconciliación: la oferta estructurada manda. Sin ella (solo texto), la oferta del texto
+    // exige el acuerdo de ambos parsers (o el determinista solo con `none`); si el rival mandó
+    // cifras que no se confirman, el turno va sin oferta y la contraoferta pide repetirlas.
+    let reconciled: Offer | undefined;
+    let unconfirmed = false;
+    let deterministicOffer: Offer | undefined;
+    if (input.rivalOffer) {
+      reconciled = pickIssues(issues, input.rivalOffer);
+    } else if (input.text && input.rivalAction !== "walk") {
+      const text = input.text;
+      try {
+        deterministicOffer = dual ? parseDeterministic(text, schemas.issueNames).offer : parsed ? parse.offer : undefined;
+        reconciled = reconcileTextOffer(issues, deterministicOffer, parsed ? parse.offer : undefined, dual);
+        unconfirmed = !reconciled && (input.rivalAction === "offer" || normalizeNumbers(text).length > 0);
+      } catch (error) {
+        logger.warn("reconcile_failed", { sessionId: session.id, round: input.round, error: errorMessage(error) });
+        unconfirmed = true;
+      }
+    }
+    record(
+      "reconcile",
+      { structured: input.rivalOffer !== undefined, parserOffer: parse.offer ?? null, deterministicOffer: deterministicOffer ?? null, dual },
+      { offer: reconciled ?? null, unconfirmed },
+      "ok",
+      now(),
+    );
 
     // 4. Regla de enlace de la aceptación del rival y actualización del estado.
-    const binding = bindRivalMove(issues, input.rivalAction, reconciled, ourLastOffer(session));
+    // Cifras sin confirmar: ni oferta nueva ni aceptación (un accept con cifras ilegibles no es acuerdo).
+    const binding: BindingResult =
+      unconfirmed && input.rivalAction !== "walk" ? { kind: "none" } : bindRivalMove(issues, input.rivalAction, reconciled, ourLastOffer(session));
     session.rivalAcceptedOurLast = binding.kind === "agreement";
     if (binding.kind === "offer") {
       session.rivalOffers.push(binding.offer);
@@ -237,7 +271,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     record("binding", { rivalAction: input.rivalAction }, binding, "ok", now());
 
     // 5. Motor determinista; si falla, última oferta válida o apertura.
-    const engineInput = engineInputFor(session, now());
+    const engineInput = engineInputFor(session, now(), unconfirmed);
     const engineResult = await guarded(
       "engine",
       { params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
@@ -260,6 +294,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       persona: config.persona,
     };
     if (offer) narratorInput.offer = offer;
+    const ask = unconfirmed && decision.action === "counter" ? ("confirm-figures" as const) : undefined;
+    if (ask) narratorInput.ask = ask;
     const check: TextCheck = { action: decision.action, text: "" };
     if (offer) check.offer = offer;
     const leakCtx: LeakContext = { issues, reservation: mandate.reservation };
@@ -288,8 +324,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       text = candidate;
     }
     if (!text) {
-      text = offer ? renderTemplate({ action: decision.action, offer }) : renderTemplate({ action: decision.action });
-      record("template", { action: decision.action, offer: offer ?? null }, { text }, "fallback", now());
+      text = renderTemplate({ action: decision.action, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) });
+      record("template", { action: decision.action, offer: offer ?? null, ask: ask ?? null }, { text }, "fallback", now());
     }
 
     // 7. Salida canónica validada.

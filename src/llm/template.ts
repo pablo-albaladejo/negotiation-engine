@@ -25,9 +25,15 @@ export function formatOffer(offer: Offer): string {
     .join(", con ");
 }
 
+/** Petición al rival que acompaña a la contraoferta (solo enums). */
+export const AskSchema = z.enum(["confirm-figures"]);
+export type Ask = z.infer<typeof AskSchema>;
+
 export interface TemplateDecision {
   action: "accept" | "counter" | "walk";
   offer?: Offer;
+  /** Solo texto sin oferta confirmada: la contraoferta pide que el rival repita sus cifras. */
+  ask?: Ask;
 }
 
 /** Plantilla determinista de la persona "cálido-firme": escribe exactamente las cifras decididas. */
@@ -36,6 +42,9 @@ export function renderTemplate(decision: TemplateDecision): string {
     case "accept":
       return `¡Trato hecho! Aceptamos ${formatOffer(decision.offer ?? {})}. Gracias por la negociación.`;
     case "counter":
+      if (decision.ask === "confirm-figures") {
+        return `No he podido confirmar tus cifras: ¿me las repites con dígitos? Mientras tanto, te propongo ${formatOffer(decision.offer ?? {})}.`;
+      }
       return `Gracias por tu propuesta. Te propongo ${formatOffer(decision.offer ?? {})}. Creo que es una propuesta justa para ambos.`;
     case "walk":
       return "Gracias por tu tiempo, pero así no podemos seguir. Lo dejamos aquí.";
@@ -48,12 +57,14 @@ export const templateBox = defineBox({
     .object({
       action: z.enum(["accept", "counter", "walk"]),
       offer: z.record(z.string(), z.number()).optional(),
+      ask: AskSchema.optional(),
     })
     .strict(),
   output: z.object({ text: z.string().min(1) }).strict(),
   run: (input) => {
     const decision: TemplateDecision = { action: input.action };
     if (input.offer) decision.offer = input.offer;
+    if (input.ask) decision.ask = input.ask;
     return { text: renderTemplate(decision) };
   },
 });

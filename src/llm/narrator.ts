@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IntentSchema, TacticSchema } from "./parser.js";
-import { renderTemplate } from "./template.js";
+import { AskSchema, renderTemplate, type TemplateDecision } from "./template.js";
 
 /**
  * Entrada del narrador: solo enums y las cifras decididas. Nunca el texto del rival, sus
@@ -13,6 +13,7 @@ export const NarratorInputSchema = z
     rivalIntent: IntentSchema,
     tactics: z.array(TacticSchema),
     persona: z.string().min(1),
+    ask: AskSchema.optional(),
   })
   .strict();
 export type NarratorInput = z.infer<typeof NarratorInputSchema>;
@@ -26,6 +27,9 @@ export interface Narrator {
 export const templateNarrator: Narrator = {
   name: "template",
   narrate: async (input) => {
-    return input.offer ? renderTemplate({ action: input.action, offer: input.offer }) : renderTemplate({ action: input.action });
+    const decision: TemplateDecision = { action: input.action };
+    if (input.offer) decision.offer = input.offer;
+    if (input.ask) decision.ask = input.ask;
+    return renderTemplate(decision);
   },
 };

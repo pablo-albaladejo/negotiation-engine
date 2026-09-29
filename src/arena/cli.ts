@@ -39,7 +39,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const { values } = parseArgs({
     args: argv,
     options: {
-      seeds: { type: "string", default: "25" },
+      seeds: { type: "string", default: "21" },
       "seed-start": { type: "string", default: "1" },
       scenarios: { type: "string" },
       rivals: { type: "string" },

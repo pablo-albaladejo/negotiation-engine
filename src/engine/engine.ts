@@ -38,6 +38,8 @@ export const EngineInputSchema = z.object({
     /** El rival aceptó nuestra última oferta (regla de enlace ya aplicada). */
     rivalAcceptedOurLast: z.boolean(),
     rivalWalked: z.boolean(),
+    /** Solo texto: el rival mandó cifras que no se pudieron confirmar; no hay oferta aceptable este turno. */
+    currentOfferUnconfirmed: z.boolean().optional(),
     /** Si el ring admite respuesta del rival tras nuestro último movimiento. */
     rivalCanRespond: z.boolean().optional(),
   }),
@@ -92,7 +94,7 @@ export function decide(input: EngineInput): Decision {
 
   const opponent = new OpponentModel(issues);
   for (const offer of state.rivalOffers) opponent.recordOffer(offer);
-  const rivalCurrent = opponent.summary().currentOffer;
+  const rivalCurrent = state.currentOfferUnconfirmed ? undefined : opponent.summary().currentOffer;
 
   const timeFields: TimeFields = { round: state.round };
   if (state.roundLimit !== undefined) timeFields.roundLimit = state.roundLimit;
