@@ -53,7 +53,13 @@ pnpm test        # tests unitarios y de propiedades
 pnpm typecheck
 pnpm arena       # self-play local contra los bots
 pnpm agent       # arranca el agente con config/champion.json
+pnpm bot:serve conceder --port 8790   # un bot como agente HTTP para sparring
+pnpm sparring    # pnpm agent contra un bot servido, la arena hace de ring
 ```
+
+Despliegue por túnel: `AGENT_AUTH_TOKEN=… pnpm agent`, `cloudflared tunnel --url http://localhost:8787`
+(o `ngrok http 8787`) y, desde otra red, `scripts/tunnel-smoke.sh https://<url-del-túnel>`
+(`GET /health` + un turno por HTTPS validado contra el esquema).
 
 ## Flujo de trabajo
 

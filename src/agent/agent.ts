@@ -92,6 +92,18 @@ export interface AgentOptions {
   provider?: LlmProvider;
   logger?: Logger;
   trace?: TraceSink;
+  auth?: { header: string; value: string };
+}
+
+/**
+ * Autenticación de `POST /turn` desde el entorno: `AGENT_AUTH_TOKEN` exige `Authorization: Bearer <token>`;
+ * con `AGENT_AUTH_HEADER` se exige esa cabecera con el token tal cual. Sin token, sin autenticación.
+ */
+export function authFromEnv(env: NodeJS.ProcessEnv = process.env): { header: string; value: string } | undefined {
+  const token = env.AGENT_AUTH_TOKEN;
+  if (!token) return undefined;
+  const header = env.AGENT_AUTH_HEADER?.toLowerCase();
+  return header ? { header, value: token } : { header: "authorization", value: `Bearer ${token}` };
 }
 
 export interface Agent {
@@ -120,6 +132,7 @@ export function createAgent(options: AgentOptions): Agent {
     issueNames,
     logger,
     health: () => ({ configVersion: champion.current().version, llmProvider: provider }),
+    ...(options.auth ? { auth: options.auth } : {}),
   });
   return { brain, app, store, config: champion.current, issueNames };
 }

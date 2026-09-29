@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { createAgent } from "../../src/agent/agent.js";
+import { authFromEnv, createAgent } from "../../src/agent/agent.js";
 import { ConfigError } from "../../src/engine/config.js";
 import { silentLogger } from "../../src/pipeline/box.js";
 
@@ -71,4 +71,23 @@ describe("entrypoint del agente", () => {
     expect((error as { code: number }).code).not.toBe(0);
     expect((error as { stderr: string }).stderr).toMatch(/defaultHorizon/);
   }, 30_000);
+});
+
+describe("autenticación por entorno", () => {
+  const turn = JSON.stringify({ sessionId: "auth", round: 1, rivalAction: "message", text: "hola" });
+
+  it("sin token no exige autenticación; con token exige la cabecera exacta y /health sigue abierto", async () => {
+    expect(authFromEnv({})).toBeUndefined();
+    const auth = authFromEnv({ AGENT_AUTH_TOKEN: "s3cret" })!;
+    expect(auth).toEqual({ header: "authorization", value: "Bearer s3cret" });
+    const agent = createAgent({ configPath: "config/champion.json", scenarioPath, provider: "none", logger: silentLogger, auth });
+    expect((await agent.app.request("/health")).status).toBe(200);
+    expect((await agent.app.request("/turn", { method: "POST", body: turn })).status).toBe(401);
+    expect((await agent.app.request("/turn", { method: "POST", body: turn, headers: { authorization: "Bearer nope" } })).status).toBe(401);
+    expect((await agent.app.request("/turn", { method: "POST", body: turn, headers: { authorization: "Bearer s3cret" } })).status).toBe(200);
+  });
+
+  it("AGENT_AUTH_HEADER cambia la cabecera", () => {
+    expect(authFromEnv({ AGENT_AUTH_TOKEN: "t", AGENT_AUTH_HEADER: "X-Ring-Key" })).toEqual({ header: "x-ring-key", value: "t" });
+  });
 });

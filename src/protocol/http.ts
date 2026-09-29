@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Brain } from "../pipeline/pipeline.js";
 import { silentLogger } from "../pipeline/box.js";
@@ -12,6 +13,14 @@ export interface HealthInfo {
 export interface HttpServerOptions extends AdapterOptions {
   /** Solo versión de configuración y proveedor: nunca datos del mandato. */
   health: () => HealthInfo;
+  /** Autenticación que exija el ring (desde el entorno, nunca en git): cabecera y valor exactos. */
+  auth?: { header: string; value: string };
+}
+
+function sameSecret(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
 }
 
 /**
@@ -29,6 +38,10 @@ export function createHttpApp(brain: Brain, options: HttpServerOptions): Hono {
   });
 
   app.post("/turn", async (c) => {
+    if (options.auth && !sameSecret(c.req.header(options.auth.header) ?? "", options.auth.value)) {
+      logger.warn("auth_failed");
+      return c.json(new ProtocolError("No autorizado").toBody(), 401);
+    }
     let body: unknown;
     try {
       body = await c.req.json();
