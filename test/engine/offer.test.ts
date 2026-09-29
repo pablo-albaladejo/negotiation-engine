@@ -70,7 +70,7 @@ describe("generador Boulware", () => {
         const offers = play(s);
         for (const offer of offers) expect(withinOfferMandate(s.issues, s.mandate, offer)).toBe(true);
         for (let i = 1; i < offers.length; i++) {
-          expect(utility(s.issues, offers[i]!)).toBeLessThanOrEqual(utility(s.issues, offers[i - 1]!) + 1e-12);
+          expect(utility(s.issues, offers[i]!)).toBeLessThanOrEqual(utility(s.issues, offers[i - 1]!));
         }
       }),
     );

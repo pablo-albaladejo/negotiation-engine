@@ -54,7 +54,7 @@ describe("guardarraíles multi-issue", () => {
         for (const p of proposals) {
           previous = enforceOfferGuardrails(issues, m, p, previous);
           expect(withinOfferMandate(issues, m, previous)).toBe(true);
-          expect(utility(issues, previous)).toBeGreaterThanOrEqual(reservationUtility(issues, m) - 1e-12);
+          expect(utility(issues, previous)).toBeGreaterThanOrEqual(reservationUtility(issues, m));
         }
       }),
     );
@@ -66,7 +66,7 @@ describe("guardarraíles multi-issue", () => {
         const offers: Offer[] = [];
         for (const p of proposals) offers.push(enforceOfferGuardrails(issues, m, p, offers.at(-1)));
         for (let i = 1; i < offers.length; i++) {
-          expect(utility(issues, offers[i]!)).toBeLessThanOrEqual(utility(issues, offers[i - 1]!) + 1e-12);
+          expect(utility(issues, offers[i]!)).toBeLessThanOrEqual(utility(issues, offers[i - 1]!));
         }
       }),
     );

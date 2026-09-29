@@ -64,24 +64,32 @@ export function offerAtUtility(issues: readonly Issue[], u: number): Offer {
   return Object.fromEntries(issues.map((issue) => [issue.name, valueAtNorm(issue, u)]));
 }
 
-/** Redondea cada valor a la precisión de oferta en la dirección que nos favorece. */
+/**
+ * Redondea cada valor a la precisión de oferta en la dirección que nos favorece. El EPS evita
+ * saltar un céntimo por ruido de coma flotante (2,31 · 100 = 231,00000000000003), pero si tras
+ * redondear el valor sigue en nuestra contra (0,1 + 0,2 → 0,3 < 0,30000000000000004) se avanza
+ * un paso a nuestro favor: el resultado nunca es peor que la entrada.
+ */
 export function roundInFavor(issues: readonly Issue[], offer: Offer): Offer {
   const factor = 10 ** OFFER_DECIMALS;
   return Object.fromEntries(
     issues.map((issue) => {
-      const scaled = valueOf(offer, issue) * factor;
-      const rounded = issue.direction === "higher-better" ? Math.ceil(scaled - EPS) : Math.floor(scaled + EPS);
+      const value = valueOf(offer, issue);
+      const higher = issue.direction === "higher-better";
+      const scaled = value * factor;
+      let rounded = higher ? Math.ceil(scaled - EPS) : Math.floor(scaled + EPS);
+      if (higher ? rounded / factor < value : rounded / factor > value) rounded += higher ? 1 : -1;
       return [issue.name, rounded / factor];
     }),
   );
 }
 
-/** Ningún issue cruza su límite de reserva (y por tanto u ≥ u(reserva)). */
+/** Ningún issue cruza su límite de reserva (y por tanto u ≥ u(reserva)). Estricto: sin tolerancia. */
 export function withinOfferMandate(issues: readonly Issue[], mandate: OfferMandate, offer: Offer): boolean {
   return issues.every((issue) => {
     const value = valueOf(offer, issue);
     const limit = valueOf(mandate.reservation, issue);
-    return issue.direction === "higher-better" ? value >= limit - EPS : value <= limit + EPS;
+    return issue.direction === "higher-better" ? value >= limit : value <= limit;
   });
 }
 

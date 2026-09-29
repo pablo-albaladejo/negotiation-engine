@@ -16,7 +16,9 @@ export function concession(t: number, beta: number): number {
 }
 
 export function boulwareTarget(t: number, uOpen: number, uRes: number, beta: number): number {
-  return uOpen - (uOpen - uRes) * concession(t, beta);
+  const c = concession(t, beta);
+  // Concesión completa: exactamente la utilidad de reserva, sin ruido de coma flotante.
+  return c >= 1 ? uRes : uOpen - (uOpen - uRes) * c;
 }
 
 /** ε ∈ [−n, n] del generador sembrado de la caja. */
@@ -56,8 +58,9 @@ export function offerAboveReservation(issues: readonly Issue[], reservation: Off
   const levels = issues.map((issue) => normalizeIssue(issue, reservation[issue.name]!));
   const uRes = issues.reduce((sum, issue, k) => sum + issue.weight * levels[k]!, 0);
   const lambda = uRes >= 1 ? 1 : Math.min(1, Math.max(0, (u - uRes) / (1 - uRes)));
+  // λ = 0 es la propia reserva: su valor exacto, no el de ida y vuelta por la normalización.
   return Object.fromEntries(
-    issues.map((issue, k) => [issue.name, valueAtNorm(issue, levels[k]! + lambda * (1 - levels[k]!))]),
+    issues.map((issue, k) => [issue.name, lambda === 0 ? reservation[issue.name]! : valueAtNorm(issue, levels[k]! + lambda * (1 - levels[k]!))]),
   );
 }
 

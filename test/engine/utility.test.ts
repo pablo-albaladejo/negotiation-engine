@@ -9,6 +9,7 @@ import {
   utility,
   withinOfferMandate,
 } from "../../src/engine/issues.js";
+import type { Issue } from "../../src/engine/config.js";
 import { issuesArb, offerArb, pctIssue } from "./arbitraries.js";
 
 describe("utilidad multi-issue", () => {
@@ -85,12 +86,23 @@ describe("utilidad multi-issue", () => {
       fc.property(
         issuesArb.chain((issues) => fc.tuple(fc.constant(issues), offerArb(issues))),
         ([issues, offer]) => {
-          expect(utility(issues, roundInFavor(issues, offer))).toBeGreaterThanOrEqual(utility(issues, offer) - 1e-12);
+          expect(utility(issues, roundInFavor(issues, offer))).toBeGreaterThanOrEqual(utility(issues, offer));
         },
       ),
     );
     expect(roundInFavor([pctIssue], { pct: 2.31 })).toEqual({ pct: 2.31 });
     expect(roundInFavor([pctIssue], { pct: 2.301 })).toEqual({ pct: 2.31 });
+  });
+
+  it("roundInFavor no absorbe excesos menores que EPS en nuestra contra (regresión)", () => {
+    const up: Issue = { name: "x", min: 0, max: 200, direction: "higher-better", weight: 1 };
+    const down: Issue = { ...up, direction: "lower-better" };
+    // 0.1 + 0.2 = 0.30000000000000004 > 0.3: subir ⇒ 0.31, nunca 0.3.
+    expect(roundInFavor([up], { x: 0.1 + 0.2 })).toEqual({ x: 0.31 });
+    // 99.99999999999 < 100: bajar ⇒ 99.99, nunca 100.
+    expect(roundInFavor([down], { x: 99.99999999999 })).toEqual({ x: 99.99 });
+    expect(withinOfferMandate([up], { role: "buyer", reservation: { x: 0.1 + 0.2 } }, { x: 0.3 })).toBe(false);
+    expect(withinOfferMandate([down], { role: "buyer", reservation: { x: 99.99999999999 } }, { x: 100 })).toBe(false);
   });
 
   it("mandato por issue y utilidad de reserva", () => {
