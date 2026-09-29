@@ -41,16 +41,21 @@ export function parserOutputSchema(issueNames: readonly string[]): z.ZodType<Par
     .strict() as unknown as z.ZodType<ParserOutput>;
 }
 
+/** Lo único que el parser sabe además del texto: los nombres de los issues declarados (públicos). */
+export interface ParserContext {
+  issueNames: readonly string[];
+}
+
 /** Parser en cuarentena: solo ve el texto del rival, sin herramientas, mandato ni historial. */
 export interface TextParser {
   name: string;
-  parse(text: string, signal: AbortSignal): Promise<unknown>;
+  parse(text: string, signal: AbortSignal, context?: ParserContext): Promise<unknown>;
 }
 
 /** Resultado cuando no se interpreta el texto: el turno sigue solo con los campos estructurados. */
 export const EMPTY_PARSE: ParserOutput = { intent: "other", claims: [], tactics: [], injectionSuspected: false };
 
-/** Proveedor `none`: no interpreta el texto (el parser determinista llega con la tarea 9.1). */
+/** Parser que no interpreta el texto: el turno sigue solo con los campos estructurados. */
 export const noneParser: TextParser = {
   name: "none",
   parse: async () => ({ ...EMPTY_PARSE, claims: [], tactics: [] }),

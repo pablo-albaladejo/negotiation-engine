@@ -61,7 +61,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 9. Modo solo texto, trazas, spike A2A y túnel (antes del viernes 18:45)
 
-- [ ] 9.1 [Pablo] Esquema cerrado del parser (sin identidad, rol, mandato, reserva ni decisión; campos extra rechazados) y parser determinista por expresiones regulares sobre el normalizador con fixtures ES/EN; verificar con `pnpm test`
+- [x] 9.1 [Pablo] Esquema cerrado del parser (sin identidad, rol, mandato, reserva ni decisión; campos extra rechazados) y parser determinista por expresiones regulares sobre el normalizador con fixtures ES/EN; verificar con `pnpm test`
 - [ ] 9.2 [Pablo] Modo solo texto: reconciliación (ambos parsers coinciden; con `none`, valor único no ambiguo) o turno sin oferta con contraoferta que pide confirmar cifras; verificar con 200 partidas contra el bot de solo texto: 0 acuerdos distintos de los valores reales
 - [ ] 9.3 [Pablo] Esquema Zod del registro de traza y de la cabecera (mandato en modo arena, referencia al escenario en modo torneo) y escritor JSONL en `results/<run>/`; verificar que una partida produce registros válidos contra el esquema
 - [ ] 9.4 [Gerard] Añadir `pino` con `redact` del mandato y test de barrido de valores de logs y trazas buscando la reserva en todas las formas del normalizador; verificar jugando una partida en nivel `trace`
