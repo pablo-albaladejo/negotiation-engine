@@ -37,7 +37,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 - [x] 5.1 [Pablo] Tests de estado de sesión (aislamiento entre sesiones concurrentes, mandato y versión de configuración inmutables, última oferta nuestra y oferta actual del rival) y luego el almacén en memoria
 - [x] 5.2 [Pablo] Tests de inyección de fallos (excepción, tiempo agotado y salida inválida en cada caja; 2 intentos en total y luego plantilla; presupuesto = tiempo del ring − 500 ms) y luego el orquestador con `try/catch` por caja, parser `none` que solo usa campos estructurados y ruta de emergencia (plantilla con la misma decisión; si falla el motor, última oferta válida o apertura); verificar que todos los turnos producen salida válida y el proceso sigue vivo
-- [ ] 5.3 [Pablo] Crear el entrypoint `pnpm agent` = adaptador HTTP + pipeline + campeona con recarga al abrir sesión; verificar que arranca con la campeona y no arranca con una configuración inválida (error con el campo)
+- [x] 5.3 [Pablo] Crear el entrypoint `pnpm agent` = adaptador HTTP + pipeline + campeona con recarga al abrir sesión; verificar que arranca con la campeona y no arranca con una configuración inválida (error con el campo)
 
 ## 6. Humo de extremo a extremo (antes del viernes)
 
