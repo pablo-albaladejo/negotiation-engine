@@ -6,7 +6,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 - [x] 1.1 [Pablo] Añadir solo `hono` y `@hono/node-server`; verificar con `pnpm install && pnpm typecheck && pnpm test` en verde
 - [x] 1.2 [Pablo/Paula] Tests de `AgentConfigSchema` v1 (`issues` con `n ≥ 1`, `min < max`, `direction`, pesos normalizados; `defaultHorizon ≥ 1`; `roleWeights` 1:1 por defecto; β ≥ 0; ruido `n ∈ [0, 1)`; márgenes; margen de seguridad del turno 500 ms y `turnBudgetMs`; `minEffectPp`; procedencia) y luego migrar el esquema y `config/champion.json` a `version: 1` (solo precio); verificar con vitest que la campeona carga y que una configuración inválida falla señalando el campo
-- [ ] 1.3 [Pablo] Test del contrato `Box<I,O>` (valida entrada y salida con Zod, error tipado si no cumple) y luego el tipo, el registro de cajas y `ctx` (RNG, reloj inyectado, logger, traza); verificar con el test de una caja `echo`
+- [x] 1.3 [Pablo] Test del contrato `Box<I,O>` (valida entrada y salida con Zod, error tipado si no cumple) y luego el tipo, el registro de cajas y `ctx` (RNG, reloj inyectado, logger, traza); verificar con el test de una caja `echo`
 
 ## 2. Contrato del ring y adaptador HTTP JSON (antes del viernes)
 
@@ -18,7 +18,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 3. Motor determinista, solo precio primero (antes del viernes) [Paula]
 
-- [ ] 3.1 [Paula] Añadir `pure-rand` como dependencia directa (hoy transitiva de fast-check); propiedad "misma semilla ⇒ misma secuencia; semillas derivadas por caja independientes" y luego el envoltorio; verificar con `pnpm test`
+- [x] 3.1 [Paula] Añadir `pure-rand` como dependencia directa (hoy transitiva de fast-check); propiedad "misma semilla ⇒ misma secuencia; semillas derivadas por caja independientes" y luego el envoltorio; verificar con `pnpm test`
 - [ ] 3.2 [Paula] Propiedades de la utilidad multi-issue (rango [0, 1], monotonía por `direction`, recorte fuera de límites, `n = 1` depende solo del precio, suma ponderada normalizada para `n ≥ 2`) y luego implementarla junto al mandato; verificar con `pnpm test`
 - [ ] 3.3 [Paula] Modelo del rival simple (oferta actual, mejor oferta, última concesión, a priori del escenario; las afirmaciones del rival se guardan dentro y no se exponen) con tests; verificar con `pnpm test`
 - [ ] 3.4 [Paula] Propiedades del generador Boulware (apertura exacta, dentro de mandato, monótono, determinista por semilla, para todo `ε ∈ [−n, n]` el paso `paso·(1+ε)` es ≥ 0) y luego implementarlo sin reciprocidad; verificar con `pnpm test`
