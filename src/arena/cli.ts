@@ -9,7 +9,8 @@ import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
 import { createHttpParticipant } from "./external.js";
 import type { Participant } from "./participant.js";
 import { clusterTable, pairedTable } from "./report.js";
-import { DEFAULT_CATALOG, loadCatalog } from "./scenario.js";
+import { writeJsonlTrace } from "../pipeline/trace.js";
+import { DEFAULT_CATALOG, loadCatalog, mandateFor } from "./scenario.js";
 
 export interface ArenaCliResult {
   runDir: string;
@@ -32,8 +33,9 @@ function pick<T extends { id?: string; name?: string }>(items: T[], wanted: stri
 
 /**
  * `pnpm arena`: nuestro agente (proveedor `none`) contra los bots en código, en proceso y sin red.
- * Imprime la tabla por clúster y guarda en `results/<run>/` el resumen JSON y una transcripción
- * por partida (`transcripts.jsonl`, una línea por partida).
+ * Imprime la tabla por clúster y guarda en `results/<run>/` el resumen JSON, una transcripción
+ * por partida (`transcripts.jsonl`, una línea por partida) y la traza JSONL de cada partida
+ * (`traces/<partida>.jsonl`, cabecera con el mandato en modo arena; `--no-traces` la omite).
  */
 export async function runArenaCli(argv: string[], log: (line: string) => void = console.log): Promise<ArenaCliResult> {
   const { values } = parseArgs({
@@ -49,6 +51,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       out: { type: "string", default: "results" },
       "run-id": { type: "string" },
       quiet: { type: "boolean", default: false },
+      "no-traces": { type: "boolean", default: false },
       "rival-url": { type: "string" },
       "rival-name": { type: "string", default: "external" },
       "agent-url": { type: "string" },
@@ -83,9 +86,22 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     rivals,
     agent,
     seeds,
-    onGame: (game, metrics) => {
-      const { records: _records, ...rest } = game;
+    onGame: (game, metrics, scenario) => {
+      const { records, ...rest } = game;
       transcripts.write(`${JSON.stringify({ ...rest, metrics })}\n`);
+      if (values["no-traces"] || records.length === 0) return;
+      writeJsonlTrace(join(runDir, "traces", `${game.gameId}.jsonl`), {
+        kind: "header",
+        mode: "arena",
+        sessionId: game.gameId,
+        runId,
+        scenarioId: scenario.id,
+        rival: game.rival,
+        seed: game.seed,
+        configVersion: config.version,
+        createdAt: new Date().toISOString(),
+        mandate: mandateFor(scenario, scenario.role),
+      }, records);
     },
   });
   const durationMs = performance.now() - t0;

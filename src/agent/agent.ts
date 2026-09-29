@@ -1,4 +1,6 @@
 import { readFileSync, statSync } from "node:fs";
+import { basename } from "node:path";
+import { scenarioHash } from "../arena/scenario.js";
 import { z } from "zod";
 import { ConfigError, loadConfig, type AgentConfig } from "../engine/config.js";
 import type { OfferMandate } from "../engine/issues.js";
@@ -6,6 +8,7 @@ import { currentProvider, type LlmProvider } from "../llm/provider.js";
 import type { Logger, TraceSink } from "../pipeline/box.js";
 import { createPipeline, type Brain } from "../pipeline/pipeline.js";
 import { SessionStore } from "../pipeline/session.js";
+import { JsonlSessionTrace } from "../pipeline/trace.js";
 import { createHttpApp } from "../protocol/http.js";
 
 /** Logger JSON por stderr. Los eventos nunca llevan el mandato ni la reserva. */
@@ -65,6 +68,22 @@ export function loadScenario(path: string, config: AgentConfig): OfferMandate {
     throw new ConfigError(`Escenario inválido (${path}): reservation debe tener exactamente los issues ${names.join(", ")}`);
   }
   return { role: parsed.data.role, reservation: parsed.data.reservation };
+}
+
+/**
+ * Traza JSONL por sesión en modo torneo: la cabecera solo lleva la referencia al escenario
+ * (nombre del fichero + hash de su contenido), nunca el mandato.
+ */
+export function createTournamentTrace(dir: string, scenarioPath: string): JsonlSessionTrace {
+  const scenario = { id: basename(scenarioPath), hash: scenarioHash(readFileSync(scenarioPath, "utf8")) };
+  return new JsonlSessionTrace(dir, (record) => ({
+    kind: "header",
+    mode: "tournament",
+    sessionId: record.sessionId,
+    configVersion: record.configVersion ?? 0,
+    createdAt: new Date().toISOString(),
+    scenario,
+  }));
 }
 
 export interface AgentOptions {

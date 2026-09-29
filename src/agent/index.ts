@@ -2,14 +2,19 @@ import { serve } from "@hono/node-server";
 import { ConfigError } from "../engine/config.js";
 import { createInMemoryAdapter, runClientLoop } from "../protocol/adapter.js";
 import { createHttpRingClient } from "../protocol/http.js";
-import { createAgent, stderrLogger } from "./agent.js";
+import { createAgent, createTournamentTrace, stderrLogger } from "./agent.js";
 
 // Agente que habla con el ring. Modo servidor (por defecto): el ring nos llama por HTTP JSON.
 // Modo cliente (AGENT_MODE=client): conducimos el bucle por sondeo contra RING_URL.
 async function main(): Promise<void> {
+  const scenarioPath = process.env.AGENT_SCENARIO ?? "config/scenario.json";
+  // Trazas JSONL por sesión en results/ (AGENT_TRACE=off las desactiva).
+  const traceDir = process.env.TRACE_DIR ?? `results/agent-${new Date().toISOString().replace(/[:.]/g, "")}`;
+  const trace = process.env.AGENT_TRACE === "off" ? undefined : createTournamentTrace(traceDir, scenarioPath);
   const agent = createAgent({
     configPath: process.env.AGENT_CONFIG ?? "config/champion.json",
-    scenarioPath: process.env.AGENT_SCENARIO ?? "config/scenario.json",
+    scenarioPath,
+    ...(trace ? { trace } : {}),
   });
   const config = agent.config();
   const mode = process.env.AGENT_MODE ?? "server";

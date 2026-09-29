@@ -30,7 +30,7 @@ export interface TraceSink {
   write(record: TraceRecord): void;
 }
 
-/** Traza en memoria (tests y turno actual); el escritor JSONL llega con la tarea 9.3. */
+/** Traza en memoria (tests y arena); el escritor JSONL está en trace.ts. */
 export class MemoryTrace implements TraceSink {
   readonly records: TraceRecord[] = [];
   write(record: TraceRecord): void {
