@@ -65,7 +65,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 - [x] 9.2 [Pablo] Modo solo texto: reconciliación (ambos parsers coinciden; con `none`, valor único no ambiguo) o turno sin oferta con contraoferta que pide confirmar cifras; verificar con 200 partidas contra el bot de solo texto: 0 acuerdos distintos de los valores reales
 - [x] 9.3 [Pablo] Esquema Zod del registro de traza y de la cabecera (mandato en modo arena, referencia al escenario en modo torneo) y escritor JSONL en `results/<run>/`; verificar que una partida produce registros válidos contra el esquema
 - [ ] 9.4 [Gerard] Añadir `pino` con `redact` del mandato y test de barrido de valores de logs y trazas buscando la reserva en todas las formas del normalizador; verificar jugando una partida en nivel `trace`
-- [ ] 9.5 [Pablo] Spike A2A acotado a 2 h: en la primera hora, comprobar el encaje de `@a2a-js/sdk` (integración Express, montaje junto a Hono) y de `@modelcontextprotocol/sdk` (`req`/`res` de Node, peer de zod frente a zod 4, `pnpm why zod`); después tarjeta de agente + manejador al contrato canónico; verificar con la batería común o dejar anotado el bloqueo en design.md
+- [x] 9.5 [Pablo] Spike A2A acotado a 2 h: en la primera hora, comprobar el encaje de `@a2a-js/sdk` (integración Express, montaje junto a Hono) y de `@modelcontextprotocol/sdk` (`req`/`res` de Node, peer de zod frente a zod 4, `pnpm why zod`); después tarjeta de agente + manejador al contrato canónico; verificar con la batería común o dejar anotado el bloqueo en design.md
 - [ ] 9.6 [Gerard] Túnel (cloudflared o ngrok) con TLS y autenticación por env si hace falta; verificar con un script de humo desde otra red (`GET /health` + un turno por HTTPS)
 
 ## 10. Viernes 18:45–23:00: protocolo real

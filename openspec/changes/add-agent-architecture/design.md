@@ -88,10 +88,11 @@ No hay sistema en producción. Despliegue: el agente corre en un portátil con `
 - Mandato en la cabecera de la traza: solo en modo arena; en torneo, referencia al escenario.
 - Reintentos: 2 intentos en total por caja con LLM, luego plantilla.
 - Orden de trabajo: tasks.md sigue el camino crítico del minuto 0; lo aplazado se etiqueta, no se borra.
+- Spike A2A (9.5): `@a2a-js/sdk` 1.3.0 implementa A2A v1.0 y no necesita Express: `JsonRpcTransportHandler` + `DefaultRequestHandler` + `InMemoryTaskStore` se montan en Hono (`POST /a2a`, `GET /.well-known/agent-card.json`, `src/protocol/a2a.ts`) y pasan la batería común con el turno canónico en una parte `data`. Sin dependencia de zod (solo `jose`; `express` y los drivers de BD son peers opcionales). `@modelcontextprotocol/sdk` 1.31.0 declara `zod ^3.25 || ^4.0`: compatible con zod 4; su transporte Streamable HTTP con `req`/`res` de Node queda sin probar.
 
 **Abiertas (con respuesta por defecto):**
 - Modo solo texto con `LLM_PROVIDER=none`: por defecto basta el parser determinista si da un único valor no ambiguo por issue.
 - Valor de `defaultHorizon` y de `minEffectPp`: por defecto 10 rondas y +1 pp; se revisan con el protocolo real.
-- Versión y API exactas de `@a2a-js/sdk` y `@modelcontextprotocol/sdk`: se confirman en la primera hora del spike.
+- API exacta de `@modelcontextprotocol/sdk` (montaje del transporte junto a Hono): se confirma si el ring usa MCP (17.2).
 - Modo de salida estructurada de `@anthropic-ai/sdk` (nativo o tool forzada): ambos cumplen la spec.
 - Si el ring exige TLS propio o autenticación concreta, y credenciales del evaluador de promptfoo.
