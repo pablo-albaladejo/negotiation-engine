@@ -6,6 +6,7 @@ import { createBotByName, BOTS } from "../bots/index.js";
 import { loadConfig } from "../engine/config.js";
 import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
+import { createHttpParticipant } from "./external.js";
 import type { Participant } from "./participant.js";
 import { clusterTable, pairedTable } from "./report.js";
 import { DEFAULT_CATALOG, loadCatalog } from "./scenario.js";
@@ -48,6 +49,10 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       out: { type: "string", default: "results" },
       "run-id": { type: "string" },
       quiet: { type: "boolean", default: false },
+      "rival-url": { type: "string" },
+      "rival-name": { type: "string", default: "external" },
+      "agent-url": { type: "string" },
+      "timeout-ms": { type: "string", default: "5000" },
     },
     strict: true,
   });
@@ -57,10 +62,15 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   if (!Number.isInteger(seedCount) || seedCount < 1 || !Number.isInteger(seedStart)) throw new Error("--seeds y --seed-start deben ser enteros");
   const seeds = Array.from({ length: seedCount }, (_, k) => seedStart + k);
   const scenarios = pick(loadCatalog(values.catalog), list(values.scenarios), "Escenario");
-  const rivalNames = list(values.rivals) ?? Object.keys(BOTS);
+  const timeoutMs = Number(values["timeout-ms"]);
+  const rivalNames = list(values.rivals) ?? (values["rival-url"] ? [] : Object.keys(BOTS));
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));
+  if (values["rival-url"]) rivals.push(createHttpParticipant({ name: values["rival-name"], baseUrl: values["rival-url"], timeoutMs }));
   const config = loadConfig(values.config);
-  const agent = createAgentParticipant({ config });
+  // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
+  const agent = values["agent-url"]
+    ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
+    : createAgentParticipant({ config });
 
   const runId = values["run-id"] ?? `arena-${new Date().toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
   const runDir = join(values.out, runId);
@@ -94,7 +104,8 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     runId,
     createdAt: new Date().toISOString(),
     llmProvider: "none",
-    network: false,
+    network: Boolean(values["rival-url"] || values["agent-url"]),
+    agent: agent.name,
     config: { path: values.config, version: config.version, provenance: config.provenance },
     seeds: { start: seedStart, count: seedCount },
     scenarios: scenarios.map((s) => s.id),

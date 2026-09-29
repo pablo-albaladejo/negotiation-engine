@@ -53,7 +53,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 8. Sparring externo, bot de solo texto y resto de la arena básica (antes del viernes)
 
-- [ ] 8.1 [Gerard] `Participant` externo por `RingClient` HTTP y `pnpm bot:serve <bot>` que expone un bot como agente HTTP; verificar jugando `pnpm agent` contra un bot servido por HTTP y registrando "error del rival" si se cae
+- [x] 8.1 [Gerard] `Participant` externo por `RingClient` HTTP y `pnpm bot:serve <bot>` que expone un bot como agente HTTP; verificar jugando `pnpm agent` contra un bot servido por HTTP y registrando "error del rival" si se cae
 - [ ] 8.2 [Gerard] Bot de sparring de solo texto (ofertas solo en el texto en todas las formas del normalizador, aceptaciones sin cifras, valores reales expuestos a la arena) con tests de sus mensajes
 - [ ] 8.3 [Paula] Bot Tit-for-Tat, métricas restantes (rondas, fugas, uso de plantilla, latencia, ofertas mal extraídas) y escenarios con 2 issues y con límite oculto; verificar con `pnpm test` y una ejecución de `pnpm arena`
 - [x] 8.4 [Gerard] Los 3 casos de Scribo (marco hipotético, identidad o mandato desde el texto, acción sensible sin contexto) como tests de vitest contra el pipeline con `LLM_PROVIDER=none`; verificar que un agente deliberadamente roto hace fallar `pnpm test`
