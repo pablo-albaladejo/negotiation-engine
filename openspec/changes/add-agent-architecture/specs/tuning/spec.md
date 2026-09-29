@@ -7,14 +7,18 @@ Ajusta fuera del torneo los parámetros del motor mediante barridos evaluados en
 ## ADDED Requirements
 
 ### Requirement: Barrido de parámetros
-El sistema SHALL generar configuraciones candidatas por rejilla o muestreo aleatorio sembrado sobre rangos declarados de los parámetros del motor, y SHALL evaluar cada candidata en la arena contra la campeona con la comparación pareada.
+El sistema SHALL generar configuraciones candidatas por rejilla o muestreo aleatorio sembrado sobre rangos declarados de los parámetros del motor, y SHALL evaluar cada candidata en la arena contra la campeona con la comparación pareada, usando solo rivales `tuning` y semillas del rango de ajuste.
 
 #### Scenario: Barrido aleatorio
 - **WHEN** se lanza un barrido de 20 candidatas con una semilla
-- **THEN** se obtiene una tabla ordenada de candidatas con su diferencia de excedente, intervalo de confianza, violaciones y fugas, reproducible con la misma semilla
+- **THEN** se obtiene una tabla ordenada de candidatas con su diferencia de excedente, su significación, violaciones y fugas, reproducible con la misma semilla
+
+#### Scenario: Sin rivales reservados
+- **WHEN** termina un barrido
+- **THEN** su resumen no contiene ninguna partida contra un rival `heldOut` ni con una semilla del rango de revalidación
 
 ### Requirement: Optimizador de caja negra opcional
-El sistema SHALL permitir sustituir el generador de candidatas por un optimizador de caja negra con la misma interfaz de propuesta y evaluación, sin cambiar la arena ni la puerta de promoción.
+El generador de candidatas SHALL estar detrás de una interfaz de propuesta y evaluación, de modo que un optimizador de caja negra MAY sustituirlo sin cambiar la arena ni la puerta de promoción.
 
 #### Scenario: Cambio de generador
 - **WHEN** se selecciona el optimizador en lugar del muestreo aleatorio
@@ -28,11 +32,15 @@ Cada configuración candidata o campeona SHALL llevar un número de versión y s
 - **THEN** contiene la versión padre, el identificador del barrido y las métricas con las que se evaluó
 
 ### Requirement: Promoción controlada
-La promoción a `config/champion.json` SHALL realizarse solo mediante la orden de promoción, solo si la puerta de promoción de la arena aprueba la candidata, asignando la versión siguiente y dejando la campeona anterior recuperable mediante el historial de git.
+La promoción a `config/champion.json` SHALL realizarse solo mediante la orden de promoción, solo si la puerta de promoción de la arena aprueba la candidata (incluida la revalidación de la ganadora del barrido con semillas nuevas y el conjunto reservado), asignando la versión siguiente y dejando la campeona anterior recuperable mediante el historial de git.
 
 #### Scenario: Promoción aprobada
 - **WHEN** una candidata pasa la puerta y se ejecuta la promoción
 - **THEN** `config/champion.json` contiene la candidata con versión N+1 y se propone el mensaje de commit `champion vN+1`
+
+#### Scenario: Ganadora de barrido sin revalidar
+- **WHEN** se intenta promover la mejor candidata de un barrido sin la comparación con semillas de revalidación
+- **THEN** la orden de promoción se niega e indica la fase que falta
 
 #### Scenario: Congelación
 - **WHEN** el flag de congelación está activo
@@ -46,7 +54,7 @@ El agente en ejecución SHALL cargar la configuración campeona vigente al empez
 - **THEN** la sesión en curso termina con la versión anterior y la siguiente sesión usa la nueva
 
 ### Requirement: Crítico LLM opcional
-El sistema SHALL poder ejecutar un crítico LLM sobre las partidas perdidas o de bajo excedente que produce sugerencias en texto y propuestas de rangos de parámetros; el crítico MUST NOT escribir configuraciones ni promover nada.
+El sistema MAY ejecutar un crítico LLM sobre las partidas perdidas o de bajo excedente que produce sugerencias en texto y propuestas de rangos de parámetros; si existe, el crítico MUST NOT escribir configuraciones ni promover nada.
 
 #### Scenario: Informe del crítico
 - **WHEN** se ejecuta el crítico sobre una ejecución de la arena
