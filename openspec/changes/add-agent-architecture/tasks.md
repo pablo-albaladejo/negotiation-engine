@@ -41,7 +41,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 6. Humo de extremo a extremo (antes del viernes)
 
-- [ ] 6.1 [Pablo] Script de humo `curl` que juega 3 turnos contra `pnpm agent` arrancado con `LLM_PROVIDER=none`, y el mismo en modo cliente contra un ring simulado; verificar salida válida en todos los turnos
+- [x] 6.1 [Pablo] Script de humo `curl` que juega 3 turnos contra `pnpm agent` arrancado con `LLM_PROVIDER=none`, y el mismo en modo cliente contra un ring simulado; verificar salida válida en todos los turnos
 
 ## 7. Arena mínima (antes del viernes)
 

@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "arena": "tsx src/arena/index.ts",
-    "agent": "tsx src/agent/index.ts"
+    "agent": "tsx src/agent/index.ts",
+    "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
