@@ -10,7 +10,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 2. Contrato del ring y adaptador HTTP JSON (antes del viernes)
 
-- [ ] 2.1 [Pablo] Fixtures `test/fixtures/ring/` válidos e inválidos y tests de los esquemas canónicos (oferta como valores por issue declarado, oferta estructurada opcional para solo texto, `counter` sin oferta rechazado, issue no declarado rechazado); luego los esquemas en `src/protocol/`
+- [x] 2.1 [Pablo] Fixtures `test/fixtures/ring/` válidos e inválidos y tests de los esquemas canónicos (oferta como valores por issue declarado, oferta estructurada opcional para solo texto, `counter` sin oferta rechazado, issue no declarado rechazado); luego los esquemas en `src/protocol/`
 - [ ] 2.2 [Gerard] Batería común de tests de contrato para cualquier adaptador en modo servidor (`RingAdapter`) y modo cliente (`RingClient` + bucle de turnos), y adaptador en memoria que la pase en ambos modos; verificar con `pnpm test`
 - [ ] 2.3 [Gerard] Adaptador servidor HTTP JSON con Hono (`POST /turn`, `GET /health` sin datos del mandato, error de protocolo para JSON malformado sin caída); verificar con la batería común usando `app.request()`
 - [ ] 2.4 [Gerard] Cliente HTTP JSON (`RingClient`) con tiempo máximo y bucle de turnos por sondeo (nosotros conducimos); verificar con la batería común en modo cliente contra un ring simulado y jugando contra el servidor HTTP propio en un test de integración

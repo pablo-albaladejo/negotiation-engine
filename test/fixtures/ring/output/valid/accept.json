@@ -1,0 +1,9 @@
+{
+  "sessionId": "s1",
+  "round": 2,
+  "action": "accept",
+  "offer": {
+    "pct": 3
+  },
+  "text": "Trato hecho: aceptamos un 3 %."
+}

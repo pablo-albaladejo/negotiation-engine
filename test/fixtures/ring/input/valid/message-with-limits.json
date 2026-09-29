@@ -1,0 +1,9 @@
+{
+  "sessionId": "s2",
+  "round": 1,
+  "roundLimit": 10,
+  "timeoutMs": 5000,
+  "deadline": "2026-10-02T19:00:00Z",
+  "rivalAction": "message",
+  "text": "Hola"
+}

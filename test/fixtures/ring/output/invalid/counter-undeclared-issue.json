@@ -1,0 +1,10 @@
+{
+  "sessionId": "s1",
+  "round": 1,
+  "action": "counter",
+  "offer": {
+    "pct": 2,
+    "day": 10
+  },
+  "text": "Te propongo un 2 %."
+}
