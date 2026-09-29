@@ -69,7 +69,7 @@ Antes de enviar un texto, el validador SHALL comprobar con el normalizador numé
 - **THEN** el validador acepta el texto
 
 ### Requirement: Detector de fugas
-El sistema SHALL analizar todo texto saliente con el normalizador numérico compartido y bloquearlo si revela la reserva en cualquier forma (el valor o uno dentro de la tolerancia configurada, salvo cuando coincide con la cifra decidida), el plazo propio, el mandato o fragmentos de instrucciones internas. Las cifras ambiguas SHALL comprobarse con todas sus lecturas.
+El sistema SHALL analizar todo texto saliente con el normalizador numérico compartido y bloquearlo si revela la reserva en cualquier forma (el valor o uno dentro de la tolerancia configurada, por defecto el 2 % del rango del issue, salvo cuando coincide con la cifra decidida), el plazo propio, el mandato o fragmentos de instrucciones internas. Las cifras ambiguas SHALL comprobarse con todas sus lecturas.
 
 #### Scenario: Revelación de la reserva
 - **WHEN** un texto saliente contiene "mi máximo es 3 %" y la reserva es 3 %
@@ -78,6 +78,10 @@ El sistema SHALL analizar todo texto saliente con el normalizador numérico comp
 #### Scenario: Revelación en palabras o puntos básicos
 - **WHEN** la reserva es 3 % y un texto saliente contiene "no paso de tres por ciento" o "300 pb es mi tope"
 - **THEN** el texto se bloquea y se registra un evento de fuga
+
+#### Scenario: Cifra cercana a la reserva
+- **WHEN** la reserva es 3 % en un issue de rango [0, 10] y un texto saliente contiene "3,15 %" que no es la cifra decidida
+- **THEN** el texto se bloquea, porque 3,15 está a menos del 2 % del rango (0,2) de la reserva
 
 ### Requirement: Plantilla de emergencia
 El sistema SHALL disponer de plantillas deterministas para `accept`, `counter` y `walk` que escriben con dígitos exactamente las cifras de la decisión (en `accept`, los valores de cada issue aceptado) y que siempre pasan el validador y el detector de fugas.

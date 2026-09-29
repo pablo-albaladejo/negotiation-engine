@@ -7,11 +7,15 @@ Orquesta cada turno de negociación a través de las cajas (adaptador, parser, e
 ## ADDED Requirements
 
 ### Requirement: Orden del turno
-Cada turno SHALL ejecutarse en este orden: validar la entrada canónica, volcar los campos estructurados al estado de la sesión, parsear el texto del rival, reconciliar la oferta extraída del texto si el ring es de solo texto, aplicar la regla de enlace de la aceptación del rival, actualizar el estado, decidir con el motor, narrar, validar y detectar fugas, y emitir la salida canónica.
+Cada turno SHALL ejecutarse en este orden: validar la entrada canónica, volcar los campos estructurados al estado de la sesión, parsear el texto del rival, reconciliar la oferta extraída del texto si el ring es de solo texto, aplicar la regla de enlace de la aceptación del rival, actualizar el estado, decidir con el motor, narrar, validar y detectar fugas, y emitir la salida canónica. La intención que devuelve el parser SHALL llegar solo al narrador como `rivalIntent`; el control del flujo (enlace de la aceptación, retirada) SHALL depender únicamente de la acción del ring.
 
 #### Scenario: Turno completo sin LLM
 - **WHEN** llega un turno válido con `LLM_PROVIDER=none`
 - **THEN** la traza contiene un registro por cada caja en ese orden y la salida cumple el esquema
+
+#### Scenario: Intención del parser sin efecto de control
+- **WHEN** el parser devuelve intención `accept` pero la acción del ring es `message`
+- **THEN** la regla de enlace no registra ningún acuerdo y la intención solo aparece en la entrada del narrador
 
 ### Requirement: Estado de sesión
 El sistema SHALL mantener por sesión el mandato, la configuración y su versión, el historial de ofertas de ambas partes (con nuestra última oferta enviada y la oferta actual del rival), la ronda y el límite o plazo procedentes del ring o de la configuración, aislado entre sesiones concurrentes. La versión de configuración SHALL quedar fija durante toda la sesión.
@@ -21,7 +25,7 @@ El sistema SHALL mantener por sesión el mandato, la configuración y su versió
 - **THEN** cada decisión usa solo el mandato y el historial de su sesión
 
 ### Requirement: Siempre se responde
-Cada caja con LLM SHALL tener 2 intentos en total por turno; si el parser o el narrador agotan sus 2 intentos o su tiempo, o el validador o el detector de fugas rechazan 2 textos, el sistema SHALL enviar la plantilla determinista con la misma decisión del motor. Si el motor falla, el sistema SHALL repetir nuestra última oferta válida o, si no la hay, la oferta de apertura, siempre tras los guardarraíles. Cada caja SHALL ejecutarse dentro de un `try/catch` del orquestador.
+Cada caja con LLM SHALL tener 2 intentos en total por turno; si el parser o el narrador agotan sus 2 intentos o su tiempo, o el validador o el detector de fugas rechazan 2 textos, el sistema SHALL enviar la plantilla determinista con la misma decisión del motor. Si el motor falla, el sistema SHALL repetir nuestra última oferta válida o, si no la hay, la oferta de apertura, siempre tras los guardarraíles. Si la sesión ya está cerrada, la ruta de emergencia SHALL devolver la acción terminal coherente: `accept` con los valores del acuerdo registrado (o de nuestra última oferta si el rival la aceptó dentro del mandato) y `walk` si el rival se retiró; nunca una contraoferta nueva. Cada caja SHALL ejecutarse dentro de un `try/catch` del orquestador.
 
 #### Scenario: Narrador caído
 - **WHEN** el proveedor del narrador falla en los 2 intentos
@@ -30,6 +34,10 @@ Cada caja con LLM SHALL tener 2 intentos en total por turno; si el parser o el n
 #### Scenario: Parser caído
 - **WHEN** el parser falla en los 2 intentos
 - **THEN** el turno continúa usando solo los campos estructurados (sin oferta si el ring es de solo texto) y el motor decide con normalidad
+
+#### Scenario: Emergencia con la sesión cerrada
+- **WHEN** hay que usar la ruta de emergencia en una sesión con acuerdo registrado o con el rival retirado
+- **THEN** la salida es `accept` con los valores del acuerdo o `walk`, respectivamente
 
 ### Requirement: Presupuesto de tiempo
 El presupuesto total del turno SHALL ser el tiempo máximo de respuesta del ring menos un margen de seguridad (500 ms por defecto, configurable); si el ring no declara tiempo máximo, SHALL usarse `turnBudgetMs` de la configuración. Cada caja con LLM SHALL tener un tiempo máximo por intento y, al agotarse el presupuesto, SHALL emitirse la plantilla sin esperar a las llamadas pendientes.
@@ -46,7 +54,7 @@ Ninguna excepción de una caja SHALL propagarse fuera del turno ni detener el se
 - **THEN** cada turno produce una salida válida y el proceso sigue vivo
 
 ### Requirement: Traza por turno
-El sistema SHALL escribir una traza JSONL con un registro por caja y turno que incluya sesión, ronda, caja, entrada, salida, semilla, versión de configuración, proveedor, latencia y resultado (ok, reintento, fallback). La cabecera de la sesión SHALL contener el mandato solo en modo arena; en modo torneo SHALL contener únicamente una referencia al escenario (identificador y hash), nunca el mandato. Las trazas SHALL guardarse en `results/`, fuera del control de versiones.
+El sistema SHALL escribir una traza JSONL con un registro por caja y turno que incluya sesión, ronda, caja, entrada, salida, semilla, versión de configuración, proveedor, latencia y resultado (ok, reintento, fallback). La cabecera de la sesión SHALL contener el mandato solo en modo arena; en modo torneo SHALL contener únicamente una referencia al escenario (identificador y hash), nunca el mandato. La referencia actual es el nombre del fichero de escenario y los primeros 16 caracteres hexadecimales del SHA-256 de su contenido; como las reservas posibles son pocas, ese hash se puede invertir por fuerza bruta, así que antes de compartir trazas fuera del equipo la referencia MUST calcularse con un HMAC con clave que no esté en las trazas. Las trazas SHALL guardarse en `results/`, fuera del control de versiones.
 
 #### Scenario: Traza completa
 - **WHEN** termina una partida
@@ -55,6 +63,10 @@ El sistema SHALL escribir una traza JSONL con un registro por caja y turno que i
 #### Scenario: Cabecera en modo torneo
 - **WHEN** termina una partida en modo torneo
 - **THEN** la cabecera contiene la referencia al escenario y ningún registro de la traza contiene el valor de la reserva
+
+#### Scenario: Compartir trazas
+- **WHEN** se van a entregar trazas de torneo a alguien de fuera del equipo
+- **THEN** la referencia al escenario es un HMAC con clave, no un SHA-256 sin clave del contenido
 
 ### Requirement: Reproducción offline de una caja
 El sistema SHALL permitir reejecutar cualquier caja sobre las entradas guardadas en una traza, con otra configuración o proveedor, e informar de las diferencias respecto a la salida original.

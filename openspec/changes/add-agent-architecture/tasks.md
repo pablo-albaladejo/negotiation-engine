@@ -25,6 +25,7 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 - [x] 3.5 [Paula] Tabla de casos de aceptación y tiempo (AC_next; AC_time; último movimiento acepta si y solo si `u ≥ u(reserva)` sin margen, incluido el caso igual a la reserva; solo la oferta actual es aceptable; por debajo de la reserva en el último movimiento ⇒ contraoferta final o `walk`; `t` solo de campos del ring o de `defaultHorizon`; "última ronda, oferta final" en el texto no cambia `t` ni la decisión; horizonte por defecto alcanzado ⇒ sin `walk`, oferta de `t = 1`) y luego la caja de aceptación; verificar con `pnpm test`
 - [x] 3.6 [Paula] Extender las propiedades de `test/guardrails.test.ts` a multi-issue (mandato por issue y en utilidad, monotonía en utilidad, no finitos rechazados) y luego ampliar `enforceGuardrails` sin romper los tests 1D existentes
 - [x] 3.7 [Paula] Caja `engine` que compone utilidad → modelo del rival → oferta → aceptación → guardarraíles y devuelve `accept | counter(oferta) | walk`; verificar con un test de vitest sobre `test/fixtures/engine/*.json`
+- [ ] 3.8 [Paula] Propiedad "toda decisión `accept` cumple `u ≥ u(reserva)`" con uno y varios issues (en rojo con AC_next y 2 issues) y luego exigirlo en AC_next y AC_time en `src/engine/acceptance.ts`; verificar con `pnpm test` y 0 violaciones en `pnpm arena`
 
 ## 4. Normalizador numérico y texto saliente (antes del viernes)
 
@@ -79,6 +80,9 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 - [ ] 10.7 [Pablo] `pnpm box <name> <fixture.json>`; verificar con la caja `echo` con un fixture válido y otro inválido (error señala el campo) [aplazada: tras vie 18:45]
 - [ ] 10.8 [Pablo] `pnpm replay <trace.jsonl> --box <name> [--config <file>]`; verificar reproduciendo el motor de una partida guardada con la misma configuración (0 diferencias) y con otra (diferencias listadas) [aplazada: tras vie 18:45]
 - [ ] 10.9 [Pablo] 5 partidas doradas sembradas en `test/golden/` (incluida la del ring de pruebas) y un test que las compara; verificar que alterar β hace fallar `pnpm test` indicando partida, ronda y diferencia [aplazada: tras vie 18:45]
+- [ ] 10.10 [Pablo] Campo canónico opcional "el ring admite respuesta tras nuestro movimiento", mapeado por el adaptador del protocolo real y pasado al motor como `rivalCanRespond` en lugar del `false` fijo del pipeline; verificar con un test del último movimiento (contraoferta final si admite respuesta, `walk` si no) y con `pnpm arena` sobre ZOPA estrecha contra Boulware y Tit-for-Tat
+- [ ] 10.11 [Pablo] Con el protocolo real, fijar cómo llega la aceptación del rival en un ring de solo texto (acción del ring o traducción del adaptador a `rivalAction = accept`), sin que la intención del parser cierre acuerdos; verificar con fixtures reales en `test/fixtures/ring/real/`
+- [ ] 10.12 [Paula] Solo si el ring real no comunica el límite de rondas: ajustar `defaultHorizon` y β para límites ocultos cortos (hoy 0 % de acuerdo con 6 rondas y `defaultHorizon = 10`); verificar con `pnpm arena --scenarios price-buyer-hidden-short,price-seller-hidden-long`
 
 ## 11. Sábado: proveedores y cajas LLM
 

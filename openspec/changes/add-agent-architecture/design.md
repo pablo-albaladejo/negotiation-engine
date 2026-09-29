@@ -68,6 +68,22 @@ Se ejecuta con `npx promptfoo@0.123.1`, sin añadirlo a `package.json`. Versión
 ### 13. Configuración v1 y recarga
 `AgentConfigSchema` v1 añade `issues`, `defaultHorizon`, `roleWeights`, β, apertura, margen de aceptación, amplitud de ruido `n`, umbral AC_time, margen de seguridad del turno (500 ms), `turnBudgetMs`, `minEffectPp` y metadatos de procedencia; `champion.json` pasa a `version: 1`. El agente relee la campeona al abrir cada sesión (comprobando mtime), nunca a mitad de sesión.
 
+### 14. Decisiones de implementación (reflejadas tras el lote 2)
+- **Mandato**: sale de `config/scenario.json`, sustituible con `AGENT_SCENARIO` (`src/agent/index.ts:13`), nunca del mensaje del turno. Cómo lo entrega el torneo es una pregunta abierta para 10.x.
+- **Dirección de los issues**: `direction` se declara desde el comprador y se invierte para el vendedor (`orientIssues`, `src/engine/issues.ts:22-29`); todo el motor trabaja con issues ya orientados a nuestro rol.
+- **Último movimiento**: el motor lo detecta con `round >= roundLimit` (`src/engine/acceptance.ts:29`). El pipeline pasa siempre `rivalCanRespond: false` (`src/pipeline/pipeline.ts:108`), así que sin oferta aceptable en el último movimiento el motor devuelve `walk` (`src/engine/acceptance.ts:72`) en vez de una contraoferta final. Consecuencia medida en la arena: 0 % de acuerdo contra Boulware y Tit-for-Tat con ZOPA estrecha (el rival aún respondería). Falta un campo canónico "el ring admite respuesta" (ring-protocol, tarea 10.10).
+- **Redondeo**: `OFFER_DECIMALS = 2` (`src/engine/issues.ts:18`); `roundInFavor` (`src/engine/issues.ts:73`) avanza un paso a nuestro favor si tras redondear el valor sigue en nuestra contra, y `withinOfferMandate` es estricto, sin tolerancia (`src/engine/issues.ts:88`). Por eso la apertura queda a menos de un paso de redondeo de la utilidad de apertura y nunca peor para nosotros, no "exactamente" en ella; y en `t = 1` la utilidad objetivo es `u(reserva)` (`src/engine/offer.ts:47`) redondeada a nuestro favor, que coincide con la reserva por issue solo con un issue y una reserva que ya tiene 2 decimales.
+- **Aceptación en solo texto**: solo `rivalAction === "accept"` del ring cierra un acuerdo (regla de enlace, `src/pipeline/binding.ts:21-27`); la intención del parser solo llega al narrador como `rivalIntent` (`src/pipeline/pipeline.ts:294`) y nunca controla el flujo. Si un ring de solo texto no trae la acción, su adaptador tendrá que traducirla (tarea 10.11).
+- **Valores de la campeona v1, pendientes de revisión de Paula**: `noise = 0.1` (amplitud del ruido sobre el paso de concesión, `src/engine/offer.ts:40-50`; sustituye al antiguo 0,01 sobre la oferta), `acTimeThreshold = 0.9` y `turnBudgetMs = 4500` (`config/champion.json`).
+- **Retirada del rival**: si el rival se retira, el motor responde `walk` (`src/engine/engine.ts:90`).
+- **Tolerancia de fugas**: por defecto el 2 % del rango del issue alrededor de la reserva (`src/llm/leak.ts:6,43`).
+- **Rutas del modo cliente**: `GET /next`, `POST /respond` y `POST /error` solo existen en el ring simulado (`src/protocol/sim-ring.ts`) y son provisionales hasta conocer el protocolo real.
+- **Autenticación**: en modo servidor el agente no arranca sin `AGENT_AUTH_TOKEN` salvo con `AGENT_ALLOW_NOAUTH=1` (`src/agent/agent.ts:107-113`), solo para pruebas en local.
+- **Ruta de emergencia**: `fallbackOutput` respeta una sesión ya cerrada: `accept` con el acuerdo registrado y `walk` tras la retirada del rival (`src/pipeline/pipeline.ts:359-376`).
+- **Referencia al escenario en las trazas de torneo**: nombre del fichero + los primeros 16 hex del SHA-256 de su contenido (`src/agent/agent.ts:75`, `src/arena/scenario.ts:105-107`). Con pocas reservas posibles el hash se puede invertir por fuerza bruta: antes de compartir trazas fuera del equipo hace falta un HMAC con clave (turn-pipeline).
+- **Brecha conocida (aceptación por debajo de la reserva)**: solo la regla de último movimiento y horizonte por defecto exige `u ≥ u(reserva)` (`src/engine/acceptance.ts:81`). `ac-next` (`src/engine/acceptance.ts:85`) acepta una oferta dentro de los límites por issue si `u ≥ ourNextUtility − acceptMargin`; con 2 o más issues eso puede quedar hasta 0,02 por debajo de `u(reserva)`. Con la campeona v1 (un solo issue) no puede ocurrir. negotiation-engine lo exige ya como requisito; la corrección con propiedad es la tarea 3.8, sin hacer.
+- **Límite oculto corto**: con un límite oculto de 6 rondas la arena da 0 % de acuerdo porque `defaultHorizon = 10` (escenario `price-buyer-hidden-short`); ver tarea 10.12.
+
 ## Risks / Trade-offs
 
 - [El protocolo real no encaja en el contrato canónico (streaming, multi-mensaje por turno, solo texto, ring como servidor)] → contrato interno ampliable; modos servidor y cliente; modo solo texto con bot de sparring; fixtures reales capturados antes de escribir código el viernes.
@@ -96,3 +112,7 @@ No hay sistema en producción. Despliegue: el agente corre en un portátil con `
 - API exacta de `@modelcontextprotocol/sdk` (montaje del transporte junto a Hono): se confirma si el ring usa MCP (17.2).
 - Modo de salida estructurada de `@anthropic-ai/sdk` (nativo o tool forzada): ambos cumplen la spec.
 - Si el ring exige TLS propio o autenticación concreta, y credenciales del evaluador de promptfoo.
+- Cómo entrega el torneo el mandato de cada sesión (hoy `config/scenario.json` o `AGENT_SCENARIO`): se decide con el protocolo real (10.x).
+- Si el ring admite respuesta del rival tras nuestro último movimiento: por defecto se supone que no (`walk` en vez de contraoferta final); tarea 10.10.
+- Cómo comunica un ring de solo texto la aceptación del rival si no trae acción estructurada: por defecto, solo la acción del ring cierra un acuerdo; tarea 10.11.
+- `defaultHorizon` y β con límite de rondas oculto y corto (0 % de acuerdo con 6 rondas y `defaultHorizon = 10`): por defecto se mantienen hasta conocer si el ring comunica el límite; tarea 10.12.
