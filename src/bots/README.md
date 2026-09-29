@@ -1,9 +1,11 @@
 # bots
 
-Rivales para la arena de self-play. Previstos:
+Rivales para la arena de self-play, escritos en código para que la arena sea rápida, gratis y
+determinista por semilla (sin LLM ni red). Registro en `index.ts`; `pnpm bot:serve <bot>` expone
+cualquiera como agente HTTP JSON para sparring.
 
-- Estrategias clásicas: Boulware, Conceder, Tit-for-Tat
-- Adversariales: prompt injection con técnicas de Voss, mentiroso, extracción mediante un escenario hipotético, ancla extrema
-- «Estilo Causa Prima»
+- `boulware`, `conceder`: tácticas dependientes del tiempo (Faratin et al.), β = 0,2 y β = 3.
+- `text-only`: ofertas solo en el texto con todas las formas del normalizador; acepta sin cifras.
 
-Los bots deterministas se escriben en código para que la arena sea rápida y gratis.
+Previstos: Tit-for-Tat; adversariales (inyección con técnicas de Voss, mentiroso, extracción
+mediante un escenario hipotético, ancla extrema) y «estilo Causa Prima».
