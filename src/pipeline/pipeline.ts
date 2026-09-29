@@ -360,10 +360,23 @@ export function createPipeline(deps: PipelineDeps): Brain {
     try {
       const base = GenericTurnInputSchema.parse(raw);
       const session = deps.store.getOrCreate(base.sessionId);
+      const schemasFor = () => createProtocolSchemas(session.config.issues.map((i) => i.name));
+      // Sesión ya cerrada: la acción terminal coherente, nunca una contraoferta nueva.
+      const last = ourLastOffer(session);
+      const oriented = orientIssues(session.config.issues, session.mandate.role);
+      const agreed =
+        session.agreement ?? (session.rivalAcceptedOurLast && last && withinOfferMandate(oriented, session.mandate, last) ? last : undefined);
+      if (agreed) {
+        session.agreement = { ...agreed };
+        const offer = { ...agreed };
+        return schemasFor().turnOutput.parse({ sessionId: base.sessionId, round: base.round, action: "accept", offer, text: renderTemplate({ action: "accept", offer }) });
+      }
+      if (session.rivalWalked) {
+        return { sessionId: base.sessionId, round: base.round, action: "walk", text: renderTemplate({ action: "walk" }) };
+      }
       const decision = emergencyDecision(session);
       if (!ourLastOffer(session)) session.ourOffers.push({ ...decision.offer });
-      const schemas = createProtocolSchemas(session.config.issues.map((i) => i.name));
-      return schemas.turnOutput.parse({
+      return schemasFor().turnOutput.parse({
         sessionId: base.sessionId,
         round: base.round,
         action: "counter",

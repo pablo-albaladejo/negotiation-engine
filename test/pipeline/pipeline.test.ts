@@ -226,3 +226,34 @@ describe("inyección de fallos: cada turno produce salida válida", () => {
     expect(out.action !== "walk" && out.offer).toEqual(pure.action !== "walk" && pure.offer);
   });
 });
+
+describe("ruta de emergencia con la sesión ya cerrada", () => {
+  it("tras un acuerdo responde accept con los valores del acuerdo", async () => {
+    const { brain, store } = makeBrain();
+    const out = await brain.turn(turn(10, { roundLimit: 10, rivalAction: "offer", rivalOffer: { pct: 9.5 } }));
+    expect(out.action).toBe("accept");
+    const fallback = brain.fallback(turn(11));
+    expect(fallback).toMatchObject({ action: "accept", offer: store.get("s1")!.agreement });
+    expect(fallback.text).toMatch(/Aceptamos/);
+  });
+
+  it("si el rival aceptó nuestra última oferta y el motor no llegó a decidir, accept de esa oferta", async () => {
+    const { brain, store } = makeBrain();
+    const first = await brain.turn(turn(1));
+    store.get("s1")!.rivalAcceptedOurLast = true;
+    expect(brain.fallback(turn(2))).toMatchObject({ action: "accept", offer: (first as { offer: object }).offer });
+  });
+
+  it("tras la retirada del rival responde walk", async () => {
+    const { brain } = makeBrain();
+    await brain.turn(turn(1));
+    await brain.turn(turn(2, { rivalAction: "walk" }));
+    expect(brain.fallback(turn(3))).toMatchObject({ action: "walk" });
+  });
+
+  it("con la sesión abierta sigue siendo la contraoferta de emergencia", async () => {
+    const { brain } = makeBrain();
+    await brain.turn(turn(1));
+    expect(brain.fallback(turn(2)).action).toBe("counter");
+  });
+});
