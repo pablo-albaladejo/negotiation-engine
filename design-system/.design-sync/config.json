@@ -1,0 +1,35 @@
+{
+  "projectId": "cdd2a1f7-6d46-4e13-92d2-b22d00a99e6c",
+  "shape": "package",
+  "pkg": "@negotiation-ring/design-system",
+  "globalName": "NegotiationRing",
+  "buildCmd": "pnpm build",
+  "cssEntry": "dist/styles.css",
+  "provider": {
+    "component": "Root"
+  },
+  "overrides": {
+    "DataTable": {
+      "cardMode": "column"
+    },
+    "Heatmap": {
+      "cardMode": "column"
+    },
+    "OfferChart": {
+      "cardMode": "column"
+    },
+    "KpiStrip": {
+      "cardMode": "column"
+    }
+  },
+  "dtsPropsFor": {
+    "Tabs": "items: { id: string; label: string }[]; selectedId: string; onSelect: (id: string) => void;",
+    "MatchSelector": "matches: { id: string; rival: string; result: \"deal\" | \"walk\"; label: string }[]; selectedId: string; onSelect: (id: string) => void;",
+    "KpiStrip": "items: { label: string; value: string; tone?: \"deal\" | \"walk\" }[];",
+    "ChatMessage": "side: \"us\" | \"them\"; round: number; offer?: number; flags?: { kind: \"neutral\" | \"injection\" | \"decision\" | \"walk\" | \"fallback\"; label: string }[]; text: string; highlighted?: boolean;",
+    "OfferChart": "rounds: number; yDomain: [number, number]; ourOffers: { round: number; value: number }[]; theirOffers: { round: number; value: number }[]; target?: { round: number; value: number }[]; estimate?: { round: number; value: number }[]; ourReserve?: number; theirReserve?: number; zopa?: boolean; injectionRounds?: number[]; end?: { round: number; kind: \"deal\" | \"walk\"; label: string }; onPointClick?: (point: { side: \"us\" | \"them\"; round: number; value: number }) => void;",
+    "DataTable": "columns: { key: string; label: string; numeric?: boolean }[]; rows: Record<string, React.ReactNode | { value: React.ReactNode; tone?: \"better\" | \"worse\" }>[];",
+    "Heatmap": "rows: { rival: string; cells: { label: string; value: number }[] }[]; columns: string[];"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
