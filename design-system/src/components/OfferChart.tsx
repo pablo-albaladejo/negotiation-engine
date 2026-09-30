@@ -173,13 +173,13 @@ export function OfferChart({
       {end && endPoint ? (
         <>
           <circle
-            className="deal-ring"
+            className={end.kind === "walk" ? "walk-ring" : "deal-ring"}
             cx={offerChartXScale(end.round, rounds)}
             cy={offerChartYScale(endPoint.value, yDomain)}
             r={9}
           />
           <text
-            className="deal-label"
+            className={end.kind === "walk" ? "walk-label" : "deal-label"}
             x={offerChartXScale(end.round, rounds) - 13}
             y={offerChartYScale(endPoint.value, yDomain) - 13}
             textAnchor="end"
