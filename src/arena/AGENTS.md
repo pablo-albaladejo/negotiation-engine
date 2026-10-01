@@ -19,7 +19,7 @@ Self-play local:
 - **`paired.ts`** — `runPaired`/`comparePaired`: compara candidata vs campeona con mismos bots y semillas.
 - **`promote.ts`** — Puerta: revalida campeona, evalúa candidata, decide si promueve a `config/champion.json`.
 - **`gate.ts`** — Criterio de decisión de promoción (mejora ≥ minEffectPp con 0 violaciones).
-- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`.
+- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`, `--llm-provider` (defecto `LLM_PROVIDER` o `none`; sin red salvo que se pida) y `--no-narrator` (solo parser LLM, para medir).
 - **`promote-main.ts`** — Puerta de promoción `pnpm promote`: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
 - **`participant.ts`** — Interfaz: agente (config o HTTP) o bot.
 - **`agent-participant.ts`** — Wrapper: agente config como participante.

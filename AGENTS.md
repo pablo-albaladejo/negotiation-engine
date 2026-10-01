@@ -116,6 +116,7 @@ Ver `.env.example`.
 | `pnpm dummy:serve` | Servidor del dummy-agent (estrategia fija). |
 | `pnpm sparring` | Agente vs bot por HTTP: arena con `--rival-url`. |
 | `pnpm eval:dummy` | Evaluación de punta a punta vs dummy (5 semillas, ~20 s). |
+| `pnpm eval:llm` | Mide con llamadas reales a Claude el valor del parser y el narrador LLM (`scripts/eval-llm.sh`; cuesta tokens). |
 | `pnpm box <cmd>` | Caja de pruebas de motor. |
 | `pnpm replay <game.json>` | Reproduce una partida guardada. |
 | `pnpm golden:update` | Regenera fixtures doradas. |
@@ -157,6 +158,12 @@ pnpm arena --agent-url http://localhost:8799 --scenarios price-buyer-wide --seed
 ```bash
 pnpm eval:dummy 5  # 5 semillas (por defecto), ~20 s. Resultados en results/eval-dummy/
 ```
+
+### (`pnpm eval:llm`)
+
+Compara el camino determinista (`--llm-provider none`) con `claude-cli` contra los bots de texto y los adversariales, y juega unas partidas contra el bot guiado por LLM. Hace llamadas reales (unas 250 con los valores por defecto); se ajusta con las variables `EVAL_LLM_*` de `scripts/eval-llm.sh`. Detalle y perfil de cuenta en el README («Medir el valor del LLM»). Resultados en `results/eval-llm/`.
+
+Conclusión de la última medición: con la reconciliación actual (determinista y LLM deben coincidir) el parser LLM no recupera ofertas, y el narrador vía `claude -p` no cabe en `turnBudgetMs` (casi siempre responde la plantilla).
 
 ## OpenSpec: cambios de arquitectura
 
