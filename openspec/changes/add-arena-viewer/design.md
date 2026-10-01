@@ -93,7 +93,7 @@ Decidido (sustituye la Open Question anterior): el texto crudo del rival SÍ se 
 ## Risks / Trade-offs
 
 - **Tocar el motor el día del torneo**: `explain` es opcional y no altera la decisión; lo verifican la igualdad sobre fixtures, las doradas y `pnpm arena` con 0 violaciones. Si algo falla, la tarea se revierte sola y P3 muestra `not logged`.
-- **Privacidad de `explain`**: la curva objetivo se acerca a nuestra reserva en `t → 1`. Queda en la traza local (como hoy nuestras ofertas) y se redacta en la exportación OTel.
+- **Privacidad de `explain`**: `explain` es equivalente a la reserva. En concesión completa `target = uRes`, y con un solo issue esa utilidad revela nuestra reserva (por eso `targetOffer` es `null` en ese punto, pero `target` sigue ahí). Es solo local: se escribe únicamente en la traza JSONL local, se redacta en la exportación OTel/Langfuse (`src/pipeline/otel.ts`) y en pino (`REDACT_PATHS`: `output.explain`), y nunca aparece en exportaciones; P7 (proyector) solo usa `uOffer` y `uRival`. `rivalReserveEstimate` es la estimación de la reserva del rival (a priori sin ofertas, luego su mejor oferta o la regresión), nunca nula.
 - **Runs grandes**: 2600 líneas de transcript caben en memoria; las trazas se cargan por partida, no por run.
 - **React duplicado** por el alias: `dedupe` y test de hooks.
 

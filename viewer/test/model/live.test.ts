@@ -31,6 +31,15 @@ describe("liveModel (P7)", () => {
     expect(m.ourMessageCount).toBe(3);
   });
 
+  it("privacidad P7: de explain solo usa uOffer/uRival; ni target, ni targetOffer, ni rivalReserveEstimate llegan al modelo", () => {
+    const m = liveModel(feed(fx.tournament.trace), 2_000);
+    const json = JSON.stringify(m);
+    for (const key of ["target", "targetOffer", "rivalReserveEstimate", "explain"]) expect(json).not.toContain(`"${key}"`);
+    const explains = fx.tournament.trace.flatMap((l) => (l.kind === "box" && l.box === "engine" ? [(l.output as { explain: { target: number } }).explain] : []));
+    expect(explains.length).toBeGreaterThan(0);
+    for (const e of explains) for (const v of [e.target, e.target * 100]) expect(json).not.toContain(String(v));
+  });
+
   it("ataques bloqueados = registros parser con injectionSuspected + leak con leak: true (nunca calculado)", () => {
     const base = liveModel(feed(fx.tournament.trace), 2_000).attacksBlocked;
     const lines = [...fx.tournament.trace, box(4, "parser", { intent: "offer", injectionSuspected: true }), box(4, "leak", { leak: true }), box(4, "leak", { leak: false })];

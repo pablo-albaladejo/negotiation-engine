@@ -18,11 +18,15 @@ La cabecera de la traza SHALL aceptar `traceVersion: 2`; las cabeceras sin ese c
 - **THEN** pasa `TraceLineSchema`
 
 ### Requirement: Explicación del motor fuera de la exportación
-El campo `explain` del registro `engine` SHALL quedar en la traza JSONL local y SHALL redactarse en la exportación OpenTelemetry/Langfuse, igual que el mandato.
+El campo `explain` del registro `engine` SHALL quedar en la traza JSONL local y SHALL redactarse en la exportación OpenTelemetry/Langfuse y en los logs de pino (`REDACT_PATHS`), igual que el mandato: es equivalente a la reserva (ver negotiation-engine). Los registros `rivalText` MUST NOT llegar al logger; los registros `protocol` (solo rutas y códigos) sí se loguean, por el mismo punto de log.
 
 #### Scenario: Exportación OTel
 - **WHEN** se exporta un turno con `TRACE_EXPORT=otel`
 - **THEN** el atributo de salida del span `engine` no contiene `explain`
+
+#### Scenario: Logs de pino en nivel trace
+- **WHEN** se juega un turno con `LOG_LEVEL=trace` y el rival manda texto
+- **THEN** los logs no contienen el texto crudo del rival ni ninguna clave o valor de `explain` (el registro `engine` lleva `explain: "[redactado]"`)
 
 ### Requirement: Texto crudo del rival, solo local
 El pipeline SHALL escribir un registro dedicado `box: "rivalText"` con el texto crudo del rival de cada turno (cuando lo haya) en la traza JSONL local (`results/`). Este registro MUST NOT salir en la exportación OpenTelemetry/Langfuse. La sanitización existente de `parser`, `narrator`, `validator` y `leak` SHALL mantenerse sin cambios: solo `rivalText` guarda el texto completo. El visor SHALL mostrar este texto únicamente a través de `ChatMessage`, como texto de React, nunca como HTML.

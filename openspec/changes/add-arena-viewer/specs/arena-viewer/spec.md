@@ -43,7 +43,7 @@ P3 SHALL mostrar para una partida de arena los KPIs, el `OfferChart` con nuestra
 - **THEN** P3 muestra gráfico y chat desde `transcripts.jsonl` y el panel de decisión indica que no hay traza
 
 ### Requirement: Privacidad en modo torneo (P4, P7)
-En modo torneo el visor MUST NOT mostrar ni pedir la reserva del rival ni la ZOPA. Nuestra reserva SHALL mostrarse solo si existe en local el fichero de escenario cuyo nombre y hash coinciden con `header.scenario`; si no, `not available`. El visor SHALL mantener la sanitización de la traza: de narrador, validador y detector de fugas solo muestra longitudes y banderas.
+En modo torneo el visor MUST NOT mostrar ni pedir la reserva del rival ni la ZOPA. `explain` es equivalente a nuestra reserva (en concesión completa `target = uRes`) y solo existe en la traza local: el visor lo muestra únicamente leyendo esa traza en local (P3–P5) y MUST NOT incluirlo en ninguna exportación. P7, pensado para proyector, SHALL usar de `explain` solo `uOffer` y `uRival` (utilidades de ofertas ya públicas), nunca `target` ni `targetOffer`. Nuestra reserva SHALL mostrarse solo si existe en local el fichero de escenario cuyo nombre y hash coinciden con `header.scenario`; si no, `not available`. El visor SHALL mantener la sanitización de la traza: de narrador, validador y detector de fugas solo muestra longitudes y banderas.
 
 #### Scenario: Escenario local presente
 - **WHEN** la cabecera de torneo referencia `scenario.json` con hash `h` y `config/scenario.json` tiene hash `h`
