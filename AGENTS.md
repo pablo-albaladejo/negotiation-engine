@@ -52,7 +52,7 @@ config/         champion.json (mejor config hasta ahora) + candidatos en candida
 scripts/        utilidades shell (smoke, sparring, eval-dummy, tunnel)
 docs/           design docs (en Markdown)
 openspec/       propuestas de cambio (agencia arquitectónica)
-design-system/  componentes React (paquete independiente)
+design-system/  componentes React (paquete independiente, con .design-sync/ para Claude Design)
 viewer/         visor local de resultados de arena/promoción/agente (paquete independiente)
 redteam/        escenarios y cadenas de red team (fuera de git: confidencial)
 results/        partidas guardadas, trazas, métricas (fuera de git)

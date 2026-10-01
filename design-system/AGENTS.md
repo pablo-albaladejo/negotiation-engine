@@ -10,7 +10,7 @@ Biblioteca de componentes compartida entre visor y posibles otros clientes. Buil
 
 - **`src/`** — Código fuente (TypeScript, componentes React).
 - **`test/`** — Tests.
-- **`.design-sync/`** — Sincronización con herramienta de diseño (Figma, etc.).
+- **[`.design-sync/`](.design-sync/AGENTS.md)** — Sincronización con Claude Design (previews, config, convenciones).
 - **`examples/`** — Ejemplos de uso.
 - **`scripts/`** — Build scripts.
 - **`package.json`** — Paquete independiente (`@negotiation-ring/design-system`).
