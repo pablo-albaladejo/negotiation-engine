@@ -15,6 +15,7 @@
     "agent": "tsx src/agent/index.ts",
     "box": "tsx src/dev/box-main.ts",
     "replay": "tsx src/dev/replay-main.ts",
+    "golden:update": "tsx src/dev/golden-main.ts",
     "smoke": "bash scripts/smoke.sh",
     "bot:serve": "tsx src/bots/serve.ts",
     "sparring": "bash scripts/sparring.sh"
