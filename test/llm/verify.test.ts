@@ -23,6 +23,11 @@ describe("verifyFigure: tabla de casos", () => {
     ["punto decimal con miles 1,234.5", "price 1,234.5 dollars", fig("price", 1234.5, "1,234.5"), price, "verified-digits"],
     ["1.234,5 leído como 1,2345 no casa", "precio 1.234,5 euros", fig("price", 1.2345, "1.234,5"), price, "value-mismatch"],
     ["rango desambigua 2.500", "we can do 2.500 percent", fig("pct", 2.5, "2.500"), pct, "verified-digits"],
+    // `٬` (U+066C) es ambiguo entre 1.5 y 1500: el rango del issue decide, y una lectura fuera de él se rechaza.
+    ["árabe ١٬٥٠٠ en pct [0,10] → 1.5", "نقدم ١٬٥٠٠٪", fig("pct", 1.5, "١٬٥٠٠"), pct, "verified-digits"],
+    ["árabe ١٬٥٠٠ en pct leído 1500 fuera de rango", "نقدم ١٬٥٠٠٪", fig("pct", 1500, "١٬٥٠٠"), pct, "value-mismatch"],
+    ["árabe ١٬٥٠٠ en price leído 1500: ambas en rango", "السعر ١٬٥٠٠", fig("price", 1500, "١٬٥٠٠"), price, "ambiguous"],
+    ["árabe ١٬٥٠٠ en price leído 1.5: ambas en rango", "السعر ١٬٥٠٠", fig("price", 1.5, "١٬٥٠٠"), price, "ambiguous"],
     ["pb a %", "300 pb y listo", fig("pct", 3, "300 pb"), pct, "verified-digits"],
     ["fragmento inventado", "te doy un 2 %", fig("pct", 1.5, "1,5 %"), pct, "span-not-found"],
     ["fragmento con ancho cero coincide", "te doy un 2​%", fig("pct", 2, "2%"), pct, "verified-digits"],

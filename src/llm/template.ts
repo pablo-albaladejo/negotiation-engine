@@ -26,7 +26,7 @@ export function formatOffer(offer: Offer): string {
 }
 
 /** Petición al rival que acompaña a la contraoferta (solo enums). */
-export const AskSchema = z.enum(["confirm-figures"]);
+export const AskSchema = z.enum(["confirm-figures", "confirm-acceptance"]);
 export type Ask = z.infer<typeof AskSchema>;
 
 export interface TemplateDecision {
@@ -42,6 +42,9 @@ export function renderTemplate(decision: TemplateDecision): string {
     case "accept":
       return `¡Trato hecho! Aceptamos ${formatOffer(decision.offer ?? {})}. Gracias por la negociación.`;
     case "counter":
+      if (decision.ask === "confirm-acceptance") {
+        return `¿Me confirmas que cerramos en ${formatOffer(decision.offer ?? {})}? Respóndeme con un sí y lo damos por cerrado.`;
+      }
       if (decision.ask === "confirm-figures") {
         return `No he podido confirmar tus cifras: ¿me las repites con dígitos? Mientras tanto, te propongo ${formatOffer(decision.offer ?? {})}.`;
       }

@@ -10,7 +10,7 @@ import { spanAppears } from "../llm/verify.js";
 import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
-import { renderTemplate } from "../llm/template.js";
+import { renderTemplate, type Ask } from "../llm/template.js";
 import { CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
 import {
   createProtocolSchemas,
@@ -297,6 +297,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
     // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).
     let parse: ParserOutput = EMPTY_PARSE;
     let parsed = false;
+    let llmFailed = false;
+    let fallbackIntent: ParserOutput["intent"] | undefined;
     if (input.text) {
       const schema = parserOutputSchema(schemas.issueNames);
       const text = input.text;
@@ -315,6 +317,15 @@ export function createPipeline(deps: PipelineDeps): Brain {
           parsed = true;
           break;
         }
+      }
+      // Parser LLM fallido: la intención (y solo ella, con su evidencia) puede venir del determinista.
+      // `deterministic` la usa con las reglas del camino sin LLM; `confirm` solo la usa para pedir
+      // que el rival confirme su aceptación (src/pipeline/AGENTS.md, «Fallo del parser LLM»).
+      if (llmActive && !parsed) {
+        llmFailed = true;
+        const fallback = parseDeterministic(text, schemas.issueNames);
+        fallbackIntent = fallback.intent;
+        if (runtime.parser.onLlmFailure === "deterministic") parse = fallback;
       }
       session.opponent.recordClaims(parse.claims);
       const language = turnLanguage(parse.language, text);
@@ -381,10 +392,17 @@ export function createPipeline(deps: PipelineDeps): Brain {
     // una acción del ring distinta siempre prevalece.
     let rivalAction = input.rivalAction;
     let textAccepted = false;
-    const textSignal: Record<string, unknown> = { intent: parse.intent };
+    let confirmAcceptance = false;
+    const textSignal: Record<string, unknown> = { intent: parse.intent, ...(llmFailed ? { llmFailed: true, onLlmFailure: runtime.parser.onLlmFailure } : {}) };
     if (input.rivalAction === "message" && input.text) {
       const text = input.text;
-      if (parse.intent === "accept") {
+      if (llmFailed && runtime.parser.onLlmFailure === "confirm" && fallbackIntent === "accept" && runtime.acceptance.signal === "parser-intent-verified") {
+        // Sin lectura LLM y con `confirm`: una aceptación aparente nunca cierra; se pide confirmarla.
+        textSignal.acceptSignal = runtime.acceptance.signal;
+        textSignal.acceptVerified = false;
+        textSignal.acceptReason = "llm-failed";
+        confirmAcceptance = ourLastOffer(session) !== undefined;
+      } else if (parse.intent === "accept") {
         textSignal.acceptSignal = runtime.acceptance.signal;
         if (runtime.acceptance.signal === "parser-intent-verified") {
           const acceptInput: Parameters<typeof verifyTextAcceptance>[0] = {
@@ -397,7 +415,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
           };
           if (parse.intentEvidence) acceptInput.intentEvidence = parse.intentEvidence;
           if (llmActive && outcome?.checks) acceptInput.checks = outcome.checks;
-          if (!llmActive && deterministicOffer) acceptInput.deterministic = deterministicOffer;
+          if ((!llmActive || llmFailed) && deterministicOffer) acceptInput.deterministic = deterministicOffer;
           const verdict = verifyTextAcceptance(acceptInput);
           textSignal.acceptVerified = verdict.verified;
           if (!verdict.verified) textSignal.acceptReason = verdict.reason;
@@ -450,6 +468,12 @@ export function createPipeline(deps: PipelineDeps): Brain {
       record("llm-only-accept-blocked", null, decision, "ok", now());
     }
 
+    // Aceptación aparente sin lectura LLM (`onLlmFailure = confirm`): repetimos nuestra última oferta
+    // para que un «sí» cierre exactamente lo que el rival parecía aceptar.
+    if (confirmAcceptance && decision.action === "counter") {
+      decision = emergencyDecision(session);
+      record("confirm-acceptance", null, decision, "ok", now());
+    }
     if (decision.action === "counter") session.ourOffers.push({ ...decision.offer });
     if (decision.action === "accept") {
       session.agreement = { ...decision.offer };
@@ -466,7 +490,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       persona: config.persona,
     };
     if (offer) narratorInput.offer = offer;
-    const ask = (unconfirmed || llmOnlyBlocked) && decision.action === "counter" ? ("confirm-figures" as const) : undefined;
+    const ask: Ask | undefined =
+      decision.action !== "counter" ? undefined : confirmAcceptance ? "confirm-acceptance" : unconfirmed || llmOnlyBlocked ? "confirm-figures" : undefined;
     if (ask) narratorInput.ask = ask;
     const check: TextCheck = { action: decision.action, text: "" };
     if (offer) check.offer = offer;

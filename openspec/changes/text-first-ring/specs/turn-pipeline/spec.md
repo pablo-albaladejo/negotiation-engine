@@ -21,6 +21,17 @@ Con `acceptance.signal = parser-intent-verified` y un turno con `rivalAction = m
 - **WHEN** el rival escribe "no acepto ese 2 %" y el parser LLM devuelve intención `accept`
 - **THEN** el parser determinista detecta la negación, no hay acuerdo y el motor decide como en cualquier otro turno
 
+### Requirement: Aceptación cuando falla el parser LLM
+Si el parser LLM falla o agota su tiempo en un turno con `rivalAction = message` y `acceptance.signal = parser-intent-verified`, la aceptación SHALL decidirse según `parser.onLlmFailure`: con `deterministic`, la intención y su evidencia SHALL venir del parser determinista y la aceptación SHALL verificarse con las mismas reglas que sin LLM (evidencia literal, sin negación es/en, oferta nuestra previa, y sin cifras o con la oferta completa del determinista igual a nuestra última oferta); con `confirm`, una aceptación leída por el determinista MUST NOT registrar acuerdo y la respuesta SHALL repetir exactamente nuestra última oferta con `ask = confirm-acceptance`, pidiendo al rival que confirme. La traza SHALL registrar `llmFailed` y la regla aplicada.
+
+#### Scenario: Fallo del LLM con respaldo determinista
+- **WHEN** con `onLlmFailure = deterministic` el parser LLM agota su tiempo y el rival escribe "Vale, trato hecho." tras nuestra oferta
+- **THEN** se registra el acuerdo en nuestra última oferta con origen `rival-text-verified`
+
+#### Scenario: Fallo del LLM con confirmación
+- **WHEN** con `onLlmFailure = confirm` el parser LLM falla y el rival escribe "Vale, trato hecho."
+- **THEN** no se registra acuerdo, respondemos con nuestra última oferta y pedimos que confirme la aceptación
+
 ### Requirement: Retirada inferida del texto
 La retirada leída en el texto SHALL tratarse según `acceptance.walkSignal`: `trace-only` (por defecto en `hybrid` y `text-only`; solo se aplica a turnos con `rivalAction = message`) la registra en la traza y la pasa al narrador como intención, sin marcar la retirada del rival en la sesión, de modo que respondemos con la decisión normal del motor; `parser-intent-verified` la trata como `rivalAction = walk` si su evidencia literal aparece en el texto; `ring-action` solo atiende a la acción del ring.
 

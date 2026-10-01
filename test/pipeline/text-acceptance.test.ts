@@ -152,3 +152,48 @@ describe("retirada desde el texto y origen del acuerdo", () => {
     expect(store.get("s1")!).toMatchObject({ agreement: { pct: 9 }, agreementOrigin: "engine-accept", agreementRound: 10 });
   });
 });
+
+describe("aceptación desde el texto cuando falla el parser LLM", () => {
+  const failing: TextParser = {
+    name: "fake-llm",
+    parse: async () => {
+      throw new Error("timeout simulado");
+    },
+  };
+  const confirmRuntime = resolveRuntimeConfig({ parser: { onLlmFailure: "confirm" } });
+
+  it("onLlmFailure = deterministic: la intención y la evidencia deterministas verifican la aceptación sin cifras", async () => {
+    const { brain, store, trace, opening } = await afterOpening(failing);
+    const deal = (await brain.turn(t(2, { rivalAction: "message", text: "Vale, trato hecho." }))) as WithOffer;
+    expect(deal).toMatchObject({ action: "accept", offer: opening.offer });
+    expect(store.get("s1")!.agreementOrigin).toBe("rival-text-verified");
+    expect(trace.records.find((r) => r.box === "binding" && r.round === 2)!.input).toMatchObject({
+      textSignal: { intent: "accept", llmFailed: true, onLlmFailure: "deterministic", acceptVerified: true },
+    });
+  });
+
+  it("onLlmFailure = deterministic: cifras deterministas distintas de nuestra oferta no aceptan", async () => {
+    const { brain, store } = await afterOpening(failing);
+    await brain.turn(t(2, { rivalAction: "message", text: "Acepto: pct 9, day 59" }));
+    expect(store.get("s1")!.agreement).toBeUndefined();
+  });
+
+  it("onLlmFailure = deterministic: la negación determinista sigue vetando", async () => {
+    const { brain, store } = await afterOpening(failing);
+    await brain.turn(t(2, { rivalAction: "message", text: "No acepto." }));
+    expect(store.get("s1")!.agreement).toBeUndefined();
+  });
+
+  it("onLlmFailure = confirm: sin acuerdo, contraoferta con nuestras cifras que pide confirmar la aceptación", async () => {
+    const { brain, store, trace, opening } = await afterOpening(failing, confirmRuntime);
+    const out = (await brain.turn(t(2, { rivalAction: "message", text: "Vale, trato hecho." }))) as WithOffer;
+    expect(out.action).toBe("counter");
+    expect(out.offer).toEqual(opening.offer);
+    expect(out.text).toMatch(/confirmas/);
+    expect(validateText({ action: "counter", offer: out.offer, text: out.text })).toEqual({ ok: true });
+    expect(store.get("s1")!.agreement).toBeUndefined();
+    expect(trace.records.find((r) => r.box === "binding" && r.round === 2)!.input).toMatchObject({
+      textSignal: { llmFailed: true, onLlmFailure: "confirm", acceptVerified: false, acceptReason: "llm-failed" },
+    });
+  });
+});

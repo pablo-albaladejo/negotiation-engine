@@ -20,17 +20,19 @@ describe("pnpm arena", () => {
     await expect(runArenaCli(["--seeds", "1", "--parser-policy", "llm-only", "--out", out, "--quiet"])).rejects.toThrow(/parser\.policy/);
   }, 20_000);
 
-  it("juega sin red, imprime la tabla y guarda resumen y una transcripción por partida", async () => {
+  // Carga reducida (1 semilla, 2 escenarios, todos los bots) y tiempo holgado: bajo la suite completa
+  // en paralelo, 3 semillas sobre todo el catálogo superaban los 5 s por defecto.
+  it("juega sin red, imprime la tabla y guarda resumen y una transcripción por partida", { timeout: 30_000 }, async () => {
     const fetchSpy = vi.fn(() => Promise.reject(new Error("red prohibida en la arena")));
     vi.stubGlobal("fetch", fetchSpy);
     const out = mkdtempSync(join(tmpdir(), "arena-"));
     const lines: string[] = [];
-    const { runDir, report } = await runArenaCli(["--seeds", "3", "--out", out, "--run-id", "t"], (l) => lines.push(l));
+    const { runDir, report } = await runArenaCli(["--seeds", "1", "--scenarios", "price-buyer-wide,price-seller-narrow", "--out", out, "--run-id", "t"], (l) => lines.push(l));
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(existsSync(join(runDir, "summary.json"))).toBe(true);
     const summary = JSON.parse(readFileSync(join(runDir, "summary.json"), "utf8"));
-    expect(summary).toMatchObject({ runId: "t", llmProvider: "none", network: false, seeds: { start: 1, count: 3 } });
+    expect(summary).toMatchObject({ runId: "t", llmProvider: "none", network: false, seeds: { start: 1, count: 1 } });
     expect(summary.overall.games).toBe(report.games.length);
     const transcripts = readFileSync(join(runDir, "transcripts.jsonl"), "utf8").trim().split("\n");
     expect(transcripts).toHaveLength(report.games.length);
