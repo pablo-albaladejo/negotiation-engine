@@ -122,8 +122,10 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 14. Sábado: ajuste [Paula]
 
-- [ ] 14.1 [Paula] `pnpm tune` con muestreo aleatorio sembrado y rejilla sobre rangos declarados, solo con rivales `tuning` y semillas de ajuste, interfaz `propose`/`evaluate`, candidatas con procedencia en `config/candidates/`; verificar que la misma semilla reproduce la tabla y que un rival `heldOut` hace fallar el arranque [aplazada: sábado]
-- [ ] 14.2 [Paula] Successive halving y optimizador de caja negra enchufable; verificar que cambiar de generador no cambia la arena ni la puerta [si hay tiempo]
+- [x] 14.1 [Paula] `pnpm tune` con muestreo aleatorio sembrado y rejilla sobre rangos declarados, solo con rivales `tuning` y semillas de ajuste, interfaz `propose`/`evaluate`, candidatas con procedencia en `config/candidates/`; verificar que la misma semilla reproduce la tabla y que un rival `heldOut` hace fallar el arranque [aplazada: sábado]
+  - Nota: `src/tune/`: `Generator.propose()/observe()` y `Evaluator` (arena pareada); rangos en `PARAM_SPACE` (β, apertura, `acceptMargin`, `acTimeThreshold`, ruido, reciprocidad; sin pesos de issue porque con un solo issue no cambian nada). La tabla usa los chequeos de la fase de ajuste de la misma `evaluateGate`. Candidatas `config/candidates/<sweep>-NN.json` (versión N+1, padre N, fuera de git) y tabla en `results/<sweep>/sweep.json`. `pnpm tune --n 6 --seeds 3` tarda unos 5 s.
+- [x] 14.2 [Paula] Successive halving y optimizador de caja negra enchufable; verificar que cambiar de generador no cambia la arena ni la puerta [si hay tiempo]
+  - Nota: `--generator random|grid|halving|cem`; el optimizador de caja negra es un método de entropía cruzada sembrado. Verificado repitiendo las candidatas de `random` y `cem` con una lista fija: filas idénticas.
 - [x] 14.3 [Paula] Crítico LLM sobre derrotas que escribe un informe en `results/` sin tocar configuraciones [si hay tiempo]
   - Nota: `pnpm critic <results/run>` con `LLM_PROVIDER` distinto de none; derrota = ZOPA no vacía sin acuerdo; al LLM solo van acciones y cifras (sin textos ni mandato); probado con proveedor falso.
 
