@@ -3,7 +3,7 @@ import { defineBox, registerBox } from "../pipeline/box.js";
 import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } from "./acceptance.js";
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
-import { aprOffer, AprBandSchema, enforceAprGuardrails, offerApr, withinAprBand } from "./apr.js";
+import { APR_DAY, APR_PCT, aprOffer, AprBandSchema, enforceAprGuardrails, offerApr, withinAprReservation } from "./apr.js";
 import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, type AprBand, type Offer, type OfferMandate } from "./issues.js";
 import { boulwareTarget, generateOffer, offerAboveReservation, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
@@ -201,8 +201,10 @@ function aprSynthetic(role: OfferMandate["role"], band: AprBand): { issues: Issu
 /**
  * Motor con mandato en TAE (design.md D2): el mismo `decide` sobre un único issue sintético `apr`
  * (la banda), con nuestras ofertas y las del rival convertidas a TAE. La TAE decidida se traduce a
- * `{ pct, day }` en el día de referencia y pasa por el guardarraíl TAE. Nunca acepta fuera de la
- * banda (tampoco por el lado favorable): en ese caso repite nuestra última oferta o la apertura.
+ * `{ pct, day }` en el día de la última oferta del rival si está en el rango del issue (solo
+ * valoramos la TAE: movernos por la línea de igual TAE no nos cuesta) o en el de referencia, y pasa
+ * por el guardarraíl TAE. Acepta cualquier oferta que no cruce el lado de la reserva (también una
+ * mejor que nuestro ancla); si no, repite nuestra última oferta o la apertura.
  */
 function decideApr(input: EngineInput, band: AprBand): Decision {
   const role = input.mandate.role;
@@ -219,10 +221,22 @@ function decideApr(input: EngineInput, band: AprBand): Decision {
   const counter = (offer: Offer, rule: string): Decision => ({ action: "counter", offer: enforceAprGuardrails(input.issues, mandate, offer, ourLast), rule });
   const hold = (rule: string) => counter(ourLast ?? openingOffer(input.issues, mandate, input.params), rule);
   if (decided.action === "walk") return { action: "walk", rule: decided.rule };
-  if (decided.action === "counter") return counter(aprOffer(band, role, decided.offer.apr!), decided.rule);
+  if (decided.action === "counter") {
+    const atRivalDay = aprOffer(band, role, decided.offer.apr!, rivalDay(input));
+    const pct = input.issues.find((i) => i.name === APR_PCT);
+    const inRange = !pct || (atRivalDay[APR_PCT]! >= pct.min && atRivalDay[APR_PCT]! <= pct.max);
+    return counter(inRange ? atRivalDay : aprOffer(band, role, decided.offer.apr!), decided.rule);
+  }
   const agreed = decided.rule === "rival-accepted" ? ourLast : input.state.rivalOffers.at(-1);
-  if (!agreed || !withinAprBand(band, agreed)) return hold("apr-band");
+  if (!agreed || !withinAprReservation(role, band, agreed)) return hold("apr-band");
   return { action: "accept", offer: pickIssues(input.issues, agreed), rule: decided.rule };
+}
+
+/** Día de la última oferta del rival si está dentro del rango del issue `day`; si no, ninguno (día de referencia). */
+function rivalDay(input: EngineInput): number | undefined {
+  const day = input.state.rivalOffers.at(-1)?.[APR_DAY];
+  const issue = input.issues.find((i) => i.name === APR_DAY);
+  return day !== undefined && issue && day >= issue.min && day <= issue.max ? day : undefined;
 }
 
 /** Utilidad de apertura (para tests y la ruta de emergencia). */

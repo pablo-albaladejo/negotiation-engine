@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { ConfigError, IssueSchema, type Issue } from "../engine/config.js";
 import type { Role } from "../engine/guardrails.js";
-import { APR_DAY, APR_PCT, aprOf } from "../engine/apr.js";
+import { APR_DAY, APR_PCT, APR_STEP_MESSAGE, aprBandFits, aprOf } from "../engine/apr.js";
 import type { Offer, OfferMandate } from "../engine/issues.js";
 
 export const DEFAULT_CATALOG = "config/arena/scenarios.json";
@@ -80,6 +80,10 @@ function checkApr(scenario: ScenarioShape, ctx: z.RefinementCtx): void {
     }
     const corner = aprOf(reservation[APR_PCT] ?? Number.NaN, reservation[APR_DAY] ?? Number.NaN, scenario.baseDays);
     if (!(corner >= apr.min && corner <= apr.max)) ctx.addIssue({ code: "custom", path: ["mandates", role, "reservation"], message: "apr: la reserva por issue debe estar dentro de la banda" });
+    const refDay = reservation[APR_DAY];
+    if (refDay !== undefined && refDay < scenario.baseDays && !aprBandFits({ ...apr, baseDays: scenario.baseDays, day: refDay })) {
+      ctx.addIssue({ code: "custom", path: ["mandates", role, "apr"], message: `apr: ${APR_STEP_MESSAGE}` });
+    }
   }
 }
 

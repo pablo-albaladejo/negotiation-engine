@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { aprOf, aprOffer, offerApr, offerGuardrails, pctForApr, withinAprBand } from "../../src/engine/apr.js";
+import { APR_STEP_MESSAGE, AprBandSchema, aprOf, aprOffer, offerApr, offerGuardrails, pctForApr, withinAprBand, withinAprReservation } from "../../src/engine/apr.js";
 import type { Issue } from "../../src/engine/config.js";
 import { decide, openingOffer, type EngineInput } from "../../src/engine/engine.js";
 import type { AprBand, Offer } from "../../src/engine/issues.js";
@@ -53,7 +53,7 @@ const bandArb = fc.constantFrom(30, 60).chain((baseDays) =>
 );
 
 describe("mandato apr: propiedad de banda", () => {
-  it("ninguna oferta ni aceptación del motor cruza la banda y concede monótonamente en TAE", () => {
+  it("ninguna oferta sale de la banda, ninguna aceptación cruza la reserva y concede monótonamente en TAE", () => {
     fc.assert(
       fc.property(
         bandArb,
@@ -79,8 +79,10 @@ describe("mandato apr: propiedad de banda", () => {
             };
             const decision = decide(input);
             if (decision.action === "walk") break;
-            expect(withinAprBand(band, decision.offer)).toBe(true);
+            // Aceptar: nunca cruza el lado de la reserva (sí puede ser mejor que nuestro ancla).
+            expect(withinAprReservation(role, band, decision.offer)).toBe(true);
             if (decision.action === "accept") break;
+            expect(withinAprBand(band, decision.offer)).toBe(true);
             // El pipeline repite el guardarraíl antes de enviar: no cambia una oferta ya válida.
             expect(offerGuardrails(issues, mandate, decision.offer, ourOffers.at(-1))).toEqual(decision.offer);
             const last = ourOffers.at(-1);
@@ -103,5 +105,41 @@ describe("mandato apr: propiedad de banda", () => {
     expect(offerApr(band, buyer)).toBeGreaterThan(40);
     expect(offerApr(band, seller)).toBeLessThan(20);
     expect(buyer.day).toBe(10);
+  });
+});
+
+const params = { beta: 0.3, openingMargin: 0.9, acceptMargin: 0.02, acTimeThreshold: 0.9, noise: 0, defaultHorizon: 10 };
+const band30: AprBand = { min: 15, max: 45, baseDays: 30, day: 10 };
+const inputAt = (role: "buyer" | "seller", rivalOffers: Offer[], ourOffers: Offer[] = []): EngineInput => ({
+  issues: issuesFor(30),
+  mandate: { role, reservation: { pct: 0, day: 10 }, apr: band30 },
+  params,
+  state: { round: 3, roundLimit: 8, ourOffers, rivalOffers, rivalAcceptedOurLast: false, rivalWalked: false, rivalCanRespond: true },
+  seed: 1,
+});
+
+describe("mandato apr: revisión", () => {
+  it("acepta una oferta mejor que nuestro ancla y nunca una que cruce la reserva", () => {
+    const better = { pct: 3.5, day: 10 }; // ≈ 66 % TAE > 45 (ancla del comprador)
+    expect(decide(inputAt("buyer", [better]))).toMatchObject({ action: "accept", offer: better });
+    const cheap = { pct: 0.2, day: 10 }; // ≈ 3,7 % TAE < 8: mejor que el ancla del vendedor
+    expect(decide(inputAt("seller", [cheap]))).toMatchObject({ action: "accept", offer: cheap });
+    const crossing = { pct: 0.7, day: 10 }; // ≈ 12,9 % < 15 = reserva del comprador
+    expect(decide(inputAt("buyer", [crossing])).action).not.toBe("accept");
+  });
+
+  it("contraoferta en el día del rival si está en el rango del issue; si no, en el día de referencia", () => {
+    const atRival = decide(inputAt("buyer", [{ pct: 0.3, day: 20 }]));
+    expect(atRival).toMatchObject({ action: "counter", offer: { day: 20 } });
+    expect(withinAprBand(band30, (atRival as { offer: Offer }).offer)).toBe(true);
+    const outside = decide(inputAt("buyer", [{ pct: 0.01, day: 29.5 }]));
+    expect(outside).toMatchObject({ action: "counter", offer: { day: 10 } });
+  });
+
+  it("rechaza al cargar una banda más estrecha que un paso de 0,01 de pct", () => {
+    const parsed = AprBandSchema.safeParse({ min: 20, max: 20.05, baseDays: 30, day: 10 });
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.message)).toContain(APR_STEP_MESSAGE);
+    expect(AprBandSchema.safeParse(band30).success).toBe(true);
   });
 });

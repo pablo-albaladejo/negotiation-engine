@@ -7,10 +7,13 @@ import { acceptableForUs, OFFER_DECIMALS, pickIssues, type AprBand, type Offer, 
 export const APR_PCT = "pct";
 export const APR_DAY = "day";
 
+export const APR_STEP_MESSAGE = "banda apr más estrecha que un paso de 0,01 de pct en el día de referencia: ninguna oferta cabe en ella";
+
 export const AprBandSchema = z
   .object({ min: z.number().min(0), max: z.number(), baseDays: z.number().positive(), day: z.number().min(0) })
   .strict()
-  .refine((b) => b.max > b.min && b.day < b.baseDays, { message: "banda apr inválida (min < max, day < baseDays)" });
+  .refine((b) => b.max > b.min && b.day < b.baseDays, { message: "banda apr inválida (min < max, day < baseDays)" })
+  .refine((b) => !(b.max > b.min && b.day < b.baseDays) || aprBandFits(b), { message: APR_STEP_MESSAGE });
 
 /**
  * TAE (%) del descuento por pronto pago: quien paga el día `day` en vez de `baseDays` adelanta
@@ -35,7 +38,28 @@ export function offerApr(band: Pick<AprBand, "baseDays">, offer: Offer): number 
   return aprOf(pct, day, band.baseDays);
 }
 
-/** Dentro de la banda (estricto, sin tolerancia): límites duros por ambos lados. */
+/** Hay al menos un `pct` con la precisión de oferta cuya TAE en `day` cae dentro de `[min, max]`. */
+export function aprBandFits(band: AprBand, day = band.day): boolean {
+  const factor = 10 ** OFFER_DECIMALS;
+  const lowest = Math.ceil(pctForApr(band.min, day, band.baseDays) * factor - 1e-9);
+  for (const scaled of [lowest - 1, lowest, lowest + 1]) {
+    if (scaled < 0) continue;
+    const apr = aprOf(scaled / factor, day, band.baseDays);
+    if (apr >= band.min && apr <= band.max) return true;
+  }
+  return false;
+}
+
+/**
+ * Lado de la reserva solamente (aceptaciones y violaciones de NUESTRO agente): el comprador no
+ * baja de `min`, el vendedor no sube de `max`. Una oferta mejor que nuestro ancla es aceptable.
+ */
+export function withinAprReservation(role: Role, band: AprBand, offer: Offer): boolean {
+  const apr = offerApr(band, offer);
+  return role === "buyer" ? apr >= band.min : apr <= band.max;
+}
+
+/** Dentro de la banda (estricto, sin tolerancia): límites duros por ambos lados (ofertas propias, bot causa-prima-engine). */
 export function withinAprBand(band: AprBand, offer: Offer): boolean {
   const apr = offerApr(band, offer);
   return apr >= band.min && apr <= band.max;
@@ -52,20 +76,18 @@ export function aprBetter(role: Role, a: number, b: number): boolean {
  */
 export function aprOffer(band: AprBand, role: Role, target: number, day = band.day): Offer {
   const factor = 10 ** OFFER_DECIMALS;
-  const at = Number.isFinite(day) && day < band.baseDays ? day : band.day;
-  const exact = pctForApr(Math.min(band.max, Math.max(band.min, target)), at, band.baseDays) * factor;
-  const up = Math.ceil(exact - 1e-9);
-  const down = Math.floor(exact + 1e-9);
-  const order = role === "buyer" ? [up, down] : [down, up];
-  for (const scaled of order) {
-    const offer = { [APR_PCT]: scaled / factor, [APR_DAY]: at };
-    if (withinAprBand(band, offer)) return offer;
+  const days = Number.isFinite(day) && day < band.baseDays && day !== band.day ? [day, band.day] : [band.day];
+  for (const at of days) {
+    const exact = pctForApr(Math.min(band.max, Math.max(band.min, target)), at, band.baseDays) * factor;
+    const up = Math.ceil(exact - 1e-9);
+    const down = Math.floor(exact + 1e-9);
+    for (const scaled of role === "buyer" ? [up, down] : [down, up]) {
+      const offer = { [APR_PCT]: scaled / factor, [APR_DAY]: at };
+      if (withinAprBand(band, offer)) return offer;
+    }
   }
-  // Banda más estrecha que un céntimo de pct en ese día: se busca hacia dentro desde el centro.
-  const mid = Math.round(pctForApr((band.min + band.max) / 2, at, band.baseDays) * factor);
-  const offer = { [APR_PCT]: mid / factor, [APR_DAY]: at };
-  if (!withinAprBand(band, offer)) throw new Error("banda apr demasiado estrecha para la precisión de oferta");
-  return offer;
+  // Solo si la banda no pasó por `AprBandSchema` (la carga la rechaza): el llamador decide.
+  throw new Error(APR_STEP_MESSAGE);
 }
 
 /**
@@ -90,7 +112,7 @@ export function offerGuardrails(issues: readonly Issue[], mandate: OfferMandate,
   return enforceOfferGuardrails(issues, mandate, proposed, previous);
 }
 
-/** Condición de toda aceptación según el mandato: dentro de la banda TAE, o la regla por issue. */
+/** Condición de toda aceptación según el mandato: lado de la reserva de la banda TAE, o la regla por issue. */
 export function acceptable(issues: readonly Issue[], mandate: OfferMandate, offer: Offer): boolean {
-  return mandate.apr ? withinAprBand(mandate.apr, offer) : acceptableForUs(issues, mandate, offer);
+  return mandate.apr ? withinAprReservation(mandate.role, mandate.apr, offer) : acceptableForUs(issues, mandate, offer);
 }

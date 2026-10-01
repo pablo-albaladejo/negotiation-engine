@@ -103,13 +103,21 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 300) : "error desconocido";
 }
 
-/** Ruta de emergencia del motor: nuestra última oferta válida o la apertura, siempre tras los guardarraíles. */
-export function emergencyDecision(session: Session): Decision & { action: "counter" } {
+/**
+ * Ruta de emergencia del motor: nuestra última oferta válida o la apertura, siempre tras los
+ * guardarraíles. Nunca lanza (siempre respondemos): si la apertura o el guardarraíl fallan, repite
+ * nuestra última oferta tal cual o, sin ninguna, se retira.
+ */
+export function emergencyDecision(session: Session): Decision {
   const { config, mandate } = session;
   const issues = orientIssues(config.issues, mandate.role);
   const last = ourLastOffer(session);
-  const base = last ?? openingOffer(config.issues, mandate, config);
-  return { action: "counter", offer: offerGuardrails(issues, mandate, base, last), rule: "emergency" };
+  try {
+    const base = last ?? openingOffer(config.issues, mandate, config);
+    return { action: "counter", offer: offerGuardrails(issues, mandate, base, last), rule: "emergency" };
+  } catch {
+    return last ? { action: "counter", offer: pickIssues(issues, last), rule: "emergency-repeat" } : { action: "walk", rule: "emergency-walk" };
+  }
 }
 
 function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed = false): EngineInput {
@@ -439,6 +447,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         return { sessionId: base.sessionId, round: base.round, action: "walk", text: renderTemplate({ action: "walk" }) };
       }
       const decision = emergencyDecision(session);
+      if (decision.action === "walk") return { sessionId: base.sessionId, round: base.round, action: "walk", text: renderTemplate({ action: "walk" }) };
       if (!ourLastOffer(session)) session.ourOffers.push({ ...decision.offer });
       return schemasFor().turnOutput.parse({
         sessionId: base.sessionId,

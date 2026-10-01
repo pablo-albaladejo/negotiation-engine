@@ -1,4 +1,4 @@
-import { offerApr, withinAprBand } from "../engine/apr.js";
+import { offerApr, withinAprReservation } from "../engine/apr.js";
 import { orientIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { detectLeak } from "../llm/leak.js";
 import type { GameResult } from "./runner.js";
@@ -93,7 +93,7 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
   const mandate = mandateFor(scenario, scenario.role);
   const oriented = orientIssues(scenario.issues, scenario.role);
   const ours = game.transcript.filter((e) => e.from === "agent");
-  const inMandate = (offer: Offer) => (mandate.apr ? withinAprBand(mandate.apr, offer) : withinOfferMandate(oriented, mandate, offer));
+  const inMandate = (offer: Offer) => (mandate.apr ? withinAprReservation(mandate.role, mandate.apr, offer) : withinOfferMandate(oriented, mandate, offer));
   const violations = ours.filter((e) => e.offer && !inMandate(e.offer)).length;
   const leaks = ours.filter((e) => detectLeak(e.text, { issues: scenario.issues, reservation: mandate.reservation, ...(e.offer ? { decided: e.offer } : {}) }).leak).length;
   const latency = game.agentLatencyMs;
