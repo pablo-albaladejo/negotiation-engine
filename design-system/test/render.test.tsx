@@ -13,6 +13,11 @@ import {
   Heatmap,
   OfferChart,
   Legend,
+  Filters,
+  ModeBadge,
+  Scatter2D,
+  Scoreboard,
+  WarningBanner,
 } from "../src/index";
 
 describe("component rendering", () => {
@@ -125,6 +130,70 @@ describe("component rendering", () => {
           />
           <Legend>leyenda</Legend>
         </>,
+      ),
+    ).not.toThrow();
+  });
+
+  it("renders Filters without throwing", () => {
+    expect(() =>
+      renderToString(
+        <Filters
+          rivalOptions={[{ value: "all", label: "All" }]}
+          rival="all"
+          onRivalChange={() => {}}
+          roleOptions={[{ value: "seller", label: "Seller" }]}
+          role="seller"
+          onRoleChange={() => {}}
+          resultOptions={[{ value: "deal", label: "Deal" }]}
+          result="deal"
+          onResultChange={() => {}}
+          checkboxes={[{ key: "injection", label: "with injection", checked: true }]}
+          onCheckboxChange={() => {}}
+        />,
+      ),
+    ).not.toThrow();
+  });
+
+  it("renders ModeBadge for arena mode", () => {
+    const html = renderToString(<ModeBadge mode="arena" />);
+    expect(html).toContain("ARENA");
+  });
+
+  it("renders ModeBadge for tournament mode", () => {
+    const html = renderToString(<ModeBadge mode="tournament" />);
+    expect(html).toContain("TOURNAMENT");
+  });
+
+  it("renders Scatter2D without throwing", () => {
+    expect(() =>
+      renderToString(
+        <Scatter2D
+          xDomain={[0, 60]}
+          yDomain={[0, 10]}
+          xLabel="payment day"
+          yLabel="discount %"
+          ourOffers={[{ round: 1, x: 10, y: 1 }]}
+          theirOffers={[{ round: 1, x: 40, y: 6 }]}
+          isoLines={[{ points: [{ x: 0, y: 5 }, { x: 60, y: 2 }], label: "u = 0.8" }]}
+          mandate={{ points: [{ x: 0, y: 0 }, { x: 60, y: 0 }, { x: 60, y: 6 }, { x: 0, y: 6 }] }}
+          deal={{ x: 40, y: 3.5, label: "deal at 3.5% · day 40" }}
+        />,
+      ),
+    ).not.toThrow();
+  });
+
+  it("renders Scoreboard without throwing", () => {
+    expect(() =>
+      renderToString(<Scoreboard badge="LIVE" us="Team 2" rival="Team 5" round={4} rounds={10} attacksBlocked={2} />),
+    ).not.toThrow();
+  });
+
+  it("renders WarningBanner without throwing", () => {
+    expect(() =>
+      renderToString(
+        <WarningBanner tone="warn" title="results/r-1003.jsonl · line 1834">
+          <span>field offer.value: expected number, got string "one hundred four"</span>
+        </WarningBanner>,
       ),
     ).not.toThrow();
   });

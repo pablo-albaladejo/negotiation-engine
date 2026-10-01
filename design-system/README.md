@@ -55,20 +55,31 @@ del sistema operativo (`prefers-color-scheme`).
 | `Heatmap` | `HeatmapProps` | Mapa de calor de excedente/ZOPA por rival × rol, construido sobre `DataTable`. |
 | `OfferChart` | `OfferChartProps` | SVG dibujado a mano con las ofertas por ronda; solo dibuja lo que se le pasa. |
 | `Legend` | — | Leyenda que acompaña siempre a `OfferChart`. |
+| `Filters` | `FiltersProps` | Barra de filtros controlada: rival, rol, resultado y checkboxes. |
+| `ModeBadge` | `ModeBadgeProps` | Insignia `ARENA` / `TOURNAMENT` según el modo. |
+| `Scatter2D` | `Scatter2DProps` | SVG dibujado a mano para ofertas en dos cuestiones (eje X / eje Y); solo dibuja lo que se le pasa. |
+| `Scoreboard` | `ScoreboardProps` | Cabecera del proyector en directo: equipos, ronda y ataques bloqueados. |
+| `WarningBanner` | `WarningBannerProps` | Aviso en línea con tono (`warn` / `info`), título y contenido libre. |
 
 Cada componente exporta su interfaz de props (`<Nombre>Props`) desde
-`src/index.ts`. Los ejemplos de uso realista, en español, están en
-`examples/`, uno por componente más `examples/ViewerScreen.tsx`, que compone
-la pantalla completa del visor: pestañas, selector de partida, tira de KPIs
-y, debajo, la tarjeta del gráfico junto a la del chat.
+`src/index.ts`. Los ejemplos de uso realista, en inglés (idioma de la
+interfaz del visor), están en `examples/`, uno por componente más
+`examples/ViewerScreen.tsx`, que compone la pantalla completa del visor:
+pestañas, selector de partida, tira de KPIs y, debajo, la tarjeta del
+gráfico junto a la del chat.
 
 ## Reglas de marca
 
-- **Español, claro y preciso.** "Trato cerrado en 112", "retirada",
-  "excedente / ZOPA". Los términos técnicos del equipo quedan en inglés:
-  ZOPA, AC_next, AC_time, Boulware.
-- **Números a la española.** Coma decimal (0,64), espacio antes del `%`
-  (84 %), diferencias en puntos (−2 pp), siempre con `tabular-nums`.
+- **Inglés, claro y preciso, en la interfaz del visor.** "Deal closed at
+  112", "walk away", "surplus / ZOPA". Los términos técnicos del equipo
+  quedan en inglés: ZOPA, AC_next, AC_time, Boulware. El texto del rival se
+  muestra tal cual, en el idioma en que llegue; los identificadores de
+  configuración (p. ej. `calido-firme`) también se muestran tal cual, sin
+  traducir.
+- **Números en formato inglés.** Punto decimal (0.64), sin espacio antes
+  del `%` (84%), diferencias en puntos (−2pp), siempre con `tabular-nums`.
+  Usa `formatNumber(v, { locale: "en" })`; `formatEsNumber` se mantiene por
+  compatibilidad con consumidores en español.
 - **El código decide el número; la interfaz solo lo muestra.** Ningún
   componente calcula una oferta, una decisión o un veredicto. La única
   excepción es el formateo de la coma decimal española (`formatEsNumber`).
