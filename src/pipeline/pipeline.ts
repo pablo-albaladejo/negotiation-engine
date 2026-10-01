@@ -5,7 +5,7 @@ import { enforceOfferGuardrails } from "../engine/guardrails.js";
 import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
-import { deterministicParser, negatedAccept, parseDeterministic } from "../llm/deterministic-parser.js";
+import { deterministicParser, extractOfferDetailed, negatedAccept, parseDeterministic } from "../llm/deterministic-parser.js";
 import { spanAppears } from "../llm/verify.js";
 import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
@@ -186,6 +186,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
   async function runTurn(session: Session, input: TurnInput, schemas: ProtocolSchemas, startedAt: number): Promise<TurnOutput> {
     const { config, mandate } = session;
     const issues = config.issues;
+    const oriented = orientIssues(issues, mandate.role);
+    /** Extremo de un rango peor para nosotros (para un comprador de descuento, el pct menor). */
+    const worse = (name: string, lo: number, hi: number) => (oriented.find((i) => i.name === name)?.direction === "higher-better" ? lo : hi);
+    const bpsUnits = Object.values(runtime.parser.units.bps).flat();
+    const extractOptions = runtime.parser.ranges === "conservative" ? { worse, bpsUnits } : { bpsUnits };
     const deadline = startedAt + turnBudgetMs(input.timeoutMs, config);
     const remaining = () => Math.max(0, deadline - now());
 
@@ -347,7 +352,9 @@ export function createPipeline(deps: PipelineDeps): Brain {
     } else if (input.text && input.rivalAction !== "walk") {
       const text = input.text;
       try {
-        deterministicOffer = llmActive ? parseDeterministic(text, schemas.issueNames).offer : parsed ? parse.offer : undefined;
+        const detSource = llmActive ? parseDeterministic(text, schemas.issueNames) : parsed ? parse : undefined;
+        const detailed = detSource && !detSource.injectionSuspected ? extractOfferDetailed(text, schemas.issueNames, extractOptions) : {};
+        deterministicOffer = detailed.offer;
         const reconcileInput: Parameters<typeof reconcileOffer>[0] = {
           issues,
           text,
@@ -355,7 +362,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
           deterministic: deterministicOffer,
           acceptWordNumbers: runtime.parser.acceptWordNumbers,
           onLlmFailure: runtime.parser.onLlmFailure,
+          ranges: runtime.parser.ranges,
+          worse,
+          bpsUnits,
         };
+        if (detailed.ranges) reconcileInput.deterministicRanges = detailed.ranges;
         if (llmActive) reconcileInput.llm = parsed ? { ok: true, output: parse } : { ok: false };
         outcome = reconcileOffer(reconcileInput);
         reconciled = outcome.offer;
@@ -379,7 +390,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         deterministicOffer: deterministicOffer ?? null,
         dual,
       },
-      { offer: reconciled ?? null, unconfirmed, confidence, reason: unconfirmed ? (outcome?.reason ?? null) : null, language: session.language ?? null },
+      { offer: reconciled ?? null, unconfirmed, confidence, reason: unconfirmed ? (outcome?.reason ?? null) : null, language: session.language ?? null, ranges: outcome?.ranges ?? null },
       "ok",
       now(),
     );
@@ -412,6 +423,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
             negated: negatedAccept(text),
             ourLast: ourLastOffer(session),
             textHasNumbers: normalizeNumbers(text).length > 0,
+            ranged: normalizeNumbers(text).some((m) => m.kind === "range"),
           };
           if (parse.intentEvidence) acceptInput.intentEvidence = parse.intentEvidence;
           if (llmActive && outcome?.checks) acceptInput.checks = outcome.checks;
@@ -443,7 +455,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (binding.kind === "offer") {
       session.rivalOffers.push(binding.offer);
       session.opponent.recordOffer(binding.offer);
-      session.rivalCurrentLlmOnly = outcome?.confidence === "llm-only";
+      // Cifra solo LLM o rango: oferta no firme, el motor no puede aceptarla en este turno.
+      session.rivalCurrentLlmOnly = outcome?.confidence === "llm-only" || outcome?.confidence === "range";
     }
     if (binding.kind === "walk") session.rivalWalked = true;
     record("binding", { rivalAction: input.rivalAction, effectiveAction: rivalAction, textSignal }, binding, "ok", now());
@@ -494,7 +507,13 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const outLanguage = runtime.narrator.language === "auto" ? (session.language ?? runtime.template.fallbackLanguage) : runtime.narrator.language;
     narratorInput.language = outLanguage;
     const ask: Ask | undefined =
-      decision.action !== "counter" ? undefined : confirmAcceptance ? "confirm-acceptance" : unconfirmed || llmOnlyBlocked ? "confirm-figures" : undefined;
+      decision.action !== "counter"
+        ? undefined
+        : confirmAcceptance
+          ? "confirm-acceptance"
+          : unconfirmed || llmOnlyBlocked || (reconciled !== undefined && outcome?.confidence === "range")
+            ? "confirm-figures"
+            : undefined;
     if (ask) narratorInput.ask = ask;
     const check: TextCheck = { action: decision.action, text: "", language: outLanguage, coherence: runtime.validator.coherence };
     if (offer) check.offer = offer;

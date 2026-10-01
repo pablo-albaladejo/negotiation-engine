@@ -22,7 +22,7 @@ export function reconcileTextOffer(
   return pickIssues(issues, deterministic);
 }
 
-export type OfferConfidence = "structured" | "dual-agreed" | "verified-digits" | "verified-words" | "llm-only" | "deterministic-only" | "unconfirmed";
+export type OfferConfidence = "structured" | "dual-agreed" | "verified-digits" | "verified-words" | "llm-only" | "range" | "deterministic-only" | "unconfirmed";
 export type NoOfferReason = VerifyFailure | "disagreement" | "llm-failed";
 
 export interface ReconcileInput {
@@ -36,6 +36,12 @@ export interface ReconcileInput {
   deterministic: Offer | undefined;
   acceptWordNumbers: "confirm" | "llm-only";
   onLlmFailure: "deterministic" | "confirm";
+  /** `parser.ranges`: con `conservative`, `worse` da el extremo peor para nosotros de un rango. */
+  ranges?: "conservative" | "confirm";
+  worse?: (issue: string, lo: number, hi: number) => number;
+  bpsUnits?: readonly string[];
+  /** Rangos que el determinista convirtió en su extremo peor (solo con `conservative`). */
+  deterministicRanges?: Record<string, [number, number]>;
 }
 
 export interface Reconciled {
@@ -44,6 +50,8 @@ export interface Reconciled {
   reason?: NoOfferReason;
   /** Comprobación por cifra (lleva evidencias: texto del rival, solo para la traza local). */
   checks?: FigureCheck[];
+  /** Extremos de los rangos citados (oferta no firme: el motor ve el extremo peor y nunca acepta sobre ella). */
+  ranges?: Record<string, [number, number]>;
 }
 
 /** Oferta completa a partir de las cifras del LLM, sin verificar (solo para `dual-strict`). */
@@ -68,8 +76,11 @@ const none = (reason: NoOfferReason, checks?: FigureCheck[]): Reconciled => ({ c
  */
 export function reconcileOffer(input: ReconcileInput): Reconciled {
   const { issues, deterministic, llm } = input;
+  const detRanged = input.deterministicRanges && Object.keys(input.deterministicRanges).length > 0 ? input.deterministicRanges : undefined;
+  const fromDeterministic = (offer: Offer): Reconciled =>
+    detRanged ? { offer: pickIssues(issues, offer), confidence: "range", ranges: detRanged } : { offer: pickIssues(issues, offer), confidence: "deterministic-only" };
   if (input.policy === "deterministic-only" || !llm) {
-    return deterministic ? { offer: pickIssues(issues, deterministic), confidence: "deterministic-only" } : none("ambiguous");
+    return deterministic ? fromDeterministic(deterministic) : none("ambiguous");
   }
   if (input.policy === "dual-strict") {
     if (!llm.ok) return none("llm-failed");
@@ -80,13 +91,18 @@ export function reconcileOffer(input: ReconcileInput): Reconciled {
   }
   // llm-primary-verified
   if (!llm.ok) {
-    if (input.onLlmFailure === "deterministic" && deterministic) return { offer: pickIssues(issues, deterministic), confidence: "deterministic-only" };
+    if (input.onLlmFailure === "deterministic" && deterministic) return fromDeterministic(deterministic);
     return none("llm-failed");
   }
   const figures = llm.output.figures ?? [];
   if (figures.length === 0) return none(deterministic ? "disagreement" : "partial");
-  const verified = verifyFigures(input.text, figures, issues, { acceptWordNumbers: input.acceptWordNumbers });
+  const options: Parameters<typeof verifyFigures>[3] = { acceptWordNumbers: input.acceptWordNumbers };
+  if (input.ranges) options.ranges = input.ranges;
+  if (input.worse) options.worse = input.worse;
+  if (input.bpsUnits) options.bpsUnits = input.bpsUnits;
+  const verified = verifyFigures(input.text, figures, issues, options);
   if (!verified.ok) return none(verified.reason, verified.checks);
   if (deterministic && !sameOffer(issues, deterministic, verified.offer)) return none("disagreement", verified.checks);
-  return { offer: verified.offer, confidence: verified.confidence, checks: verified.checks };
+  const ranges = Object.fromEntries(verified.checks.filter((c) => c.bounds).map((c) => [c.issue, c.bounds!]));
+  return { offer: verified.offer, confidence: verified.confidence, checks: verified.checks, ...(Object.keys(ranges).length ? { ranges } : {}) };
 }

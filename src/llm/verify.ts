@@ -9,7 +9,7 @@ import type { ParserFigure } from "./parser.js";
  * normalizado, da ese valor. Una cifra que no se puede comprobar no llega al motor.
  */
 
-export type FigureConfidence = "verified-digits" | "verified-words" | "llm-only";
+export type FigureConfidence = "verified-digits" | "verified-words" | "llm-only" | "range";
 export type VerifyFailure = "span-not-found" | "value-mismatch" | "ambiguous" | "words-unverifiable" | "partial";
 
 export interface FigureCheck {
@@ -19,6 +19,8 @@ export interface FigureCheck {
   ok: boolean;
   confidence?: FigureConfidence;
   reason?: VerifyFailure;
+  /** Extremos de un rango citado (confianza `range`). */
+  bounds?: [number, number];
 }
 
 export type VerifyResult =
@@ -27,11 +29,16 @@ export type VerifyResult =
 
 export interface VerifyOptions {
   acceptWordNumbers: "confirm" | "llm-only";
+  /** `conservative`: un rango en la evidencia vale su extremo peor para nosotros (confianza `range`); `confirm`: ambiguo. */
+  ranges?: "conservative" | "confirm";
+  /** Extremo peor para nosotros de un rango [lo, hi] de un issue. */
+  worse?: (issue: string, lo: number, hi: number) => number;
+  bpsUnits?: readonly string[];
 }
 
 const TOLERANCE = 1e-6;
 const ND_RE = /\p{Nd}/u;
-const RANK: Record<FigureConfidence, number> = { "llm-only": 0, "verified-words": 1, "verified-digits": 2 };
+const RANK: Record<FigureConfidence, number> = { range: -1, "llm-only": 0, "verified-words": 1, "verified-digits": 2 };
 
 /** Normalización para buscar un fragmento: NFKC, sin `\p{Cf}`, minúsculas y espacios plegados. */
 export function foldForMatch(text: string): string {
@@ -62,9 +69,18 @@ function readingsInRange(mention: NumberMention, issue: Issue | undefined): numb
 export function verifyFigure(text: string, figure: ParserFigure, issue: Issue | undefined, options: VerifyOptions): FigureCheck {
   const base = { issue: figure.issue, value: figure.value, evidence: figure.evidence };
   if (!spanAppears(text, figure.evidence)) return { ...base, ok: false, reason: "span-not-found" };
-  if (!inRange(issue, figure.value)) return { ...base, ok: false, reason: "value-mismatch" };
-  const mentions = normalizeNumbers(figure.evidence);
-  if (mentions.some((m) => m.kind === "range")) return { ...base, ok: false, reason: "ambiguous" };
+  // Un valor fuera de rango solo sigue si podría ser una cifra en pb (la conversión exige la unidad explícita).
+  if (!inRange(issue, figure.value) && !inRange(issue, figure.value / 100)) return { ...base, ok: false, reason: "value-mismatch" };
+  const mentions = normalizeNumbers(figure.evidence, options.bpsUnits ? { bpsUnits: options.bpsUnits } : {});
+  const range = mentions.find((m) => m.kind === "range");
+  if (range) {
+    // Un rango no es una oferta firme: con `conservative` cuenta su extremo peor para nosotros.
+    if (options.ranges !== "conservative" || !options.worse || !issue) return { ...base, ok: false, reason: "ambiguous" };
+    const lo = Math.min(range.from, range.to);
+    const hi = Math.max(range.from, range.to);
+    if (!inRange(issue, lo) || !inRange(issue, hi) || figure.value < lo - TOLERANCE || figure.value > hi + TOLERANCE) return { ...base, ok: false, reason: "value-mismatch" };
+    return { ...base, value: options.worse(issue.name, lo, hi), ok: true, confidence: "range", bounds: [lo, hi] };
+  }
   const numbers = mentions.filter((m): m is NumberMention => m.kind === "number");
   const hasDigits = ND_RE.test(figure.evidence.normalize("NFKC"));
   const pool = hasDigits ? numbers.filter((m) => m.source === "digits") : numbers;
@@ -76,7 +92,12 @@ export function verifyFigure(text: string, figure: ParserFigure, issue: Issue | 
       : { ...base, ok: false, reason: "words-unverifiable" };
   }
   const matching = pool.find((m) => readingsInRange(m, issue).some((r) => close(r, figure.value)));
-  if (!matching) return { ...base, ok: false, reason: "value-mismatch" };
+  if (!matching) {
+    // Unidad explícita de puntos básicos y valor devuelto en pb ("133 bps" → 133): se convierte a la unidad del issue.
+    const bps = pool.find((m) => m.unit === "bps" && readingsInRange(m, issue).length === 1 && close(readingsInRange(m, issue)[0]! * 100, figure.value));
+    if (bps) return { ...base, value: readingsInRange(bps, issue)[0]!, ok: true, confidence: "verified-digits" };
+    return { ...base, ok: false, reason: "value-mismatch" };
+  }
   if (readingsInRange(matching, issue).length > 1) return { ...base, ok: false, reason: "ambiguous" };
   return { ...base, ok: true, confidence: matching.source === "digits" ? "verified-digits" : "verified-words" };
 }

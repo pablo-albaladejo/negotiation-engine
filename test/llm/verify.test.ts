@@ -76,3 +76,42 @@ describe("verifyFigures: oferta derivada", () => {
     expect(verifyFigures(text, [fig("pct", 2.5, "٢٫٥٪"), fig("day", 16, "١٥")], issues, confirm)).toMatchObject({ ok: false, reason: "value-mismatch" });
   });
 });
+
+describe("puntos básicos y rangos (partida real b-claude-cli)", () => {
+  const worseForBuyer = (_issue: string, lo: number, _hi: number) => lo;
+  const conservative = { ...confirm, ranges: "conservative" as const, worse: worseForBuyer };
+  it.each([
+    ["133 bps", "Te ofrezco 133 bps", 1.33],
+    ["512 pb", "mi oferta: 512 pb", 5.12],
+    ["572 bps", "we can do 572 bps", 5.72],
+    ["40 bp", "40 bp more", 0.4],
+    ["25 p.b.", "subo a 25 p.b.", 0.25],
+    ["150 puntos básicos", "150 puntos básicos", 1.5],
+    ["75 basis points", "75 basis points", 0.75],
+  ])("%s → pct en %% (valor ya convertido o en pb)", (span, text, pctValue) => {
+    expect(verifyFigure(text, fig("pct", pctValue, span), pct, confirm)).toMatchObject({ ok: true, value: pctValue, confidence: "verified-digits" });
+    expect(verifyFigure(text, fig("pct", pctValue * 100, span), pct, confirm)).toMatchObject({ ok: true, value: pctValue, confidence: "verified-digits" });
+  });
+  it("sin unidad explícita, 133 no se lee como pb", () => {
+    expect(verifyFigure("Te ofrezco 133", fig("pct", 1.33, "133"), pct, confirm)).toMatchObject({ ok: false, reason: "value-mismatch" });
+  });
+  it("unidad de pb adicional configurada por idioma", () => {
+    expect(verifyFigure("offro 120 punti base", fig("pct", 1.2, "120 punti base"), pct, confirm)).toMatchObject({ ok: false });
+    expect(verifyFigure("offro 120 punti base", fig("pct", 1.2, "120 punti base"), pct, { ...confirm, bpsUnits: ["punti base"] })).toMatchObject({ ok: true, value: 1.2 });
+  });
+  it.each([
+    ["entre 2 y 2,5 %", 2.25, [2, 2.5]],
+    ["entre 3,85 y 4,35 %", 4, [3.85, 4.35]],
+    ["2-2,5%", 2.5, [2, 2.5]],
+  ])("rango %s con conservative: extremo peor, confianza range y ambos extremos", (span, llmValue, bounds) => {
+    expect(verifyFigure(`podemos ir ${span}`, fig("pct", llmValue, span), pct, conservative)).toMatchObject({ ok: true, confidence: "range", value: bounds[0], bounds });
+  });
+  it("rango: con confirm es ambiguo; un valor LLM fuera del rango no se verifica", () => {
+    expect(verifyFigure("entre 2 y 2,5 %", fig("pct", 2.25, "entre 2 y 2,5 %"), pct, confirm)).toMatchObject({ ok: false, reason: "ambiguous" });
+    expect(verifyFigure("entre 2 y 2,5 %", fig("pct", 7, "entre 2 y 2,5 %"), pct, conservative)).toMatchObject({ ok: false, reason: "value-mismatch" });
+  });
+  it("una oferta con un rango tiene confianza range (nunca se acepta sobre ella)", () => {
+    const text = "entre 2 y 2,5 % a 30 días";
+    expect(verifyFigures(text, [fig("pct", 2.2, "entre 2 y 2,5 %"), fig("day", 30, "30 días")], issues, conservative)).toMatchObject({ ok: true, confidence: "range", offer: { pct: 2, day: 30 } });
+  });
+});

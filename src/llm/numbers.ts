@@ -291,7 +291,7 @@ function parseNumberAt(tokens: Token[], i: number, text: string): Parsed | null 
 }
 
 /** Unidad tras el número (solo separada por espacios); devuelve la unidad y el índice siguiente. */
-function parseUnit(tokens: Token[], i: number, text: string): { unit: Unit; next: number } {
+function parseUnit(tokens: Token[], i: number, text: string, extraBps: readonly string[] = []): { unit: Unit; next: number } {
   const at = (k: number) => {
     const t = tokens[k];
     if (!t || !gapIsSpace(text, tokens[k - 1]!, t)) return undefined;
@@ -311,6 +311,11 @@ function parseUnit(tokens: Token[], i: number, text: string): { unit: Unit; next
     return { unit: "bps", next: i + 2 };
   }
   if (a === "basis" && (b === "points" || b === "point")) return { unit: "bps", next: i + 2 };
+  // Unidades de puntos básicos adicionales por idioma (`parser.units.bps`); siempre explícitas.
+  for (const phrase of extraBps) {
+    const words = foldText(phrase).split(/\s+/).filter(Boolean);
+    if (words.length > 0 && words.every((w, k) => at(i + k) === w)) return { unit: "bps", next: i + words.length };
+  }
   return { unit: "none", next: i };
 }
 
@@ -324,7 +329,7 @@ interface RawNumber {
   lastToken: number;
 }
 
-function scanNumbers(text: string, tokens: Token[]): RawNumber[] {
+function scanNumbers(text: string, tokens: Token[], extraBps: readonly string[] = []): RawNumber[] {
   const found: RawNumber[] = [];
   let i = 0;
   while (i < tokens.length) {
@@ -333,7 +338,7 @@ function scanNumbers(text: string, tokens: Token[]): RawNumber[] {
       i++;
       continue;
     }
-    const { unit, next } = parseUnit(tokens, parsed.next, text);
+    const { unit, next } = parseUnit(tokens, parsed.next, text, extraBps);
     const prev = tokens[i - 1];
     const afterDay = prev !== undefined && DAY_WORDS.has(prev.text);
     if (!parsed.qualified && unit === "none" && !afterDay) {
@@ -374,10 +379,15 @@ const RANGE_OPENERS: Record<string, Set<string>> = {
   to: new Set(["from"]),
 };
 
-export function normalizeNumbers(raw: string): Mention[] {
+export interface NormalizeOptions {
+  /** Palabras de unidad de puntos básicos además de las integradas (pb, bps, bp, p.b., puntos básicos, basis points). */
+  bpsUnits?: readonly string[];
+}
+
+export function normalizeNumbers(raw: string, options: NormalizeOptions = {}): Mention[] {
   const text = foldText(raw);
   const tokens = tokenize(text);
-  const numbers = scanNumbers(text, tokens);
+  const numbers = scanNumbers(text, tokens, options.bpsUnits);
   const mentions: Mention[] = [];
   for (let k = 0; k < numbers.length; k++) {
     const a = numbers[k]!;

@@ -28,7 +28,7 @@ export function bindRivalMove(
   return offer ? { kind: "offer", offer: { ...offer } } : { kind: "none" };
 }
 
-export type TextAcceptReason = "not-accept" | "no-evidence" | "negated" | "no-prior-offer" | "figures-unverified" | "llm-only" | "figures-differ";
+export type TextAcceptReason = "range" | "not-accept" | "no-evidence" | "negated" | "no-prior-offer" | "figures-unverified" | "llm-only" | "figures-differ";
 
 export interface TextAcceptInput {
   issues: readonly Issue[];
@@ -44,6 +44,8 @@ export interface TextAcceptInput {
   deterministic?: Offer;
   /** ¿El normalizador encuentra cifras en el texto? */
   textHasNumbers: boolean;
+  /** El texto cita un rango: nunca se acepta sobre un rango. */
+  ranged?: boolean;
 }
 
 /**
@@ -59,6 +61,7 @@ export function verifyTextAcceptance(input: TextAcceptInput): { verified: true }
   if (input.negated) return fail("negated");
   const ourLast = input.ourLast;
   if (!ourLast) return fail("no-prior-offer");
+  if (input.ranged || input.checks?.some((c) => c.confidence === "range")) return fail("range");
   const known = new Set(input.issues.map((i) => i.name));
   if (input.checks && input.checks.length > 0) {
     if (input.checks.some((c) => !c.ok)) return fail("figures-unverified");

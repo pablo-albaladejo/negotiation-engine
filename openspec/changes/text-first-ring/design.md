@@ -28,6 +28,8 @@ Tabla de claves (`config/runtime.json`, esquema cerrado en `src/pipeline/runtime
 | `parser.policy` | `llm-primary-verified` (`dual-strict` en structured); solo se aplica a turnos sin `rivalOffer` | `dual-strict`, `deterministic-only` | tabla de casos de reconcile |
 | `parser.acceptWordNumbers` | `confirm` | `llm-only` | casos ja/fr en palabras |
 | `parser.onLlmFailure` | `deterministic` | `confirm` | fallo simulado del cliente |
+| `parser.ranges` | `conservative` | `confirm` | extremo peor, nunca aceptar |
+| `parser.units.bps` | ninguna adicional | palabras por idioma | unidad explícita |
 | `acceptance.signal` | `parser-intent-verified` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `ring-action` | tabla de enlace |
 | `acceptance.walkSignal` | `trace-only` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `parser-intent-verified`, `ring-action` | caso de retirada aparente |
 | `narrator.language` | `auto` | código BCP-47 fijo | entrada del narrador |

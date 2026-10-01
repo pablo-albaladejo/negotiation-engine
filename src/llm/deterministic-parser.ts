@@ -61,18 +61,43 @@ function assign(text: string, mention: Mention, issueNames: readonly string[]): 
  * (repetido o no) y no hay rangos ni cifras ambiguas. Conservador: ante la duda, sin oferta.
  */
 export function extractOffer(raw: string, issueNames: readonly string[]): Offer | undefined {
+  return extractOfferDetailed(raw, issueNames).offer;
+}
+
+export interface ExtractOptions {
+  /** Con él (`parser.ranges = conservative`), un rango asignado a un issue vale su extremo peor para nosotros. */
+  worse?: (issue: string, lo: number, hi: number) => number;
+  bpsUnits?: readonly string[];
+}
+
+/** Como `extractOffer`, y además los extremos de cada rango que se convirtió en su extremo peor. */
+export function extractOfferDetailed(raw: string, issueNames: readonly string[], options: ExtractOptions = {}): { offer?: Offer; ranges?: Record<string, [number, number]> } {
   const text = foldText(raw);
   const values = new Map<string, number>();
-  for (const mention of normalizeNumbers(text)) {
-    if (mention.kind === "range" || mention.ambiguous) return undefined;
+  const ranges: Record<string, [number, number]> = {};
+  for (const mention of normalizeNumbers(text, options.bpsUnits ? { bpsUnits: options.bpsUnits } : {})) {
+    if (mention.kind === "range") {
+      const issue = options.worse ? assign(text, mention, issueNames) : null;
+      if (!issue) return {};
+      const lo = Math.min(mention.from, mention.to);
+      const hi = Math.max(mention.from, mention.to);
+      const value = options.worse!(issue, lo, hi);
+      const previous = values.get(issue);
+      if (previous !== undefined && Math.abs(previous - value) > 1e-9) return {};
+      values.set(issue, value);
+      ranges[issue] = [lo, hi];
+      continue;
+    }
+    if (mention.ambiguous) return {};
     const issue = assign(text, mention, issueNames);
-    if (!issue) return undefined;
+    if (!issue) return {};
     const previous = values.get(issue);
-    if (previous !== undefined && Math.abs(previous - mention.value) > 1e-9) return undefined;
+    if ((previous !== undefined && Math.abs(previous - mention.value) > 1e-9) || ranges[issue]) return {};
     values.set(issue, mention.value);
   }
-  if (issueNames.length === 0 || !issueNames.every((n) => values.has(n))) return undefined;
-  return Object.fromEntries(issueNames.map((n) => [n, values.get(n)!]));
+  if (issueNames.length === 0 || !issueNames.every((n) => values.has(n))) return {};
+  const offer = Object.fromEntries(issueNames.map((n) => [n, values.get(n)!]));
+  return Object.keys(ranges).length > 0 ? { offer, ranges } : { offer };
 }
 
 function sentences(text: string): string[] {

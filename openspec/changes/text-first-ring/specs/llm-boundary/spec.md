@@ -36,6 +36,28 @@ Con `llm-primary-verified`, la salida del parser LLM SHALL contener, por cada ci
 - **WHEN** la evidencia es "3 %" y el valor devuelto es 0.3
 - **THEN** la cifra no se verifica y el turno va sin oferta con motivo `value-mismatch`
 
+### Requirement: Unidades de puntos básicos explícitas
+La verificación de cifras SHALL entender las unidades de puntos básicos `bps`, `bp`, `pb`, `p.b.`, `puntos básicos` y `basis points`, más las palabras configuradas por idioma en `parser.units.bps`, y SHALL convertirlas a la unidad del issue (100 pb = 1 %), tanto si el LLM devuelve el valor ya convertido como si lo devuelve en pb. La unidad MUST ser explícita en la evidencia: una cifra sin unidad nunca se lee como puntos básicos. La comprobación de aparición del fragmento no cambia.
+
+#### Scenario: Puntos básicos en la evidencia
+- **WHEN** el rival escribe "133 bps" y el LLM devuelve `pct` 1.33 (o 133) con evidencia "133 bps"
+- **THEN** la cifra queda verificada como 1.33 % con confianza `verified-digits`
+
+#### Scenario: Cifra sin unidad
+- **WHEN** la evidencia es "133" y el LLM devuelve `pct` 1.33
+- **THEN** la cifra no se verifica (`value-mismatch`)
+
+### Requirement: Rangos del rival
+Un rango en el texto del rival ("entre 2 y 2,5 %", "2-2,5%", "between 2 and 2.5 %") SHALL tratarse según `parser.ranges`: con `conservative` (por defecto) el modelo del rival y el motor SHALL ver el extremo PEOR para nosotros (para un comprador de descuento, el pct menor), la oferta SHALL registrarse con confianza `range`, la traza SHALL registrar ambos extremos y la respuesta SHALL pedir al rival una cifra concreta; con `confirm` el turno SHALL ir sin oferta y pedir confirmación. Un rango no es una oferta firme: el motor MUST NOT aceptar sobre ella y una aceptación por texto que cita un rango MUST NOT verificarse. Con la política del LLM, el valor devuelto MUST caer dentro del rango citado.
+
+#### Scenario: Rango conservador
+- **WHEN** con `parser.ranges = conservative` un comprador de descuento lee "entre 2 y 2,5 %"
+- **THEN** el motor ve 2 %, la traza registra [2, 2.5], la respuesta pide una cifra y no se acepta en ese turno
+
+#### Scenario: Rango con confirmación
+- **WHEN** con `parser.ranges = confirm` el rival escribe "entre 2 y 4 %"
+- **THEN** el turno va sin oferta y la respuesta pide confirmar las cifras
+
 ### Requirement: Números en palabras no verificables
 Cuando la evidencia de una cifra solo contiene palabras de un idioma que el normalizador no cubre, `parser.acceptWordNumbers = llm-only` SHALL aceptar la cifra con confianza `llm-only` y `confirm` SHALL tratar el turno como sin oferta con motivo `words-unverifiable`. Una cifra `llm-only` MUST NOT bastar para que el motor acepte en el mismo turno: el motor SHALL tratarla como oferta del rival para su modelo y su contraoferta, pero la decisión `accept` sobre una oferta con alguna cifra `llm-only` SHALL convertirse en contraoferta que repite nuestras cifras y pide confirmar.
 

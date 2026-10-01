@@ -38,8 +38,27 @@ describe("modo solo texto con LLM_PROVIDER=none", () => {
     expect(reconcileOutputs(trace.records).at(-1)).toMatchObject({ offer: { pct: 2.5 }, unconfirmed: false, confidence: "deterministic-only" });
   });
 
-  it("un rango no es oferta: turno sin oferta y contraoferta que pide confirmar las cifras", async () => {
+  it("rango con parser.ranges = conservative: el motor ve el extremo peor para nosotros, la traza ambos y se pide una cifra", async () => {
+    const { brain, store, trace } = makeBrain();
+    await brain.turn(t(1, { rivalAction: "message", text: "Hola." }));
+    const out = await brain.turn(t(2, { rivalAction: "offer", text: "Podríamos movernos entre 2 y 4 %." }));
+    // Comprador de descuento: el extremo peor es el pct menor.
+    expect(store.get("s1")!.rivalOffers).toEqual([{ pct: 2 }]);
+    expect(reconcileOutputs(trace.records).at(-1)).toMatchObject({ offer: { pct: 2 }, confidence: "range", ranges: { pct: [2, 4] } });
+    expect(out.action).toBe("counter");
+    expect(out.text).toMatch(/confirmar tus cifras/);
+  });
+
+  it("un rango nunca se acepta aunque su extremo peor sea aceptable para el motor", async () => {
     const { brain, store } = makeBrain();
+    await brain.turn(t(1, { rivalAction: "message", text: "Hola." }));
+    const out = await brain.turn(t(2, { rivalAction: "offer", text: "Podríamos movernos entre 9 y 9,5 %." }));
+    expect(out.action).toBe("counter");
+    expect(store.get("s1")!.agreement).toBeUndefined();
+  });
+
+  it("un rango con parser.ranges = confirm no es oferta: turno sin oferta y contraoferta que pide confirmar las cifras", async () => {
+    const { brain, store } = makeBrain({ runtime: resolveRuntimeConfig({ parser: { ranges: "confirm" } }) });
     await brain.turn(t(1, { rivalAction: "message", text: "Hola." }));
     const out = await brain.turn(t(2, { rivalAction: "offer", text: "Podríamos movernos entre 2 y 4 %." }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);

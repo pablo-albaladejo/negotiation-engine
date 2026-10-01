@@ -61,12 +61,17 @@ function extraction(scenario: Scenario, game: GameResult): { misExtracted: numbe
   const counts = { misExtracted: 0, unextracted: 0 };
   if (scenario.mode !== "text-only") return counts;
   const registered = new Map<number, Offer | null>();
+  const ranged = new Set<number>();
   for (const r of game.records) {
-    if (r.box === "reconcile") registered.set(r.round, ((r.output as { offer?: Offer | null } | null)?.offer ?? null) as Offer | null);
+    if (r.box !== "reconcile") continue;
+    const out = r.output as { offer?: Offer | null; confidence?: string | null } | null;
+    registered.set(r.round, (out?.offer ?? null) as Offer | null);
+    // Rango leído de forma conservadora (extremo peor para nosotros): ni mal leído ni sin extraer.
+    if (out?.confidence === "range") ranged.add(r.round);
   }
   for (const entry of game.transcript) {
     if (entry.from !== "rival" || entry.action !== "counter" || !entry.offer) continue;
-    if (!registered.has(entry.round + 1)) continue;
+    if (!registered.has(entry.round + 1) || ranged.has(entry.round + 1)) continue;
     const got = registered.get(entry.round + 1);
     if (!got) counts.unextracted++;
     else if (!sameOffer(scenario.issues, got, entry.offer)) counts.misExtracted++;

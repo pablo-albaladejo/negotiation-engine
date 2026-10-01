@@ -40,6 +40,8 @@ export const RuntimeConfigSchema = z
         policy: z.enum(PARSER_POLICIES).optional(),
         acceptWordNumbers: z.enum(["confirm", "llm-only"]).optional(),
         onLlmFailure: z.enum(["deterministic", "confirm"]).optional(),
+        ranges: z.enum(["conservative", "confirm"]).optional(),
+        units: z.object({ bps: z.record(LanguageTag, z.array(z.string().trim().min(1).max(40)).max(20)).optional() }).strict().optional(),
       })
       .strict()
       .optional(),
@@ -79,7 +81,15 @@ export interface LlmBoxConfig {
 /** Configuración efectiva: todas las claves resueltas con los valores por defecto de su modo. */
 export interface RuntimeConfig {
   ring: { mode: RingMode; timeoutMs?: number };
-  parser: { policy: ParserPolicy; acceptWordNumbers: "confirm" | "llm-only"; onLlmFailure: "deterministic" | "confirm" };
+  parser: {
+    policy: ParserPolicy;
+    acceptWordNumbers: "confirm" | "llm-only";
+    onLlmFailure: "deterministic" | "confirm";
+    /** Rango del rival: `conservative` (extremo peor para nosotros, nunca se acepta) o `confirm` (sin oferta). */
+    ranges: "conservative" | "confirm";
+    /** Palabras de unidad de puntos básicos por idioma, además de las integradas. */
+    units: { bps: Record<string, string[]> };
+  };
   acceptance: { signal: AcceptanceSignal; walkSignal: WalkSignal };
   narrator: { language: string };
   template: { languages: string[]; fallbackLanguage: string; uncovered: "neutral" | "fallback-language" };
@@ -157,6 +167,8 @@ export function resolveRuntimeConfig(raw: unknown = {}, env: NodeJS.ProcessEnv =
       policy: file.parser?.policy ?? defaults.policy,
       acceptWordNumbers: file.parser?.acceptWordNumbers ?? "confirm",
       onLlmFailure: file.parser?.onLlmFailure ?? "deterministic",
+      ranges: file.parser?.ranges ?? "conservative",
+      units: { bps: file.parser?.units?.bps ?? {} },
     },
     acceptance: { signal: file.acceptance?.signal ?? defaults.signal, walkSignal: file.acceptance?.walkSignal ?? defaults.walkSignal },
     narrator: { language: file.narrator?.language ?? "auto" },
