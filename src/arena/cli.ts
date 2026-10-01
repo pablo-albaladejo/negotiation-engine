@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { parseArgs } from "node:util";
 import { createBotByName, BOTS } from "../bots/index.js";
+import { NL_LANGUAGES, type NlLanguage } from "../bots/nl-renderer.js";
 import { loadConfig, type AgentConfig } from "../engine/config.js";
 import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
@@ -86,6 +87,8 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "narrator-language": { type: "string" },
       "parser-provider": { type: "string" },
       "narrator-provider": { type: "string" },
+      "text-mode": { type: "string" },
+      languages: { type: "string" },
     },
     strict: true,
   });
@@ -134,11 +137,17 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const transcripts = createWriteStream(join(runDir, "transcripts.jsonl"));
 
   const t0 = performance.now();
+  const textMode = values["text-mode"];
+  if (textMode !== undefined && textMode !== "full" && textMode !== "agent-side") throw new Error("--text-mode debe ser full o agent-side");
+  const languages = list(values.languages) ?? ["es", "en"];
+  for (const l of languages) if (!(NL_LANGUAGES as readonly string[]).includes(l)) throw new Error(`--languages: idioma sin renderizador: ${l} (admitidos: ${NL_LANGUAGES.join(", ")})`);
   const report = await runArena({
     scenarios,
     rivals,
     agent,
     seeds,
+    ...(textMode ? { textMode } : {}),
+    languages: languages as NlLanguage[],
     onGame: (game, metrics, scenario) => {
       const { records, ...rest } = game;
       const reserves = { ours: mandateFor(scenario, scenario.role).reservation, rival: mandateFor(scenario, rivalRole(scenario.role)).reservation };
@@ -203,6 +212,13 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         `fugas ${o.leaks} · plantilla ${o.templateFallbacks} · latencia media ${o.latencyMeanMs === null ? "—" : `${o.latencyMeanMs.toFixed(2)} ms`} (máx ${o.latencyMaxMs.toFixed(1)} ms) · ` +
         `mal extraídas ${o.misExtracted} · sin extraer ${o.unextracted} · acuerdos distintos de los reales ${o.wrongAgreements}`,
     );
+    if (textMode === "full") {
+      const pct = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `${(v * 100).toFixed(1)} %`);
+      log(
+        `texto completo (${languages.join(",")}) · falsas aceptaciones ${o.falseAccepts ?? 0} · aceptaciones no detectadas ${o.missedAccepts ?? 0} · ` +
+          `confirmación ${pct(o.confirmRate)} · plantilla ${pct(o.templateRate)} · latencia p50 ${o.latencyP50Ms?.toFixed(2) ?? "—"} ms p95 ${o.latencyP95Ms?.toFixed(2) ?? "—"} ms`,
+      );
+    }
     log(`resultados: ${runDir}`);
   }
   return { runDir, report, summary };

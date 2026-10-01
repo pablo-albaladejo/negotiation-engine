@@ -77,3 +77,8 @@ pnpm typecheck
 - → Config: [`config/`](../../config/AGENTS.md)
 - → Resultados: `results/` (fuera de git)
 - → Test: [`test/arena/`](../../test/arena/)
+
+## Texto completo (`--text-mode full`)
+
+`--text-mode full --languages es,en`: `src/bots/nl-renderer.ts` convierte el movimiento canónico de cualquier bot (salvo el LLM) en lenguaje natural del idioma de la partida (por semilla); el agente recibe solo `rivalAction = message` y texto, también para aceptaciones y retiradas (un turno más del agente; el ring cierra con el movimiento canónico). Métricas extra: `falseAccept`, `missedAccept`, `confirmRate`, `templateRate`, latencia p50/p95, y `unextracted`/`misExtracted` también en escenarios estructurados. Un rango leído de forma conservadora no cuenta como mal leído ni sin extraer.
+

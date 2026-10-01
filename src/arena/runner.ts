@@ -5,6 +5,7 @@ import type { TraceRecord } from "../pipeline/box.js";
 import { createProtocolSchemas, type TurnInput, type TurnOutput } from "../protocol/schemas.js";
 import type { Participant, PlayerSession } from "./participant.js";
 import { mandateFor, rivalRole, type Scenario } from "./scenario.js";
+import { languageForSeed, nlRng, renderNaturalLanguage, type NlLanguage } from "../bots/nl-renderer.js";
 
 export interface TranscriptEntry {
   round: number;
@@ -13,6 +14,8 @@ export interface TranscriptEntry {
   /** Oferta real del emisor (en solo texto, el agente no la recibe estructurada). */
   offer?: Offer;
   text: string;
+  /** Texto completo: ¿la oferta del bot era extraíble como oferta firme? (verdad de terreno). */
+  extractable?: boolean;
 }
 
 export type EndReason = "agreement" | "agent-walk" | "rival-walk" | "limit" | "rival-error" | "agent-error";
@@ -36,6 +39,11 @@ export interface GameResult {
   agentLatencyMs: number[];
   records: readonly TraceRecord[];
   error?: string;
+  /** Texto completo: idioma de la partida, acuerdos registrados sin aceptación real y aceptaciones reales no detectadas. */
+  textMode?: "agent-side" | "full";
+  language?: string;
+  falseAccept?: number;
+  missedAccept?: number;
 }
 
 export interface GameOptions {
@@ -44,6 +52,9 @@ export interface GameOptions {
   rival: Participant;
   seed: number;
   gameId?: string;
+  /** `full`: el agente recibe solo texto en lenguaje natural (`rivalAction = message`, sin oferta), también aceptaciones y retiradas. */
+  textMode?: "agent-side" | "full";
+  languages?: readonly NlLanguage[];
 }
 
 const OPENING_TEXT = "Hola, empecemos la negociación.";
@@ -104,6 +115,22 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
   };
   let agentInput: TurnInput = { sessionId: gameId, round: 1, ...visibleLimit, rivalAction: "message", text: OPENING_TEXT };
   let rivalCurrent: Offer | undefined;
+  const full = options.textMode === "full";
+  const lang = languageForSeed(options.languages ?? ["es", "en"], seed);
+  const rng = nlRng(seed);
+  if (full) Object.assign(result, { textMode: "full", language: lang, falseAccept: 0, missedAccept: 0 });
+  let ourPrevious: Offer | undefined;
+  /** Texto completo: un turno más del agente con el texto de aceptación o retirada del bot (el ring cierra con el movimiento canónico). */
+  const notifyAgent = async (round: number, text: string): Promise<TurnOutput | undefined> => {
+    try {
+      const t0 = performance.now();
+      const raw = await agent!.respond({ sessionId: gameId, round, ...visibleLimit, rivalAction: "message", text });
+      result.agentLatencyMs.push(performance.now() - t0);
+      return schemas.turnOutput.parse(raw);
+    } catch {
+      return undefined;
+    }
+  };
 
   try {
     for (let round = 1; round <= scenario.rounds; round++) {
@@ -129,6 +156,8 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         result.agreedBy = "agent";
         result.agreement = rivalCurrent ?? ours.offer;
         result.wrongAgreement = !rivalCurrent || !sameValues(ours.offer, rivalCurrent);
+        // Acuerdo registrado por texto sobre nuestra oferta anterior sin aceptación real del bot.
+        if (full && ourPrevious && sameValues(ours.offer, ourPrevious) && (!rivalCurrent || !sameValues(ours.offer, rivalCurrent))) result.falseAccept = 1;
         break;
       }
 
@@ -141,12 +170,25 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         result.error = message(error);
         break;
       }
-      result.transcript.push({ round, from: "rival", action: theirs.action, ...(theirs.action === "walk" ? {} : { offer: theirs.offer }), text: theirs.text });
+      let rivalText = theirs.text;
+      let extractable: boolean | undefined;
+      if (full && !options.rival.name.startsWith("llm")) {
+        const rendered = renderNaturalLanguage(theirs.action === "walk" ? { action: "walk" } : { action: theirs.action, offer: theirs.offer }, lang, rng);
+        rivalText = rendered.text;
+        extractable = rendered.extractable;
+      }
+      ourPrevious = { ...ours.offer };
+      result.transcript.push({ round, from: "rival", action: theirs.action, ...(theirs.action === "walk" ? {} : { offer: theirs.offer }), text: rivalText, ...(extractable === undefined ? {} : { extractable }) });
       if (theirs.action === "walk") {
+        if (full) await notifyAgent(round + 1, rivalText);
         result.endReason = "rival-walk";
         break;
       }
       if (theirs.action === "accept") {
+        if (full) {
+          const seen = await notifyAgent(round + 1, rivalText);
+          if (seen?.action !== "accept") result.missedAccept = 1;
+        }
         // Regla de enlace: el rival acepta nuestra última oferta.
         result.endReason = "agreement";
         result.agreedBy = "rival";
@@ -158,9 +200,9 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         sessionId: gameId,
         round: round + 1,
         ...visibleLimit,
-        rivalAction: "offer",
-        ...(scenario.mode === "structured" ? { rivalOffer: theirs.offer } : {}),
-        text: theirs.text,
+        rivalAction: full ? "message" : "offer",
+        ...(scenario.mode === "structured" && !full ? { rivalOffer: theirs.offer } : {}),
+        text: rivalText,
       };
     }
   } finally {

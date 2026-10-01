@@ -21,7 +21,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 ## 4. Aceptación, retirada y acuerdo desde el texto
 
 - [x] 4.1 Tabla de enlace ampliada (señal `ring-action` vs `parser-intent-verified`, evidencia de intención, negación es/en, sin oferta previa, cifras iguales/distintas/sin verificar, `llm-only` no acepta) y luego `src/pipeline/binding.ts`; verificar con `pnpm test`
-- [ ] 4.2 Tests de `walkSignal` (`trace-only` no marca `rivalWalked`) y del acuerdo registrado (origen, evidencia, respuestas idempotentes tras el acuerdo) y luego `session.ts`/`pipeline.ts`; verificar con una partida sembrada contra un bot que acepta por texto — implementado y probado por turnos (`test/pipeline/text-acceptance.test.ts`); falta la partida sembrada, que necesita el bot de texto completo de 7.1
+- [x] 4.2 Tests de `walkSignal` (`trace-only` no marca `rivalWalked`) y del acuerdo registrado (origen, evidencia, respuestas idempotentes tras el acuerdo) y luego `session.ts`/`pipeline.ts`; verificar con una partida sembrada contra un bot que acepta por texto — partida sembrada en `test/arena/full-text.test.ts`
 - [x] 4.3 Adaptador HTTP en `text-only` (entrada solo texto ⇒ `message`, ronda derivada, salida solo texto; `hybrid` con acción del ring) en `src/protocol/http.ts`; verificar con la batería común de contrato y fixtures nuevos en `test/fixtures/ring/`
 
 ## 5. Validador, fugas y plantillas independientes del idioma
@@ -38,8 +38,8 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 7. Arena en texto completo y evaluación
 
-- [ ] 7.1 `src/bots/nl-renderer.ts` (generaliza `text-only.ts`; es/en; formatos variados; aceptaciones y retiradas solo en texto) y `--text-mode full` en `src/arena/runner.ts`/`scenario.ts`/`cli.ts` con verdad de terreno canónica; verificar con una partida sembrada reproducible contra Boulware
-- [ ] 7.2 Métricas `unextracted`, `misread`, `falseAccept`, `missedAccept`, `falseWalk`, `confirmRate`, `templateRate`, latencia p50/p95 por idioma y política en `src/arena/metrics.ts` y esquema de resultados; verificar con partidas fabricadas
+- [x] 7.1 `src/bots/nl-renderer.ts` (generaliza `text-only.ts`; es/en; formatos variados; aceptaciones y retiradas solo en texto) y `--text-mode full` en `src/arena/runner.ts`/`scenario.ts`/`cli.ts` con verdad de terreno canónica; verificar con una partida sembrada reproducible contra Boulware
+- [x] 7.2 Métricas `unextracted`, `misread`, `falseAccept`, `missedAccept`, `falseWalk`, `confirmRate`, `templateRate`, latencia p50/p95 por idioma y política en `src/arena/metrics.ts` y esquema de resultados; verificar con partidas fabricadas
 - [ ] 7.3 Bot LLM en texto completo con `--language` y sin nuestra oferta estructurada (`src/bots/llm-bot.ts`); verificar con cliente grabado
 - [ ] 7.4 `pnpm eval:llm` con matriz política × idioma × proveedor (`EVAL_LLM_LANGUAGES`, `EVAL_LLM_POLICIES`, `anthropic-api` si hay clave) en `src/arena/eval-llm-main.ts` y `scripts/eval-llm.sh`; verificar ejecutándolo con es,en y decidir los valores por defecto con 0 `falseAccept`
 - [ ] 7.5 Test de combinaciones de configuración (0 violaciones, 0 fugas, siempre respuesta) contra el bot de texto completo; verificar con `pnpm test`

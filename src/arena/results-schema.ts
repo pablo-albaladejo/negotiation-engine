@@ -40,6 +40,11 @@ const GameMetricsSchema = z
     misExtracted: z.number().int().nonnegative(),
     unextracted: z.number().int().nonnegative(),
     wrongAgreement: z.boolean(),
+    falseAccept: z.number().int().optional(),
+    missedAccept: z.number().int().optional(),
+    confirmRate: z.number().optional(),
+    templateRate: z.number().optional(),
+    language: z.string().optional(),
   })
   .strict();
 

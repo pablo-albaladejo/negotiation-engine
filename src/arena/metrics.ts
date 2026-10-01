@@ -34,6 +34,13 @@ export interface GameMetrics {
   unextracted: number;
   /** Aceptamos valores que no eran la oferta real del rival. */
   wrongAgreement: boolean;
+  /** Texto completo: acuerdo registrado sin aceptación real / aceptación real no detectada. */
+  falseAccept?: number;
+  missedAccept?: number;
+  /** Turnos del agente que pidieron confirmar cifras / con plantilla, sobre sus turnos. */
+  confirmRate?: number;
+  templateRate?: number;
+  language?: string;
 }
 
 /**
@@ -59,7 +66,7 @@ export function surplusShare(scenario: Scenario, agreement: Offer | undefined): 
 /** Compara la oferta que registró el agente en cada turno (caja `reconcile`) con la real del rival. */
 function extraction(scenario: Scenario, game: GameResult): { misExtracted: number; unextracted: number } {
   const counts = { misExtracted: 0, unextracted: 0 };
-  if (scenario.mode !== "text-only") return counts;
+  if (scenario.mode !== "text-only" && game.textMode !== "full") return counts;
   const registered = new Map<number, Offer | null>();
   const ranged = new Set<number>();
   for (const r of game.records) {
@@ -78,6 +85,24 @@ function extraction(scenario: Scenario, game: GameResult): { misExtracted: numbe
   }
   return counts;
 }
+
+function textRates(game: GameResult): Pick<GameMetrics, "falseAccept" | "missedAccept" | "confirmRate" | "templateRate" | "language"> {
+  const turns = Math.max(1, game.agentLatencyMs.length);
+  const confirms = game.records.filter((r) => r.box === "reconcile" && (r.output as { unconfirmed?: boolean } | null)?.unconfirmed).length;
+  return {
+    falseAccept: game.falseAccept ?? 0,
+    missedAccept: game.missedAccept ?? 0,
+    confirmRate: confirms / turns,
+    templateRate: game.records.filter((r) => r.box === "template").length / turns,
+    ...(game.language ? { language: game.language } : {}),
+  };
+}
+
+const percentile = (values: readonly number[], p: number): number | null => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]!;
+};
 
 export function computeMetrics(scenario: Scenario, game: GameResult): GameMetrics {
   const mandate = mandateFor(scenario, scenario.role);
@@ -109,6 +134,7 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
     latencyMaxMs: latency.length ? Math.max(...latency) : 0,
     ...extraction(scenario, game),
     wrongAgreement: game.wrongAgreement,
+    ...(game.textMode === "full" ? textRates(game) : {}),
   };
 }
 
@@ -158,6 +184,16 @@ export function summarize(metrics: readonly GameMetrics[]) {
     misExtracted: sum(metrics, (m) => m.misExtracted),
     unextracted: sum(metrics, (m) => m.unextracted),
     wrongAgreements: metrics.filter((m) => m.wrongAgreement).length,
+    ...(metrics.some((m) => m.falseAccept !== undefined)
+      ? {
+          falseAccepts: sum(metrics, (m) => m.falseAccept ?? 0),
+          missedAccepts: sum(metrics, (m) => m.missedAccept ?? 0),
+          confirmRate: mean(metrics.map((m) => m.confirmRate ?? 0)),
+          templateRate: mean(metrics.map((m) => m.templateRate ?? 0)),
+          latencyP50Ms: percentile(metrics.map((m) => m.latencyMeanMs), 0.5),
+          latencyP95Ms: percentile(metrics.map((m) => m.latencyMaxMs), 0.95),
+        }
+      : {}),
   };
 }
 

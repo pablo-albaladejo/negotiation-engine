@@ -1,6 +1,6 @@
 import type { Participant } from "./participant.js";
 import { byCluster, computeMetrics, summarize, type ClusterSummary, type GameMetrics } from "./metrics.js";
-import { playGame, type GameResult } from "./runner.js";
+import { playGame, type GameOptions, type GameResult } from "./runner.js";
 import type { Scenario } from "./scenario.js";
 
 export interface ArenaOptions {
@@ -8,6 +8,8 @@ export interface ArenaOptions {
   rivals: readonly Participant[];
   agent: Participant;
   seeds: readonly number[];
+  textMode?: "agent-side" | "full";
+  languages?: GameOptions["languages"];
   /** Cada partida terminada (para escribir transcripciones y trazas sin guardarlas en memoria). */
   onGame?: (game: GameResult, metrics: GameMetrics, scenario: Scenario) => void | Promise<void>;
 }
@@ -25,7 +27,7 @@ export async function runArena(options: ArenaOptions): Promise<ArenaReport> {
   for (const scenario of options.scenarios) {
     for (const rival of options.rivals) {
       for (const seed of options.seeds) {
-        const game = await playGame({ scenario, agent: options.agent, rival, seed });
+        const game = await playGame({ scenario, agent: options.agent, rival, seed, ...(options.textMode ? { textMode: options.textMode } : {}), ...(options.languages ? { languages: options.languages } : {}) });
         const metrics = computeMetrics(scenario, game);
         games.push(metrics);
         await options.onGame?.(game, metrics, scenario);
