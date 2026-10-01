@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseConfig, type AgentConfig } from "../engine/config.js";
 import { writeFileAtomic } from "./atomic-write.js";
@@ -181,7 +181,8 @@ export async function promote(options: PromoteOptions): Promise<PromoteResult> {
     },
   };
   parseConfig(next, "campeona nueva");
-  writeFileSync(championPath, `${JSON.stringify(next, null, 2)}\n`);
+  // Atómica: el agente lee champion.json al arrancar cada sesión; nunca debe ver un fichero a medias.
+  await writeFileAtomic(championPath, `${JSON.stringify(next, null, 2)}\n`);
   await writeGate({ promoted: true, promotedVersion: version });
   log(`campeona v${version} escrita en ${championPath}; commit sugerido: champion v${version}`);
   return { promoted: true, gate, version, dryRun, gatePath };

@@ -42,7 +42,18 @@ describe("trazas JSONL", () => {
     expect(TraceHeaderSchema.parse(header)).toMatchObject({ mode: "tournament", traceVersion: 2, role: "buyer", scenario: { id: "scenario.json" } });
     expect(header).not.toHaveProperty("mandate");
     for (const record of records) expect(TraceLineSchema.safeParse(record).success).toBe(true);
-    expect(readFileSync(file, "utf8")).not.toMatch(/3\.37|337/);
+    // La reserva (3,37) no aparece como valor en ningún registro. Se recorren los valores en vez de
+    // buscar en el texto crudo: un timestamp o una latencia con "337" daba falsos positivos.
+    const TIMING_KEY = /latency|duration|elapsed|timestamp|(^|_)ts$|At$|Ms$/i;
+    const leaks: string[] = [];
+    const walk = (value: unknown, path: string): void => {
+      if (typeof value === "number" && Math.abs(value - 3.37) < 1e-9) leaks.push(path);
+      else if (typeof value === "string" && /(?<![\d.,])3[.,]37(?!\d)/.test(value)) leaks.push(path);
+      else if (value && typeof value === "object")
+        for (const [key, child] of Object.entries(value)) if (!TIMING_KEY.test(key)) walk(child, `${path}.${key}`);
+    };
+    [header, ...records].forEach((line, i) => walk(line, `línea ${i + 1}`));
+    expect(leaks).toEqual([]);
     expect(trace.failures).toBe(0);
   });
 
