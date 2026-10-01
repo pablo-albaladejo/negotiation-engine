@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { parseConfig, type AgentConfig } from "../engine/config.js";
+import { writeFileAtomic } from "./atomic-write.js";
 import { evaluateGate, formatGate, type Criterion, type GatePhase, type GateResult } from "./gate.js";
 import { summarize, type GameMetrics } from "./metrics.js";
 import { comparePaired, heldOutRivals, runPaired, seedsFor, tuningRivals, type HeldOutOptions, type PairedReport, type PairedRun } from "./paired.js";
@@ -149,12 +149,7 @@ export async function promote(options: PromoteOptions): Promise<PromoteResult> {
     dryRun,
     promoted: false,
   };
-  const writeGate = async (extra: Record<string, unknown> = {}) => {
-    const content = `${JSON.stringify({ ...gateFile, ...extra }, null, 2)}\n`;
-    const tmpPath = `${gatePath}.tmp`;
-    await writeFile(tmpPath, content, "utf8");
-    await rename(tmpPath, gatePath);
-  };
+  const writeGate = (extra: Record<string, unknown> = {}) => writeFileAtomic(gatePath, `${JSON.stringify({ ...gateFile, ...extra }, null, 2)}\n`);
   await writeGate();
 
   if (dryRun) log(`en seco: gate.json en ${gatePath}; ${championPath} no se toca`);

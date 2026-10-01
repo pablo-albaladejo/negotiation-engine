@@ -1,6 +1,6 @@
-import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { seedsFor, type PairedReport } from "../../src/arena/paired.js";
 import { GateFileSchema } from "../../src/arena/results-schema.js";
@@ -48,6 +48,7 @@ describe("pnpm promote", () => {
     expect(s.lines.join("\n")).toMatch(/commit sugerido: champion v2/);
     const gate = readGate(result.gatePath!);
     expect(gate).toMatchObject({ schemaVersion: 2, dryRun: false, promoted: true, promotedVersion: 2, configs: { champion: { version: 1 }, candidate: { beta: 0.3 } } });
+    expect(readdirSync(dirname(result.gatePath!))).toEqual(["gate.json"]);
   });
 
   it("en seco con la puerta aprobada escribe gate.json v2 y deja config/champion.json byte a byte igual", async () => {
