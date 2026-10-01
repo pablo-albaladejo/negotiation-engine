@@ -91,7 +91,7 @@ export function OfferChart({
       className="nr-chart"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role="img"
-      aria-label="Ofertas de ambas partes por ronda"
+      aria-label="Offers from both sides by round"
     >
       {showZopa ? <rect className="zopa" x={MARGIN.left} y={zopaTop} width={INNER_WIDTH} height={zopaHeight} /> : null}
 
@@ -116,7 +116,7 @@ export function OfferChart({
           </text>
         ))}
         <text x={WIDTH / 2} y={HEIGHT - 4}>
-          ronda
+          round
         </text>
       </g>
 
