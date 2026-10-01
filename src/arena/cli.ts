@@ -8,7 +8,8 @@ import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
 import { createHttpParticipant } from "./external.js";
 import type { Participant } from "./participant.js";
-import { clusterTable, pairedTable } from "./report.js";
+import { comparePaired, type PairedReport } from "./paired.js";
+import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
 import { writeJsonlTrace } from "../pipeline/trace.js";
 import { DEFAULT_CATALOG, loadCatalog, mandateFor } from "./scenario.js";
 
@@ -108,11 +109,13 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   await new Promise<void>((resolve, reject) => transcripts.end((error?: Error | null) => (error ? reject(error) : resolve())));
 
   let paired: ReturnType<typeof pairByCluster> | undefined;
+  let comparison: PairedReport | undefined;
   let candidateSummary: Record<string, unknown> | undefined;
   if (values.candidate) {
     const candidateConfig = loadConfig(values.candidate);
     const candidate = await runArena({ scenarios, rivals, agent: createAgentParticipant({ config: candidateConfig, name: "candidate" }), seeds });
     paired = pairByCluster(report.games, candidate.games);
+    comparison = comparePaired({ championGames: report.games, candidateGames: candidate.games }, { roleWeights: config.roleWeights, bootstrap: {} });
     candidateSummary = { path: values.candidate, version: candidateConfig.version, overall: candidate.overall };
   }
 
@@ -130,13 +133,13 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     overall: report.overall,
     byRole: report.byRole,
     clusters: report.clusters,
-    ...(paired ? { candidate: candidateSummary, paired } : {}),
+    ...(paired ? { candidate: candidateSummary, paired, comparison: { ...comparison, clusters: undefined } } : {}),
   };
   writeFileSync(join(runDir, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
 
   if (!values.quiet) {
     log(clusterTable(report.clusters));
-    if (paired) log(`\nComparación pareada (candidata − campeona):\n${pairedTable(paired)}`);
+    if (paired) log(`\nComparación pareada (candidata − campeona):\n${pairedTable(paired)}\n${pairedSummaryLine(comparison!)}`);
     const o = report.overall;
     log(
       `\n${o.games} partidas en ${(durationMs / 1000).toFixed(1)} s · acuerdo ${(o.agreementRate * 100).toFixed(1)} % · ` +

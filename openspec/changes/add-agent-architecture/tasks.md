@@ -111,8 +111,10 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 13. Sábado: estadística y promoción [Pablo]
 
-- [ ] 13.1 [Pablo] Rivales `tuning`/`heldOut` (bots LLM, externos, campeona anterior) y rangos de semillas de ajuste y revalidación; runner pareado campeón vs candidata; verificar que dos configuraciones idénticas dan diferencia 0 [aplazada: sábado]
-- [ ] 13.2 [Pablo] Agregación por clúster (escenario × rival) con `roleWeights`, diferencia media pareada y test de signos, con tests sobre casos conocidos [aplazada: sábado]
+- [x] 13.1 [Pablo] Rivales `tuning`/`heldOut` (bots LLM, externos, campeona anterior) y rangos de semillas de ajuste y revalidación; runner pareado campeón vs candidata; verificar que dos configuraciones idénticas dan diferencia 0 [aplazada: sábado]
+  - Nota: `src/arena/paired.ts`: semillas de ajuste 1..99 999 y de revalidación 100 000..199 999; rivales `tuning` = bots en código de `BOTS`; `heldOutRivals` = campeona anterior y, solo si se piden, bot LLM y externos. `runPaired` admite las partidas de la campeona ya jugadas (caché del barrido).
+- [x] 13.2 [Pablo] Agregación por clúster (escenario × rival) con `roleWeights`, diferencia media pareada y test de signos, con tests sobre casos conocidos [aplazada: sábado]
+  - Nota: `src/arena/stats.ts`: media por rol y después media de roles con `roleWeights` (un rol con más escenarios no pesa más); test de signos bilateral exacto, empates descartados; `pnpm arena --candidate` imprime la línea pareada.
 - [ ] 13.3 [Pablo] Puerta de promoción (efecto ≥ `minEffectPp` y significativo, 0 violaciones, 0 fugas, revalidación con semillas nuevas, conjunto reservado ≥ 0) y `pnpm promote <candidate>` con versión N+1, mensaje `champion vN+1` y flag de congelación; verificar con tests de cada rechazo y un aprobado [aplazada: sábado]
 - [ ] 13.4 [Pablo] Bootstrap sembrado por clústeres (2000 remuestreos) como criterio de significación alternativo, con tests de cobertura aproximada [aplazada: sábado]
 
