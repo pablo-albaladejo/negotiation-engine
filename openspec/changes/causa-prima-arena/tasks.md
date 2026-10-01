@@ -15,7 +15,7 @@ Cada tarea es TDD: primero el test, luego la implementación.
 
 ## 3. Violación de protocolo
 
-- [x] 3.1 `protocol_violation` en el runner, métricas, `transcripts.jsonl` v3 y esquema; tests con bot inválido y con nuestro agente
+- [x] 3.1 `protocol-violation` en el runner, métricas, `transcripts.jsonl` v3 y esquema; tests con bot inválido y con nuestro agente
 
 ## 4. Transporte
 

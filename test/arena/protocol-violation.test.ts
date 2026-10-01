@@ -31,9 +31,9 @@ describe("fin por violación de protocolo", () => {
     ["issue no declarado", (t: TurnInput) => ({ sessionId: t.sessionId, round: t.round, action: "counter", offer: { pct: 1, day: 3 }, text: "x" })],
     ["otra ronda", (t: TurnInput) => ({ sessionId: t.sessionId, round: t.round + 1, action: "counter", offer: { pct: 1 }, text: "x" })],
     ["otra sesión", (t: TurnInput) => ({ sessionId: "otra", round: t.round, action: "counter", offer: { pct: 1 }, text: "x" })],
-  ])("rival: %s → protocol_violation, valor 0 y lado registrado", async (_label, bad) => {
+  ])("rival: %s → protocol-violation, valor 0 y lado registrado", async (_label, bad) => {
     const game = await playGame({ scenario, agent, rival: broken("broken", bad, 2), seed: 1 });
-    expect(game.endReason).toBe("protocol_violation");
+    expect(game.endReason).toBe("protocol-violation");
     expect(game.protocolViolation?.by).toBe("rival");
     expect(game.rounds).toBe(2);
     const metrics = computeMetrics(scenario, game);
@@ -43,10 +43,20 @@ describe("fin por violación de protocolo", () => {
     expect(TranscriptLineSchema.parse({ schemaVersion: 3, ...rest, metrics }).protocolViolation?.by).toBe("rival");
   });
 
-  it("agente: salida inválida → protocol_violation del agente", async () => {
+  it("el lector acepta el literal antiguo protocol_violation como protocol-violation", async () => {
+    const game = await playGame({ scenario, agent, rival: broken("broken", (t) => ({ sessionId: t.sessionId, round: t.round, action: "counter", text: "x" })), seed: 1 });
+    const { records: _records, ...rest } = game;
+    const metrics = computeMetrics(scenario, game);
+    const old = { schemaVersion: 3, ...rest, endReason: "protocol_violation", metrics: { ...metrics, endReason: "protocol_violation" } };
+    const parsed = TranscriptLineSchema.parse(old);
+    expect(parsed.endReason).toBe("protocol-violation");
+    expect(parsed.metrics.endReason).toBe("protocol-violation");
+  });
+
+  it("agente: salida inválida → protocol-violation del agente", async () => {
     const bad = broken("bad-agent", (t) => ({ sessionId: t.sessionId, round: t.round, action: "accept", text: "ok" }));
     const game = await playGame({ scenario, agent: { ...bad, kind: "agent" }, rival: BOTS.boulware!(), seed: 1 });
-    expect(game).toMatchObject({ endReason: "protocol_violation", protocolViolation: { by: "agent" } });
+    expect(game).toMatchObject({ endReason: "protocol-violation", protocolViolation: { by: "agent" } });
   });
 
   it("un error de red sigue siendo error del rival, no violación", async () => {

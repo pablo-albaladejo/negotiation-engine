@@ -61,7 +61,7 @@ describe("runner de partidas en proceso", () => {
     expect(game.error).toMatch(/conexión/);
   });
 
-  it("un rival fuera de contrato rompe el protocolo (protocol_violation del rival)", async () => {
+  it("un rival fuera de contrato rompe el protocolo (protocol-violation del rival)", async () => {
     const invalid: Participant = {
       name: "invalid",
       kind: "bot",
@@ -69,7 +69,7 @@ describe("runner de partidas en proceso", () => {
       start: () => ({ respond: async (turn) => ({ sessionId: turn.sessionId, round: turn.round, action: "counter", text: "sin oferta" }) as never }),
     };
     const game = await playGame({ scenario: scenario("price-buyer-wide"), agent, rival: invalid, seed: 1 });
-    expect(game.endReason).toBe("protocol_violation");
+    expect(game.endReason).toBe("protocol-violation");
     expect(game.protocolViolation?.by).toBe("rival");
   });
 });

@@ -35,7 +35,7 @@ export interface GameMetrics {
   unextracted: number;
   /** Aceptamos valores que no eran la oferta real del rival. */
   wrongAgreement: boolean;
-  /** Lado que rompió el protocolo (`endReason: "protocol_violation"`); null si nadie. */
+  /** Lado que rompió el protocolo (`endReason: "protocol-violation"`); null si nadie. */
   protocolViolation?: "agent" | "rival" | null;
 }
 

@@ -15,7 +15,7 @@ export interface TranscriptEntry {
   text: string;
 }
 
-export type EndReason = "agreement" | "agent-walk" | "rival-walk" | "limit" | "rival-error" | "agent-error" | "protocol_violation";
+export type EndReason = "agreement" | "agent-walk" | "rival-walk" | "limit" | "rival-error" | "agent-error" | "protocol-violation";
 
 /** Quién rompió el protocolo y por qué (salida fuera del esquema canónico, de otra sesión o de otra ronda). */
 export interface ProtocolViolation {
@@ -42,7 +42,7 @@ export interface GameResult {
   agentLatencyMs: number[];
   records: readonly TraceRecord[];
   error?: string;
-  /** Solo con `endReason: "protocol_violation"`. */
+  /** Solo con `endReason: "protocol-violation"`. */
   protocolViolation?: ProtocolViolation;
 }
 
@@ -126,7 +126,7 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
   let rivalCurrent: Offer | undefined;
   // Violación de protocolo: la partida termina sin acuerdo (valor 0 para ambos) y se registra quién.
   const violated = (by: ProtocolViolation["by"], detail: string) => {
-    result.endReason = "protocol_violation";
+    result.endReason = "protocol-violation";
     result.protocolViolation = { by, detail: detail.slice(0, 300) };
     result.error = result.protocolViolation.detail;
   };

@@ -7,8 +7,11 @@ import { z } from "zod";
  */
 
 const Offer = z.record(z.string(), z.number());
-/** v3 añade `protocol_violation`. */
-const EndReasonSchema = z.enum(["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error", "protocol_violation"]);
+/** v3 añade `protocol-violation`; el literal antiguo `protocol_violation` (escrito antes de unificar) se lee como el nuevo. */
+const EndReasonSchema = z.preprocess(
+  (value) => (value === "protocol_violation" ? "protocol-violation" : value),
+  z.enum(["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error", "protocol-violation"]),
+);
 
 const TranscriptEntrySchema = z
   .object({
@@ -51,7 +54,7 @@ const GameMetricsSchema = z
  * Línea de `transcripts.jsonl`: v1 (sin `schemaVersion`) sigue siendo válida. v2 añade
  * `schemaVersion: 2`, `roundLimit` (o `null` sin límite declarado) y `reserves: { ours, rival }`
  * con las reservas por issue del escenario de arena; solo en modo arena, nunca en torneo.
- * v3 añade `schemaVersion: 3`, `endReason: "protocol_violation"`, `protocolViolation { by, detail }`
+ * v3 añade `schemaVersion: 3`, `endReason: "protocol-violation"`, `protocolViolation { by, detail }`
  * y `metrics.protocolViolation`; v1 y v2 siguen validando.
  */
 export const TranscriptLineSchema = z
@@ -74,7 +77,7 @@ export const TranscriptLineSchema = z
     metrics: GameMetricsSchema,
     schemaVersion: z.union([z.literal(2), z.literal(3)]).optional(),
     roundLimit: z.number().int().min(1).nullable().optional(),
-    /** v3: quién rompió el protocolo y por qué (solo con `endReason: "protocol_violation"`). */
+    /** v3: quién rompió el protocolo y por qué (solo con `endReason: "protocol-violation"`). */
     protocolViolation: z.object({ by: z.enum(["agent", "rival"]), detail: z.string() }).strict().optional(),
     reserves: z.object({ ours: Offer, rival: Offer }).strict().optional(),
   })

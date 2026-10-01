@@ -21,11 +21,11 @@ El bot SHALL abrir en su ancla, conceder según un calendario fijo configurable,
 - **THEN** responde `walk` con el texto `Negotiation stopped: protocol_violation`
 
 ### Requirement: Fin por violación de protocolo
-Si la salida de un participante no valida el esquema canónico o no corresponde a la sesión o ronda en curso, la partida SHALL terminar con `endReason: "protocol_violation"`, excedente 0 para ambos y el lado infractor en `protocolViolation.by`. La métrica y `transcripts.jsonl` (`schemaVersion: 3`, aditivo) SHALL registrarlo; v1 y v2 siguen validando.
+Si la salida de un participante no valida el esquema canónico o no corresponde a la sesión o ronda en curso, la partida SHALL terminar con `endReason: "protocol-violation"`, excedente 0 para ambos y el lado infractor en `protocolViolation.by`. La métrica y `transcripts.jsonl` (`schemaVersion: 3`, aditivo) SHALL registrarlo; v1 y v2 siguen validando.
 
 #### Scenario: Rival con mensaje inválido
 - **WHEN** un bot responde `counter` sin oferta
-- **THEN** la partida termina con `protocol_violation`, `by: "rival"` y `surplusShare: 0`
+- **THEN** la partida termina con `protocol-violation`, `by: "rival"` y `surplusShare: 0`
 
 ### Requirement: Transporte A2A y MCP
 `pnpm arena` SHALL aceptar `--agent-a2a <url>`, `--rival-a2a <url>`, `--agent-mcp <url>` y `--rival-mcp <url>`, como `--agent-url` y `--rival-url`.

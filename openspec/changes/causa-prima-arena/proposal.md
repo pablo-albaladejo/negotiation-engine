@@ -12,7 +12,7 @@ Del texto público de la interfaz de Causa Prima inferimos (inferencia, no hecho
 - **Guardarraíl TAE**: ninguna oferta ni aceptación nuestra sale de la banda; concesión monótona en TAE.
 - **Escenarios `apr-*`** en `config/arena/scenarios.json` (comprador y vendedor, wide y narrow), marcados `optIn`: fuera de la ejecución por defecto.
 - **Bot `causa-prima-engine`**: ancla, calendario de concesión configurable, límite de rondas, recomprobación del mandato antes de enviar, acepta dentro de su banda, para con `protocol_violation` o `no_convergence`. Opt-in (no entra en la lista por defecto). El bot `causa-prima` de texto adversarial no cambia.
-- **Fin por violación de protocolo** en la arena: resultado `protocol_violation`, valor 0 para ambos, lado infractor registrado, métrica y `transcripts.jsonl` v3 (aditivo).
+- **Fin por violación de protocolo** en la arena: resultado `protocol-violation`, valor 0 para ambos, lado infractor registrado, métrica y `transcripts.jsonl` v3 (aditivo).
 - **Transporte A2A y MCP en `pnpm arena`**: `--agent-a2a`, `--rival-a2a`, `--agent-mcp`, `--rival-mcp`.
 
 ## Impact

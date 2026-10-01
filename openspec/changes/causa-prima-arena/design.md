@@ -23,7 +23,7 @@ Con `mandate.apr`, `decide` delega en `decideApr`: construye un issue sintético
 Valor propio `v` = TAE (con `apr`) o utilidad lineal; ancla = extremo favorable de su banda (`v = 1` en lineal), reserva = el otro extremo. La k-ésima oferta está en `ancla − schedule[k]·(ancla − reserva)` (por defecto `[0, .15, .3, .45, .6, .75, .9, 1]`), recomprobada contra el mandato antes de enviar. Acepta si la oferta del rival está dentro de la banda; `no_convergence` si la distancia (en `v`) no baja en 3 rondas seguidas; `round_limit` al pasar su límite.
 
 ### D5. Violación de protocolo
-`protocol_violation` (literal pedido; el resto del enum usa guion): fallo del esquema canónico, `sessionId` distinto o `round` distinto del turno. Errores de red o de tiempo siguen siendo `*-error`. Valor 0 para ambos (sin penalización: no hay base para calibrarla). Cuenta en la tasa de acuerdo como no acuerdo.
+`protocol-violation` (con guion como el resto del enum; el lector acepta también el literal antiguo `protocol_violation`): fallo del esquema canónico, `sessionId` distinto o `round` distinto del turno. Errores de red o de tiempo siguen siendo `*-error`. Valor 0 para ambos (sin penalización: no hay base para calibrarla). Cuenta en la tasa de acuerdo como no acuerdo.
 
 ### D6. Opt-in
 `optIn: true` en escenarios y un registro `OPT_IN_BOTS` separado de `BOTS`: la ejecución por defecto, la promoción y el ajuste no los ven salvo que se pidan por nombre.

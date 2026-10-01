@@ -27,8 +27,8 @@ Self-play local:
 - **`serve-agent.ts`** — `pnpm arena:serve-agent --scenario <id> --transport a2a|mcp|http --port <n>`: nuestro agente con el mandato del escenario; semilla derivada del `gameId` (`arenaSeedFor`), así repite la partida en proceso.
 - **`scenario.ts`** — Escenarios: buyer, seller, con variaciones (wide, narrow, extreme). Opcionales: `optIn` (fuera de la ejecución por defecto; `loadCatalog` los omite salvo con la opción includeOptIn) y `mandateUnit: "apr"` + `baseDays` + banda `apr { min, max }` por parte (mandato en % TAE, `aprZopa`). Escenarios `apr-buyer-wide`, `apr-seller-wide`, `apr-buyer-narrow`, `apr-seller-narrow` (opt-in).
 - **`report.ts`** — Formato de salida: tabla, JSON.
-- **`results-schema.ts`** — Zod: esquema de resultados guardados. `transcripts.jsonl` v3 (aditivo): fin protocol_violation, `protocolViolation`, `metrics.protocolViolation`; v1 y v2 siguen validando.
-- **`runner.ts`** — Ejecutor de partidas (session state, turnos, resultado final). Una salida fuera del esquema canónico, de otra sesión o de otra ronda (`checkTurnOutput`) termina con endReason protocol_violation, excedente 0 y `protocolViolation { by, detail }`; errores de red siguen siendo `*-error`.
+- **`results-schema.ts`** — Zod: esquema de resultados guardados. `transcripts.jsonl` v3 (aditivo): fin protocol-violation, `protocolViolation`, `metrics.protocolViolation`; v1 y v2 siguen validando.
+- **`runner.ts`** — Ejecutor de partidas (session state, turnos, resultado final). Una salida fuera del esquema canónico, de otra sesión o de otra ronda (`checkTurnOutput`) termina con endReason protocol-violation, excedente 0 y `protocolViolation { by, detail }`; errores de red siguen siendo `*-error`.
 - **`stats.ts`** — Agregación de métricas.
 
 ## Invariantes
