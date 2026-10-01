@@ -53,7 +53,7 @@ pnpm --dir viewer test
 pnpm --dir viewer typecheck
 ```
 
-Accede a http://127.0.0.1:3000.
+Accede a http://127.0.0.1:5199 (puerto con `VIEWER_PORT`; la dirección es fija).
 
 ## Links
 
