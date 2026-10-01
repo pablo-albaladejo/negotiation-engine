@@ -28,7 +28,8 @@
     "dummy:serve": "tsx src/bots/dummy-agent.ts",
     "sparring": "bash scripts/sparring.sh",
     "eval:dummy": "bash scripts/eval-dummy.sh",
-    "ds:test": "pnpm --dir design-system test"
+    "ds:test": "pnpm --dir design-system test",
+    "docs:check": "node scripts/check-agents-links.mjs"
   },
   "dependencies": {
     "@a2a-js/sdk": "1.3.0",
