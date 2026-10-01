@@ -147,12 +147,34 @@ Si el rival se retira, el motor SHALL devolver `walk` sin evaluar ninguna oferta
 - **THEN** la decisión es `walk`
 
 ### Requirement: Aceptación nunca por debajo de la reserva
-Toda decisión `accept`, con cualquier regla (AC_next, AC_time, último movimiento u horizonte por defecto), MUST cumplir `u(oferta) ≥ u(reserva)` además de estar dentro de los límites por issue. Hoy solo la regla de último movimiento y horizonte por defecto lo comprueba; AC_next puede aceptar con 2 o más issues una oferta hasta `acceptMargin` por debajo de `u(reserva)` (brecha conocida, tarea 3.8).
-
-#### Scenario: AC_next con dos issues
-- **WHEN** con dos issues la oferta actual del rival está dentro de los límites por issue, cumple `u ≥ u(próxima oferta) − acceptMargin` y tiene `u < u(reserva)`
-- **THEN** la decisión no es `accept`
+Toda decisión `accept`, con cualquier regla (AC_next, AC_time, AC_combi, último movimiento u horizonte por defecto), MUST cumplir `u(oferta) ≥ u(reserva)` además de estar dentro de los límites por issue; esta comprobación se exige en la caja de aceptación, en `checkDecision` y en `fallbackOutput`.
 
 #### Scenario: Propiedad de aceptación
 - **WHEN** se generan con pruebas de propiedades estados, mandatos y ofertas arbitrarios con uno o varios issues
 - **THEN** toda decisión `accept` tiene utilidad mayor o igual que la de la reserva
+
+#### Scenario: AC_combi con dos issues
+- **WHEN** con dos issues es el caso AC_combi, la oferta cumple límites por issue y es la máxima de una ventana, pero tiene `u < u(reserva)`
+- **THEN** la decisión no es `accept`
+
+### Requirement: AC_combi: aceptación por ventana reciente
+El motor MAY evaluar AC_combi (Baarslag et al.) como regla de aceptación mediante el parámetro opcional `acCombiThreshold`: si `t ≥ acCombiThreshold` y la utilidad es al menos la máxima del rival en una ventana reciente de ofertas anteriores, y la oferta cumple los límites por issue y la reserva, SHALL aceptarla. La ventana es estimada por ritmo constante como las ofertas del rival en el último segmento de tiempo (1 − t) dados (t) anteriores. Si `acCombiThreshold` no existe, AC_combi está desactivada.
+
+#### Scenario: AC_combi activado
+- **WHEN** `acCombiThreshold = 0.8`, `t = 0.85`, la oferta actual es la máxima de la ventana reciente y cumple mandato y reserva
+- **THEN** la decisión es `accept`
+
+#### Scenario: AC_combi desactivado
+- **WHEN** `acCombiThreshold` no está en la configuración y la oferta sería aceptable solo por AC_combi
+- **THEN** la decisión no es `accept`
+
+### Requirement: Reciprocidad Tit-for-Tat opcional
+El motor MAY aplicar reciprocidad Tit-for-Tat mediante el parámetro opcional `reciprocity` en [0, 1]: SHALL multiplicar el paso de concesión de la curva Boulware por este factor si el rival concedió poco o nada en el turno anterior, de modo que la concesión nunca supera la curva Boulware con el mismo `ε` (nunca concede más que la curva pura). Si `reciprocity` no existe, el motor SHALL seguir la curva Boulware sin ajuste.
+
+#### Scenario: Reciprocidad con factor 0.5
+- **WHEN** Boulware puro daría un paso de 10 pp, el rival no concedió en el turno anterior y `reciprocity = 0.5`
+- **THEN** el paso es 5 pp
+
+#### Scenario: Reciprocidad desactivada
+- **WHEN** `reciprocity` no está en la configuración
+- **THEN** cada turno sigue la curva Boulware sin ajuste, aunque el rival no conceda

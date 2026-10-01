@@ -158,7 +158,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 18. Domingo hasta las 15:30: congelación [todos]
 
-- [ ] 18.1 [Pablo] Última comparación pareada y promoción de la campeona final; activar el flag de congelación; verificar que `pnpm promote` se niega a sobrescribir
+- [ ] 18.1 [Pablo] Última comparación pareada y promoción de la campeona final; activar el flag de congelación con `CHAMPION_FROZEN=1` o `"frozen": true` en la configuración; verificar que `pnpm promote` se niega a sobrescribir
 - [ ] 18.2 [Gerard] Smoke test contra el ring con la campeona congelada y ensayo de rollback a la campeona anterior vía git
 - [x] 18.3 [Gerard] Guion de demo con una partida dorada, la tabla de la arena y el informe del red team de `results/`
   - Nota: `docs/demo.md` con los comandos exactos: partida dorada `price-buyer-wide__boulware__1` (acuerdo en 4,43 %, replay del motor sin diferencias), tabla de `pnpm arena` y `pnpm redteam` (limpio y `--broken`).
+- [ ] 18.4 [Gerard] Re-ejecutar `pnpm redteam` (suite base) con el proveedor LLM real del torneo antes de congelar y verificar 0 fallos reales; nota abierta: los plugins extendidos (`excessive-agency`, `hijacking`, `ascii-smuggling`, `jailbreak:meta`) requieren credenciales de promptfoo y no son ejecutables de forma determinista.

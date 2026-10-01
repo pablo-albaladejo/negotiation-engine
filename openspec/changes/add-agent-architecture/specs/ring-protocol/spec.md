@@ -124,12 +124,23 @@ Una petición que no cumple el esquema del protocolo SHALL recibir un error de p
 - **THEN** el adaptador responde con un error de protocolo, registra el incidente y el siguiente turno válido se procesa con normalidad
 
 ### Requirement: Respuesta posible tras nuestro último movimiento
-El contrato canónico de entrada SHALL poder indicar, cuando el ring lo sepa, si el ring aún admite una respuesta del rival tras nuestro movimiento de este turno, y el adaptador SHALL mapearlo desde el protocolo real. Mientras el campo no exista o no venga, el pipeline SHALL suponer que no se admite respuesta, y el motor, en el último movimiento sin oferta aceptable, SHALL devolver `walk` en vez de una contraoferta final. Esta suposición cuesta acuerdos: en la arena, 0 % de acuerdo contra Boulware y Tit-for-Tat con ZOPA estrecha (tarea 10.10).
+El contrato canónico de entrada SHALL poder indicar, cuando el ring lo sepa, si el ring aún admite una respuesta del rival tras nuestro movimiento de este turno, mediante el campo opcional `rivalCanRespond` (default `false`), y el adaptador SHALL mapearlo desde el protocolo real. El motor, en el último movimiento sin oferta aceptable, devuelve `walk` si `rivalCanRespond` es falso, y una contraoferta final si es verdadero. Con el flag omitido o falso se pierden acuerdos: en la arena, 0 % de acuerdo contra Boulware y Tit-for-Tat con ZOPA estrecha; con `rivalCanRespond: true`, 100 %.
 
 #### Scenario: El ring admite respuesta
-- **WHEN** el turno indica que el rival aún puede responder y es nuestro último movimiento con la oferta actual del rival por debajo de la reserva
+- **WHEN** es nuestro último movimiento, la oferta actual del rival está por debajo de la reserva y `rivalCanRespond = true`
 - **THEN** la decisión es una contraoferta final dentro del mandato, no `walk`
 
-#### Scenario: Sin información
-- **WHEN** el turno no dice si el rival puede responder y es nuestro último movimiento sin oferta aceptable
+#### Scenario: Sin información o rival no puede responder
+- **WHEN** es nuestro último movimiento sin oferta aceptable y `rivalCanRespond` es falso o ausente
 - **THEN** la decisión es `walk`
+
+### Requirement: Adaptadores A2A y MCP solo para tests
+Los adaptadores A2A y MCP (tarjeta de agente con herramienta `negotiate_turn`) SHALL existir para pruebas de contrato y sparring externo (`pnpm arena --rival-url`) pero MUST NO montarse en `pnpm agent`. No tienen autenticación y requieren un spike para verificar su encaje con las SDK respectivas. El adaptador HTTP JSON SHALL ser el único expuesto por `pnpm agent` en modo servidor.
+
+#### Scenario: Adaptadores en tests
+- **WHEN** se ejecuta la batería común de contrato
+- **THEN** todos los adaptadores (HTTP JSON, A2A, MCP) pasan en modo servidor y modo cliente
+
+#### Scenario: Adaptadores no montados en agent
+- **WHEN** se arranca `pnpm agent`
+- **THEN** solo el adaptador HTTP JSON responde en `POST /turn` y `GET /health`; las rutas A2A y MCP no existen

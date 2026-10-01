@@ -14,11 +14,15 @@ La arena SHALL cargar escenarios declarados como datos validados por esquema, ca
 - **THEN** hay al menos un escenario por combinación de rol (comprador, vendedor) y tipo de ZOPA (amplia, estrecha, vacía)
 
 ### Requirement: Bots en código
-La arena SHALL incluir bots deterministas Boulware y Conceder desde el minuto 0 y Tit-for-Tat antes del viernes 18:45. Los bots adversariales con texto (Inject+Voss, mentiroso con falso BATNA, extracción por marco hipotético, ancla extrema y "estilo Causa Prima") son entregables del sábado y SHALL generar sus mensajes sin usar un LLM.
+La arena SHALL incluir bots deterministas Boulware y Conceder desde el minuto 0 y Tit-for-Tat antes del viernes 18:45. Los bots adversariales con texto (Inject+Voss, mentiroso con falso BATNA, extracción por marco hipotético, ancla extrema y "estilo Causa Prima") son entregables del sábado y SHALL generar sus mensajes sin usar un LLM. El pool `tuning` incluye por defecto los bots en código (Boulware, Conceder, Tit-for-Tat, Inject+Voss y los demás adversariales), y la arena por defecto ejecuta ~2600 partidas (6 escenarios × 5 bots × 21 semillas de ajuste, más roles ponderados) en aproximadamente 11 s en un portátil.
 
 #### Scenario: Bots disponibles
-- **WHEN** se ejecuta la arena sin filtro de rivales
-- **THEN** se juegan partidas contra cada bot registrado en el catálogo en ese momento
+- **WHEN** se ejecuta `pnpm arena` sin filtro de rivales ni configuración de bots externos
+- **THEN** se juegan partidas contra los 5 bots del pool `tuning` (Boulware, Conceder, Tit-for-Tat y 2 adversariales) en los escenarios del catálogo
+
+#### Scenario: Arena rápida por defecto
+- **WHEN** se ejecuta `pnpm arena` en un portátil sin LLM
+- **THEN** la ejecución termina en aproximadamente 11 s
 
 ### Requirement: Sparring en modo solo texto
 Antes del viernes 18:45 la arena SHALL incluir un bot de solo texto que comunica sus ofertas únicamente en el texto, usando todas las formas del normalizador numérico (cifras, palabras, coma decimal, puntos básicos, rangos) y aceptaciones sin cifras, y que expone a la arena sus valores reales para medir errores de extracción.
@@ -59,27 +63,35 @@ La arena SHALL calcular por partida: acuerdo sí/no, fracción capturada del exc
 - **WHEN** se juega un escenario con ZOPA vacía
 - **THEN** la partida cuenta como correcta si no hay acuerdo y no hay violaciones, y se excluye de la media de excedente
 
-### Requirement: Comparación pareada por clústeres
-La comparación campeón vs candidato SHALL jugar ambas configuraciones sobre los mismos escenarios, rivales, roles y semillas, y SHALL agregar la diferencia de fracción de excedente por clúster (escenario × rival), ponderando los roles con `roleWeights` (por defecto 1:1, configurable). La primera versión SHALL informar la diferencia media pareada y un test de signos sobre los clústeres; la versión del sábado SHALL añadir un intervalo de confianza por bootstrap sembrado que remuestrea clústeres, no partidas.
+### Requirement: Comparación pareada por clústeres y ponderación de roles
+La comparación campeón vs candidato SHALL jugar ambas configuraciones sobre los mismos escenarios, rivales, roles y semillas, y SHALL agregar la diferencia de fracción de excedente por clúster (escenario × rival), ponderando los roles con `roleWeights` de la configuración vigente (por defecto 1:1, configurable): primero calcula la media de excedente por rol dentro de cada clúster, después pondera los dos roles con `roleWeights` para obtener el excedente ponderado del clúster. La primera versión SHALL informar la diferencia media pareada y un test de signos sobre los clústeres; la versión del sábado SHALL añadir un intervalo de confianza por bootstrap sembrado que remuestrea clústeres, no partidas.
+
+#### Scenario: Ponderación de roles
+- **WHEN** un escenario tiene 3 clústeres de comprador y 2 de vendedor, y `roleWeights = {buyer: 2, seller: 1}`
+- **THEN** se calcula el excedente medio por rol en cada clúster y se pondera cada clúster comprador con 2 y cada vendedor con 1 antes de hacer la media pareada
 
 #### Scenario: Informe pareado
 - **WHEN** se ejecuta la comparación con N semillas
-- **THEN** el informe muestra por rival y en total la diferencia media en puntos porcentuales de excedente, el resultado del test de signos (o el intervalo por bootstrap de clústeres), la tasa de acuerdo de cada configuración y las violaciones y fugas
+- **THEN** el informe muestra por rival y en total la diferencia media ponderada en puntos porcentuales de excedente, el resultado del test de signos (o el intervalo por bootstrap de clústeres), la tasa de acuerdo de cada configuración y las violaciones y fugas
 
 ### Requirement: Puerta de promoción
-Una configuración candidata SHALL considerarse promocionable solo si: (a) la diferencia media ponderada es al menos el efecto mínimo `minEffectPp` (por defecto +1 punto porcentual de fracción de excedente de la ZOPA, configurable) y es significativa (test de signos con p < 0,05 o, con bootstrap, límite inferior del intervalo > 0); (b) tiene cero violaciones del mandato y cero fugas; (c) repite (a) y (b) en una nueva comparación con semillas del rango de revalidación; y (d) en el conjunto reservado su diferencia media es ≥ 0 sin violaciones ni fugas.
+Una configuración candidata SHALL considerarse promocionable solo si: (a) la diferencia media ponderada es al menos el efecto mínimo `minEffectPp` (leído de la campeona vigente; por defecto +1 punto porcentual de fracción de excedente de la ZOPA) y es significativa (test de signos con p < 0,05 o, con bootstrap, límite inferior del intervalo > 0); (b) tiene cero violaciones del mandato y cero fugas; (c) repite (a) y (b) en una nueva comparación con semillas del rango de revalidación contra la campeona vigente; y (d) en el conjunto reservado su diferencia media es ≥ 0 sin violaciones ni fugas. Los pesos `roleWeights` y el efecto mínimo `minEffectPp` se leen de la campeona vigente, no del candidato.
 
 #### Scenario: Mejora con una violación
 - **WHEN** la candidata cumple el efecto mínimo con significación pero tiene una violación
 - **THEN** la puerta la rechaza e indica la partida con la violación
 
 #### Scenario: Efecto por debajo del mínimo
-- **WHEN** la candidata mejora de forma significativa pero en 0,4 puntos porcentuales con `minEffectPp` = 1
+- **WHEN** la candidata mejora de forma significativa pero en 0,4 puntos porcentuales y la campeona tiene `minEffectPp = 1`
 - **THEN** la puerta la rechaza por efecto insuficiente
 
 #### Scenario: No se sostiene con semillas nuevas
 - **WHEN** la candidata pasa con las semillas de ajuste pero no con las de revalidación
 - **THEN** la puerta la rechaza e indica la fase fallida
+
+#### Scenario: Pesos de la campeona
+- **WHEN** la campeona tiene `roleWeights = {buyer: 2, seller: 1}`
+- **THEN** la puerta del candidato usa los mismos pesos para la comparación pareada
 
 ### Requirement: Resultados guardados
 Cada ejecución de la arena SHALL imprimir una tabla resumen y guardar en `results/` las transcripciones, las trazas y un resumen JSON con configuración, semillas y métricas.
