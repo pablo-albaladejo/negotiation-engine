@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { offerChartXScale, offerChartYScale } from "../src/components/OfferChart";
+import { offerChartXScale, offerChartYScale, endLabelPlacement } from "../src/components/OfferChart";
 
 describe("OfferChart scales", () => {
   it("maps a known value to the expected y coordinate", () => {
@@ -18,5 +18,19 @@ describe("OfferChart scales", () => {
     expect(offerChartXScale(0, 10)).toBeCloseTo(48);
     expect(offerChartXScale(10, 10)).toBeCloseTo(624);
     expect(offerChartXScale(5, 10)).toBeCloseTo(336);
+  });
+});
+
+describe("endLabelPlacement", () => {
+  it("places the label above-left when the line rises into the end point", () => {
+    expect(endLabelPlacement(100, 112)).toEqual({ dx: -13, dy: -13, anchor: "end" });
+  });
+
+  it("places the label below-right when the line descends into the end point", () => {
+    expect(endLabelPlacement(112, 100)).toEqual({ dx: 13, dy: 18, anchor: "start" });
+  });
+
+  it("defaults to above-left with no previous point", () => {
+    expect(endLabelPlacement(undefined, 100)).toEqual({ dx: -13, dy: -13, anchor: "end" });
   });
 });
