@@ -74,7 +74,17 @@ export const TranscriptLineSchema = z
 export type TranscriptLine = z.infer<typeof TranscriptLineSchema>;
 
 const ClusterSummarySchema = z.looseObject({ scenarioId: z.string(), rival: z.string() });
-const RoleSummarySchema = z.looseObject({});
+/** Resumen de `summarize` (`src/arena/metrics.ts`): los campos que lee el visor, el resto se conserva. */
+const RoleSummarySchema = z.looseObject({
+  games: z.number().int().nonnegative(),
+  agreementRate: z.number(),
+  meanSurplus: z.number().nullable(),
+  violations: z.number().int().nonnegative(),
+  leaks: z.number().int().nonnegative(),
+  templateFallbacks: z.number().int().nonnegative(),
+  rivalErrors: z.number().int().nonnegative(),
+});
+export type RoleSummary = z.infer<typeof RoleSummarySchema>;
 
 /**
  * `summary.json`: v1 sigue siendo válido. v2 añade `schemaVersion: 2` y `config.params` (los

@@ -20,7 +20,8 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 ## 4. Adaptadores (fichero → modelo de pantalla)
 
-- [ ] 4.1 Fixtures generados con los escritores reales (arena, traza de arena, traza de torneo) y tests de `runsModel`, `matchesModel` (filtros), `arenaReplayModel` (con y sin `explain`, sin traza) y `tournamentReplayModel` (sin reserva del rival ni ZOPA; reserva propia solo con hash coincidente); luego los adaptadores en `viewer/src/model/`; verificar con `pnpm viewer:test` y un test que comprueba que los modelos no contienen campos calculados (solo valores de fuente o conteos)
+- [x] 4.1 Fixtures generados con los escritores reales (arena, traza de arena, traza de torneo) y tests de `runsModel`, `matchesModel` (filtros), `arenaReplayModel` (con y sin `explain`, sin traza) y `tournamentReplayModel` (sin reserva del rival ni ZOPA; reserva propia solo con hash coincidente); luego los adaptadores en `viewer/src/model/`; verificar con `pnpm viewer:test` y un test que comprueba que los modelos no contienen campos calculados (solo valores de fuente o conteos)
+  - Nota: adaptadores en `viewer/src/model/` y tests en `viewer/test/` (fixtures generados en un directorio temporal por `viewer/test/fixtures.ts`); hasta 1.1 corren con `pnpm test` raíz y se tipan con un tsconfig ad hoc. 1.1 debe moverlos a `pnpm viewer:test` y al `tsconfig.json` de `viewer/` al excluir `viewer/**` del vitest raíz.
 
 ## 5. Pantallas del minuto 0
 
