@@ -39,7 +39,7 @@ describe("trazas JSONL", () => {
     const file = trace.fileFor("ring/s:1");
     expect(file.endsWith(sessionFileName("ring/s:1"))).toBe(true);
     const [header, ...records] = readLines(file);
-    expect(TraceHeaderSchema.parse(header)).toMatchObject({ mode: "tournament", scenario: { id: "scenario.json" } });
+    expect(TraceHeaderSchema.parse(header)).toMatchObject({ mode: "tournament", traceVersion: 2, role: "buyer", scenario: { id: "scenario.json" } });
     expect(header).not.toHaveProperty("mandate");
     for (const record of records) expect(TraceLineSchema.safeParse(record).success).toBe(true);
     expect(readFileSync(file, "utf8")).not.toMatch(/3\.37|337/);
@@ -50,6 +50,18 @@ describe("trazas JSONL", () => {
     const header = { kind: "header", mode: "tournament", sessionId: "s", configVersion: 1, createdAt: new Date().toISOString(), scenario: { id: "x", hash: "0123456789abcdef" } };
     expect(TraceHeaderSchema.safeParse(header).success).toBe(true);
     expect(TraceHeaderSchema.safeParse({ ...header, mandate: { role: "buyer", reservation: { pct: 3 } } }).success).toBe(false);
+  });
+
+  it("una cabecera v1 (sin traceVersion ni role) sigue siendo válida", () => {
+    const header = { kind: "header", mode: "tournament", sessionId: "s", configVersion: 1, createdAt: new Date().toISOString(), scenario: { id: "x", hash: "0123456789abcdef" } };
+    expect("traceVersion" in header).toBe(false);
+    expect(TraceLineSchema.safeParse(header).success).toBe(true);
+  });
+
+  it("v2 añade traceVersion y role en la cabecera de torneo; sigue sin mandato", () => {
+    const header = { kind: "header", mode: "tournament", sessionId: "s", configVersion: 1, createdAt: new Date().toISOString(), traceVersion: 2, role: "seller", scenario: { id: "x", hash: "0123456789abcdef" } };
+    expect(TraceHeaderSchema.safeParse(header).success).toBe(true);
+    expect(TraceHeaderSchema.safeParse({ ...header, mandate: { role: "seller", reservation: { pct: 3 } } }).success).toBe(false);
   });
 
   it("narrator que filtra texto sensible: las trazas JSONL no contienen el texto completo, solo metadatos", async () => {

@@ -75,14 +75,27 @@ export function loadScenario(path: string, config: AgentConfig): OfferMandate {
  */
 export function createTournamentTrace(dir: string, scenarioPath: string): JsonlSessionTrace {
   const scenario = { id: basename(scenarioPath), hash: scenarioHash(readFileSync(scenarioPath, "utf8")) };
+  const role = loadScenarioRole(scenarioPath);
   return new JsonlSessionTrace(dir, (record) => ({
     kind: "header",
     mode: "tournament",
     sessionId: record.sessionId,
     configVersion: record.configVersion ?? 0,
     createdAt: new Date().toISOString(),
+    traceVersion: 2,
     scenario,
+    ...(role ? { role } : {}),
   }));
+}
+
+/** Rol declarado en el escenario local, solo para la cabecera v2 (nunca mandato ni reserva). */
+function loadScenarioRole(scenarioPath: string): "buyer" | "seller" | undefined {
+  try {
+    const parsed = ScenarioSchema.safeParse(JSON.parse(readFileSync(scenarioPath, "utf8")));
+    return parsed.success ? parsed.data.role : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface AgentOptions {

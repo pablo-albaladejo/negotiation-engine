@@ -10,7 +10,7 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 - [ ] 2.1 Esquemas Zod `TranscriptLineSchema`, `SummarySchema`, `GateFileSchema` en `src/arena/results-schema.ts` que aceptan v1; luego `schemaVersion: 2`, `roundLimit`, `reserves` y `config.params` en `src/arena/cli.ts`; verificar con un test que ejecuta la arena con 1 semilla en un directorio temporal y valida cada línea y el resumen
 - [ ] 2.2 Propiedad "misma acción, oferta y regla con y sin `explain`" sobre `test/fixtures/engine/` y las doradas; luego `explain` opcional en `DecisionSchema` y en el motor (`src/engine/engine.ts`), `explain` redactado en `src/pipeline/otel.ts`; verificar con `pnpm test` (incluidos `test/golden.test.ts` y `test/dev/replay.test.ts`) y `pnpm arena` con 0 violaciones
-- [ ] 2.3 `traceVersion: 2` opcional en las cabeceras y `role` en la de torneo (`src/pipeline/trace.ts`, `src/agent/agent.ts`); verificar con tests de que una traza v1 sigue validando y que la cabecera de torneo con `mandate` se rechaza
+- [x] 2.3 `traceVersion: 2` opcional en las cabeceras y `role` en la de torneo (`src/pipeline/trace.ts`, `src/agent/agent.ts`); verificar con tests de que una traza v1 sigue validando y que la cabecera de torneo con `mandate` se rechaza
 
 ## 3. Servidor local
 
