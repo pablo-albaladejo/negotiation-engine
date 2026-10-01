@@ -5,7 +5,7 @@ import type { HeldOutOptions } from "./paired.js";
 import { promote } from "./promote.js";
 import { DEFAULT_CATALOG, loadCatalog } from "./scenario.js";
 
-// `pnpm promote <candidata.json>`: puerta de promoción y, si pasa, config/champion.json con versión N+1.
+// `pnpm promote <candidata.json> [--dry-run]`: puerta de promoción y, si pasa (y no es en seco), config/champion.json con versión N+1.
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
@@ -22,10 +22,11 @@ async function main(): Promise<number> {
       "rival-url": { type: "string" },
       "rival-name": { type: "string", default: "external" },
       out: { type: "string", default: "results" },
+      "dry-run": { type: "boolean", default: false },
     },
   });
   const candidatePath = positionals[0];
-  if (!candidatePath) throw new Error("uso: pnpm promote <candidata.json> [--seeds N] [--reval-seeds N] [--criterion sign|bootstrap]");
+  if (!candidatePath) throw new Error("uso: pnpm promote <candidata.json> [--dry-run] [--seeds N] [--reval-seeds N] [--criterion sign|bootstrap]");
   if (values.criterion !== "sign" && values.criterion !== "bootstrap") throw new Error("--criterion debe ser sign o bootstrap");
   const list = (v: string | undefined) => v?.split(",").map((s) => s.trim()).filter(Boolean);
   const wanted = list(values.scenarios);
@@ -48,7 +49,10 @@ async function main(): Promise<number> {
     heldOut,
     criterion: values.criterion as Criterion,
     resultsDir: values.out,
+    dryRun: values["dry-run"],
   });
+  if (result.gatePath) console.log(`gate.json: ${result.gatePath}`);
+  if (result.dryRun) return result.gate?.pass ? 0 : 1;
   if (!result.promoted) console.error(`no se promueve: ${result.reason}`);
   return result.promoted ? 0 : 1;
 }

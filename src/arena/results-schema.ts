@@ -142,11 +142,39 @@ const GateCheckSchema = z
   })
   .strict();
 
-const PairedReportSchema = z.looseObject({});
+const Phase = z.enum(["tuning", "revalidation", "heldOut"]);
+const GameRefSchema = z.looseObject({ gameId: z.string(), count: z.number().int().nonnegative() });
+const OverviewSchema = z.looseObject({ agreementRate: z.number(), meanSurplus: z.number().nullable() });
+
+/** `PairedReport` (`src/arena/paired.ts`): los campos que lee el visor, el resto se conserva. Igual en v1 y v2. */
+const PairedReportSchema = z.looseObject({
+  meanDiffPp: z.number().nullable(),
+  sign: z.looseObject({ positive: z.number().int(), negative: z.number().int(), ties: z.number().int(), pValue: z.number() }),
+  bootstrap: z.looseObject({ lowPp: z.number(), highPp: z.number(), resamples: z.number().int() }).optional(),
+  champion: OverviewSchema,
+  candidate: OverviewSchema,
+  violations: z.array(GameRefSchema),
+  leaks: z.array(GameRefSchema),
+  games: z.number().int().nonnegative(),
+  seeds: z.array(z.number().int()),
+  rivals: z.array(z.string()),
+});
+export type PairedReportFile = z.infer<typeof PairedReportSchema>;
+
+/** `summarize` de un grupo de partidas (`src/arena/metrics.ts`), con los campos que muestra P6. */
+const PhaseSummarySchema = RoleSummarySchema.extend({
+  meanRoundsToAgreement: z.number().nullable(),
+  emptyZopaCorrect: z.number().nullable(),
+});
+const RivalRoleSummarySchema = PhaseSummarySchema.extend({ rival: z.string(), role: z.enum(["buyer", "seller"]) });
+export type PhaseSummary = z.infer<typeof PhaseSummarySchema>;
+export type RivalRoleSummary = z.infer<typeof RivalRoleSummarySchema>;
 
 /**
- * `gate.json`: v1 sigue siendo válido. v2 añade `configs` (campeona y candidata completas),
- * `summaries` por fase (con `candidateByRivalRole`), `dryRun` y `promoted`.
+ * `gate.json`: v1 (sin `schemaVersion`) sigue siendo válido. v2 añade `schemaVersion: 2`, `configs`
+ * (campeona y candidata completas tal como se compararon), `summaries` por fase (`summarize` de cada
+ * configuración y de la candidata por rival × rol), `dryRun`, `promoted` y, si se promovió,
+ * `promotedVersion` (la versión escrita en `config/champion.json`).
  */
 export const GateFileSchema = z
   .object({
@@ -154,16 +182,15 @@ export const GateFileSchema = z
     champion: z.number().int().nonnegative(),
     criterion: z.enum(["sign", "bootstrap"]),
     gate: z.object({ pass: z.boolean(), checks: z.array(GateCheckSchema), failed: z.array(GateCheckSchema) }).strict(),
-    reports: z.record(z.enum(["tuning", "revalidation", "heldOut"]), PairedReportSchema),
-    configs: z.object({ champion: z.looseObject({}), candidate: z.looseObject({}) }).strict().optional(),
+    reports: z.partialRecord(Phase, PairedReportSchema),
+    schemaVersion: z.literal(2).optional(),
+    configs: z.object({ champion: z.looseObject({ version: z.number().int() }), candidate: z.looseObject({ version: z.number().int() }) }).strict().optional(),
     summaries: z
-      .record(
-        z.enum(["tuning", "revalidation", "heldOut"]),
-        z.object({ champion: z.looseObject({}), candidate: z.looseObject({}), candidateByRivalRole: z.array(z.looseObject({})) }).strict(),
-      )
+      .partialRecord(Phase, z.object({ champion: PhaseSummarySchema, candidate: PhaseSummarySchema, candidateByRivalRole: z.array(RivalRoleSummarySchema) }).strict())
       .optional(),
     dryRun: z.boolean().optional(),
     promoted: z.boolean().optional(),
+    promotedVersion: z.number().int().optional(),
   })
   .strict();
 export type GateFile = z.infer<typeof GateFileSchema>;
