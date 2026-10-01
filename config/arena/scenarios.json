@@ -458,7 +458,7 @@
         "weight": 0.5
       }
     ],
-    "rounds": 8,
+    "rounds": 10,
     "limitVisible": true,
     "mode": "structured",
     "role": "buyer",
@@ -508,7 +508,7 @@
         "weight": 0.5
       }
     ],
-    "rounds": 8,
+    "rounds": 10,
     "limitVisible": true,
     "mode": "structured",
     "role": "seller",
@@ -558,7 +558,7 @@
         "weight": 0.5
       }
     ],
-    "rounds": 8,
+    "rounds": 10,
     "limitVisible": true,
     "mode": "structured",
     "role": "buyer",
@@ -608,7 +608,7 @@
         "weight": 0.5
       }
     ],
-    "rounds": 8,
+    "rounds": 10,
     "limitVisible": true,
     "mode": "structured",
     "role": "seller",
