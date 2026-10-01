@@ -23,6 +23,8 @@ export interface AgentParticipantOptions {
   /** Parser y narrador LLM opcionales; por defecto ninguno (proveedor `none`, sin red). */
   parser?: TextParser;
   narrator?: Narrator;
+  /** Proveedor para las trazas (solo informativo); por defecto `none`. */
+  provider?: string;
 }
 
 /**
@@ -53,7 +55,7 @@ export function createAgentParticipant(options: AgentParticipantOptions): Partic
         configFor: () => config,
         seedFor: () => setup.seed,
       });
-      const deps: Parameters<typeof createPipeline>[0] = { store, trace, provider: "none" };
+      const deps: Parameters<typeof createPipeline>[0] = { store, trace, provider: options.provider ?? "none" };
       if (options.logger) deps.logger = options.logger;
       if (options.parser) deps.parser = options.parser;
       if (options.narrator) deps.narrator = options.narrator;

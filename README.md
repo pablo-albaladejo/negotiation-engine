@@ -96,6 +96,29 @@ o `scripts/eval-dummy.sh`.
 `pnpm eval:dummy [seeds]` (por defecto 5 semillas, ~20 s) corre de punta a punta los dos escenarios
 contra `config/baselines/dummy.json` y `src/bots/dummy-agent.ts`, y deja todo en `results/eval-dummy/`.
 
+## Medir el valor del LLM (parser y narrador)
+
+`pnpm eval:llm` (`scripts/eval-llm.sh`) compara, con llamadas reales a Claude, el parser y el
+narrador LLM contra la vía determinista: mismos rivales/escenario/semillas con `LLM_PROVIDER=none`
+y con `claude-cli`, más unas partidas reales contra el bot guiado por LLM (`src/bots/llm-bot.ts`).
+Deja los resultados en `results/eval-llm/` (fuera de git).
+
+Necesita el **perfil personal** de Anthropic, no la pasarela de Aircall: como `claude-anthropic` es
+una función de zsh (no se puede invocar desde un `spawn`), el script reproduce su entorno a mano en
+cada llamada (`KAI_PROFILE=anthropic`, `CLAUDE_CONFIG_DIR=$HOME/.claude-anthropic`, sin las
+variables `ANTHROPIC_*` de la pasarela). Si se ejecuta el eval a mano hay que anteponer ese mismo
+entorno a cualquier comando que llame al LLM:
+
+```bash
+env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_MODEL \
+    KAI_PROFILE=anthropic CLAUDE_CONFIG_DIR="$HOME/.claude-anthropic" LLM_PROVIDER=claude-cli <comando>
+```
+
+Coste: con el presupuesto por defecto (1 escenario, 1 semilla, 6 rivales de texto + 3 partidas
+contra el bot LLM) son del orden de 100-150 llamadas reales al modelo por defecto del CLI
+(unos minutos y céntimos de dólar); ajustable con las variables `EVAL_LLM_*` (ver
+`src/arena/eval-llm-main.ts`). `pnpm arena` sin argumentos sigue sin hacer ninguna llamada al LLM.
+
 ## Flujo de trabajo
 
 1. **Programar**: motor, bots y adaptadores. `pnpm test` tiene que pasar.

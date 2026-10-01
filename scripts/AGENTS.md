@@ -11,6 +11,7 @@ Utilidades shell que coordinan flujos complejos: smoke tests, sparring, evaluaci
 - **`smoke.sh`** — Smoke test: arranca agente, envía 1 turno HTTP, valida respuesta (sin LLM, sin herramientas).
 - **`sparring.sh`** — Sparring: agente local vs bot HTTP, usa arena.
 - **`eval-dummy.sh`** — Evaluación end-to-end vs dummy (5 semillas, ~20 s), resultados en `results/eval-dummy/`.
+- **`eval-llm.sh`** — Medición del valor del LLM con llamadas reales (`pnpm eval:llm`); variables `EVAL_LLM_*`, resultados en `results/eval-llm/`.
 - **`tunnel-smoke.sh`** — Smoke test a través de túnel HTTP (ej. Cloudflare, ngrok).
 - **`check-turn.ts`** — Validador de turno (TypeScript).
 - **`sim-ring.ts`** — Simulador de ring.
