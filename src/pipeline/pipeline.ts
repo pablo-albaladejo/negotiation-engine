@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AgentConfig } from "../engine/config.js";
 import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInput } from "../engine/engine.js";
 import { acceptable, offerGuardrails } from "../engine/apr.js";
-import { orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
+import { orientIssues, pickIssues, sameOffer, withinIssueRanges, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
 import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
@@ -324,10 +324,19 @@ export function createPipeline(deps: PipelineDeps): Brain {
         unconfirmed = true;
       }
     }
+    // Oferta fuera del rango declarado de algún issue (estructurada o del texto): no es una oferta
+    // válida. Se registra como inválida y el turno va sin oferta aceptable (ni aceptación, ni modelo
+    // del rival, ni AC_next/AC_time); la contraoferta pide confirmar las cifras.
+    let invalidOffer: Offer | undefined;
+    if (reconciled && !withinIssueRanges(issues, reconciled)) {
+      invalidOffer = reconciled;
+      reconciled = undefined;
+      unconfirmed = true;
+    }
     record(
       "reconcile",
       { structured: input.rivalOffer !== undefined, parserOffer: parse.offer ?? null, deterministicOffer: deterministicOffer ?? null, dual },
-      { offer: reconciled ?? null, unconfirmed },
+      { offer: reconciled ?? null, unconfirmed, ...(invalidOffer ? { invalidOffer, reason: "out-of-range" } : {}) },
       "ok",
       now(),
     );

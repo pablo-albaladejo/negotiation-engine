@@ -3,8 +3,8 @@ import { defineBox, registerBox } from "../pipeline/box.js";
 import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } from "./acceptance.js";
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
-import { APR_DAY, APR_PCT, aprOffer, AprBandSchema, enforceAprGuardrails, offerApr, withinAprReservation } from "./apr.js";
-import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, type AprBand, type Offer, type OfferMandate } from "./issues.js";
+import { APR_DAY, APR_PCT, aprOffer, AprBandSchema, aprValid, enforceAprGuardrails, offerApr, withinAprReservation } from "./apr.js";
+import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, withinIssueRanges, type AprBand, type Offer, type OfferMandate } from "./issues.js";
 import { boulwareTarget, generateOffer, offerAboveReservation, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
 import { createRng, deriveSeed } from "./rng.js";
@@ -211,11 +211,20 @@ function decideApr(input: EngineInput, band: AprBand): Decision {
   const mandate = { role, reservation: input.mandate.reservation, apr: band };
   const synthetic = aprSynthetic(role, band);
   const toApr = (offer: Offer): Offer => ({ apr: Math.min(1e6, Math.max(0, offerApr(band, offer))) });
+  // Ofertas del rival fuera del rango de los issues o del dominio de la TAE: no son ofertas válidas
+  // (ni modelo del rival ni aceptación); si la actual lo es, el turno va sin oferta aceptable.
+  const valid = (offer: Offer) => withinIssueRanges(input.issues, offer) && aprValid(band, offer);
+  const rivalCurrent = input.state.rivalOffers.at(-1);
   const decided = decide({
     ...input,
     issues: synthetic.issues,
     mandate: synthetic.mandate,
-    state: { ...input.state, ourOffers: input.state.ourOffers.map(toApr), rivalOffers: input.state.rivalOffers.map(toApr) },
+    state: {
+      ...input.state,
+      ourOffers: input.state.ourOffers.map(toApr),
+      rivalOffers: input.state.rivalOffers.filter(valid).map(toApr),
+      ...(rivalCurrent && !valid(rivalCurrent) ? { currentOfferUnconfirmed: true } : {}),
+    },
   });
   const ourLast = input.state.ourOffers.at(-1);
   const counter = (offer: Offer, rule: string): Decision => ({ action: "counter", offer: enforceAprGuardrails(input.issues, mandate, offer, ourLast), rule });
@@ -227,8 +236,8 @@ function decideApr(input: EngineInput, band: AprBand): Decision {
     const inRange = !pct || (atRivalDay[APR_PCT]! >= pct.min && atRivalDay[APR_PCT]! <= pct.max);
     return counter(inRange ? atRivalDay : aprOffer(band, role, decided.offer.apr!), decided.rule);
   }
-  const agreed = decided.rule === "rival-accepted" ? ourLast : input.state.rivalOffers.at(-1);
-  if (!agreed || !withinAprReservation(role, band, agreed)) return hold("apr-band");
+  const agreed = decided.rule === "rival-accepted" ? ourLast : rivalCurrent;
+  if (!agreed || !valid(agreed) || !withinAprReservation(role, band, agreed)) return hold("apr-band");
   return { action: "accept", offer: pickIssues(input.issues, agreed), rule: decided.rule };
 }
 

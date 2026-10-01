@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Issue } from "./config.js";
 import { enforceOfferGuardrails, type Role } from "./guardrails.js";
-import { acceptableForUs, OFFER_DECIMALS, pickIssues, type AprBand, type Offer, type OfferMandate } from "./issues.js";
+import { acceptableForUs, OFFER_DECIMALS, pickIssues, withinIssueRanges, type AprBand, type Offer, type OfferMandate } from "./issues.js";
 
 /** Issues de una oferta con mandato `apr`: descuento en % y día de pago. */
 export const APR_PCT = "pct";
@@ -38,6 +38,19 @@ export function offerApr(band: Pick<AprBand, "baseDays">, offer: Offer): number 
   return aprOf(pct, day, band.baseDays);
 }
 
+/**
+ * Oferta en el dominio de la TAE: `pct` y `day` finitos, `0 ≤ pct < 100`, `0 ≤ day < baseDays` y
+ * TAE finita. Fuera de él (descuento negativo = recargo, pago después del plazo) no hay TAE que
+ * comparar con la banda y ninguna comprobación apr la da por buena.
+ */
+export function aprValid(band: Pick<AprBand, "baseDays">, offer: Offer): boolean {
+  const pct = offer[APR_PCT];
+  const day = offer[APR_DAY];
+  if (pct === undefined || day === undefined || !Number.isFinite(pct) || !Number.isFinite(day)) return false;
+  if (pct < 0 || pct >= 100 || day < 0 || day >= band.baseDays) return false;
+  return Number.isFinite(aprOf(pct, day, band.baseDays));
+}
+
 /** Hay al menos un `pct` con la precisión de oferta cuya TAE en `day` cae dentro de `[min, max]`. */
 export function aprBandFits(band: AprBand, day = band.day): boolean {
   const factor = 10 ** OFFER_DECIMALS;
@@ -55,12 +68,14 @@ export function aprBandFits(band: AprBand, day = band.day): boolean {
  * baja de `min`, el vendedor no sube de `max`. Una oferta mejor que nuestro ancla es aceptable.
  */
 export function withinAprReservation(role: Role, band: AprBand, offer: Offer): boolean {
+  if (!aprValid(band, offer)) return false;
   const apr = offerApr(band, offer);
   return role === "buyer" ? apr >= band.min : apr <= band.max;
 }
 
 /** Dentro de la banda (estricto, sin tolerancia): límites duros por ambos lados (ofertas propias, bot causa-prima-engine). */
 export function withinAprBand(band: AprBand, offer: Offer): boolean {
+  if (!aprValid(band, offer)) return false;
   const apr = offerApr(band, offer);
   return apr >= band.min && apr <= band.max;
 }
@@ -98,6 +113,7 @@ export function aprOffer(band: AprBand, role: Role, target: number, day = band.d
 export function enforceAprGuardrails(issues: readonly Issue[], mandate: OfferMandate & { apr: AprBand }, proposed: Offer, previous?: Offer): Offer {
   const band = mandate.apr;
   let offer = pickIssues(issues, proposed);
+  if (!aprValid(band, offer)) offer = aprOffer(band, mandate.role, mandate.role === "buyer" ? band.min : band.max);
   const apr = offerApr(band, offer);
   if (!(apr >= band.min && apr <= band.max)) offer = aprOffer(band, mandate.role, apr < band.min ? band.min : band.max, offer[APR_DAY]);
   if (previous && withinAprBand(band, previous) && aprBetter(mandate.role, offerApr(band, offer), offerApr(band, previous))) {
@@ -112,7 +128,11 @@ export function offerGuardrails(issues: readonly Issue[], mandate: OfferMandate,
   return enforceOfferGuardrails(issues, mandate, proposed, previous);
 }
 
-/** Condición de toda aceptación según el mandato: lado de la reserva de la banda TAE, o la regla por issue. */
+/**
+ * Condición de toda aceptación según el mandato: dentro del rango declarado de cada issue y, además,
+ * el lado de la reserva de la banda TAE o la regla por issue.
+ */
 export function acceptable(issues: readonly Issue[], mandate: OfferMandate, offer: Offer): boolean {
+  if (!withinIssueRanges(issues, offer)) return false;
   return mandate.apr ? withinAprReservation(mandate.role, mandate.apr, offer) : acceptableForUs(issues, mandate, offer);
 }

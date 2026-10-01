@@ -28,6 +28,12 @@ Valor propio `v` = TAE (con `apr`) o utilidad lineal; ancla = extremo favorable 
 ### D6. Opt-in
 `optIn: true` en escenarios y un registro `OPT_IN_BOTS` separado de `BOTS`: la ejecución por defecto, la promoción y el ajuste no los ven salvo que se pidan por nombre.
 
+### D7. Ofertas fuera de rango (revisión)
+- **Estructurada, en la arena** → `protocol-violation` del emisor: la arena hace de ring y declara los issues, así que una cifra estructurada fuera de su rango incumple el contrato igual que un campo que falta, y terminarla evita premiar ofertas absurdas.
+- **Estructurada, en nuestro agente** → oferta inválida ignorada (traza `invalidOffer`), contraoferta pidiendo confirmar. El agente no puede terminar la partida, y en el torneo los rangos de nuestra configuración son supuestos nuestros: rechazar el turno con 400 rompería "siempre respondemos" ante un ring con otro rango.
+- **Extraída del texto** → ignorada y se piden cifras (puede ser un error de lectura, no del rival).
+- **TAE**: fuera del dominio (`pct < 0`, `day ≥ baseDays`) `aprOf` da valores sin sentido (∞ o negativos), así que `aprValid` es condición previa de toda comprobación apr.
+
 ## Risks
 
 - La forma real del motor de Causa Prima es inferida; el bot es una aproximación.

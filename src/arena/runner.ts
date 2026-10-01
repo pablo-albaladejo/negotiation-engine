@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
-import type { Offer } from "../engine/issues.js";
+import type { Issue } from "../engine/config.js";
+import { withinIssueRanges, type Offer } from "../engine/issues.js";
 import { deriveSeed } from "../engine/rng.js";
 import type { TraceRecord } from "../pipeline/box.js";
 import { RemoteContractError } from "../protocol/http.js";
@@ -63,14 +64,26 @@ function sameValues(a: Offer, b: Offer): boolean {
 }
 
 /**
- * Salida de un participante según el protocolo: esquema canónico, misma sesión y misma ronda.
- * Devuelve el detalle de la violación o la salida validada.
+ * Salida de un participante según el protocolo: esquema canónico, misma sesión, misma ronda y, con
+ * `issues`, oferta estructurada dentro del rango declarado de cada issue (el ring declara los issues;
+ * una cifra estructurada fuera de rango rompe el protocolo). Devuelve la violación o la salida validada.
  */
-export function checkTurnOutput(schemas: ProtocolSchemas, raw: unknown, sessionId: string, round: number): { output: TurnOutput } | { violation: string } {
+export function checkTurnOutput(
+  schemas: ProtocolSchemas,
+  raw: unknown,
+  sessionId: string,
+  round: number,
+  issues: readonly Issue[] = [],
+): { output: TurnOutput } | { violation: string } {
   const parsed = schemas.turnOutput.safeParse(raw);
   if (!parsed.success) return { violation: ProtocolError.fromZod(parsed.error, "TurnOutput").message };
   if (parsed.data.sessionId !== sessionId) return { violation: "TurnOutput de otra sesión" };
   if (parsed.data.round !== round) return { violation: `TurnOutput de la ronda ${parsed.data.round} en la ronda ${round}` };
+  const output = parsed.data;
+  if (output.action !== "walk" && issues.length > 0 && !withinIssueRanges(issues, output.offer)) {
+    const bad = issues.filter((i) => !withinIssueRanges([i], output.offer)).map((i) => i.name);
+    return { violation: `oferta fuera del rango declarado: ${bad.join(", ")}` };
+  }
   return { output: parsed.data };
 }
 
@@ -148,7 +161,7 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         }
         break;
       }
-      const checkedOurs = checkTurnOutput(schemas, rawOurs, gameId, round);
+      const checkedOurs = checkTurnOutput(schemas, rawOurs, gameId, round, scenario.issues);
       if ("violation" in checkedOurs) {
         violated("agent", checkedOurs.violation);
         break;
@@ -178,7 +191,7 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         }
         break;
       }
-      const checkedTheirs = checkTurnOutput(schemas, rawTheirs, gameId, round);
+      const checkedTheirs = checkTurnOutput(schemas, rawTheirs, gameId, round, scenario.issues);
       if ("violation" in checkedTheirs) {
         violated("rival", checkedTheirs.violation);
         break;

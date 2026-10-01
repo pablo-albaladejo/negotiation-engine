@@ -106,6 +106,17 @@ export function withinOfferMandate(issues: readonly Issue[], mandate: OfferManda
   });
 }
 
+/**
+ * Cada issue declarado tiene un valor finito dentro de su rango `[min, max]`. Una oferta del rival
+ * que no lo cumple no es una oferta válida: ni se acepta ni alimenta el modelo del rival.
+ */
+export function withinIssueRanges(issues: readonly Issue[], offer: Offer): boolean {
+  return issues.every((issue) => {
+    const value = offer[issue.name];
+    return value !== undefined && Number.isFinite(value) && value >= issue.min && value <= issue.max;
+  });
+}
+
 export function reservationUtility(issues: readonly Issue[], mandate: OfferMandate): number {
   return utility(issues, mandate.reservation);
 }
