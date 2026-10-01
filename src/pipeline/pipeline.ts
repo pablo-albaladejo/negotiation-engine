@@ -125,6 +125,7 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
       noise: config.noise,
       defaultHorizon: config.defaultHorizon,
       ...(config.reciprocity !== undefined ? { reciprocity: config.reciprocity } : {}),
+      ...(config.acCombiThreshold !== undefined ? { acCombiThreshold: config.acCombiThreshold } : {}),
     },
     state,
     seed: session.seed,

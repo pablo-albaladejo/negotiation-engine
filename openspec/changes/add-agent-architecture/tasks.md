@@ -99,7 +99,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
   - Nota: tolerancia del test = 5 % del rango del issue. El modelo necesita el `t` de cada oferta (`recordOffer(offer, t)`); el motor aún no lo pasa ni usa la estimación para decidir (el estado no guarda la ronda de cada oferta del rival).
 - [x] 12.2 [Paula] Reciprocidad Tit-for-Tat como factor en [0, 1] sobre el paso, con la propiedad "nunca concede más que la curva Boulware con el mismo `ε`"; verificar con comparación pareada frente a la campeona [aplazada: sábado]
   - Nota: parámetro opcional `reciprocity` (0 = Boulware puro; la campeona no lo fija). Comparación pareada `pnpm arena --candidate` (21 semillas): con 0,5 el excedente medio pasa de 40,28 % a 40,22 % y con 1 a 40,16 %, 0 violaciones; peor contra Tit-for-Tat y mejor contra solo texto. No se promueve.
-- [ ] 12.3 [Paula] AC_combi en la caja de aceptación con su tabla de casos; verificar con comparación pareada [aplazada: sábado]
+- [x] 12.3 [Paula] AC_combi en la caja de aceptación con su tabla de casos; verificar con comparación pareada [aplazada: sábado]
+  - Nota: AC_combi(T, MAX^W) con parámetro opcional `acCombiThreshold` (ausente = desactivada) y ventana estimada por número de ofertas (el estado no guarda la ronda de cada oferta del rival). Comparación pareada (21 semillas): T = 0,8 baja el excedente medio de 40,28 % a 35,67 %; T = 0,9 no cambia nada; 0 violaciones. No se promueve.
 
 ## 13. Sábado: estadística y promoción [Pablo]
 

@@ -37,10 +37,12 @@ const paramsArb = fc.record({
   acTimeThreshold: fc.double({ min: 0, max: 1, noNaN: true }),
   noise: fc.double({ min: 0, max: 0.99, noNaN: true }),
   defaultHorizon: fc.integer({ min: 1, max: 20 }),
+  reciprocity: fc.double({ min: 0, max: 1, noNaN: true }),
+  acCombiThreshold: fc.double({ min: 0, max: 1, noNaN: true }),
 });
 
 describe.each([1, 2])("toda decisión accept cumple u ≥ u(reserva) con %i issue(s)", (n) => {
-  it("en la caja de aceptación (AC_next, AC_time, último movimiento, horizonte)", () => {
+  it("en la caja de aceptación (AC_next, AC_combi, AC_time, último movimiento, horizonte)", () => {
     fc.assert(
       fc.property(
         issuesOf(n).chain((issues) =>
@@ -53,6 +55,8 @@ describe.each([1, 2])("toda decisión accept cumple u ≥ u(reserva) con %i issu
             acceptMargin: fc.double({ min: 0, max: 1, noNaN: true }),
             acTimeThreshold: fc.double({ min: 0, max: 1, noNaN: true }),
             rivalCanRespond: fc.boolean(),
+            rivalPrevious: fc.array(offerArb(issues, 0.2), { maxLength: 6 }),
+            acCombiThreshold: fc.double({ min: 0, max: 1, noNaN: true }),
           }),
         ),
         (input) => {

@@ -19,6 +19,8 @@ export const EngineParamsSchema = z.object({
   defaultHorizon: z.number().int().min(1),
   /** Peso de la reciprocidad Tit-for-Tat sobre el paso (0 = Boulware puro). */
   reciprocity: z.number().min(0).max(1).optional(),
+  /** Umbral T de AC_combi(T, MAX^W); ausente = desactivada. */
+  acCombiThreshold: z.number().min(0).max(1).optional(),
 });
 export type EngineParams = z.infer<typeof EngineParamsSchema>;
 
@@ -132,6 +134,8 @@ export function decide(input: EngineInput): Decision {
     acceptMargin: params.acceptMargin,
     acTimeThreshold: params.acTimeThreshold,
     rivalCanRespond: state.rivalCanRespond ?? false,
+    rivalPrevious: state.rivalOffers.slice(0, -1).map((offer) => pickIssues(issues, offer)),
+    ...(params.acCombiThreshold !== undefined ? { acCombiThreshold: params.acCombiThreshold } : {}),
   };
   const verdict = decideAcceptance(rivalCurrent ? { ...acceptance, rivalCurrent } : acceptance);
 
