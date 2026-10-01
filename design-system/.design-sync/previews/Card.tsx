@@ -1,18 +1,18 @@
 import { Card } from "@negotiation-ring/design-system";
 
-export function ConTituloYPie() {
+export function WithTitleAndCaption() {
   return (
-    <Card title="champion-v3 vs challenger-v4 · 800 partidas" caption="Una tarjeta agrupa una pregunta: un gráfico, una tabla o el chat de una partida.">
-      <div className="nr-cfg">run challenger-v4 · β=0,35 · ruido 2 % · persona «cálida-firme»</div>
+    <Card title="champion-v3 vs challenger-v4 · 800 matches" caption="A card groups one question: a chart, a table or a match's chat.">
+      <div className="nr-cfg">run challenger-v4 · β=0.35 · noise 2% · persona "warm-firm"</div>
     </Card>
   );
 }
 
-export function SoloContenido() {
+export function ContentOnly() {
   return (
     <Card>
       <p className="nr-muted" style={{ margin: 0 }}>
-        Sin título ni pie: solo contenido libre dentro de la superficie de la tarjeta.
+        No title or caption: just free content inside the card's surface.
       </p>
     </Card>
   );

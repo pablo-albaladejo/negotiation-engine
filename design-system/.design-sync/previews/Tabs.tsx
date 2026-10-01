@@ -2,18 +2,18 @@ import { useState } from "react";
 import { Tabs } from "@negotiation-ring/design-system";
 
 const items = [
-  { id: "replay", label: "Repetición de partida" },
-  { id: "compare", label: "Campeón vs candidato" },
-  { id: "log", label: "Formato del log" },
-  { id: "integration", label: "Integración técnica" },
+  { id: "replay", label: "Match replay" },
+  { id: "compare", label: "Champion vs candidate" },
+  { id: "log", label: "Log format" },
+  { id: "integration", label: "Technical integration" },
 ];
 
-export function PrimeraPestanaActiva() {
+export function FirstTabActive() {
   const [selectedId, setSelectedId] = useState("replay");
   return <Tabs items={items} selectedId={selectedId} onSelect={setSelectedId} />;
 }
 
-export function SegundaPestanaActiva() {
+export function SecondTabActive() {
   const [selectedId, setSelectedId] = useState("compare");
   return <Tabs items={items} selectedId={selectedId} onSelect={setSelectedId} />;
 }

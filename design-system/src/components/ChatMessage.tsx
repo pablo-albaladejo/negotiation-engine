@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { formatEsNumber } from "../format";
+import { formatNumber } from "../format";
 
 export interface ChatMessageFlag {
   kind: "neutral" | "injection" | "decision" | "walk" | "fallback";
@@ -16,10 +16,10 @@ export interface ChatMessageProps {
 }
 
 function metaLabel(side: "us" | "them", round: number, offer?: number): ReactNode {
-  const who = side === "us" ? "nosotros" : "rival";
+  const who = side === "us" ? "us" : "rival";
   const parts = [`R${round}`, who];
   if (offer !== undefined) {
-    parts.push(`oferta ${formatEsNumber(offer)}`);
+    parts.push(`offer ${formatNumber(offer, { locale: "en" })}`);
   }
   return parts.join(" · ");
 }

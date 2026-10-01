@@ -31,4 +31,20 @@ export type { HeatmapProps, HeatmapRow, HeatmapCell } from "./components/Heatmap
 export { OfferChart, Legend, offerChartXScale, offerChartYScale } from "./components/OfferChart";
 export type { OfferChartProps, OfferPoint, OfferChartEnd } from "./components/OfferChart";
 
-export { formatEsNumber } from "./format";
+export { Filters } from "./components/Filters";
+export type { FiltersProps, FilterOption, FilterCheckbox } from "./components/Filters";
+
+export { ModeBadge } from "./components/ModeBadge";
+export type { ModeBadgeProps } from "./components/ModeBadge";
+
+export { Scatter2D, scatter2DXScale, scatter2DYScale } from "./components/Scatter2D";
+export type { Scatter2DProps, Scatter2DPoint, Scatter2DCurve, Scatter2DRegion, Scatter2DDeal } from "./components/Scatter2D";
+
+export { Scoreboard } from "./components/Scoreboard";
+export type { ScoreboardProps } from "./components/Scoreboard";
+
+export { WarningBanner } from "./components/WarningBanner";
+export type { WarningBannerProps } from "./components/WarningBanner";
+
+export { formatEsNumber, formatNumber } from "./format";
+export type { FormatNumberOptions } from "./format";

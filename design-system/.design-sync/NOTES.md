@@ -91,3 +91,50 @@
 - Emitted `.d.ts` referenced helper types (TabItem, Match, KpiItem, OfferPoint, OfferChartEnd, ChatMessageFlag, DataTable/Heatmap row types) without defining them; `dtsPropsFor` inlines their shapes for Tabs, MatchSelector, KpiStrip, ChatMessage, OfferChart, DataTable, Heatmap. **Re-sync risk:** if those props change in `src/`, update `dtsPropsFor` too or the design agent codes against a stale contract.
 - All components land in group `general` (no per-component docs with `category`). Regrouping would need `docsMap` stubs.
 - Playwright pinned to 1.60.0 in `.ds-sync/` to match the cached chromium-1223.
+
+## Update (v2, 2026-10-01)
+
+- **5 new components** added on top of the first sync: `Filters`, `ModeBadge`,
+  `Scatter2D`, `Scoreboard`, `WarningBanner`. All 17 components are now
+  exported from `src/index.ts`, listed in the README table and documented in
+  `.design-sync/conventions.md`.
+- **English pass over UI copy.** The first sync left several hard-coded
+  Spanish strings outside the examples (which were already translated):
+  - `ChatMessage.tsx` used `"nosotros"` for the `who` label and its own
+    `formatEsNumber` call instead of the shared `formatNumber(v, {locale:"en"})`
+    — fixed.
+  - `OfferChart.tsx` had a Spanish `aria-label` and a hard-coded `"ronda"`
+    x-axis caption — fixed to `"Offers from both sides by round"` / `"round"`.
+    This was only caught by reading the rendered review sheet (the x-axis
+    caption isn't covered by any unit test); worth adding a
+    `expect(... ).not.toMatch(/ronda/)`-style render assertion in a follow-up.
+  - `examples/ViewerScreen.tsx` and the remaining `examples/*.tsx` (Tabs,
+    Card, Flag, Pill, DataTable, Heatmap, MatchSelector) still had Spanish
+    chrome/label strings (tab labels, card captions, KPI labels, table
+    headers, rival-strategy display names like "Ancla extrema"). Translated
+    all of it to English for consistency with the rest of `examples/`; actual
+    rival chat text (`ChatMessage text=...`) was also translated here to
+    match the already-English `examples/ChatMessage.tsx`, since the brief
+    only requires keeping rival text untouched when it's meant to be shown
+    verbatim from a real transcript — these are synthetic example strings,
+    not captured rival output.
+- **`Scatter2D` label-clipping fix.** The iso-utility label could run past
+  the chart's right margin; now clamped. The deal-ring label could also run
+  off the right edge when the deal point was near it; it now flips to the
+  left side of the ring when the point sits past the horizontal midpoint.
+  Covered by the existing `Scatter2D.grade.json` ("OffersWithMandateAndIso"
+  note references this fix explicitly).
+- **Scoreboard CSS**: `.nr-scoreboard-match` now has `white-space:nowrap` so
+  the big `us vs rival` score line never wraps mid-token at narrow widths.
+- **Render-check / validate**: final full rebuild + `package-validate.mjs`
+  exits 0, `.render-check.json` reports `{ total: 17, bad: 0, thin: 0,
+  variantsIdentical: 0 }`. Final `package-capture.mjs` run: `17 carried
+  forward, 0 captured, 0 with errors` — all 17 components graded "good" on
+  every cell, no `needs-work` cells outstanding.
+- **Known render warn**: `[FONT_REMOTE]` is still the only warn, same as the
+  first sync (see above) — unchanged, still expected.
+- **Re-sync risk**: the OfferChart source fix above changes its
+  `sourceKeyFor` hash, so its grade was re-captured and re-graded in this
+  pass (expected one-time re-grade, documented above under "Re-sync
+  risks"). No other component's source changed, so their grades carried
+  forward unchanged.

@@ -4,17 +4,17 @@ export function DataTableExample() {
   return (
     <DataTable
       columns={[
-        { key: "metric", label: "Métrica" },
+        { key: "metric", label: "Metric" },
         { key: "champion", label: "champion-v3", numeric: true },
         { key: "challenger", label: "challenger-v4", numeric: true },
-        { key: "change", label: "Cambio" },
+        { key: "change", label: "Change" },
       ]}
       rows={[
-        { metric: "Excedente / ZOPA (media)", champion: "0,58", challenger: "0,64", change: { value: "+0,06", tone: "better" } },
-        { metric: "Tasa de acuerdo", champion: "86 %", challenger: "84 %", change: { value: "−2 pp", tone: "worse" } },
-        { metric: "Violaciones del mandato", champion: "0", challenger: "0", change: "=" },
-        { metric: "Rondas hasta cerrar (media)", champion: "6,1", challenger: "7,4", change: "+1,3" },
-        { metric: "Retiradas con ZOPA existente", champion: "3 %", challenger: "5 %", change: { value: "+2 pp", tone: "worse" } },
+        { metric: "Surplus / ZOPA (mean)", champion: "0.58", challenger: "0.64", change: { value: "+0.06", tone: "better" } },
+        { metric: "Deal rate", champion: "86%", challenger: "84%", change: { value: "−2 pp", tone: "worse" } },
+        { metric: "Mandate violations", champion: "0", challenger: "0", change: "=" },
+        { metric: "Rounds to close (mean)", champion: "6.1", challenger: "7.4", change: "+1.3" },
+        { metric: "Walk-aways with existing ZOPA", champion: "3%", challenger: "5%", change: { value: "+2 pp", tone: "worse" } },
       ]}
     />
   );

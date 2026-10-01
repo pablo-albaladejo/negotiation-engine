@@ -1,21 +1,21 @@
 import { Flag } from "@negotiation-ring/design-system";
 
 export function Neutral() {
-  return <Flag kind="neutral">ancla extrema</Flag>;
+  return <Flag kind="neutral">extreme anchor</Flag>;
 }
 
 export function Injection() {
-  return <Flag kind="injection">inyección</Flag>;
+  return <Flag kind="injection">injection</Flag>;
 }
 
 export function Decision() {
-  return <Flag kind="decision">AC_time · acepta</Flag>;
+  return <Flag kind="decision">AC_time · accepts</Flag>;
 }
 
 export function Walk() {
-  return <Flag kind="walk">se retira</Flag>;
+  return <Flag kind="walk">walks away</Flag>;
 }
 
 export function Fallback() {
-  return <Flag kind="fallback">plantilla · timeout LLM</Flag>;
+  return <Flag kind="fallback">template · LLM timeout</Flag>;
 }
