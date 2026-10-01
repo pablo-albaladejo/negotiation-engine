@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "arena": "tsx src/arena/index.ts",
     "agent": "tsx src/agent/index.ts",
+    "box": "tsx src/dev/box-main.ts",
     "smoke": "bash scripts/smoke.sh",
     "bot:serve": "tsx src/bots/serve.ts",
     "sparring": "bash scripts/sparring.sh"
