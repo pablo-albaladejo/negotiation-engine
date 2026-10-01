@@ -90,9 +90,11 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 11. Sábado: proveedores y cajas LLM
 
-- [ ] 11.1 [Pablo] Tests de contrato del proveedor con respuestas grabadas (ok, JSON inválido, tiempo agotado, error ⇒ error tipado) y luego la interfaz con esquema generado por `z.toJSONSchema()` [aplazada: sábado]
-- [ ] 11.2 [Pablo] Proveedor `claude-cli` (`claude -p --json-schema`) pasando los tests de contrato; verificar con una llamada real grabada como fixture [aplazada: sábado]
-- [ ] 11.3 [Pablo] Proveedor `anthropic-api` con salida estructurada y modelo por env, pasando los tests de contrato [aplazada: sábado]
+- [x] 11.1 [Pablo] Tests de contrato del proveedor con respuestas grabadas (ok, JSON inválido, tiempo agotado, error ⇒ error tipado) y luego la interfaz con esquema generado por `z.toJSONSchema()` [aplazada: sábado]
+- [x] 11.2 [Pablo] Proveedor `claude-cli` (`claude -p --json-schema`) pasando los tests de contrato; verificar con una llamada real grabada como fixture [aplazada: sábado]
+  - Nota: llamada real grabada en `test/fixtures/llm/providers/claude-cli-ok.json` (modelo por defecto del CLI). `claude --json-schema` rechaza la clave `$schema` que emite `z.toJSONSchema`; el contrato común la quita.
+- [x] 11.3 [Pablo] Proveedor `anthropic-api` con salida estructurada y modelo por env, pasando los tests de contrato [aplazada: sábado]
+  - Nota: probado solo con transporte simulado (no hay clave aquí). Usa `output_config.format` (JSON Schema) de la Messages API y `ANTHROPIC_MODEL` sin valor por defecto: verificar la forma de la petición con una clave real antes del torneo.
 - [ ] 11.4 [Pablo] Parser LLM en cuarentena (sin herramientas, texto delimitado como dato, esquema cerrado) conectado a la reconciliación del modo solo texto; verificar sobre los fixtures y medir acuerdo con el parser determinista en `results/` [aplazada: sábado]
 - [ ] 11.5 [Gerard] Narrador LLM con persona cuya entrada son solo enums y las cifras decididas, con instrucción de escribir cifras con dígitos; verificar en la traza que su entrada no contiene reserva, plazo, texto crudo ni afirmaciones del rival y que 2 intentos + plantilla funcionan con proveedor real [aplazada: sábado]
 
