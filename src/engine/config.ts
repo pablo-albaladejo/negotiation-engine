@@ -63,6 +63,8 @@ export const AgentConfigSchema = z
     acTimeThreshold: z.number().min(0).max(1),
     /** Amplitud n del ruido sobre el paso de concesión: ε ∈ [−n, n], n < 1. */
     noise: z.number().min(0).lt(1),
+    /** Peso de la reciprocidad Tit-for-Tat sobre el paso de concesión (0..1; 0 = Boulware puro). */
+    reciprocity: z.number().min(0).max(1).optional(),
     /** Margen de seguridad restado al tiempo máximo del ring. */
     turnSafetyMarginMs: z.number().int().nonnegative().default(500),
     /** Presupuesto del turno cuando el ring no declara tiempo máximo. */

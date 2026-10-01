@@ -4,7 +4,7 @@ import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } f
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
 import { acceptableForUs, orientIssues, pickIssues, reservationUtility, utility, type Offer, type OfferMandate } from "./issues.js";
-import { generateOffer, openingUtility, sampleEpsilon } from "./offer.js";
+import { generateOffer, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
 import { createRng, deriveSeed } from "./rng.js";
 
@@ -17,6 +17,8 @@ export const EngineParamsSchema = z.object({
   acTimeThreshold: z.number().min(0).max(1),
   noise: z.number().min(0).lt(1),
   defaultHorizon: z.number().int().min(1),
+  /** Peso de la reciprocidad Tit-for-Tat sobre el paso (0 = Boulware puro). */
+  reciprocity: z.number().min(0).max(1).optional(),
 });
 export type EngineParams = z.infer<typeof EngineParamsSchema>;
 
@@ -94,7 +96,8 @@ export function decide(input: EngineInput): Decision {
 
   const opponent = new OpponentModel(issues);
   for (const offer of state.rivalOffers) opponent.recordOffer(offer);
-  const rivalCurrent = state.currentOfferUnconfirmed ? undefined : opponent.summary().currentOffer;
+  const rivalSummary = opponent.summary();
+  const rivalCurrent = state.currentOfferUnconfirmed ? undefined : rivalSummary.currentOffer;
 
   const timeFields: TimeFields = { round: state.round };
   if (state.roundLimit !== undefined) timeFields.roundLimit = state.roundLimit;
@@ -106,11 +109,18 @@ export function decide(input: EngineInput): Decision {
   const uRes = reservationUtility(issues, mandate);
   const rng = createRng(deriveSeed(input.seed, `engine:${state.round}`));
   const epsilon = sampleEpsilon(rng, params.noise);
+  const ourPrevious = state.ourOffers.at(-2);
+  const factor = reciprocityFactor(
+    params.reciprocity ?? 0,
+    rivalSummary.offersSeen >= 2 ? rivalSummary.lastConcession : undefined,
+    ourPrevious && ourLast ? utility(issues, ourPrevious) - utility(issues, ourLast) : undefined,
+  );
   const proposal = generateOffer(
     { issues, reservation: mandate.reservation, uRes, openingMargin: params.openingMargin, beta: params.beta },
     time.t,
     epsilon,
     ourLast,
+    factor,
   );
   const counter = enforceOfferGuardrails(issues, mandate, proposal, ourLast);
 

@@ -26,6 +26,17 @@ export function sampleEpsilon(rng: Rng, noise: number): number {
   return noise === 0 ? 0 : rng.between(-noise, noise);
 }
 
+/**
+ * Reciprocidad Tit-for-Tat como factor en [0, 1] sobre nuestro paso: con peso `weight`, el paso se
+ * reduce en proporción a lo que el rival concedió (en nuestra utilidad) frente a nuestra última
+ * concesión. Sin datos de alguna de las dos concesiones, 1 (curva Boulware sin cambios).
+ */
+export function reciprocityFactor(weight: number, rivalConcession: number | undefined, ourConcession: number | undefined): number {
+  if (weight <= 0 || rivalConcession === undefined || ourConcession === undefined || ourConcession <= 0) return 1;
+  const ratio = Math.min(1, Math.max(0, rivalConcession / ourConcession));
+  return 1 - Math.min(1, weight) * (1 - ratio);
+}
+
 export interface UtilityStep {
   uOpen: number;
   uRes: number;
@@ -34,6 +45,8 @@ export interface UtilityStep {
   /** Utilidad de nuestra oferta anterior; ausente en la primera oferta. */
   previousUtility?: number;
   epsilon: number;
+  /** Factor de reciprocidad en [0, 1]; ausente = 1. Solo puede reducir el paso. */
+  reciprocity?: number;
 }
 
 /**
@@ -46,7 +59,8 @@ export function nextUtility(step: UtilityStep): number {
   const target = boulwareTarget(step.t, step.uOpen, step.uRes, step.beta);
   if (step.t >= 1) return Math.max(step.uRes, Math.min(step.previousUtility, target));
   const base = Math.max(0, step.previousUtility - target);
-  const noisy = Math.max(0, base * (1 + step.epsilon));
+  const factor = Math.min(1, Math.max(0, step.reciprocity ?? 1));
+  const noisy = Math.max(0, base * (1 + step.epsilon)) * factor;
   return Math.max(step.uRes, step.previousUtility - noisy);
 }
 
@@ -80,6 +94,7 @@ export function generateOffer(
   t: number,
   epsilon: number,
   previous?: Offer,
+  reciprocity = 1,
 ): Offer {
   const step: UtilityStep = {
     uOpen: openingUtility(params.uRes, params.openingMargin),
@@ -87,6 +102,7 @@ export function generateOffer(
     beta: params.beta,
     t,
     epsilon,
+    reciprocity,
   };
   if (previous) step.previousUtility = utility(params.issues, previous);
   return roundInFavor(params.issues, offerAboveReservation(params.issues, params.reservation, nextUtility(step)));

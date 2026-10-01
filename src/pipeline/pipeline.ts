@@ -124,6 +124,7 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
       acTimeThreshold: config.acTimeThreshold,
       noise: config.noise,
       defaultHorizon: config.defaultHorizon,
+      ...(config.reciprocity !== undefined ? { reciprocity: config.reciprocity } : {}),
     },
     state,
     seed: session.seed,
