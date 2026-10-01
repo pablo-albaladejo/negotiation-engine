@@ -53,6 +53,9 @@ const LeakResultSchema = z.union([
 ]);
 const NarratorOutputSchema = z.string().trim().min(1).max(5_000);
 
+/** Campos del turno canónico: los únicos segmentos de ruta (con los issues) que puede nombrar `protocol`. */
+const TURN_INPUT_FIELDS = Object.keys(GenericTurnInputSchema.shape);
+
 class TimeoutError extends Error {
   override name = "TimeoutError";
 }
@@ -440,15 +443,54 @@ export function createPipeline(deps: PipelineDeps): Brain {
     }
   }
 
+  /**
+   * Registro `protocol` de un turno que no cumple el esquema canónico, solo si el `sessionId` es
+   * legible: rutas de los campos (segmentos fuera del esquema, p. ej. claves inventadas por el
+   * rival, como `*`) y códigos de Zod; nunca valores, mensajes ni texto del rival.
+   */
+  function recordProtocol(raw: unknown, error: z.ZodError, startedAt: number, session?: Session): void {
+    const r = (raw ?? {}) as { sessionId?: unknown; round?: unknown };
+    const readable = typeof r.sessionId === "string" && r.sessionId.length >= 1 && r.sessionId.length <= 200 ? r.sessionId : undefined;
+    const sessionId = session?.id ?? readable;
+    if (!deps.trace || sessionId === undefined) return;
+    const known = new Set([...TURN_INPUT_FIELDS, ...(session?.config.issues.map((i) => i.name) ?? [])]);
+    const issues = error.issues.map((i) => ({
+      path: i.path.map((p) => (typeof p === "number" || (typeof p === "string" && known.has(p)) ? String(p) : "*")).join("."),
+      code: i.code,
+    }));
+    const round = typeof r.round === "number" && Number.isInteger(r.round) && r.round >= 1 ? r.round : 1;
+    const record = {
+      sessionId,
+      round,
+      box: "protocol",
+      input: null,
+      output: { issues },
+      result: "error" as const,
+      latencyMs: now() - startedAt,
+      ...(session ? { seed: session.seed, configVersion: session.configVersion } : {}),
+      provider: deps.provider ?? "none",
+      error: issues.map((i) => `${i.path || "(root)"}:${i.code}`).join(", "),
+    };
+    deps.trace.write(record);
+    logger.trace?.("box_record", record);
+  }
+
   return {
     async turn(raw) {
       const startedAt = now();
       const base = GenericTurnInputSchema.safeParse(raw);
-      if (!base.success) throw ProtocolError.fromZod(base.error, "Turno");
+      if (!base.success) {
+        const sessionId = (raw as { sessionId?: unknown } | null)?.sessionId;
+        recordProtocol(raw, base.error, startedAt, typeof sessionId === "string" ? deps.store.get(sessionId) : undefined);
+        throw ProtocolError.fromZod(base.error, "Turno");
+      }
       const session = deps.store.getOrCreate(base.data.sessionId);
       const schemas = createProtocolSchemas(session.config.issues.map((i) => i.name));
       const parsed = schemas.turnInput.safeParse(raw);
-      if (!parsed.success) throw ProtocolError.fromZod(parsed.error, "Turno");
+      if (!parsed.success) {
+        recordProtocol(raw, parsed.error, startedAt, session);
+        throw ProtocolError.fromZod(parsed.error, "Turno");
+      }
       return withLock(session.id, async () => {
         try {
           return await runTurn(session, parsed.data, schemas, startedAt);

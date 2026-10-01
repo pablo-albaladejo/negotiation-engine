@@ -5,6 +5,9 @@ import { REDACT_PATHS } from "./log.js";
 /** Claves que nunca salen en un span: las mismas que censura el logger (mandato, reserva, config). */
 const REDACT_KEYS = new Set([...REDACT_PATHS.map((p) => p.split(".").at(-1)!), "explain"]);
 
+/** Cajas solo locales (results/*.jsonl): el texto crudo del rival y su ruptura de protocolo. */
+const LOCAL_ONLY_BOXES = new Set(["rivalText", "protocol"]);
+
 export function redactForExport(value: unknown, depth = 0): unknown {
   if (depth > 8 || value === null) return value;
   if (typeof value === "string") {
@@ -54,8 +57,8 @@ export async function createOtelSink(options: OtelOptions = {}): Promise<OtelSin
   const tracer = provider.getTracer("negotiation-ring");
   return {
     write(record: TraceRecord) {
-      // El texto crudo del rival es local-only (results/*.jsonl): nunca sale a OTel/Langfuse.
-      if (record.box === "rivalText") return;
+      // Texto crudo del rival y registro protocol: local-only, nunca salen a OTel/Langfuse.
+      if (LOCAL_ONLY_BOXES.has(record.box)) return;
       const end = Date.now();
       const span = tracer.startSpan(`box.${record.box}`, { startTime: end - record.latencyMs });
       span.setAttributes({
