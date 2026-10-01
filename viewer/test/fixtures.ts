@@ -1,11 +1,13 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAgent, createTournamentTrace } from "../../src/agent/agent.js";
 import { runArenaCli } from "../../src/arena/cli.js";
-import { SummarySchema, TranscriptLineSchema, type Summary, type TranscriptLine } from "../../src/arena/results-schema.js";
-import { scenarioHash } from "../../src/arena/scenario.js";
+import { comparePaired, runPaired } from "../../src/arena/paired.js";
+import { promote, type PhaseEvaluator } from "../../src/arena/promote.js";
+import { GateFileSchema, SummarySchema, TranscriptLineSchema, type GateFile, type Summary, type TranscriptLine } from "../../src/arena/results-schema.js";
+import { loadCatalog, scenarioHash } from "../../src/arena/scenario.js";
 import { silentLogger } from "../../src/pipeline/box.js";
 import { TraceLineSchema, type TraceLine } from "../../src/pipeline/trace.js";
 import type { ScenarioRef } from "../src/model/index.js";
@@ -90,4 +92,45 @@ export function asV1Trace(trace: readonly TraceLine[]): TraceLine[] {
     const { explain: _e, ...output } = line.output as Record<string, unknown>;
     return { ...line, output };
   });
+}
+
+export interface GateFixture {
+  gate: GateFile;
+  /** Directorio `promote-<stamp>` escrito por `promote`. */
+  dir: string;
+}
+
+/**
+ * `gate.json` escritos por `promote` con la arena real (1 semilla, 2 escenarios, 2 rivales):
+ * `rejected` (candidata idéntica, en seco), `passed` (en seco, puerta aprobada) y `promoted`
+ * (puerta aprobada, campeona temporal reescrita). Para aprobar se sustituyen solo el efecto y el
+ * p-valor del informe pareado; partidas, resúmenes y mapa de calor son los de la arena.
+ */
+export async function generateGateFixtures(): Promise<{ rejected: GateFixture; passed: GateFixture; promoted: GateFixture; candidatePath: string }> {
+  const dir = mkdtempSync(join(tmpdir(), "viewer-promote-"));
+  const raw = JSON.parse(readFileSync(CHAMPION, "utf8")) as Record<string, unknown>;
+  const candidatePath = join(dir, "candidate.json");
+  writeFileSync(candidatePath, JSON.stringify({ ...raw, version: 2, beta: 0.3, provenance: { source: "tune", parent: 1 } }));
+  const identicalPath = join(dir, "identical.json");
+  writeFileSync(identicalPath, JSON.stringify(raw));
+  const scenarios = loadCatalog(CATALOG).filter((sc) => ["price-buyer-wide", "price-seller-narrow"].includes(sc.id));
+  const base = { env: {}, seeds: 1, scenarios, tuningRivalNames: ["boulware", "conceder"], log: () => {} };
+  const passing: PhaseEvaluator = async (plan, a, b) => {
+    const run = await runPaired({ scenarios, rivals: plan.rivals, seeds: plan.seeds, champion: a, candidate: b });
+    const report = comparePaired(run, { roleWeights: a.roleWeights });
+    return { run, report: { ...report, meanDiffPp: plan.phase === "heldOut" ? 0.5 : 2.3, sign: { positive: 9, negative: 1, ties: 0, pValue: 0.004 } } };
+  };
+  const run = async (name: string, candidate: string, extra: Record<string, unknown>): Promise<GateFixture> => {
+    const championPath = join(dir, `${name}-champion.json`);
+    copyFileSync(CHAMPION, championPath);
+    const out = join(dir, name);
+    const result = await promote({ ...base, ...extra, candidatePath: candidate, championPath, resultsDir: out });
+    return { gate: GateFileSchema.parse(JSON.parse(readFileSync(result.gatePath!, "utf8"))), dir: dirname(result.gatePath!) };
+  };
+  return {
+    rejected: await run("rejected", identicalPath, { dryRun: true }),
+    passed: await run("passed", candidatePath, { dryRun: true, evaluate: passing }),
+    promoted: await run("promoted", candidatePath, { evaluate: passing }),
+    candidatePath,
+  };
 }

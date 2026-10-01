@@ -5,3 +5,4 @@ export { tournamentReplayModel, type ScenarioRef, type TournamentReplayModel } f
 export { splitTrace } from "./rounds.js";
 export type { Offer, RoundPanel } from "./rounds.js";
 export { isTwoIssue, offerIssues, twoIssueModel, type LoggedIssue, type PlanePoint, type TwoIssueModel } from "./twoIssue.js";
+export { checkLabel, formatPp, gateModel, PHASE_LABEL, PHASES, type GateCheckRow, type GateModel, type GatePhase, type PhaseMetrics } from "./gate.js";

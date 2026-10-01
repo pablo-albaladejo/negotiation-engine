@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ScenarioSchema as MandateFileSchema } from "../../src/agent/agent.js";
-import { SummarySchema, TranscriptLineSchema } from "../../src/arena/results-schema.js";
+import { GateFileSchema, SummarySchema, TranscriptLineSchema } from "../../src/arena/results-schema.js";
 import { scenarioHash } from "../../src/arena/scenario.js";
 import { TraceLineSchema } from "../../src/pipeline/trace.js";
 import type { RunEntry, RunKind, ScenarioRef } from "../src/model/index.js";
@@ -73,6 +73,14 @@ async function runDetail(roots: Roots, runId: string): Promise<ApiResponse> {
   return ok({ runId, summary: summary.data, games: games.data }, [...summary.errors, ...games.errors]);
 }
 
+/** `gate.json` de un run de promoción, tal como lo escribió `pnpm promote`; el visor nunca promueve. */
+async function promoteGate(roots: Roots, runId: string): Promise<ApiResponse> {
+  const path = await resolveInside(roots.results, runId, "gate.json");
+  if (!path) return notFound();
+  const read = await readJson(path, `${runId}/gate.json`, GateFileSchema);
+  return ok(read.data, read.errors);
+}
+
 async function traceFile(roots: Roots, parts: [string, ...string[]]): Promise<ApiResponse> {
   const path = await resolveInside(roots.results, ...parts);
   if (!path) return notFound();
@@ -133,6 +141,7 @@ export async function handleApi(roots: Roots, segments: readonly string[], query
     if (ids.length === 1) return runDetail(roots, runId);
     if (ids.length === 3 && games === "games" && gameId !== undefined) return traceFile(roots, [runId, "traces", `${gameId}.jsonl`]);
   }
+  if (head === "promote" && ids.length === 1) return promoteGate(roots, ids[0]!);
   if (head === "tournament") {
     const [runId, session] = ids;
     if (runId !== undefined && session === undefined) return tournamentSessions(roots, runId);

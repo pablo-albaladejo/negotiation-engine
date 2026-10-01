@@ -1,10 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { arenaReplayModel, isTwoIssue, matchesModel, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
-import { asV1Trace, generateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
+import { arenaReplayModel, gateModel, isTwoIssue, matchesModel, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
+import { asV1Trace, generateFixtures, generateGateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
+let gx: Awaited<ReturnType<typeof generateGateFixtures>>;
 beforeAll(async () => {
   fx = await generateFixtures();
+  gx = await generateGateFixtures();
 });
 
 const RIVAL_DRIVEN = new Set(["rival-walked", "rival-accepted"]);
@@ -170,6 +172,51 @@ describe("twoIssueModel (P5)", () => {
   });
 });
 
+describe("gateModel (P6)", () => {
+  it("rechazada en seco: veredicto y comprobaciones tal como se registraron, sin comando", () => {
+    const { gate } = gx.rejected;
+    const m = gateModel("promote-r", gate);
+    expect(m.verdict).toMatchObject({ pass: false, dryRun: true, promoted: false, promotedVersion: null });
+    expect(m.verdict.failed.map((c) => `${c.phase}/${c.check}`)).toEqual(gate.gate.failed.map((c) => `${c.phase}/${c.check}`));
+    expect(m.checks.map((c) => c.pass)).toEqual(gate.gate.checks.map((c) => c.pass));
+    expect(m.checks.find((c) => c.phase === "tuning" && c.check === "effect")).toMatchObject({ label: "Tuning · effect ≥ minimum effect", pass: false });
+    expect(m.command).toBeNull();
+  });
+
+  it("aprobada en seco: comando con la ruta de la candidata; promovida: versión registrada y sin comando", () => {
+    expect(gateModel("p", gx.passed.gate)).toMatchObject({ verdict: { pass: true, dryRun: true, promoted: false }, command: `pnpm promote ${gx.candidatePath}` });
+    expect(gateModel("p", gx.promoted.gate)).toMatchObject({ verdict: { pass: true, dryRun: false, promoted: true, promotedVersion: 2 }, command: null });
+  });
+
+  it("el veredicto sale de gate.pass aunque las comprobaciones digan otra cosa (el visor no evalúa)", () => {
+    const g = gx.passed.gate;
+    const tampered = { ...g, gate: { ...g.gate, checks: g.gate.checks.map((c) => ({ ...c, pass: false })) } };
+    expect(gateModel("p", tampered).verdict.pass).toBe(true);
+  });
+
+  it("métricas por fase, mapa rival × rol, cambio de excedente registrado y diff de parámetros", () => {
+    const { gate } = gx.passed;
+    const m = gateModel("p", gate);
+    expect(m.phases).toEqual(["tuning", "revalidation", "heldOut"]);
+    expect(m.metrics.tuning).toMatchObject({ surplusChangePp: gate.reports.tuning!.meanDiffPp, candidate: { meanSurplus: gate.summaries!.tuning!.candidate.meanSurplus } });
+    const heat = m.heatmap.tuning!;
+    expect(heat.roles).toEqual(["seller", "buyer"]);
+    expect(heat.rows.map((r) => r.rival).sort()).toEqual(["boulware", "conceder"]);
+    const cell = gate.summaries!.tuning!.candidateByRivalRole[0]!;
+    expect(heat.rows.find((r) => r.rival === cell.rival)!.cells.find((c) => c.role === cell.role)!.meanSurplus).toBe(cell.meanSurplus);
+    expect(m.params!.filter((p) => p.changed).map((p) => p.key).sort()).toEqual(["beta", "version"]);
+    expect(m.params!.find((p) => p.key === "beta")).toMatchObject({ champion: "0.2", candidate: "0.3" });
+  });
+
+  it("gate.json v1: sin parámetros ni mapa; métricas de reports", () => {
+    const { schemaVersion: _v, configs: _c, summaries: _s, dryRun: _d, promoted: _p, promotedVersion: _n, ...v1 } = gx.passed.gate;
+    const m = gateModel("p", v1);
+    expect(m).toMatchObject({ schemaVersion: 1, params: null, command: null, verdict: { dryRun: null, promoted: null } });
+    expect(m.heatmap.tuning).toBeNull();
+    expect(m.metrics.tuning!.candidate).toMatchObject({ agreementRate: v1.reports.tuning!.candidate.agreementRate, violations: null });
+  });
+});
+
 /** Hojas numéricas de un valor con su clave. */
 function numericLeaves(value: unknown, key = ""): { key: string; value: number }[] {
   if (typeof value === "number") return [{ key, value }];
@@ -181,7 +228,7 @@ function numericLeaves(value: unknown, key = ""): { key: string; value: number }
 describe("los modelos no calculan", () => {
   it("cada número de un modelo es un valor de la fuente o un conteo (clave *Count)", () => {
     const source = new Set(
-      numericLeaves([fx.summary, fx.games, [...fx.traces.values()], fx.tournament.trace, fx.tournament.ref]).map((l) => l.value),
+      numericLeaves([fx.summary, fx.games, [...fx.traces.values()], fx.tournament.trace, fx.tournament.ref, gx.rejected.gate, gx.passed.gate, gx.promoted.gate]).map((l) => l.value),
     );
     const models = [
       runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]),
@@ -189,6 +236,7 @@ describe("los modelos no calculan", () => {
       ...fx.games.map((g) => arenaReplayModel(g, fx.traces.get(g.gameId) ?? null)),
       tournamentReplayModel(fx.tournament.trace, fx.tournament.ref),
       ...fx.games.filter(isTwoIssue).map((g) => twoIssueModel(g, fx.traces.get(g.gameId) ?? null)),
+      ...[gx.rejected, gx.passed, gx.promoted].map((g) => gateModel("p", g.gate)),
     ];
     const computed = numericLeaves(models).filter((l) => !source.has(l.value) && !l.key.endsWith("Count"));
     expect(computed).toEqual([]);

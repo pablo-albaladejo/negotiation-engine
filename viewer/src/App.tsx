@@ -1,11 +1,12 @@
 import { Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
-import type { Summary, TranscriptLine } from "../../src/arena/results-schema.js";
+import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, isTwoIssue, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, gateModel, isTwoIssue, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
+import { GateScreen } from "./screens/GateScreen.js";
 import { MatchesScreen } from "./screens/MatchesScreen.js";
 import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
@@ -44,7 +45,11 @@ function RunsContainer() {
     };
   }, []);
   if (!state) return <LoadingCard label="Reading results/" />;
-  return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={(runId) => navigate(routeTo.matches(runId))} />;
+  const open = (runId: string) => {
+    const kind = state.entries.find((e) => e.runId === runId)?.kind;
+    navigate(kind === "promotion" ? routeTo.promote(runId) : routeTo.matches(runId));
+  };
+  return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={open} />;
 }
 
 function MatchesContainer({ runId }: { runId: string }) {
@@ -96,6 +101,23 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
   return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} />;
 }
 
+function GateContainer({ runId }: { runId: string }) {
+  const [state, setState] = useState<{ gate: GateFile | null; errors: ApiError[] } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setState(null);
+    fetchApi<GateFile | null>(`promote/${encodeURIComponent(runId)}`).then((res) => {
+      if (!cancelled) setState({ gate: res.data, errors: res.errors });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+  if (!state) return <LoadingCard label={`Reading results/${runId}/gate.json`} />;
+  if (!state.gate) return <LoadingCard label={`results/${runId}/gate.json is not available${state.errors[0] ? `: ${state.errors[0].message}` : ""}`} />;
+  return <GateScreen model={gateModel(runId, state.gate)} onBack={() => navigate(routeTo.runs())} />;
+}
+
 function TournamentReplayContainer({ runId, session }: { runId: string; session: string }) {
   const [state, setState] = useState<{ trace: TraceLine[]; ref: ScenarioRef | null } | null>(null);
   useEffect(() => {
@@ -133,6 +155,7 @@ export function App() {
         {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
         {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
         {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
+        {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
         {route.screen === "states" ? <StatesScreen /> : null}
       </main>
     </Root>
