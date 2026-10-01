@@ -4,7 +4,9 @@ import { scenarioHash } from "../arena/scenario.js";
 import { z } from "zod";
 import { ConfigError, loadConfig, type AgentConfig } from "../engine/config.js";
 import type { OfferMandate } from "../engine/issues.js";
-import { currentProvider, type LlmProvider } from "../llm/provider.js";
+import { createLlmNarrator } from "../llm/llm-narrator.js";
+import { createLlmParser } from "../llm/llm-parser.js";
+import { createProviderClient, currentProvider, type LlmClient, type LlmProvider } from "../llm/provider.js";
 import type { Logger, TraceSink } from "../pipeline/box.js";
 import { createPipeline, type Brain } from "../pipeline/pipeline.js";
 import { SessionStore } from "../pipeline/session.js";
@@ -87,6 +89,8 @@ export interface AgentOptions {
   configPath: string;
   scenarioPath: string;
   provider?: LlmProvider;
+  /** Cliente LLM inyectado (tests); por defecto el de `provider`. */
+  llmClient?: LlmClient;
   logger?: Logger;
   trace?: TraceSink;
   auth?: { header: string; value: string };
@@ -128,11 +132,14 @@ export function createAgent(options: AgentOptions): Agent {
   const provider = options.provider ?? currentProvider();
   const champion = createChampionProvider(options.configPath, logger);
   const mandate = loadScenario(options.scenarioPath, champion.initial);
-  if (provider !== "none") {
-    logger.warn("provider_not_implemented", { provider, using: "none" });
-  }
   const store = new SessionStore({ mandateFor: () => mandate, configFor: champion.current });
   const deps: Parameters<typeof createPipeline>[0] = { store, logger, provider };
+  // Con un proveedor LLM: parser en cuarentena (doble lectura con el determinista) y narrador.
+  const client = options.llmClient ?? createProviderClient(provider);
+  if (client) {
+    deps.parser = createLlmParser(client);
+    deps.narrator = createLlmNarrator(client);
+  }
   if (options.trace) deps.trace = options.trace;
   const brain = createPipeline(deps);
   const issueNames = () => champion.current().issues.map((i) => i.name);

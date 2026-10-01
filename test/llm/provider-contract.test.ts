@@ -124,6 +124,6 @@ describe("detalles de cada proveedor", () => {
   });
 
   it("LLM_PROVIDER=none no crea cliente", async () => {
-    expect(await createProviderClient("none")).toBeUndefined();
+    expect(createProviderClient("none")).toBeUndefined();
   });
 });

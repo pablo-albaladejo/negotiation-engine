@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { createAnthropicClient } from "./anthropic-api.js";
+import { createClaudeCliClient } from "./claude-cli.js";
 
 /**
  * Proveedor del LLM, elegido por variable de entorno:
@@ -112,12 +114,8 @@ export function createLlmClient(name: string, transport: LlmTransport): LlmClien
 }
 
 /** Cliente del proveedor elegido; `none` no tiene cliente. Las claves solo se leen de `env`. */
-export async function createProviderClient(provider: LlmProvider, env: NodeJS.ProcessEnv = process.env): Promise<LlmClient | undefined> {
+export function createProviderClient(provider: LlmProvider, env: NodeJS.ProcessEnv = process.env): LlmClient | undefined {
   if (provider === "none") return undefined;
-  if (provider === "claude-cli") {
-    const { createClaudeCliClient } = await import("./claude-cli.js");
-    return createClaudeCliClient(env.CLAUDE_CLI_MODEL ? { model: env.CLAUDE_CLI_MODEL } : {});
-  }
-  const { createAnthropicClient } = await import("./anthropic-api.js");
+  if (provider === "claude-cli") return createClaudeCliClient(env.CLAUDE_CLI_MODEL ? { model: env.CLAUDE_CLI_MODEL } : {});
   return createAnthropicClient({ apiKey: env.ANTHROPIC_API_KEY, model: env.ANTHROPIC_MODEL });
 }

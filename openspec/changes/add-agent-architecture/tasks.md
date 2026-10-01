@@ -95,8 +95,10 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
   - Nota: llamada real grabada en `test/fixtures/llm/providers/claude-cli-ok.json` (modelo por defecto del CLI). `claude --json-schema` rechaza la clave `$schema` que emite `z.toJSONSchema`; el contrato común la quita.
 - [x] 11.3 [Pablo] Proveedor `anthropic-api` con salida estructurada y modelo por env, pasando los tests de contrato [aplazada: sábado]
   - Nota: probado solo con transporte simulado (no hay clave aquí). Usa `output_config.format` (JSON Schema) de la Messages API y `ANTHROPIC_MODEL` sin valor por defecto: verificar la forma de la petición con una clave real antes del torneo.
-- [ ] 11.4 [Pablo] Parser LLM en cuarentena (sin herramientas, texto delimitado como dato, esquema cerrado) conectado a la reconciliación del modo solo texto; verificar sobre los fixtures y medir acuerdo con el parser determinista en `results/` [aplazada: sábado]
-- [ ] 11.5 [Gerard] Narrador LLM con persona cuya entrada son solo enums y las cifras decididas, con instrucción de escribir cifras con dígitos; verificar en la traza que su entrada no contiene reserva, plazo, texto crudo ni afirmaciones del rival y que 2 intentos + plantilla funcionan con proveedor real [aplazada: sábado]
+- [x] 11.4 [Pablo] Parser LLM en cuarentena (sin herramientas, texto delimitado como dato, esquema cerrado) conectado a la reconciliación del modo solo texto; verificar sobre los fixtures y medir acuerdo con el parser determinista en `results/` [aplazada: sábado]
+  - Nota: verificado con cliente LLM falso que pasa por el contrato real (coincide / discrepa) contra el bot de solo texto y con `test/fixtures/llm/injection.json`. La medición de acuerdo LLM-determinista en `results/` con el proveedor real queda para una ejecución con `LLM_PROVIDER=claude-cli`.
+- [x] 11.5 [Gerard] Narrador LLM con persona cuya entrada son solo enums y las cifras decididas, con instrucción de escribir cifras con dígitos; verificar en la traza que su entrada no contiene reserva, plazo, texto crudo ni afirmaciones del rival y que 2 intentos + plantilla funcionan con proveedor real [aplazada: sábado]
+  - Nota: entrada y prompt barridos en la traza con cliente falso; "2 intentos + plantilla" probado con un narrador que cambia la cifra. No se ha probado aún con el proveedor real dentro del pipeline.
 
 ## 12. Sábado: estrategia [Paula]
 

@@ -1,4 +1,6 @@
 import { parseConfig, type AgentConfig, type Issue } from "../engine/config.js";
+import type { Narrator } from "../llm/narrator.js";
+import type { TextParser } from "../llm/parser.js";
 import { MemoryTrace, type Logger } from "../pipeline/box.js";
 import { createPipeline } from "../pipeline/pipeline.js";
 import { SessionStore } from "../pipeline/session.js";
@@ -18,6 +20,9 @@ export interface AgentParticipantOptions {
   config: AgentConfig;
   pool?: "tuning" | "heldOut";
   logger?: Logger;
+  /** Parser y narrador LLM opcionales; por defecto ninguno (proveedor `none`, sin red). */
+  parser?: TextParser;
+  narrator?: Narrator;
 }
 
 /**
@@ -50,6 +55,8 @@ export function createAgentParticipant(options: AgentParticipantOptions): Partic
       });
       const deps: Parameters<typeof createPipeline>[0] = { store, trace, provider: "none" };
       if (options.logger) deps.logger = options.logger;
+      if (options.parser) deps.parser = options.parser;
+      if (options.narrator) deps.narrator = options.narrator;
       const brain = createPipeline(deps);
       const issueNames = config.issues.map((i) => i.name);
       const adapter = createInMemoryAdapter(brain, { issueNames: () => issueNames });
