@@ -278,7 +278,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const engineInput = engineInputFor(session, now(), unconfirmed);
     const engineResult = await guarded(
       "engine",
-      { params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
+      { issues: engineInput.issues, params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
       async () => checkDecision(session, DecisionSchema.parse(await engine(engineInput))),
       remaining(),
       "fallback",
