@@ -18,7 +18,7 @@ Maneja errores de esquema, timeouts, excepciones, y asegura respuesta siempre.
 - **`box.ts`** — Sistema de cajas (`defineBox`, `runBox`): desacoplamiento, aislamiento de timeouts, aislamiento de fallas.
 - **`session.ts`** — `Session` y `SessionStore`: persistencia de estado entre turnos (historial, ofertas, decisiones).
 - **`binding.ts`** — `bindRivalMove()`: mapea acción rival a estructura `EngineInput`.
-- **`reconcile.ts`** — `reconcileTextOffer()`: cuando el rival solo da texto (sin cifra), intenta extraer número o marca "inconfirmed".
+- **`reconcile.ts`** — `reconcileTextOffer()`: en modo solo texto acepta la oferta extraída solo si el parser determinista y el LLM coinciden en cada issue (sin LLM, basta el determinista); si no coinciden, el turno va sin oferta del rival. Es la puerta que impide que el LLM fije una cifra por su cuenta: no quitarla.
 - **`otel.ts`** — Exporta traza a OpenTelemetry (spans, atributos sanitizados).
 - **`log.ts`** — Logger con pino. Redacta rutas de `explain` del motor (censura números sensibles).
 - **`trace.ts`** — `TraceSink`: acumula eventos de cajas para debugging.

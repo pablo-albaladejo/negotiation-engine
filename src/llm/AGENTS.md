@@ -5,7 +5,7 @@ Parse el texto del rival en JSON tipado, redacta la respuesta en nombre del agen
 ## Propósito
 
 Aisla el LLM en dos cajas desconectadas:
-1. **Parser**: lee el texto rival sin herramientas, devuelve JSON validado (nunca afecta la decisión).
+1. **Parser**: lee el texto rival sin herramientas y devuelve JSON validado con Zod. Su oferta solo llega al motor vía `reconcileTextOffer` (el parser determinista y el LLM deben coincidir en cada issue); intención y tácticas solo van al narrador. Nunca fija mandato, reserva ni identidad.
 2. **Narrador**: redacta la respuesta (texto) a partir de la decisión del motor ya tomada.
 
 La validación final (el número en el texto = el número del motor) garantiza que no hay fuga de autoridad.
