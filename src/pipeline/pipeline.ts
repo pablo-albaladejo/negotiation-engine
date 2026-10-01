@@ -222,7 +222,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
       };
       const full = error ? { ...entry, error } : entry;
       deps.trace?.write(full);
-      logger.trace?.("box_record", full);
+      // Local-only boxes: skip logger to avoid leaking rival raw text
+      const localOnly = new Set(["rivalText", "protocol"]);
+      if (!localOnly.has(box)) {
+        logger.trace?.("box_record", full);
+      }
     };
 
     /** Ejecuta una caja dentro de try/catch y con tiempo máximo; nunca lanza. */
