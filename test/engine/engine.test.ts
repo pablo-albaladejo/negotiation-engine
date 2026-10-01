@@ -103,6 +103,24 @@ describe("explain: extensión aditiva, no cambia la decisión", () => {
     },
   );
 
+  it("rivalReserveEstimate: no nulo con ≥ 2 ofertas del rival, y es la estimación del rival (no nuestra reserva)", () => {
+    const base = fixtures.find(([f]) => f === "counter-boulware.json")![1].input;
+    const input: EngineInput = { ...base, state: { ...base.state, rivalOffers: [{ pct: 1 }, { pct: 1.6 }] } };
+    const decision = decide(input);
+    expect(decision.explain).toBeDefined();
+    expect(decision.explain!.rivalReserveEstimate).not.toBeNull();
+    expect(Object.keys(decision.explain!.rivalReserveEstimate)).toEqual(["pct"]);
+    // Sin regresión (sin tiempos), la estimación es su mejor oferta para nosotros: 1.6.
+    expect(decision.explain!.rivalReserveEstimate.pct).toBeCloseTo(1.6, 9);
+    expect(decision.explain!.rivalReserveEstimate.pct).not.toBe(base.mandate.reservation.pct);
+  });
+
+  it("rivalReserveEstimate: en la apertura (sin ofertas del rival) es el a priori del escenario, nunca null", () => {
+    const base = fixtures.find(([f]) => f === "counter-boulware.json")![1].input;
+    const decision = decide({ ...base, state: { ...base.state, round: 1, ourOffers: [], rivalOffers: [] } });
+    expect(decision.explain!.rivalReserveEstimate).toEqual({ pct: 5 });
+  });
+
   const paramsArb = fc.record({
     beta: fc.double({ min: 0, max: 5, noNaN: true }),
     openingMargin: fc.double({ min: 0, max: 1, noNaN: true }),

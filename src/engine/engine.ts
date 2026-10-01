@@ -66,7 +66,8 @@ export const ExplainSchema = z
     uRival: z.number().nullable(),
     acNext: z.boolean(),
     acTime: z.enum(["n/a", "applies", "no"]),
-    rivalReserveEstimate: OfferRecord.nullable(),
+    /** Estimación de la reserva del RIVAL (modelo del rival); a priori del escenario sin ofertas suyas, nunca null. */
+    rivalReserveEstimate: OfferRecord,
   })
   .strict();
 export type Explain = z.infer<typeof ExplainSchema>;
@@ -174,7 +175,7 @@ export function decide(input: EngineInput): Decision {
     uRival,
     acNext: rivalCurrent ? uRival! >= acceptance.ourNextUtility - params.acceptMargin : false,
     acTime: !rivalCurrent || time.t < params.acTimeThreshold ? "n/a" : uRival! > uRes + params.acceptMargin ? "applies" : "no",
-    rivalReserveEstimate: null,
+    rivalReserveEstimate: rivalSummary.estimatedReservation,
   };
 
   if (verdict.verdict === "accept" && rivalCurrent) return decision("accept", rivalCurrent, verdict.rule, explain);

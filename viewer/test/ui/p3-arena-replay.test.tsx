@@ -20,6 +20,18 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(screen.getByRole("img", { name: /offers from both sides/i })).toBeTruthy();
   });
 
+  it("la línea de estimación de la reserva del rival se dibuja: serie no vacía y polyline con puntos", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const series = model.explain.filter((e) => e.rivalReserveEstimate !== null);
+    expect(series.length).toBeGreaterThan(0);
+    expect(series.length).toBe(model.explain.length);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const estimate = container.querySelector("polyline.estimate");
+    expect(estimate).toBeTruthy();
+    expect(estimate!.getAttribute("points")!.trim().split(/\s+/).length).toBe(series.length);
+  });
+
   it("partida sin traza: indica que no hay traza, sin panel de decisión", () => {
     const line = fx.games[0]!;
     const model = arenaReplayModel(line, null);

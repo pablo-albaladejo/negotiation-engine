@@ -21,6 +21,16 @@ describe("TournamentReplayScreen (P4)", () => {
     expect(container.textContent).toContain(RIVAL_HTML);
   });
 
+  it("estimación de la reserva del rival registrada: polyline con puntos y ninguna ronda con explain dice not logged", () => {
+    const model = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
+    expect(model.explain.length).toBeGreaterThan(0);
+    expect(model.explain.every((e) => e.rivalReserveEstimate !== null)).toBe(true);
+    const { container } = render(<TournamentReplayScreen model={model} />);
+    const estimate = container.querySelector("polyline.estimate");
+    expect(estimate!.getAttribute("points")!.trim().split(/\s+/).length).toBe(model.explain.length);
+    expect(container.textContent).not.toContain("not logged");
+  });
+
   it("sin escenario local coincidente: our reserve not available, nunca ZOPA ni reserva del rival dibujadas", () => {
     const model = tournamentReplayModel(fx.tournament.trace, null);
     const { container } = render(<TournamentReplayScreen model={model} />);
