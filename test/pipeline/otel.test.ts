@@ -42,4 +42,37 @@ describe("exportación OpenTelemetry tras flag", () => {
   it("la redacción quita las claves censuradas a cualquier profundidad", () => {
     expect(redactForExport({ a: 1, mandate: { reservation: { pct: 3 } }, b: { config: {}, c: [{ reservation: 3, d: 2 }] } })).toEqual({ a: 1, b: { c: [{ d: 2 }] } });
   });
+
+  it("textos largos se reemplazan con longitud para evitar fugas en spans", () => {
+    const longText = "mi límite es 3 % y no puedo bajar más porque".padEnd(150, "x");
+    expect(redactForExport({ input: longText })).toEqual({ input: `[text:${longText.length}]` });
+    expect(redactForExport({ input: "corto" })).toEqual({ input: "corto" });
+    expect(redactForExport({ nested: { text: longText, n: 42 } })).toEqual({ nested: { text: `[text:${longText.length}]`, n: 42 } });
+  });
+
+  it("con flag TRACE_EXPORT=otel un narrator que filtra sensible no deja trazas del contenido", async () => {
+    const exporter = new InMemorySpanExporter();
+    const sink = (await createOtelSink({ env: { TRACE_EXPORT: "otel" }, exporter }))!;
+    await playThree(sink);
+    const spans = exporter.getFinishedSpans();
+    await sink.shutdown();
+    // Verificar que existen spans de narrator
+    const narratorSpans = spans.filter((s) => s.name === "box.narrator");
+    expect(narratorSpans.length).toBeGreaterThan(0);
+    // No debe haber ninguna mención de "Te ofrezco" en los atributos
+    const dump = JSON.stringify(spans.map((s) => s.attributes));
+    expect(dump).not.toMatch(/Te ofrezco/);
+    // Los spans de narrator deben tener input/output sanitizados
+    for (const span of narratorSpans) {
+      const inputStr = span.attributes.input;
+      const outputStr = span.attributes.output;
+      // Input debe solo tener persona
+      expect(inputStr).toContain("persona");
+      expect(inputStr).not.toContain("decision");
+      // Output debe tener textLength sin el texto real
+      if (typeof outputStr === "string") {
+        expect(outputStr).not.toMatch(/Gracias por tu propuesta/);
+      }
+    }
+  });
 });

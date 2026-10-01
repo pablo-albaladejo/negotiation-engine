@@ -163,13 +163,49 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const deadline = startedAt + turnBudgetMs(input.timeoutMs, config);
     const remaining = () => Math.max(0, deadline - now());
 
+    /** Sanitiza entrada/salida de cajas LLM que pueden registrar textos sensibles. */
+    function sanitizeBox(box: string, role: "input" | "output", data: unknown): unknown {
+      if (role === "input") {
+        if (typeof data !== "object" || !data || Array.isArray(data)) return data;
+        const obj = data as Record<string, unknown>;
+        // Parser: rival text podría contener cifras de la reserva
+        if (box === "parser") {
+          const { text, ...rest } = obj;
+          return { ...rest, textLength: typeof text === "string" ? text.length : null };
+        }
+        // Narrator: solo persona, sin instrucciones
+        if (box === "narrator") return { persona: (obj as any).persona };
+        // Validator: no registrar el texto candidato
+        if (box === "validator") {
+          const { text, ...rest } = obj;
+          return { ...rest, textLength: typeof text === "string" ? text.length : null };
+        }
+        // Leak: no registrar el texto ni las razones
+        if (box === "leak") {
+          return { textLength: typeof obj.text === "string" ? obj.text.length : null };
+        }
+        return data;
+      }
+      // Salidas de LLM que podrían contener texto sensible
+      if (box === "narrator" && typeof data === "string") {
+        return { textLength: data.length };
+      }
+      if (box === "leak" && typeof data === "object" && data) {
+        const obj = data as Record<string, unknown>;
+        // Registrar leak flag pero no las razones que delatarían cifras
+        if (obj.leak) return { leak: true };
+        return { leak: false };
+      }
+      return data;
+    }
+
     const record = (box: string, boxInput: unknown, output: unknown, result: BoxResult, t0: number, error?: string) => {
       const entry = {
         sessionId: session.id,
         round: input.round,
         box,
-        input: boxInput,
-        output,
+        input: sanitizeBox(box, "input", boxInput),
+        output: sanitizeBox(box, "output", output),
         result,
         latencyMs: now() - t0,
         seed: session.seed,

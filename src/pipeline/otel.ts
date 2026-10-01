@@ -6,7 +6,14 @@ import { REDACT_PATHS } from "./log.js";
 const REDACT_KEYS = new Set(REDACT_PATHS.map((p) => p.split(".").at(-1)!));
 
 export function redactForExport(value: unknown, depth = 0): unknown {
-  if (depth > 8 || value === null || typeof value !== "object") return value;
+  if (depth > 8 || value === null) return value;
+  if (typeof value === "string") {
+    // Strings largos (probables textos de LLM) se reemplazan con la longitud.
+    // Los atributos numéricos (cifras en texto) se mantienen si son cortos.
+    if (value.length > 100) return `[text:${value.length}]`;
+    return value;
+  }
+  if (typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map((v) => redactForExport(v, depth + 1));
   return Object.fromEntries(Object.entries(value).filter(([k]) => !REDACT_KEYS.has(k)).map(([k, v]) => [k, redactForExport(v, depth + 1)]));
 }
