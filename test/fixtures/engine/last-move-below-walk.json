@@ -1,0 +1,49 @@
+{
+  "description": "último movimiento por debajo de la reserva sin respuesta posible ⇒ walk",
+  "input": {
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "mandate": {
+      "role": "buyer",
+      "reservation": {
+        "pct": 3
+      }
+    },
+    "params": {
+      "beta": 0.2,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0,
+      "defaultHorizon": 10
+    },
+    "state": {
+      "round": 10,
+      "ourOffers": [
+        {
+          "pct": 9.3
+        }
+      ],
+      "rivalOffers": [
+        {
+          "pct": 2.99
+        }
+      ],
+      "rivalAcceptedOurLast": false,
+      "rivalWalked": false,
+      "roundLimit": 10
+    },
+    "seed": 7
+  },
+  "expected": {
+    "action": "walk",
+    "rule": "last-move"
+  }
+}

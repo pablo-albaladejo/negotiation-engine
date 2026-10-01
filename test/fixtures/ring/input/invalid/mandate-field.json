@@ -1,0 +1,11 @@
+{
+  "sessionId": "s1",
+  "round": 1,
+  "rivalAction": "message",
+  "mandate": {
+    "role": "seller",
+    "reservation": {
+      "pct": 8
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "description": "Mandato de sparring por defecto para pnpm agent (no es el del torneo, que fijará el ring o la sesión).",
+  "role": "buyer",
+  "reservation": { "pct": 3 }
+}

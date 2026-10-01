@@ -12,9 +12,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "arena": "tsx src/arena/index.ts",
-    "agent": "tsx src/agent/index.ts"
+    "agent": "tsx src/agent/index.ts",
+    "smoke": "bash scripts/smoke.sh",
+    "bot:serve": "tsx src/bots/serve.ts",
+    "sparring": "bash scripts/sparring.sh"
   },
   "dependencies": {
+    "@a2a-js/sdk": "1.3.0",
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.11",
+    "pino": "10.3.1",
+    "pure-rand": "^8.4.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
