@@ -21,6 +21,8 @@ export interface ViewerFixtures {
   /** Traza de arena por `gameId`. */
   traces: Map<string, TraceLine[]>;
   tournament: { trace: TraceLine[]; ref: ScenarioRef };
+  /** Ficheros escritos: directorio del run de arena, de las trazas de torneo y escenario local. */
+  dirs: { runDir: string; tournamentDir: string; scenarioPath: string };
 }
 
 /** Raíz del repo: `pnpm viewer:test` corre con `cwd` en `viewer/`, así que las rutas de `config/` van absolutas. */
@@ -63,7 +65,14 @@ export async function generateFixtures(): Promise<ViewerFixtures> {
   const tournamentTrace = readJsonl(trace.fileFor(sessionId)).map((l) => TraceLineSchema.parse(l) as TraceLine);
   const ref: ScenarioRef = { id: "scenario.json", hash: scenarioHash(scenarioText), mandate: { role: "buyer", reservation: { pct: 3.37 } } };
 
-  return { runId, summary, games, traces, tournament: { trace: tournamentTrace, ref } };
+  return {
+    runId,
+    summary,
+    games,
+    traces,
+    tournament: { trace: tournamentTrace, ref },
+    dirs: { runDir, tournamentDir: join(dir, "traces"), scenarioPath },
+  };
 }
 
 /** Traza v1: sin `traceVersion` en la cabecera ni `explain` en el registro `engine`. */

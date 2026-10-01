@@ -43,7 +43,7 @@ export function createChampionProvider(path: string, logger: Logger): { current:
   };
 }
 
-const ScenarioSchema = z
+export const ScenarioSchema = z
   .object({
     description: z.string().optional(),
     role: z.enum(["buyer", "seller"]),
