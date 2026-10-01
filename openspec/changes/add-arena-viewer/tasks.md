@@ -41,7 +41,8 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 ## 7. Domingo o si hay tiempo: directo y estados restantes
 
-- [ ] 7.1 Tests de la cola SSE (línea añadida < 1 s, escritura partida, fichero de sesión nuevo, línea inválida ⇒ evento `invalid`); luego `/api/live` con `fs.watch` + sondeo 500 ms; verificar con `pnpm viewer:test` [aplazada: domingo]
+- [x] 7.1 Tests de la cola SSE (línea añadida < 1 s, escritura partida, fichero de sesión nuevo, línea inválida ⇒ evento `invalid`); luego `/api/live` con `fs.watch` + sondeo 500 ms; verificar con `pnpm viewer:test` [aplazada: domingo]
+  - Nota: `viewer/server/live.ts`. Al conectar reproduce desde el principio la sesión modificada más recientemente del `results/agent-*` más reciente (P7 no queda vacía al recargar); el resto de ficheros existentes se sigue desde su final. Eventos `session {runId, session}`, `record {runId, session, line, record}` (también la cabecera) e `invalid {file, line, path, message}`. La validación por línea es la misma de `readJsonl` (`parseLine`).
 - [ ] 7.2 `liveModel` y P7 proyector (`Scoreboard`, `OfferChart` grande, 3 últimas burbujas, LIVE/FINAL/BREAK, tema oscuro); verificar con smoke test y a mano con `pnpm agent` + `scripts/smoke.sh` [aplazada: domingo]
 - [ ] 7.3 Registro `protocol` en `src/pipeline/pipeline.ts` (solo rutas y códigos de Zod) con test en `test/pipeline/`; verificar que no contiene texto del rival [si hay tiempo]
 - [ ] 7.4 Estados P8 restantes: rival rompe protocolo, ZOPA vacía con retirada, LLM caído ("N of M via template"); verificar con smoke tests [si hay tiempo]

@@ -53,6 +53,23 @@ function ioError(file: string, error: unknown): ReadError {
   return { file, line: null, path: "", message: `cannot read file (${code})` };
 }
 
+/** Una línea JSONL validada con el esquema del escritor, o su error (fichero, línea, campo). Nunca lanza. */
+export function parseLine<S extends z.ZodType>(
+  text: string,
+  file: string,
+  line: number,
+  schema: S,
+): { ok: true; data: z.infer<S> } | { ok: false; error: ReadError } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: { file, line, path: "", message: "invalid JSON (truncated or malformed line)" } };
+  }
+  const parsed = schema.safeParse(raw);
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: schemaError(file, line, parsed.error) };
+}
+
 /**
  * Lee un JSONL en streaming y valida cada línea con el esquema del escritor. Una línea inválida
  * (JSON truncado o campo erróneo) se omite y va a `errors`; el resto se sigue cargando. Nunca lanza.
@@ -66,16 +83,9 @@ export async function readJsonl<S extends z.ZodType>(absPath: string, file: stri
     for await (const text of lines) {
       lineNo += 1;
       if (text.trim() === "") continue;
-      let raw: unknown;
-      try {
-        raw = JSON.parse(text);
-      } catch {
-        errors.push({ file, line: lineNo, path: "", message: "invalid JSON (truncated or malformed line)" });
-        continue;
-      }
-      const parsed = schema.safeParse(raw);
-      if (parsed.success) data.push(parsed.data);
-      else errors.push(schemaError(file, lineNo, parsed.error));
+      const parsed = parseLine(text, file, lineNo, schema);
+      if (parsed.ok) data.push(parsed.data);
+      else errors.push(parsed.error);
     }
   } catch (error) {
     errors.push(ioError(file, error));

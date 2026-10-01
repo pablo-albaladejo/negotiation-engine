@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { handleApi, rootsFor, type ApiResponse, type Roots } from "./api.js";
+import { serveLive } from "./live.js";
 
 /**
  * Servidor local del visor. SOLO escucha en 127.0.0.1 (la dirección no es configurable, solo el
@@ -62,6 +63,10 @@ export function createViewerServer({ repoRoot, middleware, api }: ViewerServerOp
     }
     const raw = req.url ?? "/";
     const rawPath = raw.split("?", 1)[0] ?? "/";
+    if (rawPath === "/api/live") {
+      serveLive(req, res, roots.results);
+      return;
+    }
     if (rawPath === "/api" || rawPath.startsWith("/api/")) {
       const segments = apiSegments(rawPath);
       if (!segments) {
