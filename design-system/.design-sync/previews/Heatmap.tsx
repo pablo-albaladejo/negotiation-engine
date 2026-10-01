@@ -40,3 +40,15 @@ export function LowBand() {
     />
   );
 }
+
+export function MissingData() {
+  return (
+    <Heatmap
+      columns={["as seller", "as buyer"]}
+      rows={[
+        { rival: "Tit-for-tat", cells: [{ label: "0.62", value: 0.62 }, { label: "n/a", value: null }] },
+        { rival: "Liar", cells: [{ label: "n/a", value: null }, { label: "0.44", value: 0.44 }] },
+      ]}
+    />
+  );
+}
