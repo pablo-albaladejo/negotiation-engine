@@ -103,14 +103,21 @@ export function parseDeterministic(text: string, issueNames: readonly string[]):
   const offer = injectionSuspected ? undefined : extractOffer(text, issueNames);
 
   let intent: Intent = "other";
+  let intentEvidence: string | undefined;
   if (injectionSuspected) intent = "other";
-  else if (WALK_RE.test(text)) intent = "walk";
-  else if (ACCEPT_RE.test(text) && !NEGATED_ACCEPT.test(text)) intent = "accept";
+  else if (WALK_RE.test(text)) [intent, intentEvidence] = ["walk", WALK_RE.exec(text)?.[0]];
+  else if (ACCEPT_RE.test(text) && !NEGATED_ACCEPT.test(text)) [intent, intentEvidence] = ["accept", ACCEPT_RE.exec(text)?.[0]];
   else if (offer) intent = "offer";
 
   const output: ParserOutput = { ...EMPTY_PARSE, intent, claims, tactics, injectionSuspected };
   if (offer) output.offer = offer;
+  if (intentEvidence?.trim()) output.intentEvidence = intentEvidence.trim().slice(0, 200);
   return output;
+}
+
+/** Negación de una aceptación (es/en): veta una aceptación leída por el LLM. */
+export function negatedAccept(text: string): boolean {
+  return NEGATED_ACCEPT.test(text);
 }
 
 export const deterministicParser: TextParser = {

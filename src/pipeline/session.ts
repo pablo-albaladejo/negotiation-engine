@@ -36,6 +36,11 @@ export interface Session {
   language?: string;
   rivalWalked: boolean;
   agreement?: Offer;
+  /** Origen del acuerdo registrado: aceptación nuestra, del rival verificada en el texto o acción del ring. */
+  agreementOrigin?: "engine-accept" | "rival-text-verified" | "ring-action";
+  agreementRound?: number;
+  /** Texto de confirmación enviado al cerrar: toda respuesta posterior lo repite. */
+  agreementText?: string;
 }
 
 export function ourLastOffer(session: Session): Offer | undefined {

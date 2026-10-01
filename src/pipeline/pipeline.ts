@@ -5,7 +5,8 @@ import { enforceOfferGuardrails } from "../engine/guardrails.js";
 import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
-import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
+import { deterministicParser, negatedAccept, parseDeterministic } from "../llm/deterministic-parser.js";
+import { spanAppears } from "../llm/verify.js";
 import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
@@ -20,7 +21,7 @@ import {
   type TurnOutput,
 } from "../protocol/schemas.js";
 import { createContext, runBox, silentLogger, type BoxResult, type Logger, type TraceSink } from "./box.js";
-import { bindRivalMove, type BindingResult } from "./binding.js";
+import { bindRivalMove, verifyTextAcceptance, type BindingResult } from "./binding.js";
 import { reconcileOffer, type Reconciled } from "./reconcile.js";
 import { DEFAULT_RUNTIME_CONFIG, type ParserPolicy, type RuntimeConfig } from "./runtime-config.js";
 import { ourLastOffer, type Session, type SessionStore } from "./session.js";
@@ -282,6 +283,13 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (input.rivalCanRespond !== undefined) session.rivalCanRespond = input.rivalCanRespond;
     record("input", { rivalAction: input.rivalAction, hasOffer: input.rivalOffer !== undefined, hasText: !!input.text }, { round: session.round, roundLimit: session.roundLimit ?? null }, "ok", t0);
 
+    // 1a. Acuerdo ya registrado: respuesta idempotente con las mismas cifras y el mismo texto.
+    if (session.agreement && session.agreementText) {
+      const repeat = schemas.turnOutput.parse({ sessionId: session.id, round: input.round, action: "accept", offer: { ...session.agreement }, text: session.agreementText });
+      record("agreement-repeat", { origin: session.agreementOrigin ?? null }, repeat, "ok", now());
+      return repeat;
+    }
+
     // 1b. Texto crudo del rival: solo para la traza JSONL local (nunca a OTel/Langfuse); ver
     // src/pipeline/otel.ts (caja "rivalText" excluida de la exportación).
     if (input.text) record("rivalText", {}, { text: input.text }, "ok", t0);
@@ -368,10 +376,50 @@ export function createPipeline(deps: PipelineDeps): Brain {
       record("evidence", {}, { checks: outcome?.checks ?? [], intentEvidence: parse.intentEvidence ?? null }, "ok", now());
     }
 
+    // 4a. Aceptación y retirada leídas en el texto: solo en turnos sin acción del ring (`message`);
+    // una acción del ring distinta siempre prevalece.
+    let rivalAction = input.rivalAction;
+    let textAccepted = false;
+    const textSignal: Record<string, unknown> = { intent: parse.intent };
+    if (input.rivalAction === "message" && input.text) {
+      const text = input.text;
+      if (parse.intent === "accept") {
+        textSignal.acceptSignal = runtime.acceptance.signal;
+        if (runtime.acceptance.signal === "parser-intent-verified") {
+          const acceptInput: Parameters<typeof verifyTextAcceptance>[0] = {
+            issues,
+            text,
+            intent: parse.intent,
+            negated: negatedAccept(text),
+            ourLast: ourLastOffer(session),
+            textHasNumbers: normalizeNumbers(text).length > 0,
+          };
+          if (parse.intentEvidence) acceptInput.intentEvidence = parse.intentEvidence;
+          if (llmActive && outcome?.checks) acceptInput.checks = outcome.checks;
+          if (!llmActive && deterministicOffer) acceptInput.deterministic = deterministicOffer;
+          const verdict = verifyTextAcceptance(acceptInput);
+          textSignal.acceptVerified = verdict.verified;
+          if (!verdict.verified) textSignal.acceptReason = verdict.reason;
+          if (verdict.verified) {
+            textAccepted = true;
+            rivalAction = "accept";
+            // El acuerdo es nuestra última oferta: cifras citadas (si las hay) ya coinciden con ella.
+            if (!reconciled || !sameOffer(issues, reconciled, ourLastOffer(session)!)) reconciled = undefined;
+            unconfirmed = false;
+          }
+        }
+      } else if (parse.intent === "walk") {
+        textSignal.walkSignal = runtime.acceptance.walkSignal;
+        const walkVerified = runtime.acceptance.walkSignal === "parser-intent-verified" && spanAppears(text, parse.intentEvidence);
+        textSignal.walkVerified = walkVerified;
+        if (walkVerified) rivalAction = "walk";
+      }
+    }
+
     // 4. Regla de enlace de la aceptación del rival y actualización del estado.
     // Cifras sin confirmar: ni oferta nueva ni aceptación (un accept con cifras ilegibles no es acuerdo).
     const binding: BindingResult =
-      unconfirmed && input.rivalAction !== "walk" ? { kind: "none" } : bindRivalMove(issues, input.rivalAction, reconciled, ourLastOffer(session));
+      unconfirmed && rivalAction !== "walk" ? { kind: "none" } : bindRivalMove(issues, rivalAction, reconciled, ourLastOffer(session));
     session.rivalAcceptedOurLast = binding.kind === "agreement";
     if (binding.kind === "offer") {
       session.rivalOffers.push(binding.offer);
@@ -379,7 +427,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       session.rivalCurrentLlmOnly = outcome?.confidence === "llm-only";
     }
     if (binding.kind === "walk") session.rivalWalked = true;
-    record("binding", { rivalAction: input.rivalAction }, binding, "ok", now());
+    record("binding", { rivalAction: input.rivalAction, effectiveAction: rivalAction, textSignal }, binding, "ok", now());
 
     // 5. Motor determinista; si falla, última oferta válida o apertura.
     const engineInput = engineInputFor(session, now(), unconfirmed);
@@ -402,7 +450,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
     }
 
     if (decision.action === "counter") session.ourOffers.push({ ...decision.offer });
-    if (decision.action === "accept") session.agreement = { ...decision.offer };
+    if (decision.action === "accept") {
+      session.agreement = { ...decision.offer };
+      session.agreementOrigin = session.rivalAcceptedOurLast ? (textAccepted ? "rival-text-verified" : "ring-action") : "engine-accept";
+      session.agreementRound = input.round;
+    }
 
     // 6. Narrador → validador → detector de fugas (2 textos como mucho; luego plantilla).
     const offer = decision.action === "walk" ? undefined : decision.offer;
@@ -449,6 +501,10 @@ export function createPipeline(deps: PipelineDeps): Brain {
 
     // 7. Salida canónica validada.
     const output = schemas.turnOutput.parse({ sessionId: session.id, round: input.round, action: decision.action, ...(offer ? { offer } : {}), text });
+    if (decision.action === "accept") {
+      session.agreementText = text;
+      record("agreement", { origin: session.agreementOrigin ?? null, round: input.round }, { offer: { ...decision.offer } }, "ok", now());
+    }
     record("output", null, output, "ok", now());
     return output;
   }
