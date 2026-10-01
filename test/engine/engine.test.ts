@@ -5,6 +5,15 @@ import { describe, expect, it } from "vitest";
 import { DecisionSchema, decide, engineBox, type EngineInput } from "../../src/engine/engine.js";
 import { createContext, runBox } from "../../src/pipeline/box.js";
 import { issuesArb, mandateArb, offerArb } from "./arbitraries.js";
+import { createAgentParticipant } from "../../src/arena/agent-participant.js";
+import { playGame } from "../../src/arena/runner.js";
+import { loadCatalog, mandateFor } from "../../src/arena/scenario.js";
+import { createBotByName } from "../../src/bots/index.js";
+import { compareGolden, GOLDEN_GAMES, goldenId, loadGoldens, playGolden } from "../../src/dev/golden.js";
+import { loadConfig } from "../../src/engine/config.js";
+
+/** Decisiones decididas por el rival (se retira o acepta la nuestra): el motor no evalúa nada que explicar. */
+const RIVAL_DRIVEN = new Set(["rival-walked", "rival-accepted"]);
 
 /** Decisión sin `explain`: lo que devolvía el motor antes de esta extensión aditiva. */
 function withoutExplain(decision: ReturnType<typeof decide>): unknown {
@@ -67,8 +76,32 @@ describe("explain: extensión aditiva, no cambia la decisión", () => {
     for (const [, fixture] of fixtures) {
       const decision = decide(fixture.input);
       expect(withoutExplain(decision)).toEqual({ action: fixture.expected.action, rule: fixture.expected.rule, ...("offer" in decision ? { offer: decision.offer } : {}) });
+      if (!RIVAL_DRIVEN.has(decision.rule)) expect(decision.explain).toBeDefined();
     }
   });
+
+  it.each(GOLDEN_GAMES.map((spec) => [goldenId(spec), spec] as const))(
+    "dorada %s: misma partida que antes de explain y cada decisión del motor trae explain sin mandato",
+    async (id, spec) => {
+      const champion = loadConfig("config/champion.json");
+      const golden = loadGoldens().find((g) => g.id === id)!;
+      expect(compareGolden(golden, await playGolden(spec, champion))).toEqual([]);
+
+      const scenario = loadCatalog().find((s) => s.id === spec.scenarioId)!;
+      const game = await playGame({ scenario, agent: createAgentParticipant({ config: champion }), rival: createBotByName(spec.rival), seed: spec.seed });
+      const engine = game.records.filter((r) => r.box === "engine" && r.result === "ok");
+      expect(engine.length).toBeGreaterThan(0);
+      for (const record of engine) {
+        const decision = DecisionSchema.parse(record.output);
+        // La traza no guarda el mandato: se repone el del escenario para volver a decidir.
+        const replayed = decide({ ...(record.input as EngineInput), mandate: mandateFor(scenario, scenario.role) });
+        expect(withoutExplain(replayed)).toEqual(withoutExplain(decision));
+        expect(DecisionSchema.safeParse(withoutExplain(decision)).success).toBe(true);
+        if (!RIVAL_DRIVEN.has(decision.rule)) expect(decision.explain).toBeDefined();
+        expect(JSON.stringify(decision.explain ?? {})).not.toMatch(/"reservation"|"mandate"/);
+      }
+    },
+  );
 
   const paramsArb = fc.record({
     beta: fc.double({ min: 0, max: 5, noNaN: true }),
