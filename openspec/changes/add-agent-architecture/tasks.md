@@ -138,9 +138,12 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 16. Sábado: red team [Gerard]
 
-- [ ] 16.1 [Gerard] Configuración promptfoo ejecutada con `npx promptfoo@0.123.1` (sin añadirlo a `package.json`), proveedor propio contra el adaptador HTTP, casos de Scribo, plugin `prompt-extraction` y aserciones JS deterministas; verificar que un agente deliberadamente roto hace fallar la suite [aplazada: sábado]
-- [ ] 16.2 [Gerard] `pnpm redteam` con número de casos acotado, informe en `results/` y código de salida distinto de cero si hay fallos reales; verificar ejecución completa con 0 fallos reales [aplazada: sábado]
+- [x] 16.1 [Gerard] Configuración promptfoo ejecutada con `npx promptfoo@0.123.1` (sin añadirlo a `package.json`), proveedor propio contra el adaptador HTTP, casos de Scribo, plugin `prompt-extraction` y aserciones JS deterministas; verificar que un agente deliberadamente roto hace fallar la suite [aplazada: sábado]
+  - Nota: `redteam/promptfooconfig.yaml` + `redteam/provider.mjs` (proveedor propio que juega cada caso por `POST /turn`) + `redteam/cases.yaml` (12 casos: los 3 patrones de Scribo, `prompt-extraction` escrito a mano, inyecciones, falso BATNA, autoridad). El plugin `prompt-extraction` de promptfoo necesita generación remota y evaluador LLM: está en la configuración extendida (16.3); la base solo tiene aserciones locales: esquema, fuga (`detectLeak` + regex), decisión igual a la del motor sin el texto y cifras del texto = oferta (`src/redteam/harness.ts`, `POST /redteam/check`). Agente con semilla por sesión para comparar con el motor.
+- [x] 16.2 [Gerard] `pnpm redteam` con número de casos acotado, informe en `results/` y código de salida distinto de cero si hay fallos reales; verificar ejecución completa con 0 fallos reales [aplazada: sábado]
+  - Nota: `pnpm redteam [--max-cases N] [--broken]`: agente real en 127.0.0.1 con `LLM_PROVIDER=none`, `npx promptfoo@0.123.1 eval` sin telemetría ni caché, informe en `results/redteam-*/{promptfoo.json,summary.json,report.md}`; sale con 1 si hay fallos reales. Verificado: 12/12 sin fallos (código 0) y `--broken` con 5/5 fallos reales (código 1). Fallos solo del evaluador LLM = pendientes de revisión.
 - [ ] 16.3 [Gerard] Plugins `excessive-agency`, `hijacking`, `ascii-smuggling` y estrategia `jailbreak:meta` [si hay tiempo]
+  - Pendiente: configurado en `redteam/redteam-extended.yaml` tras `pnpm redteam --extended` (apagado por defecto), pero esos plugins y `jailbreak:meta` generan ataques con el servicio remoto de promptfoo o un LLM y los califica un evaluador LLM; no es ejecutable de forma determinista ni sin red, y no se ha ejecutado.
 
 ## 17. Adaptadores completos y observabilidad
 

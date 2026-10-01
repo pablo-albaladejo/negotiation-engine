@@ -94,6 +94,8 @@ export interface AgentOptions {
   logger?: Logger;
   trace?: TraceSink;
   auth?: { header: string; value: string };
+  /** Semilla por sesión (red team y tests reproducibles); por defecto aleatoria. */
+  seedFor?: (sessionId: string) => number;
 }
 
 /**
@@ -124,6 +126,8 @@ export interface Agent {
   store: SessionStore;
   config: () => AgentConfig;
   issueNames: () => readonly string[];
+  /** Mandato del escenario: solo para comprobaciones locales (red team), nunca sale por el adaptador. */
+  mandate: OfferMandate;
 }
 
 /** Adaptador HTTP + pipeline + campeona con recarga al abrir sesión. */
@@ -132,7 +136,7 @@ export function createAgent(options: AgentOptions): Agent {
   const provider = options.provider ?? currentProvider();
   const champion = createChampionProvider(options.configPath, logger);
   const mandate = loadScenario(options.scenarioPath, champion.initial);
-  const store = new SessionStore({ mandateFor: () => mandate, configFor: champion.current });
+  const store = new SessionStore({ mandateFor: () => mandate, configFor: champion.current, ...(options.seedFor ? { seedFor: options.seedFor } : {}) });
   const deps: Parameters<typeof createPipeline>[0] = { store, logger, provider };
   // Con un proveedor LLM: parser en cuarentena (doble lectura con el determinista) y narrador.
   const client = options.llmClient ?? createProviderClient(provider);
@@ -149,5 +153,5 @@ export function createAgent(options: AgentOptions): Agent {
     health: () => ({ configVersion: champion.current().version, llmProvider: provider }),
     ...(options.auth ? { auth: options.auth } : {}),
   });
-  return { brain, app, store, config: champion.current, issueNames };
+  return { brain, app, store, config: champion.current, issueNames, mandate };
 }
