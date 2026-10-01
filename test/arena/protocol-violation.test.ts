@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createAgentParticipant } from "../../src/arena/agent-participant.js";
+import { createHttpParticipant } from "../../src/arena/external.js";
 import { computeMetrics, summarize } from "../../src/arena/metrics.js";
 import type { Participant } from "../../src/arena/participant.js";
 import { TranscriptLineSchema } from "../../src/arena/results-schema.js";
@@ -57,6 +58,23 @@ describe("fin por violación de protocolo", () => {
     const bad = broken("bad-agent", (t) => ({ sessionId: t.sessionId, round: t.round, action: "accept", text: "ok" }));
     const game = await playGame({ scenario, agent: { ...bad, kind: "agent" }, rival: BOTS.boulware!(), seed: 1 });
     expect(game).toMatchObject({ endReason: "protocol-violation", protocolViolation: { by: "agent" } });
+  });
+
+  it("rival HTTP externo: salida fuera de contrato → protocol-violation; red y estado HTTP → rival-error", async () => {
+    const http = (respond: (body: TurnInput) => Promise<Response>) =>
+      createHttpParticipant({ name: "http", baseUrl: "http://rival.test", fetch: async (_url, init) => respond(JSON.parse(String(init?.body)) as TurnInput) });
+    const invalid = await playGame({
+      scenario,
+      agent,
+      rival: http(async (t) => Response.json({ sessionId: t.sessionId, round: t.round, action: "counter", text: "sin oferta" })),
+      seed: 1,
+    });
+    expect(invalid).toMatchObject({ endReason: "protocol-violation", protocolViolation: { by: "rival" } });
+    expect(invalid.protocolViolation?.detail).toMatch(/fuera de contrato/);
+    const down = await playGame({ scenario, agent, rival: http(async () => Promise.reject(new Error("ECONNREFUSED"))), seed: 1 });
+    expect(down.endReason).toBe("rival-error");
+    const status = await playGame({ scenario, agent, rival: http(async () => new Response("boom", { status: 500 })), seed: 1 });
+    expect(status.endReason).toBe("rival-error");
   });
 
   it("un error de red sigue siendo error del rival, no violación", async () => {

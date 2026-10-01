@@ -2,6 +2,7 @@ import { performance } from "node:perf_hooks";
 import type { Offer } from "../engine/issues.js";
 import { deriveSeed } from "../engine/rng.js";
 import type { TraceRecord } from "../pipeline/box.js";
+import { RemoteContractError } from "../protocol/http.js";
 import { createProtocolSchemas, ProtocolError, type ProtocolSchemas, type TurnInput, type TurnOutput } from "../protocol/schemas.js";
 import type { Participant, PlayerSession } from "./participant.js";
 import { mandateFor, rivalRole, type Scenario } from "./scenario.js";
@@ -140,8 +141,11 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         rawOurs = await agent.respond(agentInput);
         result.agentLatencyMs.push(performance.now() - t0);
       } catch (error) {
-        result.endReason = "agent-error";
-        result.error = message(error);
+        if (error instanceof RemoteContractError) violated("agent", message(error));
+        else {
+          result.endReason = "agent-error";
+          result.error = message(error);
+        }
         break;
       }
       const checkedOurs = checkTurnOutput(schemas, rawOurs, gameId, round);
@@ -167,8 +171,11 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
       try {
         rawTheirs = await rival.respond({ sessionId: gameId, round, roundLimit: scenario.rounds, rivalAction: "offer", rivalOffer: ours.offer, text: ours.text });
       } catch (error) {
-        result.endReason = "rival-error";
-        result.error = message(error);
+        if (error instanceof RemoteContractError) violated("rival", message(error));
+        else {
+          result.endReason = "rival-error";
+          result.error = message(error);
+        }
         break;
       }
       const checkedTheirs = checkTurnOutput(schemas, rawTheirs, gameId, round);
