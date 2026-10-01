@@ -153,7 +153,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
   - Nota: `src/protocol/mcp.ts` con `@modelcontextprotocol/sdk` 1.31 (zod 4 como peer, sin conflicto): `POST /mcp` sin estado con `WebStandardStreamableHTTPServerTransport` montado en Hono, herramienta `negotiate_turn({ turn })` → `structuredContent.output` o `structuredContent.error` con `isError`. Pasa la batería `serverContract`. Igual que A2A, no se monta en `pnpm agent`.
 - [x] 17.3 [Gerard] Lado cliente MCP como `Participant` externo; verificar jugando contra nuestro adaptador MCP [si hay tiempo]
   - Nota: `createMcpClient` + `createMcpParticipant` (`src/arena/external.ts`, pool `heldOut`); verificado jugando una partida completa contra el adaptador MCP servido en 127.0.0.1.
-- [ ] 17.4 [Pablo] Exportación a Langfuse/OpenTelemetry tras flag; verificar que con el flag apagado no hay conexiones y con él encendido aparece la traza de una partida [si hay tiempo]
+- [x] 17.4 [Pablo] Exportación a Langfuse/OpenTelemetry tras flag; verificar que con el flag apagado no hay conexiones y con él encendido aparece la traza de una partida [si hay tiempo]
+  - Nota: `src/pipeline/otel.ts`, flag `TRACE_EXPORT=otel` en `pnpm agent` (se suma a la traza JSONL). Apagado: no se importa el SDK ni se crea exportador (test con `fetch` y exportador espía). Encendido: un span `box.<caja>` por registro con `session.id`/`langfuse.session.id`; entrada y salida sin las claves de `REDACT_PATHS`. Exportador: `OTEL_EXPORTER=console` o OTLP/HTTP a `OTEL_EXPORTER_OTLP_ENDPOINT` con `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` del entorno. Verificado con `InMemorySpanExporter`; sin credenciales reales de Langfuse.
 
 ## 18. Domingo hasta las 15:30: congelación [todos]
 
