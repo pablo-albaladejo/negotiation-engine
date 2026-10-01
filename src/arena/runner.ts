@@ -104,7 +104,8 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
     return { ...result, endReason: "agent-error", error: message(error) };
   }
   try {
-    rival = await options.rival.start({ ...common, mandate: mandateFor(scenario, rivalRole(scenario.role)), seed: deriveSeed(seed, "rival") });
+    const fullText = options.textMode === "full" ? { textMode: "full" as const, language: languageForSeed(options.languages ?? ["es", "en"], seed) } : {};
+    rival = await options.rival.start({ ...common, mandate: mandateFor(scenario, rivalRole(scenario.role)), seed: deriveSeed(seed, "rival"), ...fullText });
   } catch (error) {
     return { ...result, endReason: "rival-error", error: message(error) };
   }

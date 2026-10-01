@@ -13,6 +13,7 @@ import { comparePaired, type PairedReport } from "./paired.js";
 import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
 import { writeJsonlTrace } from "../pipeline/trace.js";
 import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.js";
+import { createLlmBot } from "../bots/llm-bot.js";
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
 import { createBoxClient, LlmProviderSchema } from "../llm/provider.js";
@@ -89,6 +90,8 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "narrator-provider": { type: "string" },
       "text-mode": { type: "string" },
       languages: { type: "string" },
+      "llm-bot-provider": { type: "string" },
+      "llm-bot-persona": { type: "string", default: "negociador duro pero razonable, directo" },
     },
     strict: true,
   });
@@ -102,6 +105,10 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const rivalNames = list(values.rivals) ?? (values["rival-url"] ? [] : Object.keys(BOTS));
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));
   if (values["rival-url"]) rivals.push(createHttpParticipant({ name: values["rival-name"], baseUrl: values["rival-url"], timeoutMs }));
+  // Bot LLM opt-in (llamadas reales): en `--text-mode full` lee y escribe solo lenguaje natural en el idioma de la partida.
+  const llmBotProvider = values["llm-bot-provider"] === undefined ? "none" : LlmProviderSchema.parse(values["llm-bot-provider"]);
+  const llmBotClient = createBoxClient({ provider: llmBotProvider });
+  if (llmBotClient) rivals.push(createLlmBot({ client: llmBotClient, persona: values["llm-bot-persona"], ...(values["text-mode"] === "full" ? { textMode: "full" as const } : {}) }));
   const config = loadConfig(values.config);
   // Proveedor LLM opcional (por defecto `none`, sin red): `--llm-provider claude-cli` activa el
   // parser en cuarentena y, salvo `--no-narrator`, el narrador LLM (plantilla si no).
