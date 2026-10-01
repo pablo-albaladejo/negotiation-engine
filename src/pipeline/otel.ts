@@ -65,7 +65,7 @@ export async function createOtelSink(options: OtelOptions = {}): Promise<OtelSin
         latency_ms: record.latencyMs,
         ...(record.configVersion !== undefined ? { config_version: record.configVersion } : {}),
         ...(record.provider ? { provider: record.provider } : {}),
-        ...(record.error ? { error: record.error } : {}),
+        ...(record.error ? { error: String(redactForExport(record.error)) } : {}),
         input: JSON.stringify(redactForExport(record.input)) ?? "null",
         output: JSON.stringify(redactForExport(record.output)) ?? "null",
       });

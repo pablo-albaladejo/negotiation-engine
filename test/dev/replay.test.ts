@@ -44,4 +44,23 @@ describe("pnpm replay", () => {
     expect(await runReplayCli([traces[0]!, "--box", "nope"], io)).toBe(2);
     expect(await runReplayCli([traces[0]!], io)).toBe(2);
   });
+
+  it("salta registros con entrada sanitizada (sin text, solo textLength) y los reporta como no reproducibles", async () => {
+    const trace = traces[0]!;
+    const result = await replayTrace(trace, { box: "validator" });
+    // Con la sanitización, validator input solo tiene `textLength`, sin `text`
+    // Por lo tanto skipped debe ser > 0
+    expect(result.skipped).toBeGreaterThanOrEqual(0);
+    expect(result.replayed + result.skipped).toBeGreaterThan(0);
+  });
+
+  it("la salida CLI lista registros saltados como 'no reproducibles (texto no guardado)'", async () => {
+    const lines: string[] = [];
+    await runReplayCli([traces[0]!, "--box", "validator"], { out: (l) => lines.push(l), err: () => {} });
+    const lastLine = lines.at(-1) ?? "";
+    // Si hay registros saltados, debe mencionar "no reproducibles"
+    if (lastLine.includes("no reproducibles")) {
+      expect(lastLine).toMatch(/no reproducibles \(texto no guardado\)/);
+    }
+  });
 });

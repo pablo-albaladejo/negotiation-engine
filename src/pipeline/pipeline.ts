@@ -190,6 +190,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
       if (box === "narrator" && typeof data === "string") {
         return { textLength: data.length };
       }
+      if (box === "validator" && typeof data === "object" && data) {
+        // Validator returns { ok, reasons } con cifras quoted; solo guardar ok
+        const obj = data as Record<string, unknown>;
+        return { ok: obj.ok };
+      }
       if (box === "leak" && typeof data === "object" && data) {
         const obj = data as Record<string, unknown>;
         // Registrar leak flag pero no las razones que delatarían cifras

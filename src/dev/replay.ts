@@ -17,6 +17,7 @@ export interface ReplayDifference {
 
 export interface ReplayResult {
   replayed: number;
+  skipped: number;
   differences: ReplayDifference[];
 }
 
@@ -61,8 +62,15 @@ export async function replayTrace(file: string, options: ReplayOptions): Promise
   const mandate = options.box === "engine" ? mandateOf(header, options.scenario) : undefined;
   const differences: ReplayDifference[] = [];
   let replayed = 0;
+  let skipped = 0;
   for (const record of records) {
     if (record.box !== options.box || record.result !== "ok") continue;
+    // Saltar registros con entrada sanitizada (sin `text`, solo `textLength`)
+    const inputObj = record.input as Record<string, unknown> | null;
+    if (inputObj && typeof inputObj === "object" && "textLength" in inputObj && !("text" in inputObj)) {
+      skipped++;
+      continue;
+    }
     let input = record.input;
     if (options.box === "engine") {
       const recorded = record.input as { issues?: unknown; params: Record<string, unknown>; state: unknown; seed: number };
@@ -93,7 +101,7 @@ export async function replayTrace(file: string, options: ReplayOptions): Promise
     }
     if (!isDeepStrictEqual(actual, record.output)) differences.push({ round: record.round, expected: record.output, actual });
   }
-  return { replayed, differences };
+  return { replayed, skipped, differences };
 }
 
 /** `pnpm replay <trace.jsonl> --box <name> [--config <file>] [--scenario <file>]`: 0 sin diferencias, 1 con ellas, 2 error. */
@@ -109,9 +117,10 @@ export async function runReplayCli(argv: readonly string[], io: CliIo = consoleI
     const options: ReplayOptions = { box: values.box };
     if (values.config) options.config = values.config;
     if (values.scenario) options.scenario = values.scenario;
-    const { replayed, differences } = await replayTrace(positionals[0]!, options);
+    const { replayed, skipped, differences } = await replayTrace(positionals[0]!, options);
     for (const d of differences) io.out(`ronda ${d.round}: esperado ${JSON.stringify(d.expected)} · obtenido ${JSON.stringify(d.actual)}`);
-    io.out(`${replayed} registros de ${values.box} reproducidos · ${differences.length} diferencias`);
+    const skipMsg = skipped > 0 ? ` · ${skipped} no reproducibles (texto no guardado)` : "";
+    io.out(`${replayed} registros de ${values.box} reproducidos${skipMsg} · ${differences.length} diferencias`);
     return differences.length === 0 ? 0 : 1;
   } catch (error) {
     io.err(error instanceof Error ? error.message : String(error));

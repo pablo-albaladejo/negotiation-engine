@@ -75,4 +75,30 @@ describe("exportación OpenTelemetry tras flag", () => {
       }
     }
   });
+
+  it("validator output se sanitiza: solo {ok}, sin reasons con cifras", async () => {
+    const exporter = new InMemorySpanExporter();
+    const sink = (await createOtelSink({ env: { TRACE_EXPORT: "otel" }, exporter }))!;
+    await playThree(sink);
+    const spans = exporter.getFinishedSpans();
+    await sink.shutdown();
+    const validatorSpans = spans.filter((s) => s.name === "box.validator");
+    expect(validatorSpans.length).toBeGreaterThan(0);
+    for (const span of validatorSpans) {
+      const outputStr = span.attributes.output;
+      if (typeof outputStr === "string") {
+        expect(outputStr).toContain("ok");
+        expect(outputStr).not.toContain("reasons");
+        // No debe contener citadas de cifras como "cifra no decidida"
+        expect(outputStr).not.toMatch(/cifra no decidida/);
+      }
+    }
+  });
+
+  it("error attribute en spans se redacta: texto largo se reemplaza con [text:N]", () => {
+    const longError = "Model returned invalid value: my limit is 3 %".padEnd(150, "x");
+    const redacted = redactForExport(longError);
+    expect(String(redacted)).toMatch(/\[text:\d+\]/);
+    expect(String(redacted)).not.toContain("my limit");
+  });
 });
