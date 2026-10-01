@@ -1,0 +1,37 @@
+{
+  "name": "@negotiation-ring/viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Visor local (solo lectura, solo 127.0.0.1) de los resultados de la arena, la promoción y el agente.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "tsx server/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.3",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

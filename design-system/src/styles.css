@@ -63,6 +63,7 @@
 .nr-heat-cell.good{background:var(--ok-soft);color:var(--ok)}
 .nr-heat-cell.mid{background:var(--surface);color:var(--ink)}
 .nr-heat-cell.bad{background:var(--warn-soft);color:var(--warn)}
+.nr-heat-cell.none{background:transparent;color:var(--muted)}
 
 /* Offer chart (SVG) */
 .nr-chart{display:block;width:100%;height:auto;font-family:var(--font-body)}

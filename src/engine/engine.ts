@@ -3,8 +3,8 @@ import { defineBox, registerBox } from "../pipeline/box.js";
 import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } from "./acceptance.js";
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
-import { acceptableForUs, orientIssues, pickIssues, reservationUtility, utility, type Offer, type OfferMandate } from "./issues.js";
-import { generateOffer, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
+import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, type Offer, type OfferMandate } from "./issues.js";
+import { boulwareTarget, generateOffer, offerAboveReservation, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
 import { createRng, deriveSeed } from "./rng.js";
 
@@ -51,10 +51,31 @@ export const EngineInputSchema = z.object({
 });
 export type EngineInput = z.infer<typeof EngineInputSchema>;
 
+/**
+ * Explicación opcional, aditiva, de la decisión: no cambia la acción, la oferta ni la regla
+ * (verificado por propiedad sobre fixtures/doradas). No incluye nuestra reserva ni mandato.
+ * Se redacta en la exportación OTel (`src/pipeline/otel.ts`).
+ */
+export const ExplainSchema = z
+  .object({
+    t: z.number(),
+    target: z.number(),
+    targetOffer: OfferRecord.nullable(),
+    step: z.number().nullable(),
+    uOffer: z.number(),
+    uRival: z.number().nullable(),
+    acNext: z.boolean(),
+    acTime: z.enum(["n/a", "applies", "no"]),
+    /** Estimación de la reserva del RIVAL (modelo del rival); a priori del escenario sin ofertas suyas, nunca null. */
+    rivalReserveEstimate: OfferRecord,
+  })
+  .strict();
+export type Explain = z.infer<typeof ExplainSchema>;
+
 export const DecisionSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("accept"), offer: OfferRecord, rule: z.string() }).strict(),
-  z.object({ action: z.literal("counter"), offer: OfferRecord, rule: z.string() }).strict(),
-  z.object({ action: z.literal("walk"), rule: z.string() }).strict(),
+  z.object({ action: z.literal("accept"), offer: OfferRecord, rule: z.string(), explain: ExplainSchema.optional() }).strict(),
+  z.object({ action: z.literal("counter"), offer: OfferRecord, rule: z.string(), explain: ExplainSchema.optional() }).strict(),
+  z.object({ action: z.literal("walk"), rule: z.string(), explain: ExplainSchema.optional() }).strict(),
 ]);
 export type Decision = z.infer<typeof DecisionSchema>;
 
@@ -85,10 +106,11 @@ export function decide(input: EngineInput): Decision {
   const issues = orientIssues(input.issues, mandate.role);
   const { state, params } = input;
   const ourLast = state.ourOffers.at(-1);
-  const decision = (action: "accept" | "counter", offer: Offer, rule: Rule): Decision => ({
+  const decision = (action: "accept" | "counter", offer: Offer, rule: Rule, explain?: Explain): Decision => ({
     action,
     offer: pickIssues(issues, offer),
     rule,
+    ...(explain ? { explain } : {}),
   });
 
   if (state.rivalWalked) return { action: "walk", rule: "rival-walked" };
@@ -139,9 +161,26 @@ export function decide(input: EngineInput): Decision {
   };
   const verdict = decideAcceptance(rivalCurrent ? { ...acceptance, rivalCurrent } : acceptance);
 
-  if (verdict.verdict === "accept" && rivalCurrent) return decision("accept", rivalCurrent, verdict.rule);
-  if (verdict.verdict === "walk") return { action: "walk", rule: verdict.rule };
-  return decision("counter", counter, ourLast ? verdict.rule : "opening");
+  const uOpen = openingUtility(uRes, params.openingMargin);
+  const target = boulwareTarget(time.t, uOpen, uRes, params.beta);
+  const uRival = rivalCurrent ? utility(issues, rivalCurrent) : null;
+  // Avoid exposing the reservation offer when target is at or below reservation utility (with tolerance)
+  const EPS = 1e-6;
+  const explain: Explain = {
+    t: time.t,
+    target,
+    targetOffer: target <= uRes + EPS ? null : roundInFavor(issues, offerAboveReservation(issues, mandate.reservation, target)),
+    step: ourLast ? utility(issues, ourLast) - acceptance.ourNextUtility : null,
+    uOffer: acceptance.ourNextUtility,
+    uRival,
+    acNext: rivalCurrent ? uRival! >= acceptance.ourNextUtility - params.acceptMargin : false,
+    acTime: !rivalCurrent || time.t < params.acTimeThreshold ? "n/a" : uRival! > uRes + params.acceptMargin ? "applies" : "no",
+    rivalReserveEstimate: rivalSummary.estimatedReservation,
+  };
+
+  if (verdict.verdict === "accept" && rivalCurrent) return decision("accept", rivalCurrent, verdict.rule, explain);
+  if (verdict.verdict === "walk") return { action: "walk", rule: verdict.rule, explain };
+  return decision("counter", counter, ourLast ? verdict.rule : "opening", explain);
 }
 
 /** Utilidad de apertura (para tests y la ruta de emergencia). */

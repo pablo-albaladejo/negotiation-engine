@@ -95,6 +95,26 @@ describe("exportación OpenTelemetry tras flag", () => {
     }
   });
 
+  it("el texto crudo del rival (caja rivalText) nunca sale a OTel/Langfuse", async () => {
+    const exporter = new InMemorySpanExporter();
+    const sink = (await createOtelSink({ env: { TRACE_EXPORT: "otel" }, exporter }))!;
+    await playThree(sink);
+    const spans = exporter.getFinishedSpans();
+    await sink.shutdown();
+    expect(spans.some((s) => s.name === "box.rivalText")).toBe(false);
+    const dump = JSON.stringify(spans.map((s) => s.attributes));
+    expect(dump).not.toMatch(/Te ofrezco/);
+  });
+
+  it("el registro protocol (rival que rompe el protocolo) nunca sale a OTel/Langfuse", async () => {
+    const exporter = new InMemorySpanExporter();
+    const sink = (await createOtelSink({ env: { TRACE_EXPORT: "otel" }, exporter }))!;
+    sink.write({ sessionId: "s1", round: 1, box: "protocol", input: null, output: { issues: [{ path: "rivalOffer.pct", code: "invalid_type" }] }, result: "error", latencyMs: 0, error: "rivalOffer.pct:invalid_type" });
+    const spans = exporter.getFinishedSpans();
+    await sink.shutdown();
+    expect(spans).toHaveLength(0);
+  });
+
   it("error attribute en spans se redacta: texto largo se reemplaza con [text:N]", () => {
     const longError = "Model returned invalid value: my limit is 3 %".padEnd(150, "x");
     const redacted = redactForExport(longError);

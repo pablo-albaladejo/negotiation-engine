@@ -15,6 +15,9 @@ export const REDACT_PATHS = [
   "*.config",
   "*.*.mandate",
   "*.*.reservation",
+  "*.*.config",
+  "output.explain",
+  "*.output.explain",
 ];
 
 type Level = pino.Level;

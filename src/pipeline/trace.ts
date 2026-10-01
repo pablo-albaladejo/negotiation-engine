@@ -29,6 +29,8 @@ const headerCommon = {
   sessionId: z.string().min(1),
   configVersion: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
+  /** v1 no lo lleva (undefined); v2 añade campos aditivos (role en torneo, nunca mandato). */
+  traceVersion: z.literal(2).optional(),
 };
 
 /**
@@ -52,6 +54,8 @@ export const TraceHeaderSchema = z.discriminatedUnion("mode", [
       ...headerCommon,
       mode: z.literal("tournament"),
       scenario: z.object({ id: z.string().min(1), hash: z.string().regex(/^[0-9a-f]{16}$/) }).strict(),
+      /** v2: rol en el ring (buyer | seller); nunca mandato ni reserva. */
+      role: z.enum(["buyer", "seller"]).optional(),
     })
     .strict(),
 ]);
