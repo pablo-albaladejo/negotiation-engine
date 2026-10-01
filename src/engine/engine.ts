@@ -3,7 +3,7 @@ import { defineBox, registerBox } from "../pipeline/box.js";
 import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } from "./acceptance.js";
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
-import { orientIssues, pickIssues, reservationUtility, utility, withinOfferMandate, type Offer, type OfferMandate } from "./issues.js";
+import { acceptableForUs, orientIssues, pickIssues, reservationUtility, utility, type Offer, type OfferMandate } from "./issues.js";
 import { generateOffer, openingUtility, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
 import { createRng, deriveSeed } from "./rng.js";
@@ -88,7 +88,7 @@ export function decide(input: EngineInput): Decision {
   });
 
   if (state.rivalWalked) return { action: "walk", rule: "rival-walked" };
-  if (state.rivalAcceptedOurLast && ourLast && withinOfferMandate(issues, mandate, ourLast)) {
+  if (state.rivalAcceptedOurLast && ourLast && acceptableForUs(issues, mandate, ourLast)) {
     return decision("accept", ourLast, "rival-accepted");
   }
 

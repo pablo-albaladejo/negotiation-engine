@@ -1,5 +1,5 @@
 import type { Issue } from "./config.js";
-import { reservationUtility, utility, withinOfferMandate, type Offer, type OfferMandate } from "./issues.js";
+import { acceptableForUs, reservationUtility, utility, type Offer, type OfferMandate } from "./issues.js";
 
 export interface TimeFields {
   round: number;
@@ -73,15 +73,16 @@ export function decideAcceptance(input: AcceptanceInput): AcceptanceVerdict {
   if (!rivalCurrent) return noDeal;
 
   const u = utility(issues, rivalCurrent);
-  const inMandate = withinOfferMandate(issues, mandate, rivalCurrent);
+  // Toda regla exige límites por issue y u ≥ u(reserva) (tarea 3.8).
+  const acceptable = acceptableForUs(issues, mandate, rivalCurrent);
 
   // Último movimiento (del ring) u horizonte por defecto: aceptar si y solo si u ≥ u(reserva), sin margen.
   if (time.isLastMove || time.defaultHorizonReached) {
     const rule: AcceptanceRule = time.isLastMove ? "last-move" : "default-horizon";
-    if (inMandate && u >= uRes) return { verdict: "accept", rule };
+    if (acceptable) return { verdict: "accept", rule };
     return time.isLastMove ? { ...noDeal, rule } : { verdict: "counter", rule };
   }
-  if (!inMandate) return noDeal;
+  if (!acceptable) return noDeal;
   if (u >= input.ourNextUtility - input.acceptMargin) return { verdict: "accept", rule: "ac-next" };
   if (time.t >= input.acTimeThreshold && u > uRes + input.acceptMargin) return { verdict: "accept", rule: "ac-time" };
   return noDeal;

@@ -132,6 +132,11 @@ describe("inyección de fallos: cada turno produce salida válida", () => {
     for (const out of outputs) expect(out.action).toBe("counter");
   });
 
+  it("motor que acepta la oferta actual del rival por debajo de u(reserva) ⇒ emergencia, nunca accept", async () => {
+    const { outputs } = await playWith({ engine: async () => ({ action: "accept", offer: { pct: 1 }, rule: "x" }) });
+    for (const out of outputs) expect(out.action).toBe("counter");
+  });
+
   it("motor que propone cruzar el mandato ⇒ los guardarraíles lo recortan", async () => {
     const { outputs } = await playWith({ engine: async () => ({ action: "counter", offer: { pct: 0.5 }, rule: "x" }) });
     for (const out of outputs) expect(out.action !== "walk" && out.offer.pct).toBeGreaterThanOrEqual(3);
@@ -242,6 +247,13 @@ describe("ruta de emergencia con la sesión ya cerrada", () => {
     const first = await brain.turn(turn(1));
     store.get("s1")!.rivalAcceptedOurLast = true;
     expect(brain.fallback(turn(2))).toMatchObject({ action: "accept", offer: (first as { offer: object }).offer });
+  });
+
+  it("un acuerdo registrado por debajo de u(reserva) nunca sale como accept", async () => {
+    const { brain, store } = makeBrain();
+    await brain.turn(turn(1));
+    store.get("s1")!.agreement = { pct: 1 };
+    expect(brain.fallback(turn(2)).action).toBe("counter");
   });
 
   it("tras la retirada del rival responde walk", async () => {

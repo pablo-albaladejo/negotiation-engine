@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AgentConfig } from "../engine/config.js";
 import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInput } from "../engine/engine.js";
 import { enforceOfferGuardrails } from "../engine/guardrails.js";
-import { orientIssues, pickIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
+import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
 import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
@@ -350,8 +350,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const last = ourLastOffer(session);
     const isCurrent = rivalCurrent !== undefined && sameOffer(issues, offer, rivalCurrent);
     const isAgreement = session.rivalAcceptedOurLast && last !== undefined && sameOffer(issues, offer, last);
-    if (!(isCurrent || isAgreement) || !withinOfferMandate(issues, mandate, offer)) {
-      throw new Error("accept sobre una oferta que no es la actual o fuera del mandato");
+    if (!(isCurrent || isAgreement) || !acceptableForUs(issues, mandate, offer)) {
+      throw new Error("accept sobre una oferta que no es la actual, fuera del mandato o por debajo de u(reserva)");
     }
     return { ...decision, offer };
   }
@@ -364,8 +364,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       // Sesión ya cerrada: la acción terminal coherente, nunca una contraoferta nueva.
       const last = ourLastOffer(session);
       const oriented = orientIssues(session.config.issues, session.mandate.role);
-      const agreed =
-        session.agreement ?? (session.rivalAcceptedOurLast && last && withinOfferMandate(oriented, session.mandate, last) ? last : undefined);
+      const candidate = session.agreement ?? (session.rivalAcceptedOurLast ? last : undefined);
+      const agreed = candidate && acceptableForUs(oriented, session.mandate, candidate) ? candidate : undefined;
       if (agreed) {
         session.agreement = { ...agreed };
         const offer = { ...agreed };
