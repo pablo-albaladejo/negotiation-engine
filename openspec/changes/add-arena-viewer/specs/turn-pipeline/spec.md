@@ -24,6 +24,17 @@ El campo `explain` del registro `engine` SHALL quedar en la traza JSONL local y 
 - **WHEN** se exporta un turno con `TRACE_EXPORT=otel`
 - **THEN** el atributo de salida del span `engine` no contiene `explain`
 
+### Requirement: Texto crudo del rival, solo local
+El pipeline SHALL escribir un registro dedicado `box: "rivalText"` con el texto crudo del rival de cada turno (cuando lo haya) en la traza JSONL local (`results/`). Este registro MUST NOT salir en la exportación OpenTelemetry/Langfuse. La sanitización existente de `parser`, `narrator`, `validator` y `leak` SHALL mantenerse sin cambios: solo `rivalText` guarda el texto completo. El visor SHALL mostrar este texto únicamente a través de `ChatMessage`, como texto de React, nunca como HTML.
+
+#### Scenario: Texto del rival en el JSONL local
+- **WHEN** el rival manda texto en un turno
+- **THEN** la traza local tiene un registro `box: "rivalText"` con ese texto completo
+
+#### Scenario: Exclusión de la exportación
+- **WHEN** se exporta la traza con `TRACE_EXPORT=otel`
+- **THEN** no existe ningún span `box.rivalText` ni rastro del texto del rival en los atributos exportados
+
 ### Requirement: Registro de violación de protocolo
 Cuando la entrada de un turno no cumple el esquema canónico, el pipeline SHALL escribir en la traza de la sesión, si el `sessionId` es legible, un registro `box: "protocol"` con `result: "error"` y en `error` solo las rutas de los campos inválidos y el código de Zod, nunca valores ni texto del rival.
 

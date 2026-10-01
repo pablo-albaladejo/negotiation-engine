@@ -38,10 +38,13 @@ Vite `resolve.alias['@negotiation-ring/design-system'] → ../design-system/src/
 `fs.watch` sobre el directorio `results/agent-*` más reciente con sondeo de respaldo de 500 ms (en macOS `fs.watch` puede perder eventos); desplazamiento por fichero, búfer de línea parcial, validación por línea. Eventos `record`, `session`, `invalid`. Cliente con `EventSource` y reconexión nativa.
 
 ### 7. Extensiones de escritores (quien decide, escribe)
-- **Motor** (`src/engine/engine.ts`): `DecisionSchema` gana `explain?: { t, target, targetOffer, step, uOffer, uRival, acNext, acTime, rivalReserveEstimate }`. Opcional y `.strict()`; no cambia acción ni oferta (test de igualdad sobre fixtures y doradas). `src/pipeline/otel.ts` añade `explain` a las claves redactadas. `pnpm replay` compara solo acción, oferta y regla (verificar durante la implementación).
-- **Traza** (`src/pipeline/trace.ts`): `traceVersion: z.literal(2).optional()` en ambas cabeceras; `role` opcional en la de torneo, escrito por `createTournamentTrace` desde el escenario cargado. Registro `protocol` desde `pipeline.turn()` antes de lanzar `ProtocolError` (solo rutas y códigos de Zod).
+- **Motor** (`src/engine/engine.ts`): `DecisionSchema` gana `explain?: { t, target, targetOffer, step, uOffer, uRival, acNext, acTime, rivalReserveEstimate }`. Opcional y `.strict()`; no cambia acción ni oferta (test de igualdad sobre fixtures y doradas, y propiedad: mismas entradas con y sin `explain` dan acción/oferta/regla byte-idénticas). `src/pipeline/otel.ts` añade `explain` a las claves redactadas. `pnpm replay` compara solo acción, oferta y regla (verificar durante la implementación). Se implementa ahora (minuto 0), no aplazado: es aditivo, opcional y excluido de OTel.
+- **Traza** (`src/pipeline/trace.ts`): `traceVersion: z.literal(2).optional()` en ambas cabeceras; `role` opcional en la de torneo, escrito por `createTournamentTrace` desde el escenario cargado. Registro `protocol` desde `pipeline.turn()` antes de lanzar `ProtocolError` (solo rutas y códigos de Zod). Registro dedicado `box: "rivalText"` con el texto crudo del rival por turno (ver Decisión 9): solo en el JSONL local, excluido de la exportación OTel.
 - **Arena** (`src/arena/cli.ts`, nuevo `src/arena/results-schema.ts`): `schemaVersion: 2`, `roundLimit`, `reserves {ours, rival}` en cada línea; `config.params` en `summary.json`.
-- **Promoción** (`src/arena/promote.ts`, `promote-main.ts`): `gate.json` v2 con `configs`, `summaries` por fase (`summarize` existente y agrupación rival × rol), `dryRun`, `promoted`; flag `--dry-run`.
+- **Promoción** (`src/arena/promote.ts`, `promote-main.ts`): `gate.json` v2 con `configs`, `summaries` por fase (`summarize` existente y agrupación rival × rol), `dryRun`, `promoted`; flag `--dry-run` (decidido: SÍ, corre la puerta completa y escribe `gate.json` v2 sin tocar `config/champion.json`; test de que `champion.json` no cambia en seco).
+
+### 9. Texto del rival en trazas de torneo: guardado, solo local
+Decidido (sustituye la Open Question anterior): el texto crudo del rival SÍ se guarda, en un registro dedicado `box: "rivalText"` escrito únicamente en el JSONL local de `results/` (arena y torneo). `src/pipeline/otel.ts` lo excluye explícitamente de la exportación OTel/Langfuse (nunca un span `box.rivalText`, nunca el texto en otros atributos), con test dedicado. La sanitización existente de `parser`/`narrator`/`validator`/`leak` no cambia. El visor (P4/P7) lo muestra en la burbuja del rival a través de `ChatMessage`, como texto de React (nunca `dangerouslySetInnerHTML`); un test comprueba que un texto con `<script>` se renderiza literal.
 
 ### 8. Mapa de campos y huecos
 
@@ -66,7 +69,7 @@ Vite `resolve.alias['@negotiation-ring/design-system'] → ../design-system/src/
 | P4 rol | — | **extender** `role` en cabecera de torneo |
 | P4 nuestra reserva | `config/<scenario.id>` si coincide el hash | existe |
 | P4 ofertas del rival, nuestras ofertas, nuestro texto | `binding.output.offer`, `output` | existe |
-| P4 texto del rival en el chat | no se registra en torneo | **quitar** el texto (burbuja con acción y oferta, `text not logged`); ver Open Questions |
+| P4 texto del rival en el chat | no se registra en torneo | **extender**: registro `rivalText` local-only (nunca en OTel); el visor lo muestra por `ChatMessage` como texto de React |
 | P4 utilidad, estimación de reserva por ronda | — | **extender** `explain` |
 | P4 nombre del rival "Team 3", "qualifying round 2", frase "closed at 102, below…" | no existe | **quitar** (se muestra `sessionId`) |
 | P5 ofertas en el plano, mandato | registros `binding`/`engine`, `issues`, `mandate` | existe |
@@ -80,7 +83,7 @@ Vite `resolve.alias['@negotiation-ring/design-system'] → ../design-system/src/
 | P6 comando `pnpm promote` | ruta `candidate` | **extender** `dryRun`/`promoted` + `--dry-run` |
 | P7 ronda, límite, ofertas, utilidades, plantillas, ataques bloqueados | registros en vivo + `explain` | existe + extensión `explain` |
 | P7 "Team 2", rival "Team 8", "Next: vs …" | no existe | **quitar** (`Us`, `sessionId`; sin calendario) |
-| P7 texto del rival en las 3 burbujas | no se registra | igual que P4 |
+| P7 texto del rival en las 3 burbujas | registro `rivalText` local-only | igual que P4 |
 | P8 log inválido | errores de validación del servidor | existe |
 | P8 rival rompe protocolo | arena: `endReason: "rival-error"`, `error`; torneo: — | existe en arena; **extender** registro `protocol` en torneo |
 | P8 ZOPA vacía | `metrics.zopaEmpty` + `reserves` | extensión de arena |
@@ -100,6 +103,7 @@ Sin migración de datos: v1 se sigue leyendo; los campos nuevos aparecen en los 
 
 ## Open Questions
 
-- ¿Registrar el texto del rival en las trazas de torneo (fichero local) para P4/P7? Por defecto **no**: se mantiene la sanitización y la burbuja muestra acción y oferta.
-- ¿`pnpm promote --dry-run` es aceptable, o P6 debe salir de `pnpm arena --candidate` sin puerta? Por defecto `--dry-run`.
-- ¿Nombre de equipo para el `Scoreboard`? Por defecto `Us`.
+Resueltas (decisión del usuario, minuto 0):
+- Texto del rival en trazas de torneo: **sí**, registro `rivalText` local-only, excluido de OTel (Decisión 9).
+- `pnpm promote --dry-run`: **sí**, corre la puerta completa y escribe `gate.json` v2 sin tocar `config/champion.json`.
+- Nombre de equipo del `Scoreboard`: **`Us`**.

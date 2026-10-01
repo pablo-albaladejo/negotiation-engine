@@ -36,4 +36,4 @@ El visor no añade inteligencia: muestra lo que el motor, el parser, el validado
 - **Scripts**: `pnpm viewer`, `pnpm viewer:test`; `pnpm promote --dry-run`.
 - **Dependencias**: solo en `viewer/package.json` (react, react-dom 18, vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/react); el paquete raíz no gana dependencias, el agente del torneo no cambia de tamaño.
 - **Sistemas**: ninguno; todo local, sin servicios externos.
-- **Supuestos**: las trazas v1 ya escritas se siguen leyendo (los campos nuevos son opcionales y su ausencia se muestra como "not logged"); el ring puede no dar nombre del rival ni del equipo (P4/P7 muestran el `sessionId`).
+- **Supuestos**: las trazas v1 ya escritas se siguen leyendo (los campos nuevos son opcionales y su ausencia se muestra como "not logged"); el ring puede no dar nombre del rival ni del equipo (P4/P7 muestran el `sessionId`, nombre de nuestro equipo `Us`). El texto crudo del rival en torneo se guarda en el JSONL local (registro `rivalText`) y se excluye de la exportación OTel/Langfuse; `pnpm promote --dry-run` corre la puerta completa sin tocar `config/champion.json`.
