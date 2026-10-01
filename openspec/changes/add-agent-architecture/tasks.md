@@ -131,7 +131,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 15. Sábado: bots adversariales y LLM [Gerard]
 
-- [ ] 15.1 [Gerard] Bots con texto en código: Inject+Voss, mentiroso (falso BATNA), extracción por marco hipotético, ancla extrema y "estilo Causa Prima"; verificar que en la arena dan 0 violaciones y 0 fugas [aplazada: sábado]
+- [x] 15.1 [Gerard] Bots con texto en código: Inject+Voss, mentiroso (falso BATNA), extracción por marco hipotético, ancla extrema y "estilo Causa Prima"; verificar que en la arena dan 0 violaciones y 0 fugas [aplazada: sábado]
+  - Nota: `src/bots/adversarial.ts`, en `BOTS` (pool `tuning`). Arena por defecto: 2646 partidas en ~11 s, 0 violaciones, 0 fugas, 0 acuerdos falsos. `test/redteam/scripted-bots.test.ts`: sin fugas en todo el catálogo y, en ring estructurado, decisiones idénticas a las del gemelo con texto plano. «Estilo Causa Prima» no está definido en la spec: se interpreta como autoridad del organizador + fijar identidad o mandato + acuerdos inexistentes. En solo texto, `liar` deja sus ofertas sin extraer (dos cifras en el mensaje) y no se cierra trato.
 - [x] 15.2 [Gerard] Bot guiado por LLM con persona configurable como `Participant` del conjunto reservado; verificar con una muestra pequeña vía `claude-cli` [aplazada: sábado]
   - Nota: `createLlmBot` (`src/bots/llm-bot.ts`), pool `heldOut`; el código impone el mandato del bot. Muestra real vía `claude-cli` (price-buyer-wide, semilla 1): acuerdo en pct 6 en 9 rondas, 8 llamadas, 0 fallos, 46 s. No está en `BOTS`: `pnpm arena` por defecto no llama a ningún LLM.
 
