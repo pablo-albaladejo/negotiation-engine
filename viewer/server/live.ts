@@ -86,12 +86,15 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
     const real = await resolveInside(dir, name);
     if (!real) return;
     let handle;
+    const MAX_READ_BYTES = 1024 * 1024; // 1 MiB per tick
+    const MAX_PARTIAL_BYTES = 256 * 1024; // 256 KiB cap on partial buffer
     try {
       handle = await open(real, "r");
       const { size } = await handle.stat();
       if (size < tail.offset) Object.assign(tail, { offset: 0, partial: Buffer.alloc(0), line: 0 });
       if (size === tail.offset) return;
-      const chunk = Buffer.alloc(size - tail.offset);
+      const bytesToRead = Math.min(size - tail.offset, MAX_READ_BYTES);
+      const chunk = Buffer.alloc(bytesToRead);
       const { bytesRead } = await handle.read(chunk, 0, chunk.length, tail.offset);
       tail.offset += bytesRead;
       let buffer = Buffer.concat([tail.partial, chunk.subarray(0, bytesRead)]);
@@ -105,7 +108,21 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
         if (parsed.ok) emit({ event: "record", data: { runId: runId!, session, line: tail.line, record: parsed.data } });
         else emit({ event: "invalid", data: parsed.error });
       }
-      tail.partial = Buffer.from(buffer);
+      // Cap the partial buffer to prevent unbounded growth
+      if (buffer.length > MAX_PARTIAL_BYTES) {
+        emit({
+          event: "invalid",
+          data: {
+            file: `${runId}/${name}`,
+            line: tail.line,
+            path: "partial",
+            message: "partial buffer exceeded 256 KiB",
+          },
+        });
+        tail.partial = Buffer.alloc(0);
+      } else {
+        tail.partial = Buffer.from(buffer);
+      }
     } catch {
       // fichero rotado o borrado: se reintenta en el siguiente sondeo
     } finally {
@@ -122,7 +139,7 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
     if (switched) {
       runId = latest;
       files = new Map();
-      watchDir(dir);
+      if (!closed) watchDir(dir);
     }
     const found = await sessionFiles(dir);
     const replay = first ? ([...found].sort((a, b) => a.mtimeMs - b.mtimeMs).at(-1)?.name ?? null) : null;

@@ -64,7 +64,7 @@ export function roundPanels(records: readonly BoxLine[]): RoundPanel[] {
 }
 
 /** Curva objetivo y estimación de reserva del rival: solo rondas con `explain` registrado. */
-export function explainSeries(panels: readonly RoundPanel[]): { round: number; target: number; uOffer: number; uRival: number | null; rivalReserveEstimate: Offer }[] {
+export function explainSeries(panels: readonly RoundPanel[]): { round: number; target: number; uOffer: number; uRival: number | null; rivalReserveEstimate: Offer | null }[] {
   return panels.flatMap((p) =>
     p.explain ? [{ round: p.round, target: p.explain.target, uOffer: p.explain.uOffer, uRival: p.explain.uRival, rivalReserveEstimate: p.explain.rivalReserveEstimate }] : [],
   );
