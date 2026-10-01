@@ -25,6 +25,7 @@ export interface TraceRecord {
   latencyMs: number;
   seed?: number;
   configVersion?: number;
+  runtimeConfig?: string;
   provider?: string;
   error?: string;
 }

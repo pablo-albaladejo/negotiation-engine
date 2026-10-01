@@ -20,7 +20,8 @@ import {
 } from "../protocol/schemas.js";
 import { createContext, runBox, silentLogger, type BoxResult, type Logger, type TraceSink } from "./box.js";
 import { bindRivalMove, type BindingResult } from "./binding.js";
-import { reconcileTextOffer } from "./reconcile.js";
+import { reconcileOffer, type Reconciled } from "./reconcile.js";
+import { DEFAULT_RUNTIME_CONFIG, type ParserPolicy, type RuntimeConfig } from "./runtime-config.js";
 import { ourLastOffer, type Session, type SessionStore } from "./session.js";
 
 /** El cerebro visto desde los adaptadores: un turno canónico y la ruta de emergencia. */
@@ -45,6 +46,8 @@ export interface PipelineDeps {
   provider?: string;
   /** Intentos en total por caja con LLM antes de la plantilla. */
   attempts?: number;
+  /** Configuración de ejecución efectiva; por defecto la de `hybrid` sin fichero. */
+  runtime?: RuntimeConfig;
 }
 
 const LeakResultSchema = z.union([
@@ -86,7 +89,7 @@ async function withTimeout<T>(fn: (signal: AbortSignal) => T | Promise<T>, ms: n
  * rival. El `explain` del motor se censura por rutas (`REDACT_PATHS` en log.ts). Los registros
  * `protocol` (solo rutas y códigos de zod) sí se loguean.
  */
-const LOCAL_ONLY_BOXES: ReadonlySet<string> = new Set(["rivalText"]);
+const LOCAL_ONLY_BOXES: ReadonlySet<string> = new Set(["rivalText", "evidence"]);
 
 /** Único punto por el que un registro de caja llega al logger. */
 function logBoxRecord(logger: Logger, record: { box: string }): void {
@@ -154,6 +157,12 @@ export function createPipeline(deps: PipelineDeps): Brain {
   const parser = deps.parser ?? deterministicParser;
   /** Con un parser distinto del determinista, el determinista es la segunda lectura obligatoria. */
   const dual = parser.name !== deterministicParser.name;
+  const runtime = deps.runtime ?? DEFAULT_RUNTIME_CONFIG;
+  /** Sin LLM, `llm-primary-verified` y `dual-strict` se degradan a `deterministic-only`. */
+  const policy: ParserPolicy = dual ? runtime.parser.policy : "deterministic-only";
+  /** Con `deterministic-only` no se llama al LLM: intención y tácticas también del determinista. */
+  const activeParser = policy === "deterministic-only" ? deterministicParser : parser;
+  const llmActive = activeParser !== deterministicParser;
   const narrator = deps.narrator ?? templateNarrator;
   const attempts = deps.attempts ?? 2;
   const engine =
@@ -202,6 +211,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
         return data;
       }
       // Salidas de LLM que podrían contener texto sensible
+      // Parser: las evidencias son texto del rival; solo van a la caja local `evidence`.
+      if (box === "parser" && typeof data === "object" && data && !Array.isArray(data)) {
+        const { figures, intentEvidence: _evidence, ...rest } = data as ParserOutput;
+        return figures ? { ...rest, figures: figures.map((f) => ({ issue: f.issue, value: f.value })) } : rest;
+      }
       if (box === "narrator" && typeof data === "string") {
         return { textLength: data.length };
       }
@@ -230,6 +244,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         latencyMs: now() - t0,
         seed: session.seed,
         configVersion: session.configVersion,
+        runtimeConfig: runtime.fingerprint,
         provider: deps.provider ?? "none",
       };
       const full = error ? { ...entry, error } : entry;
@@ -282,7 +297,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         const result = await guarded(
           "parser",
           { text },
-          async (signal) => schema.parse(await parser.parse(text, signal, context)),
+          async (signal) => schema.parse(await activeParser.parse(text, signal, context)),
           share,
           attempt < attempts ? "retry" : "fallback",
         );
@@ -297,32 +312,58 @@ export function createPipeline(deps: PipelineDeps): Brain {
       record("parser", { text: null }, EMPTY_PARSE, "ok", now());
     }
 
-    // 3. Reconciliación: la oferta estructurada manda. Sin ella (solo texto), la oferta del texto
-    // exige el acuerdo de ambos parsers (o el determinista solo con `none`); si el rival mandó
-    // cifras que no se confirman, el turno va sin oferta y la contraoferta pide repetirlas.
+    // 3. Reconciliación: la oferta estructurada manda (confianza `structured`). Sin ella, la oferta
+    // del texto sigue `parser.policy` (src/pipeline/reconcile.ts); si el rival mandó cifras que no
+    // se confirman, el turno va sin oferta y la contraoferta pide repetirlas.
     let reconciled: Offer | undefined;
     let unconfirmed = false;
     let deterministicOffer: Offer | undefined;
+    let outcome: Reconciled | undefined;
     if (input.rivalOffer) {
       reconciled = pickIssues(issues, input.rivalOffer);
+      outcome = { offer: reconciled, confidence: "structured" };
     } else if (input.text && input.rivalAction !== "walk") {
       const text = input.text;
       try {
-        deterministicOffer = dual ? parseDeterministic(text, schemas.issueNames).offer : parsed ? parse.offer : undefined;
-        reconciled = reconcileTextOffer(issues, deterministicOffer, parsed ? parse.offer : undefined, dual);
-        unconfirmed = !reconciled && (input.rivalAction === "offer" || normalizeNumbers(text).length > 0);
+        deterministicOffer = llmActive ? parseDeterministic(text, schemas.issueNames).offer : parsed ? parse.offer : undefined;
+        const reconcileInput: Parameters<typeof reconcileOffer>[0] = {
+          issues,
+          text,
+          policy,
+          deterministic: deterministicOffer,
+          acceptWordNumbers: runtime.parser.acceptWordNumbers,
+          onLlmFailure: runtime.parser.onLlmFailure,
+        };
+        if (llmActive) reconcileInput.llm = parsed ? { ok: true, output: parse } : { ok: false };
+        outcome = reconcileOffer(reconcileInput);
+        reconciled = outcome.offer;
+        const proposedFigures = llmActive && parsed && (parse.figures?.length ?? 0) > 0;
+        unconfirmed = !reconciled && (input.rivalAction === "offer" || proposedFigures || normalizeNumbers(text).length > 0);
       } catch (error) {
         logger.warn("reconcile_failed", { sessionId: session.id, round: input.round, error: errorMessage(error) });
         unconfirmed = true;
       }
     }
+    const confidence = reconciled ? (outcome?.confidence ?? null) : unconfirmed ? "unconfirmed" : null;
     record(
       "reconcile",
-      { structured: input.rivalOffer !== undefined, parserOffer: parse.offer ?? null, deterministicOffer: deterministicOffer ?? null, dual },
-      { offer: reconciled ?? null, unconfirmed },
+      {
+        structured: input.rivalOffer !== undefined,
+        policy,
+        llmCalled: llmActive && !!input.text,
+        parserOffer: parse.offer ?? null,
+        parserFigures: parse.figures?.map((f) => ({ issue: f.issue, value: f.value })) ?? null,
+        deterministicOffer: deterministicOffer ?? null,
+        dual,
+      },
+      { offer: reconciled ?? null, unconfirmed, confidence, reason: unconfirmed ? (outcome?.reason ?? null) : null },
       "ok",
       now(),
     );
+    // Evidencias literales (texto del rival): solo en la traza local, nunca en pino ni OTel.
+    if (outcome?.checks || parse.intentEvidence) {
+      record("evidence", {}, { checks: outcome?.checks ?? [], intentEvidence: parse.intentEvidence ?? null }, "ok", now());
+    }
 
     // 4. Regla de enlace de la aceptación del rival y actualización del estado.
     // Cifras sin confirmar: ni oferta nueva ni aceptación (un accept con cifras ilegibles no es acuerdo).
@@ -332,6 +373,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (binding.kind === "offer") {
       session.rivalOffers.push(binding.offer);
       session.opponent.recordOffer(binding.offer);
+      session.rivalCurrentLlmOnly = outcome?.confidence === "llm-only";
     }
     if (binding.kind === "walk") session.rivalWalked = true;
     record("binding", { rivalAction: input.rivalAction }, binding, "ok", now());
@@ -345,8 +387,16 @@ export function createPipeline(deps: PipelineDeps): Brain {
       remaining(),
       "fallback",
     );
-    const decision: Decision = engineResult.ok ? engineResult.value : emergencyDecision(session);
+    let decision: Decision = engineResult.ok ? engineResult.value : emergencyDecision(session);
     if (!engineResult.ok) record("emergency", null, decision, "fallback", now());
+    // Una cifra `llm-only` no basta para aceptar: contraoferta con nuestras cifras que pide confirmar.
+    let llmOnlyBlocked = false;
+    const rivalCurrent = session.rivalOffers.at(-1);
+    if (decision.action === "accept" && session.rivalCurrentLlmOnly && rivalCurrent && sameOffer(issues, decision.offer, rivalCurrent) && !session.rivalAcceptedOurLast) {
+      decision = emergencyDecision(session);
+      llmOnlyBlocked = true;
+      record("llm-only-accept-blocked", null, decision, "ok", now());
+    }
 
     if (decision.action === "counter") session.ourOffers.push({ ...decision.offer });
     if (decision.action === "accept") session.agreement = { ...decision.offer };
@@ -360,7 +410,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       persona: config.persona,
     };
     if (offer) narratorInput.offer = offer;
-    const ask = unconfirmed && decision.action === "counter" ? ("confirm-figures" as const) : undefined;
+    const ask = (unconfirmed || llmOnlyBlocked) && decision.action === "counter" ? ("confirm-figures" as const) : undefined;
     if (ask) narratorInput.ask = ask;
     const check: TextCheck = { action: decision.action, text: "" };
     if (offer) check.offer = offer;

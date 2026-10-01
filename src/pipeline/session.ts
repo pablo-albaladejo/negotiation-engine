@@ -30,6 +30,8 @@ export interface Session {
   /** Ofertas registradas del rival; la última es la oferta actual. */
   rivalOffers: Offer[];
   rivalAcceptedOurLast: boolean;
+  /** La oferta actual del rival tiene alguna cifra `llm-only` (no basta para aceptar). */
+  rivalCurrentLlmOnly?: boolean;
   rivalWalked: boolean;
   agreement?: Offer;
 }

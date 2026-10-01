@@ -6,6 +6,7 @@ import { createBotByName } from "../../src/bots/index.js";
 import { parseConfig } from "../../src/engine/config.js";
 import type { TextParser } from "../../src/llm/parser.js";
 import { validateText } from "../../src/llm/validator.js";
+import { resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 import type { TurnOutput } from "../../src/protocol/schemas.js";
 import { champion, makeBrain } from "./helpers.js";
 
@@ -34,7 +35,7 @@ describe("modo solo texto con LLM_PROVIDER=none", () => {
     await brain.turn(t(1, { rivalAction: "message", text: "Hola." }));
     await brain.turn(t(2, { rivalAction: "offer", text: "Te ofrezco un 2,5 %." }));
     expect(store.get("s1")!.rivalOffers).toEqual([{ pct: 2.5 }]);
-    expect(reconcileOutputs(trace.records).at(-1)).toEqual({ offer: { pct: 2.5 }, unconfirmed: false });
+    expect(reconcileOutputs(trace.records).at(-1)).toMatchObject({ offer: { pct: 2.5 }, unconfirmed: false, confidence: "deterministic-only" });
   });
 
   it("un rango no es oferta: turno sin oferta y contraoferta que pide confirmar las cifras", async () => {
@@ -77,17 +78,18 @@ describe("modo solo texto con LLM_PROVIDER=none", () => {
   });
 });
 
-describe("modo solo texto con parser LLM: reconciliación", () => {
+describe("modo solo texto con parser LLM: reconciliación dual-strict (comportamiento anterior)", () => {
   const text = "Acepto un 1,5 % pagando el día 15";
+  const runtime = resolveRuntimeConfig({ parser: { policy: "dual-strict" } });
 
   it("parsers coinciden ⇒ se registra la oferta", async () => {
-    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, parser: llmSaying({ pct: 1.5, day: 15 }) });
+    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, runtime, parser: llmSaying({ pct: 1.5, day: 15 }) });
     await brain.turn(t(1, { rivalAction: "offer", text }));
     expect(store.get("s1")!.rivalOffers).toEqual([{ pct: 1.5, day: 15 }]);
   });
 
   it("parsers discrepan ⇒ sin oferta, el motor no puede aceptar y se piden las cifras", async () => {
-    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, parser: llmSaying({ pct: 15, day: 15 }) });
+    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, runtime, parser: llmSaying({ pct: 15, day: 15 }) });
     const out = await brain.turn(t(10, { rivalAction: "offer", text }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);
     expect(out.action).not.toBe("accept");
@@ -95,7 +97,7 @@ describe("modo solo texto con parser LLM: reconciliación", () => {
 
   it("el parser LLM caído ⇒ sin oferta en solo texto", async () => {
     const broken: TextParser = { name: "fake-llm", parse: async () => Promise.reject(new Error("503")) };
-    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, parser: broken });
+    const { brain, store } = makeBrain({ config: twoIssues, mandate: mandate2, runtime, parser: broken });
     const out = await brain.turn(t(1, { rivalAction: "offer", text }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);
     expect(out.text).toMatch(/confirmar tus cifras/);

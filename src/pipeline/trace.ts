@@ -19,6 +19,8 @@ export const TraceRecordSchema = z
     latencyMs: z.number().nonnegative(),
     seed: z.number().int().optional(),
     configVersion: z.number().int().nonnegative().optional(),
+    /** Huella de la configuración de ejecución efectiva (`src/pipeline/runtime-config.ts`). */
+    runtimeConfig: z.string().regex(/^[0-9a-f]{12}$/).optional(),
     provider: z.string().optional(),
     error: z.string().optional(),
   })
