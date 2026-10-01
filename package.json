@@ -28,6 +28,7 @@
     "dummy:serve": "tsx src/bots/dummy-agent.ts",
     "sparring": "bash scripts/sparring.sh",
     "eval:dummy": "bash scripts/eval-dummy.sh",
+    "eval:llm": "bash scripts/eval-llm.sh",
     "ds:test": "pnpm --dir design-system test"
   },
   "dependencies": {
