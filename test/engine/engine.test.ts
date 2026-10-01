@@ -143,6 +143,12 @@ describe("explain: extensión aditiva, no cambia la decisión", () => {
           expect(DecisionSchema.safeParse(withoutExplain(decision)).success).toBe(true);
           if ("explain" in decision && decision.explain) {
             expect(JSON.stringify(decision.explain)).not.toMatch(/"reservation"|"mandate"/);
+            // No value in explain should equal reservation values
+            if (decision.explain.targetOffer) {
+              for (const [issue, resValue] of Object.entries(g.mandate.reservation)) {
+                expect(decision.explain.targetOffer[issue]).not.toBe(resValue);
+              }
+            }
           }
         },
       ),

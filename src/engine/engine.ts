@@ -60,13 +60,13 @@ export const ExplainSchema = z
   .object({
     t: z.number(),
     target: z.number(),
-    targetOffer: OfferRecord,
+    targetOffer: OfferRecord.nullable(),
     step: z.number().nullable(),
     uOffer: z.number(),
     uRival: z.number().nullable(),
     acNext: z.boolean(),
     acTime: z.enum(["n/a", "applies", "no"]),
-    rivalReserveEstimate: OfferRecord,
+    rivalReserveEstimate: OfferRecord.nullable(),
   })
   .strict();
 export type Explain = z.infer<typeof ExplainSchema>;
@@ -166,13 +166,13 @@ export function decide(input: EngineInput): Decision {
   const explain: Explain = {
     t: time.t,
     target,
-    targetOffer: roundInFavor(issues, offerAboveReservation(issues, mandate.reservation, target)),
+    targetOffer: target <= uRes ? null : roundInFavor(issues, offerAboveReservation(issues, mandate.reservation, target)),
     step: ourLast ? utility(issues, ourLast) - acceptance.ourNextUtility : null,
     uOffer: acceptance.ourNextUtility,
     uRival,
     acNext: rivalCurrent ? uRival! >= acceptance.ourNextUtility - params.acceptMargin : false,
     acTime: !rivalCurrent || time.t < params.acTimeThreshold ? "n/a" : uRival! > uRes + params.acceptMargin ? "applies" : "no",
-    rivalReserveEstimate: rivalSummary.estimatedReservation,
+    rivalReserveEstimate: null,
   };
 
   if (verdict.verdict === "accept" && rivalCurrent) return decision("accept", rivalCurrent, verdict.rule, explain);
