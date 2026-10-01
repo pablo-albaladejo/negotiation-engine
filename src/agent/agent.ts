@@ -166,6 +166,7 @@ export function createAgent(options: AgentOptions): Agent {
   const brain = createPipeline(deps);
   const issueNames = () => champion.current().issues.map((i) => i.name);
   const app = createHttpApp(brain, {
+    ringMode: runtime.ring.mode,
     issueNames,
     logger,
     health: () => ({ configVersion: champion.current().version, llmProvider: provider }),

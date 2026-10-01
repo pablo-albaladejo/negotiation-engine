@@ -1,0 +1,5 @@
+[
+  { "name": "solo-texto", "body": { "sessionId": "s1", "text": "Offer 3% paying on day 10" } },
+  { "name": "solo-texto-con-estructura-descartada", "body": { "sessionId": "s1", "text": "We accept", "rivalAction": "accept", "rivalOffer": { "pct": 9 } } },
+  { "name": "solo-texto-con-tiempos", "body": { "sessionId": "s1", "round": 7, "text": "3 %", "timeoutMs": 5000, "roundLimit": 10 } }
+]

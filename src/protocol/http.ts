@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Brain } from "../pipeline/pipeline.js";
 import { silentLogger } from "../pipeline/box.js";
+import type { RingMode } from "../pipeline/runtime-config.js";
 import { createCanonicalHandler, type AdapterOptions, type RingAdapter, type RingClient, type RingPoll } from "./adapter.js";
 import { createProtocolSchemas, ProtocolError, type ProtocolErrorBody, type TurnInput, type TurnOutput } from "./schemas.js";
 
@@ -15,6 +16,27 @@ export interface HttpServerOptions extends AdapterOptions {
   health: () => HealthInfo;
   /** Autenticación que exija el ring (desde el entorno, nunca en git): cabecera y valor exactos. */
   auth?: { header: string; value: string };
+  /**
+   * `ring.mode`: `text-only` traduce mensajes con solo texto a `rivalAction = message`, descarta la
+   * oferta y la acción estructuradas y responde solo con el texto; `hybrid` completa la acción
+   * (`message`) y la ronda si faltan y conserva lo estructurado; `structured` (por defecto) no toca nada.
+   */
+  ringMode?: RingMode;
+}
+
+const TIMING_FIELDS = ["roundLimit", "deadline", "timeoutMs", "rivalCanRespond"] as const;
+
+/** Traducción de entrada según `ring.mode`; la ronda que falte se deriva del contador de la sesión. */
+export function toCanonicalTurn(body: unknown, mode: RingMode, nextRound: (sessionId: string) => number): unknown {
+  if (mode === "structured" || !body || typeof body !== "object" || Array.isArray(body)) return body;
+  const raw = body as Record<string, unknown>;
+  if (typeof raw.sessionId !== "string") return body;
+  const round = raw.round ?? nextRound(raw.sessionId);
+  if (mode === "hybrid") return { ...raw, round, rivalAction: raw.rivalAction ?? "message" };
+  const turn: Record<string, unknown> = { sessionId: raw.sessionId, round, rivalAction: "message" };
+  if (raw.text !== undefined) turn.text = raw.text;
+  for (const field of TIMING_FIELDS) if (raw[field] !== undefined) turn[field] = raw[field];
+  return turn;
 }
 
 function sameSecret(a: string, b: string): boolean {
@@ -30,6 +52,9 @@ function sameSecret(a: string, b: string): boolean {
 export function createHttpApp(brain: Brain, options: HttpServerOptions): Hono {
   const logger = options.logger ?? silentLogger;
   const handle = createCanonicalHandler(brain, options);
+  const mode = options.ringMode ?? "structured";
+  const rounds = new Map<string, number>();
+  const nextRound = (sessionId: string) => (rounds.get(sessionId) ?? 0) + 1;
   const app = new Hono();
 
   app.get("/health", (c) => {
@@ -49,8 +74,12 @@ export function createHttpApp(brain: Brain, options: HttpServerOptions): Hono {
       logger.warn("protocol_error", { reason: "json" });
       return c.json(new ProtocolError("Cuerpo JSON inválido").toBody(), 400);
     }
-    const result = await handle(body);
-    return result.status === "ok" ? c.json(result.output) : c.json(result.error, 400);
+    const result = await handle(toCanonicalTurn(body, mode, nextRound));
+    if (result.status !== "ok") return c.json(result.error, 400);
+    rounds.set(result.output.sessionId, Math.max(rounds.get(result.output.sessionId) ?? 0, result.output.round));
+    // Solo texto: la acción y la oferta canónicas quedan en la traza; al ring solo va el texto validado.
+    if (mode === "text-only") return c.json({ sessionId: result.output.sessionId, round: result.output.round, text: result.output.text });
+    return c.json(result.output);
   });
 
   app.onError((error, c) => {

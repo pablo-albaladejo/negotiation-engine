@@ -24,6 +24,7 @@ function appFetch(app: { request: (url: string, init?: RequestInit) => Response 
 
 serverContract("en memoria", (brain) => createInMemoryAdapter(brain, { issueNames }));
 serverContract("HTTP JSON (Hono)", (brain) => httpAdapterFromApp(createHttpApp(brain, { issueNames, health })));
+serverContract("HTTP JSON (Hono) en hybrid", (brain) => httpAdapterFromApp(createHttpApp(brain, { issueNames, health, ringMode: "hybrid" })));
 
 clientContract("en memoria", async (brain, turns) => {
   const ring = new InMemoryRingClient(turns);
