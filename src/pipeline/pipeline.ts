@@ -6,6 +6,7 @@ import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
 import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
+import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
 import { renderTemplate } from "../llm/template.js";
@@ -308,6 +309,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
         }
       }
       session.opponent.recordClaims(parse.claims);
+      const language = turnLanguage(parse.language, text);
+      if (language !== "und") session.language = language;
     } else {
       record("parser", { text: null }, EMPTY_PARSE, "ok", now());
     }
@@ -356,7 +359,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         deterministicOffer: deterministicOffer ?? null,
         dual,
       },
-      { offer: reconciled ?? null, unconfirmed, confidence, reason: unconfirmed ? (outcome?.reason ?? null) : null },
+      { offer: reconciled ?? null, unconfirmed, confidence, reason: unconfirmed ? (outcome?.reason ?? null) : null, language: session.language ?? null },
       "ok",
       now(),
     );

@@ -32,6 +32,8 @@ export interface Session {
   rivalAcceptedOurLast: boolean;
   /** La oferta actual del rival tiene alguna cifra `llm-only` (no basta para aceptar). */
   rivalCurrentLlmOnly?: boolean;
+  /** Último idioma del rival distinto de `und` (BCP-47); solo elige el idioma de salida. */
+  language?: string;
   rivalWalked: boolean;
   agreement?: Offer;
 }
