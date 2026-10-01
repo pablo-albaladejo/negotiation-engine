@@ -36,6 +36,8 @@ export interface TextCheck {
   text: string;
   /** Idioma en que está escrito el texto (BCP-47); sin él, coherencia con todos los idiomas cubiertos. */
   language?: string;
+  /** Cifras del rival que una petición de confirmar repite a propósito (además de las decididas). */
+  echoed?: readonly number[];
   /** `known-languages` aprueba un idioma no cubierto marcando `coherence: "unchecked"`; `strict` lo rechaza. */
   coherence?: "known-languages" | "strict";
 }
@@ -64,6 +66,8 @@ export function validateText(check: TextCheck): CheckResult {
       reasons.push(`rango no permitido: "${m.text}"`);
     } else if (m.ambiguity === "separator") {
       reasons.push(`cifra ambigua: "${m.text}"`);
+    } else if (!matches(m.value) && check.echoed?.some((e) => Math.abs(e - m.value) <= EPS)) {
+      continue;
     } else if (!matches(m.value)) {
       reasons.push(`cifra no decidida: "${m.text}"`);
     } else {

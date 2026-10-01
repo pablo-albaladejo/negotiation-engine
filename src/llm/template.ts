@@ -3,7 +3,9 @@ import type { Offer } from "../engine/issues.js";
 import { defineBox, registerBox } from "../pipeline/box.js";
 import { en } from "./templates/en.js";
 import { es } from "./templates/es.js";
-import type { TemplatePack } from "./templates/types.js";
+import type { Echo, TemplatePack } from "./templates/types.js";
+
+export type { Echo } from "./templates/types.js";
 
 /** Cifra en la forma española (coma decimal); la usan también los bots. */
 export const formatNumber = es.formatNumber;
@@ -48,7 +50,20 @@ export interface TemplateDecision {
   offer?: Offer;
   /** Solo texto sin oferta confirmada: la contraoferta pide que el rival repita sus cifras. */
   ask?: Ask;
+  /** Formulación (rotación determinista por sesión y ronda); por defecto la primera. */
+  variant?: number;
+  /** Con `ask`: cifras DEL RIVAL que la petición repite (rango o lectura dudosa). Nunca nuestras. */
+  echo?: Echo;
 }
+
+/** Variante de una sesión y ronda: rondas consecutivas nunca repiten formulación. */
+export function templateVariant(sessionId: string, round: number): number {
+  let h = 2166136261;
+  for (const ch of sessionId) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return (h % 997) + round;
+}
+
+const pick = <T>(items: readonly T[], variant: number | undefined): T => items[(((variant ?? 0) % items.length) + items.length) % items.length]!;
 
 /** Forma neutral: marca breve de la acción en `fallbackLanguage` y las cifras con su issue y unidad. */
 function renderNeutral(decision: TemplateDecision, pack: TemplatePack): string {
@@ -76,16 +91,17 @@ export function renderTemplate(decision: TemplateDecision, language?: string, op
   const lang = primaryLanguage(language) ?? "es";
   const { pack, covered } = packFor(lang, options);
   if (!covered && options.uncovered === "neutral") return renderNeutral(decision, pack);
-  const offer = decision.offer ?? {};
+  const offer = pack.formatOffer(decision.offer ?? {});
+  const v = decision.variant;
   switch (decision.action) {
     case "accept":
-      return pack.accept(offer);
+      return pick(pack.accept, v)(offer);
     case "counter":
-      if (decision.ask === "confirm-acceptance") return pack.confirmAcceptance(offer);
-      if (decision.ask === "confirm-figures") return pack.confirmFigures(offer);
-      return pack.counter(offer);
+      if (decision.ask === "confirm-acceptance") return pick(pack.confirmAcceptance, v)(offer);
+      if (decision.ask === "confirm-figures") return decision.echo ? pack.echo(decision.echo, offer) : pick(pack.confirmFigures, v)(offer);
+      return pick(pack.counter, v)(offer);
     case "walk":
-      return pack.walk();
+      return pick(pack.walk, v);
   }
 }
 

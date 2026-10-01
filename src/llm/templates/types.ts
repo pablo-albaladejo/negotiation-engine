@@ -1,15 +1,23 @@
 import type { Offer } from "../../engine/issues.js";
 
-/** Plantilla de un idioma: frases deterministas que escriben con dígitos ASCII exactamente las cifras dadas. */
+/** Lo que el rival dijo y no pudimos fijar: cifras SUYAS que la petición de confirmar repite. */
+export type Echo = { kind: "range"; issue: string; bounds: [number, number] } | { kind: "figure"; issue: string; value: number };
+
+/**
+ * Plantilla de un idioma: al menos 4 formulaciones por intención, que escriben con dígitos ASCII
+ * exactamente las cifras dadas; `variant` elige la formulación (rotación determinista).
+ */
 export interface TemplatePack {
   /** Cifra con dígitos ASCII y el separador decimal del idioma, sin separador de miles. */
   formatNumber(value: number): string;
   formatOffer(offer: Offer): string;
-  accept(offer: Offer): string;
-  counter(offer: Offer): string;
-  confirmFigures(offer: Offer): string;
-  confirmAcceptance(offer: Offer): string;
-  walk(): string;
+  accept: readonly ((offer: string) => string)[];
+  counter: readonly ((offer: string) => string)[];
+  confirmFigures: readonly ((offer: string) => string)[];
+  confirmAcceptance: readonly ((offer: string) => string)[];
+  walk: readonly string[];
+  /** Petición concreta con las cifras del rival ("¿Es un 2 o un 2,5 %?"). */
+  echo(echo: Echo, offer: string): string;
   /** Marcas breves de la forma neutral (idiomas sin plantilla). */
   marks: { accept: string; counter: string; walk: string; confirmFigures: string; confirmAcceptance: string };
 }

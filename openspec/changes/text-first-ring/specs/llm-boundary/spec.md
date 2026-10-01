@@ -58,6 +58,17 @@ Un rango en el texto del rival ("entre 2 y 2,5 %", "2-2,5%", "between 2 and 2.5 
 - **WHEN** con `parser.ranges = confirm` el rival escribe "entre 2 y 4 %"
 - **THEN** el turno va sin oferta y la respuesta pide confirmar las cifras
 
+### Requirement: Variedad de la plantilla
+Cada idioma cubierto por la plantilla SHALL tener al menos 4 formulaciones por intención (contraoferta, petición de confirmar cifras, petición de confirmar la aceptación, aceptación y retirada), elegidas de forma determinista por sesión y ronda, de modo que una partida sembrada se reproduce y dos rondas consecutivas nunca repiten formulación. La petición de confirmar SHALL pedir lo concreto cuando se conoce ("¿Es un 2 o un 2,5 %?" para un rango, "¿Te refieres a 1,33 %?" para una cifra solo LLM), repitiendo solo cifras DEL RIVAL y nunca otras nuestras que las decididas; el validador SHALL admitir esas cifras repetidas, y si el detector de fugas bloquea el texto con ellas (por su cercanía a la reserva) SHALL usarse la petición genérica. Toda formulación SHALL pasar el validador y el detector de fugas.
+
+#### Scenario: Rotación sin repetición
+- **WHEN** la plantilla responde en dos rondas consecutivas de la misma sesión
+- **THEN** las formulaciones son distintas y la misma semilla reproduce la misma secuencia
+
+#### Scenario: Rango cercano a la reserva
+- **WHEN** el rival escribe "entre 1 y 1,5 %" y nuestra reserva es 1 %
+- **THEN** la respuesta no repite el rango y usa la petición genérica de confirmar
+
 ### Requirement: Números en palabras no verificables
 Cuando la evidencia de una cifra solo contiene palabras de un idioma que el normalizador no cubre, `parser.acceptWordNumbers = llm-only` SHALL aceptar la cifra con confianza `llm-only` y `confirm` SHALL tratar el turno como sin oferta con motivo `words-unverifiable`. Una cifra `llm-only` MUST NOT bastar para que el motor acepte en el mismo turno: el motor SHALL tratarla como oferta del rival para su modelo y su contraoferta, pero la decisión `accept` sobre una oferta con alguna cifra `llm-only` SHALL convertirse en contraoferta que repite nuestras cifras y pide confirmar.
 

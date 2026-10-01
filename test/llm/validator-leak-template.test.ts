@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Issue } from "../../src/engine/config.js";
 import { withinOfferMandate, type Offer } from "../../src/engine/issues.js";
 import { detectLeak, type LeakContext } from "../../src/llm/leak.js";
-import { formatNumber, renderTemplate, templateLanguage } from "../../src/llm/template.js";
+import { formatNumber, renderTemplate, templateLanguage, templateVariant, TEMPLATE_PACKS } from "../../src/llm/template.js";
 import { validateText, type TextCheck } from "../../src/llm/validator.js";
 
 interface ValidatorFixture {
@@ -97,6 +97,44 @@ describe("plantilla determinista", () => {
     expect(formatNumber(2.345)).toBe("2,3450");
     expect(formatNumber(1500)).toBe("1500");
   });
+
+  describe("variedad de la plantilla", () => {
+    it("al menos 4 formulaciones por intención y por idioma cubierto", () => {
+      for (const pack of Object.values(TEMPLATE_PACKS)) {
+        for (const list of [pack.accept, pack.counter, pack.confirmFigures, pack.confirmAcceptance, pack.walk]) expect(list.length).toBeGreaterThanOrEqual(4);
+      }
+    });
+    it("rotación determinista: misma sesión y ronda ⇒ mismo texto; rondas consecutivas nunca repiten", () => {
+      fc.assert(
+        fc.property(fc.string({ minLength: 1, maxLength: 20 }), fc.integer({ min: 1, max: 200 }), fc.constantFrom("en", "es"), fc.constantFrom("accept" as const, "counter" as const, "walk" as const), (sid, round, lang, action) => {
+          const d = (r: number) => renderTemplate({ action, offer: { pct: 2.5, day: 20 }, variant: templateVariant(sid, r) }, lang);
+          expect(d(round)).toBe(d(round));
+          expect(d(round + 1)).not.toBe(d(round));
+        }),
+      );
+    });
+    it("propiedad: toda formulación y toda petición con cifras del rival pasan validador y fugas", () => {
+      fc.assert(
+        fc.property(scenario, fc.constantFrom("en", "es"), fc.nat(50), fc.option(fc.tuple(fc.double({ min: 0, max: 10, noNaN: true }), fc.double({ min: 0, max: 10, noNaN: true })), { nil: undefined }), (s, lang, variant, bounds) => {
+          if (s.action === "walk") return;
+          const round2 = (x: number) => Math.round(x * 100) / 100;
+          const echo = bounds && s.action === "counter" ? { kind: "range" as const, issue: "pct", bounds: [round2(Math.min(...bounds)), round2(Math.max(...bounds))] as [number, number] } : undefined;
+          const decision = { action: s.action, offer: s.offer, variant, ...(s.action === "counter" ? { ask: "confirm-figures" as const } : {}), ...(echo ? { echo } : {}) };
+          const text = renderTemplate(decision, lang);
+          const check = { action: s.action, offer: s.offer, text, language: lang, coherence: "strict" as const, ...(echo ? { echoed: echo.bounds } : {}) };
+          expect(validateText(check), text).toMatchObject({ ok: true });
+          // Sin eco, la plantilla nunca se acerca a la reserva; con eco, el pipeline descarta el eco si el detector lo bloquea.
+          if (!echo) expect(detectLeak(text, { issues: s.issues, reservation: s.reservation, decided: s.offer }), text).toEqual({ leak: false });
+        }),
+      );
+    });
+    it("una petición que repetiría una cifra del rival cercana a nuestra reserva la bloquea el detector", () => {
+      const text = renderTemplate({ action: "counter", offer: { pct: 2 }, ask: "confirm-figures", echo: { kind: "range", issue: "pct", bounds: [3, 3.5] } }, "es");
+      expect(text).toMatch(/^¿Es un 3 o un 3,5 %\?/);
+      expect(detectLeak(text, { issues: [pct], reservation: { pct: 3 }, decided: { pct: 2 } })).toMatchObject({ leak: true });
+    });
+  });
+
 
   describe("validador, fugas y plantilla independientes del idioma (5.1–5.3)", () => {
   const issues2 = [pct, day];

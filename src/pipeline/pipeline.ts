@@ -4,13 +4,13 @@ import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInpu
 import { enforceOfferGuardrails } from "../engine/guardrails.js";
 import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
-import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
+import { templateNarrator, type Narrator, type NarratorInput, type TemplateContext } from "../llm/narrator.js";
 import { deterministicParser, extractOfferDetailed, negatedAccept, parseDeterministic } from "../llm/deterministic-parser.js";
 import { spanAppears } from "../llm/verify.js";
 import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
-import { renderTemplate, templateLanguage, type Ask } from "../llm/template.js";
+import { renderTemplate, templateLanguage, templateVariant, type Ask, type Echo } from "../llm/template.js";
 import { CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
 import {
   createProtocolSchemas,
@@ -519,6 +519,22 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (offer) check.offer = offer;
     const leakCtx: LeakContext = { issues, reservation: mandate.reservation };
     if (offer) leakCtx.decided = offer;
+    // Plantilla: formulación rotada por sesión y ronda; la petición de confirmar repite las cifras
+    // DEL RIVAL (rango o lectura solo LLM) solo si no se acercan a nuestra reserva.
+    const variant = templateVariant(session.id, input.round);
+    let echo: Echo | undefined;
+    if (ask === "confirm-figures") {
+      const range = outcome?.ranges ? Object.entries(outcome.ranges)[0] : undefined;
+      const llmOnlyIssue = llmOnlyBlocked && rivalCurrent ? Object.keys(rivalCurrent)[0] : undefined;
+      if (range && reconciled) echo = { kind: "range", issue: range[0], bounds: range[1] };
+      else if (llmOnlyIssue) echo = { kind: "figure", issue: llmOnlyIssue, value: rivalCurrent![llmOnlyIssue]! };
+      if (echo) {
+        const probe = renderTemplate({ action: "counter", ...(offer ? { offer } : {}), ask, echo }, outLanguage, runtime.template);
+        if (detectLeak(probe, leakCtx).leak) echo = undefined;
+      }
+    }
+    if (echo) check.echoed = echo.kind === "range" ? [...echo.bounds] : [echo.value];
+    const templateContext: TemplateContext = { variant, ...(echo ? { echo } : {}) };
 
     let text: string | undefined;
     for (let attempt = 1; attempt <= attempts && remaining() > 0 && !text; attempt++) {
@@ -526,7 +542,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       const narrated = await guarded(
         "narrator",
         narratorInput,
-        async (signal) => NarratorOutputSchema.parse(await narrator.narrate(narratorInput, signal)),
+        async (signal) => NarratorOutputSchema.parse(await narrator.narrate(narratorInput, signal, templateContext)),
         remaining() / (attempts - attempt + 1),
         failResult,
       );
@@ -543,7 +559,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       text = candidate;
     }
     if (!text) {
-      text = renderTemplate({ action: decision.action, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) }, outLanguage, runtime.template);
+      text = renderTemplate({ action: decision.action, variant, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) }, outLanguage, runtime.template);
       record("template", { action: decision.action, offer: offer ?? null, ask: ask ?? null, language: templateLanguage(outLanguage, runtime.template) }, { text }, "fallback", now());
     }
 

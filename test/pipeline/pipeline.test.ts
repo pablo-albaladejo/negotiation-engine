@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decide } from "../../src/engine/engine.js";
 import type { Narrator } from "../../src/llm/narrator.js";
 import type { TextParser } from "../../src/llm/parser.js";
-import { renderTemplate } from "../../src/llm/template.js";
+import { renderTemplate, templateVariant } from "../../src/llm/template.js";
 import { turnBudgetMs } from "../../src/pipeline/pipeline.js";
 import { ProtocolError } from "../../src/protocol/schemas.js";
 import { champion, makeBrain, schemas, turn } from "./helpers.js";
@@ -148,7 +148,7 @@ describe("inyección de fallos: cada turno produce salida válida", () => {
     outputs.forEach((out, k) => {
       expect(out.action).toBe(ref[k]!.action);
       expect(out.action !== "walk" && out.offer).toEqual(ref[k]!.action !== "walk" && ref[k]!.offer);
-      expect(out.text).toBe(renderTemplate(out.action === "walk" ? { action: "walk" } : { action: out.action, offer: out.offer }));
+      expect(out.text).toBe(renderTemplate(out.action === "walk" ? { action: "walk", variant: templateVariant("s1", k + 1) } : { action: out.action, offer: out.offer, variant: templateVariant("s1", k + 1) }));
     });
     expect(calls).toBe(fault === "timeout" ? calls : 6);
     expect(trace.records.filter((r) => r.box === "template")).toHaveLength(3);

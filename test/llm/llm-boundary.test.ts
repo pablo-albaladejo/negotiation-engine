@@ -10,7 +10,7 @@ import { createLlmParser, delimitRivalText } from "../../src/llm/llm-parser.js";
 import { NarratorInputSchema } from "../../src/llm/narrator.js";
 import { resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 import { createLlmClient, type LlmClient } from "../../src/llm/provider.js";
-import { renderTemplate } from "../../src/llm/template.js";
+import { renderTemplate, templateVariant } from "../../src/llm/template.js";
 import { champion, makeBrain, turn } from "../pipeline/helpers.js";
 
 const injection = JSON.parse(readFileSync("test/fixtures/llm/injection.json", "utf8"));
@@ -81,7 +81,7 @@ describe("parser LLM en cuarentena (11.4)", () => {
     const out = await brain.turn(turn(1, { rivalAction: "offer", text: "Te ofrezco un 2,5 %" }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);
     expect(trace.records.find((r) => r.box === "reconcile")!.output).toMatchObject({ offer: null, unconfirmed: true });
-    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, ask: "confirm-figures" }));
+    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, ask: "confirm-figures", variant: templateVariant("s1", 1) }));
   });
 
   it("contra el bot de solo texto: 0 acuerdos distintos de los reales, coincidan o no los parsers", async () => {
@@ -129,6 +129,6 @@ describe("narrador LLM (11.5)", () => {
     expect(sent).toHaveLength(2);
     expect(trace.records.filter((r) => r.box === "validator").map((r) => (r.output as { ok: boolean }).ok)).toEqual([false, false]);
     // Sin texto del rival el idioma de la sesión es desconocido: plantilla en `template.fallbackLanguage` (en).
-    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer }, "en"));
+    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, variant: templateVariant("s1", 1) }, "en"));
   });
 });

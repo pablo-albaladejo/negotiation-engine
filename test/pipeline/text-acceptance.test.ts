@@ -197,3 +197,14 @@ describe("aceptación desde el texto cuando falla el parser LLM", () => {
     });
   });
 });
+
+describe("petición de confirmar con cifras del rival", () => {
+  it("un rango que tocaría nuestra reserva no se repite: petición genérica", async () => {
+    const { brain } = makeBrain({ config: twoIssues, mandate: mandate2 });
+    await brain.turn(t(1, { rivalAction: "message", text: "Hola" }));
+    const out = await brain.turn(t(2, { rivalAction: "message", text: "Podemos ir entre 1 y 1,5 % a día 30" }));
+    expect(out.action).toBe("counter");
+    expect(out.text).not.toMatch(/¿Es un/);
+    expect(out.text).toMatch(/confirmar tus cifras/);
+  });
+});
