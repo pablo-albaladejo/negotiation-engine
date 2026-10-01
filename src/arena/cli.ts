@@ -145,7 +145,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         seed: game.seed,
         configVersion: config.version,
         createdAt: new Date().toISOString(),
-        traceVersion: 2,
+        traceVersion: scenario.mandateUnit === "apr" ? 3 : 2,
         mandate: mandateFor(scenario, scenario.role),
       }, records);
     },
