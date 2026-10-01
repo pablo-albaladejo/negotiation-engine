@@ -8,9 +8,9 @@ Red team estructurado: cadenas de movimientos adversariales, intentos de fuga, e
 
 ## Contenido
 
-Confidencial: escenarios especiales, textos malformados, movimientos ilegales que se esperan que el validador rechace.
+Escenarios especiales, textos malformados, movimientos ilegales que se esperan que el validador rechace.
 
-**Fuera de git** (`.gitignore`).
+Versionados en git.
 
 ## Cómo usar
 
