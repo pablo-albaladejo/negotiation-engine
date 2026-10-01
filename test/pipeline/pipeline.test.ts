@@ -37,6 +37,7 @@ describe("pipeline sin LLM", () => {
     expect(schemas.turnOutput.safeParse(output).success).toBe(true);
     expect(trace.records.map((r) => r.box)).toEqual([
       "input",
+      "rivalText",
       "parser",
       "reconcile",
       "binding",

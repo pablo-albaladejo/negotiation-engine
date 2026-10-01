@@ -251,6 +251,10 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (input.rivalCanRespond !== undefined) session.rivalCanRespond = input.rivalCanRespond;
     record("input", { rivalAction: input.rivalAction, hasOffer: input.rivalOffer !== undefined, hasText: !!input.text }, { round: session.round, roundLimit: session.roundLimit ?? null }, "ok", t0);
 
+    // 1b. Texto crudo del rival: solo para la traza JSONL local (nunca a OTel/Langfuse); ver
+    // src/pipeline/otel.ts (caja "rivalText" excluida de la exportación).
+    if (input.text) record("rivalText", {}, { text: input.text }, "ok", t0);
+
     // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).
     let parse: ParserOutput = EMPTY_PARSE;
     let parsed = false;

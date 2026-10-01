@@ -54,6 +54,8 @@ export async function createOtelSink(options: OtelOptions = {}): Promise<OtelSin
   const tracer = provider.getTracer("negotiation-ring");
   return {
     write(record: TraceRecord) {
+      // El texto crudo del rival es local-only (results/*.jsonl): nunca sale a OTel/Langfuse.
+      if (record.box === "rivalText") return;
       const end = Date.now();
       const span = tracer.startSpan(`box.${record.box}`, { startTime: end - record.latencyMs });
       span.setAttributes({
