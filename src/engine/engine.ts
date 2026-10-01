@@ -241,11 +241,17 @@ function decideApr(input: EngineInput, band: AprBand): Decision {
   return { action: "accept", offer: pickIssues(input.issues, agreed), rule: decided.rule };
 }
 
-/** Día de la última oferta del rival si está dentro del rango del issue `day`; si no, ninguno (día de referencia). */
+/**
+ * Día (entero: "payment by day D") de la última oferta del rival, redondeado, si queda dentro del
+ * rango del issue `day`; si no, ninguno (día de referencia). Un día fraccionario no tiene sentido en
+ * el ring y su texto ("día 0,1") es ambiguo para el detector de fugas.
+ */
 function rivalDay(input: EngineInput): number | undefined {
-  const day = input.state.rivalOffers.at(-1)?.[APR_DAY];
+  const raw = input.state.rivalOffers.at(-1)?.[APR_DAY];
   const issue = input.issues.find((i) => i.name === APR_DAY);
-  return day !== undefined && issue && day >= issue.min && day <= issue.max ? day : undefined;
+  if (raw === undefined || !Number.isFinite(raw) || !issue) return undefined;
+  const day = Math.round(raw);
+  return day >= issue.min && day <= issue.max ? day : undefined;
 }
 
 /** Utilidad de apertura (para tests y la ruta de emergencia). */

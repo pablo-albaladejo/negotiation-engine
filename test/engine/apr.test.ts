@@ -132,6 +132,7 @@ describe("mandato apr: revisión", () => {
     const atRival = decide(inputAt("buyer", [{ pct: 0.3, day: 20 }]));
     expect(atRival).toMatchObject({ action: "counter", offer: { day: 20 } });
     expect(withinAprBand(band30, (atRival as { offer: Offer }).offer)).toBe(true);
+    expect(decide(inputAt("buyer", [{ pct: 0.3, day: 19.6 }]))).toMatchObject({ action: "counter", offer: { day: 20 } });
     const outside = decide(inputAt("buyer", [{ pct: 0.01, day: 29.5 }]));
     expect(outside).toMatchObject({ action: "counter", offer: { day: 10 } });
   });
