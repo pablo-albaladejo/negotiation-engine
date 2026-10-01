@@ -38,6 +38,12 @@ const ProvenanceSchema = z
     parent: z.number().int().nonnegative().optional(),
     createdAt: z.string().optional(),
     notes: z.string().optional(),
+    /** Barrido que generó la candidata (`pnpm tune`). */
+    sweepId: z.string().optional(),
+    /** Semillas con las que se evaluó (rango y cuántas). */
+    seeds: z.object({ phase: z.string(), start: z.number().int(), count: z.number().int().positive() }).strict().optional(),
+    /** Resumen de métricas con las que se evaluó o promovió. */
+    metrics: z.record(z.string(), z.union([z.number(), z.string(), z.boolean(), z.null()])).optional(),
   })
   .strict();
 
@@ -74,6 +80,8 @@ export const AgentConfigSchema = z
     /** Efecto mínimo (puntos porcentuales de excedente) para promover una candidata. */
     minEffectPp: z.number().nonnegative().default(1),
     persona: z.string().min(1),
+    /** Congelación: `pnpm promote` se niega a sobrescribir esta campeona (también `CHAMPION_FROZEN=1`). */
+    frozen: z.boolean().optional(),
     provenance: ProvenanceSchema,
   })
   .strict();

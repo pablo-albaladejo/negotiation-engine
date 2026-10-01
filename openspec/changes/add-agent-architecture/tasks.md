@@ -115,8 +115,10 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
   - Nota: `src/arena/paired.ts`: semillas de ajuste 1..99 999 y de revalidación 100 000..199 999; rivales `tuning` = bots en código de `BOTS`; `heldOutRivals` = campeona anterior y, solo si se piden, bot LLM y externos. `runPaired` admite las partidas de la campeona ya jugadas (caché del barrido).
 - [x] 13.2 [Pablo] Agregación por clúster (escenario × rival) con `roleWeights`, diferencia media pareada y test de signos, con tests sobre casos conocidos [aplazada: sábado]
   - Nota: `src/arena/stats.ts`: media por rol y después media de roles con `roleWeights` (un rol con más escenarios no pesa más); test de signos bilateral exacto, empates descartados; `pnpm arena --candidate` imprime la línea pareada.
-- [ ] 13.3 [Pablo] Puerta de promoción (efecto ≥ `minEffectPp` y significativo, 0 violaciones, 0 fugas, revalidación con semillas nuevas, conjunto reservado ≥ 0) y `pnpm promote <candidate>` con versión N+1, mensaje `champion vN+1` y flag de congelación; verificar con tests de cada rechazo y un aprobado [aplazada: sábado]
-- [ ] 13.4 [Pablo] Bootstrap sembrado por clústeres (2000 remuestreos) como criterio de significación alternativo, con tests de cobertura aproximada [aplazada: sábado]
+- [x] 13.3 [Pablo] Puerta de promoción (efecto ≥ `minEffectPp` y significativo, 0 violaciones, 0 fugas, revalidación con semillas nuevas, conjunto reservado ≥ 0) y `pnpm promote <candidate>` con versión N+1, mensaje `champion vN+1` y flag de congelación; verificar con tests de cada rechazo y un aprobado [aplazada: sábado]
+  - Nota: `src/arena/gate.ts` y `pnpm promote` (`src/arena/promote.ts`): fases ajuste (semillas 1..N), revalidación (N semillas nuevas del rango de revalidación) y reservado (campeona vigente como rival `champion-vN`, más `--llm-bot`/`--rival-url` si se piden); umbrales `minEffectPp` y `roleWeights` de la campeona vigente; informe en `results/promote-*/gate.json`; no hace commit. Congelación: `CHAMPION_FROZEN=1` o `frozen: true` en la campeona (no activada). Con 21 semillas tarda unos 25 s.
+- [x] 13.4 [Pablo] Bootstrap sembrado por clústeres (2000 remuestreos) como criterio de significación alternativo, con tests de cobertura aproximada [aplazada: sábado]
+  - Nota: `clusterBootstrap` (`src/arena/stats.ts`), estratificado por rol, intervalo por percentiles; `pnpm promote --criterion bootstrap` exige límite inferior > 0; `pnpm arena --candidate` lo imprime siempre.
 
 ## 14. Sábado: ajuste [Paula]
 

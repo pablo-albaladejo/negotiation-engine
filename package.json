@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "arena": "tsx src/arena/index.ts",
+    "promote": "tsx src/arena/promote-main.ts",
     "agent": "tsx src/agent/index.ts",
     "box": "tsx src/dev/box-main.ts",
     "replay": "tsx src/dev/replay-main.ts",
