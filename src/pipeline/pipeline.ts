@@ -46,7 +46,7 @@ export interface PipelineDeps {
   logger?: Logger;
   trace?: TraceSink;
   provider?: string;
-  /** Intentos en total por caja con LLM antes de la plantilla. */
+  /** Intentos en total por caja con LLM antes de la plantilla; por defecto `llm.parser.attempts` y `llm.narrator.attempts`. */
   attempts?: number;
   /** Configuración de ejecución efectiva; por defecto la de `hybrid` sin fichero. */
   runtime?: RuntimeConfig;
@@ -65,10 +65,17 @@ class TimeoutError extends Error {
   override name = "TimeoutError";
 }
 
-/** Presupuesto del turno: tiempo del ring − margen de seguridad, o `turnBudgetMs` si el ring no lo da. */
-export function turnBudgetMs(timeoutMs: number | undefined, config: Pick<AgentConfig, "turnSafetyMarginMs" | "turnBudgetMs">): number {
-  return timeoutMs !== undefined ? Math.max(0, timeoutMs - config.turnSafetyMarginMs) : config.turnBudgetMs;
+/**
+ * Presupuesto del turno: si el ring declara su tiempo, min(tiempo × `turn.budgetRatio`, tiempo −
+ * margen de seguridad); si no, `turnBudgetMs` de la configuración.
+ */
+export function turnBudgetMs(timeoutMs: number | undefined, config: Pick<AgentConfig, "turnSafetyMarginMs" | "turnBudgetMs">, budgetRatio = 1): number {
+  if (timeoutMs === undefined) return config.turnBudgetMs;
+  return Math.max(0, Math.min(timeoutMs * budgetRatio, timeoutMs - config.turnSafetyMarginMs));
 }
+
+/** Reserva al final del turno para validador, detector de fugas y plantilla. */
+const TAIL_RESERVE_MS = 300;
 
 async function withTimeout<T>(fn: (signal: AbortSignal) => T | Promise<T>, ms: number): Promise<T> {
   const controller = new AbortController();
@@ -166,7 +173,10 @@ export function createPipeline(deps: PipelineDeps): Brain {
   const activeParser = policy === "deterministic-only" ? deterministicParser : parser;
   const llmActive = activeParser !== deterministicParser;
   const narrator = deps.narrator ?? templateNarrator;
-  const attempts = deps.attempts ?? 2;
+  const parserAttempts = deps.attempts ?? runtime.llm.parser.attempts;
+  const narratorAttempts = deps.attempts ?? runtime.llm.narrator.attempts;
+  /** La plantilla como narrador es instantánea: ni límite por llamada ni omisión por tiempo. */
+  const llmNarrator = narrator !== templateNarrator;
   const engine =
     deps.engine ?? ((input: EngineInput) => runBox(engineBox, input, createContext({ now, logger })));
   const validator = deps.validator ?? validateText;
@@ -191,7 +201,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const worse = (name: string, lo: number, hi: number) => (oriented.find((i) => i.name === name)?.direction === "higher-better" ? lo : hi);
     const bpsUnits = Object.values(runtime.parser.units.bps).flat();
     const extractOptions = runtime.parser.ranges === "conservative" ? { worse, bpsUnits } : { bpsUnits };
-    const deadline = startedAt + turnBudgetMs(input.timeoutMs, config);
+    const deadline = startedAt + turnBudgetMs(input.timeoutMs ?? runtime.ring.timeoutMs, config, runtime.turn.budgetRatio);
     const remaining = () => Math.max(0, deadline - now());
 
     /** Sanitiza entrada/salida de cajas LLM que pueden registrar textos sensibles. */
@@ -299,7 +309,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
     // src/pipeline/otel.ts (caja "rivalText" excluida de la exportación).
     if (input.text) record("rivalText", {}, { text: input.text }, "ok", t0);
 
-    // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).
+    // 2. Parser en cuarentena (`llm.parser.attempts` intentos de hasta `llm.parser.timeoutMs`; si
+    // falla, `parser.onLlmFailure`).
     let parse: ParserOutput = EMPTY_PARSE;
     let parsed = false;
     let llmFailed = false;
@@ -308,14 +319,14 @@ export function createPipeline(deps: PipelineDeps): Brain {
       const schema = parserOutputSchema(schemas.issueNames);
       const text = input.text;
       const context = { issueNames: schemas.issueNames };
-      for (let attempt = 1; attempt <= attempts && remaining() > 0; attempt++) {
-        const share = remaining() / 2 / (attempts - attempt + 1);
+      for (let attempt = 1; attempt <= parserAttempts && remaining() > 0; attempt++) {
+        const share = Math.min(runtime.llm.parser.timeoutMs, Math.max(0, remaining() - TAIL_RESERVE_MS));
         const result = await guarded(
           "parser",
           { text },
           async (signal) => schema.parse(await activeParser.parse(text, signal, context)),
           share,
-          attempt < attempts ? "retry" : "fallback",
+          attempt < parserAttempts ? "retry" : "fallback",
         );
         if (result.ok) {
           parse = result.value;
@@ -537,13 +548,20 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const templateContext: TemplateContext = { variant, ...(echo ? { echo } : {}) };
 
     let text: string | undefined;
-    for (let attempt = 1; attempt <= attempts && remaining() > 0 && !text; attempt++) {
-      const failResult: BoxResult = attempt < attempts ? "retry" : "fallback";
+    const { minRemainingMs } = runtime.llm.narrator;
+    for (let attempt = 1; attempt <= narratorAttempts && remaining() > 0 && !text; attempt++) {
+      // Sin tiempo para una llamada útil (también antes de un reintento): plantilla directamente.
+      if (llmNarrator && remaining() < minRemainingMs) {
+        record("narrator-skipped", { attempt, remainingMs: Math.round(remaining()), minRemainingMs }, null, "fallback", now());
+        break;
+      }
+      const failResult: BoxResult = attempt < narratorAttempts ? "retry" : "fallback";
+      const share = llmNarrator ? Math.min(runtime.llm.narrator.timeoutMs, Math.max(0, remaining() - TAIL_RESERVE_MS)) : remaining() / (narratorAttempts - attempt + 1);
       const narrated = await guarded(
         "narrator",
         narratorInput,
         async (signal) => NarratorOutputSchema.parse(await narrator.narrate(narratorInput, signal, templateContext)),
-        remaining() / (attempts - attempt + 1),
+        share,
         failResult,
       );
       if (!narrated.ok) continue;

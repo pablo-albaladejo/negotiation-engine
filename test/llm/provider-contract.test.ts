@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createAnthropicClient } from "../../src/llm/anthropic-api.js";
 import { claudeCliArgs, createClaudeCliClient, type Exec } from "../../src/llm/claude-cli.js";
 import { parserOutputSchema } from "../../src/llm/parser.js";
-import { createLlmClient, createProviderClient, LlmError, type LlmClient } from "../../src/llm/provider.js";
+import { createBoxClient, createLlmClient, createProviderClient, LlmError, type LlmClient } from "../../src/llm/provider.js";
 
 const fixture = (name: string) => JSON.parse(readFileSync(`test/fixtures/llm/providers/${name}.json`, "utf8"));
 const schema = parserOutputSchema(["pct", "day"]);
@@ -136,5 +136,27 @@ describe("detalles de cada proveedor", () => {
 
   it("LLM_PROVIDER=none no crea cliente", async () => {
     expect(createProviderClient("none")).toBeUndefined();
+    expect(createBoxClient({ provider: "none", model: "m" })).toBeUndefined();
+  });
+
+  it("anthropic-api: warm() abre la conexión con una petición sin tokens y nunca lanza", async () => {
+    const calls: { url: string; method: string | undefined; key: string | undefined }[] = [];
+    const ok = (async (url: string, init: RequestInit) => {
+      calls.push({ url, method: init.method, key: (init.headers as Record<string, string>)["x-api-key"] });
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    expect(await createAnthropicClient({ apiKey: "k", model: "m", fetch: ok }).warm!()).toBe(true);
+    expect(calls).toEqual([{ url: "https://api.anthropic.com/v1/models?limit=1", method: "GET", key: "k" }]);
+    const down = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    expect(await createAnthropicClient({ apiKey: "k", model: "m", fetch: down }).warm!()).toBe(false);
+    expect(await createAnthropicClient({ apiKey: undefined, model: "m", fetch: down }).warm!()).toBe(false);
+  });
+
+  it("proveedor por caja: el modelo de la caja manda sobre ANTHROPIC_MODEL", async () => {
+    const client = createBoxClient({ provider: "anthropic-api", model: "box-model" }, { ANTHROPIC_API_KEY: "k", ANTHROPIC_MODEL: "env-model" });
+    expect(client?.name).toBe("anthropic-api");
+    expect(createBoxClient({ provider: "claude-cli" }, {})?.name).toBe("claude-cli");
   });
 });

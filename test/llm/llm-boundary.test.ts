@@ -124,7 +124,7 @@ describe("narrador LLM (11.5)", () => {
 
   it("una cifra narrada distinta de la decidida la rechaza el validador: 2 intentos y plantilla", async () => {
     const { client, sent } = narratorSaying(0.5);
-    const { brain, trace } = makeBrain({ mandate, narrator: createLlmNarrator(client) });
+    const { brain, trace } = makeBrain({ mandate, narrator: createLlmNarrator(client), attempts: 2 });
     const out = await brain.turn(turn(1, { rivalAction: "offer", rivalOffer: { pct: 1 } }));
     expect(sent).toHaveLength(2);
     expect(trace.records.filter((r) => r.box === "validator").map((r) => (r.output as { ok: boolean }).ok)).toEqual([false, false]);

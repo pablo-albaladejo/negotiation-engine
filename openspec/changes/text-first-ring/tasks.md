@@ -33,8 +33,8 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 6. Latencia
 
-- [ ] 6.1 Proveedor, modelo, tiempo e intentos por caja en `src/llm/provider.ts`; keep-alive y calentamiento en `src/llm/anthropic-api.ts`; verificar con cliente simulado y tests de contrato del proveedor
-- [ ] 6.2 Presupuesto relativo (`turn.budgetRatio`, `ring.timeoutMs`) y omisión del narrador (`minRemainingMs`, `narrator-skipped` en traza) en `src/pipeline/pipeline.ts`; verificar con reloj inyectado y cliente lento (respuesta en ≤ presupuesto)
+- [x] 6.1 Proveedor, modelo, tiempo e intentos por caja en `src/llm/provider.ts`; keep-alive y calentamiento en `src/llm/anthropic-api.ts`; verificar con cliente simulado y tests de contrato del proveedor
+- [x] 6.2 Presupuesto relativo (`turn.budgetRatio`, `ring.timeoutMs`) y omisión del narrador (`minRemainingMs`, `narrator-skipped` en traza) en `src/pipeline/pipeline.ts`; verificar con reloj inyectado y cliente lento (respuesta en ≤ presupuesto)
 
 ## 7. Arena en texto completo y evaluación
 

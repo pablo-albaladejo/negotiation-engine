@@ -6,7 +6,7 @@ import { ConfigError, loadConfig, type AgentConfig } from "../engine/config.js";
 import type { OfferMandate } from "../engine/issues.js";
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
-import { createProviderClient, currentProvider, type LlmClient, type LlmProvider } from "../llm/provider.js";
+import { createBoxClient, currentProvider, type LlmClient, type LlmProvider } from "../llm/provider.js";
 import { loadRuntimeConfig, type RuntimeConfig } from "../pipeline/runtime-config.js";
 import type { Logger, TraceSink } from "../pipeline/box.js";
 import { createPipeline, type Brain } from "../pipeline/pipeline.js";
@@ -158,10 +158,14 @@ export function createAgent(options: AgentOptions): Agent {
   logger.info("runtime_config", { fingerprint: runtime.fingerprint, mode: runtime.ring.mode, parserPolicy: runtime.parser.policy, acceptanceSignal: runtime.acceptance.signal, walkSignal: runtime.acceptance.walkSignal, parserProvider: runtime.llm.parser.provider, narratorProvider: runtime.llm.narrator.provider });
   const deps: Parameters<typeof createPipeline>[0] = { store, logger, provider, runtime };
   // Proveedor por caja: parser en cuarentena (con el determinista según `parser.policy`) y narrador.
-  const parserClient = options.llmClient ?? createProviderClient(runtime.llm.parser.provider);
-  const narratorClient = options.llmClient ?? createProviderClient(runtime.llm.narrator.provider);
-  if (parserClient) deps.parser = createLlmParser(parserClient);
-  if (narratorClient) deps.narrator = createLlmNarrator(narratorClient);
+  const parserClient = options.llmClient ?? createBoxClient(runtime.llm.parser);
+  const narratorClient = options.llmClient ?? createBoxClient(runtime.llm.narrator);
+  if (parserClient) deps.parser = createLlmParser(parserClient, { timeoutMs: runtime.llm.parser.timeoutMs });
+  if (narratorClient) deps.narrator = createLlmNarrator(narratorClient, { timeoutMs: runtime.llm.narrator.timeoutMs });
+  if (runtime.ring.mode !== "structured" && [runtime.llm.parser.provider, runtime.llm.narrator.provider].includes("claude-cli")) {
+    logger.warn("llm_latency", { provider: "claude-cli", hint: "arranque ≈2 s por llamada: en modo texto usar anthropic-api" });
+  }
+  for (const client of new Set([parserClient, narratorClient])) void client?.warm?.();
   if (options.trace) deps.trace = options.trace;
   const brain = createPipeline(deps);
   const issueNames = () => champion.current().issues.map((i) => i.name);

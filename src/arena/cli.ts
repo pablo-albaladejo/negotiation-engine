@@ -15,7 +15,7 @@ import { writeJsonlTrace } from "../pipeline/trace.js";
 import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.js";
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
-import { createProviderClient, LlmProviderSchema } from "../llm/provider.js";
+import { createBoxClient, LlmProviderSchema } from "../llm/provider.js";
 import { loadRuntimeConfig, type RuntimeOverrides } from "../pipeline/runtime-config.js";
 
 export interface ArenaCliResult {
@@ -121,11 +121,11 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   setIf("parserProvider", "parser-provider");
   setIf("narratorProvider", "narrator-provider");
   const runtime = loadRuntimeConfig({ ...(values["runtime-config"] ? { path: values["runtime-config"] } : {}), env: { ...process.env, LLM_PROVIDER: llmProvider }, overrides });
-  const parserClient = createProviderClient(runtime.llm.parser.provider);
-  const narratorClient = values["no-narrator"] ? undefined : createProviderClient(runtime.llm.narrator.provider);
+  const parserClient = createBoxClient(runtime.llm.parser);
+  const narratorClient = values["no-narrator"] ? undefined : createBoxClient(runtime.llm.narrator);
   const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator>; runtime: typeof runtime } = { runtime };
-  if (parserClient) agentDeps.parser = createLlmParser(parserClient);
-  if (narratorClient) agentDeps.narrator = createLlmNarrator(narratorClient);
+  if (parserClient) agentDeps.parser = createLlmParser(parserClient, { timeoutMs: runtime.llm.parser.timeoutMs });
+  if (narratorClient) agentDeps.narrator = createLlmNarrator(narratorClient, { timeoutMs: runtime.llm.narrator.timeoutMs });
   // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
