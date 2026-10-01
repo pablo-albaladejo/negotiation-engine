@@ -147,9 +147,12 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 17. Adaptadores completos y observabilidad
 
-- [ ] 17.1 [Pablo] Adaptador A2A completo y cliente A2A como `Participant` externo; verificar jugando contra nuestro propio agente expuesto por A2A [si hay tiempo]
-- [ ] 17.2 [Pablo] Adaptador MCP (herramienta `negotiate_turn` sobre Streamable HTTP); verificar con la batería común de contrato [si hay tiempo]
-- [ ] 17.3 [Gerard] Lado cliente MCP como `Participant` externo; verificar jugando contra nuestro adaptador MCP [si hay tiempo]
+- [x] 17.1 [Pablo] Adaptador A2A completo y cliente A2A como `Participant` externo; verificar jugando contra nuestro propio agente expuesto por A2A [si hay tiempo]
+  - Nota: `src/protocol/a2a.ts`: además del turno canónico en una parte `data`, acepta mensajes de solo texto (contextId → sesión, ronda por contexto; la acción `message`/`offer` es provisional hasta 10.x). `createA2AParticipant` (`src/arena/external.ts`, pool `heldOut`). Verificado en `test/protocol/mcp-a2a-selfplay.test.ts`: partida completa contra nuestro agente servido en 127.0.0.1, 0 violaciones y 0 fugas. No se monta en `pnpm agent` (las rutas A2A no tienen la autenticación de `POST /turn`).
+- [x] 17.2 [Pablo] Adaptador MCP (herramienta `negotiate_turn` sobre Streamable HTTP); verificar con la batería común de contrato [si hay tiempo]
+  - Nota: `src/protocol/mcp.ts` con `@modelcontextprotocol/sdk` 1.31 (zod 4 como peer, sin conflicto): `POST /mcp` sin estado con `WebStandardStreamableHTTPServerTransport` montado en Hono, herramienta `negotiate_turn({ turn })` → `structuredContent.output` o `structuredContent.error` con `isError`. Pasa la batería `serverContract`. Igual que A2A, no se monta en `pnpm agent`.
+- [x] 17.3 [Gerard] Lado cliente MCP como `Participant` externo; verificar jugando contra nuestro adaptador MCP [si hay tiempo]
+  - Nota: `createMcpClient` + `createMcpParticipant` (`src/arena/external.ts`, pool `heldOut`); verificado jugando una partida completa contra el adaptador MCP servido en 127.0.0.1.
 - [ ] 17.4 [Pablo] Exportación a Langfuse/OpenTelemetry tras flag; verificar que con el flag apagado no hay conexiones y con él encendido aparece la traza de una partida [si hay tiempo]
 
 ## 18. Domingo hasta las 15:30: congelación [todos]
