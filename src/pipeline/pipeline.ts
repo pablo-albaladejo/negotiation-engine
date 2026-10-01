@@ -81,6 +81,18 @@ async function withTimeout<T>(fn: (signal: AbortSignal) => T | Promise<T>, ms: n
   }
 }
 
+/**
+ * Cajas cuyo registro va solo a la traza local, nunca a pino: `rivalText` lleva el texto crudo del
+ * rival. El `explain` del motor se censura por rutas (`REDACT_PATHS` en log.ts). Los registros
+ * `protocol` (solo rutas y códigos de zod) sí se loguean.
+ */
+const LOCAL_ONLY_BOXES: ReadonlySet<string> = new Set(["rivalText"]);
+
+/** Único punto por el que un registro de caja llega al logger. */
+function logBoxRecord(logger: Logger, record: { box: string }): void {
+  if (!LOCAL_ONLY_BOXES.has(record.box)) logger.trace?.("box_record", record);
+}
+
 function failureKind(error: unknown): "timeout" | "invalid" | "exception" {
   if (error instanceof TimeoutError) return "timeout";
   if (error instanceof z.ZodError || (error as Error)?.name === "BoxContractError") return "invalid";
@@ -222,11 +234,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       };
       const full = error ? { ...entry, error } : entry;
       deps.trace?.write(full);
-      // Local-only boxes: skip logger to avoid leaking rival raw text
-      const localOnly = new Set(["rivalText", "protocol"]);
-      if (!localOnly.has(box)) {
-        logger.trace?.("box_record", full);
-      }
+      logBoxRecord(logger, full);
     };
 
     /** Ejecuta una caja dentro de try/catch y con tiempo máximo; nunca lanza. */
@@ -476,7 +484,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       error: issues.map((i) => `${i.path || "(root)"}:${i.code}`).join(", "),
     };
     deps.trace.write(record);
-    logger.trace?.("box_record", record);
+    logBoxRecord(logger, record);
   }
 
   return {
