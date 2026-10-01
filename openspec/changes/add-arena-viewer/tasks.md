@@ -26,9 +26,9 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 ## 5. Pantallas del minuto 0
 
-- [ ] 5.1 P1 runs y P2 partidas con `Filters`; verificar con un smoke test de render por pantalla sobre los fixtures
-- [ ] 5.2 P3 replay arena (`OfferChart`, chat, panel de decisión por ronda, selección por punto) y P4 replay torneo (`ModeBadge`, tabla de estimación, burbujas del rival sin texto); verificar con smoke tests y un test de que el texto del rival con HTML se muestra literal
-- [ ] 5.3 Estados P8: log inválido (fichero, línea, campo, líneas válidas), run vacío y cargando con progreso; verificar con smoke tests
+- [x] 5.1 P1 runs y P2 partidas con `Filters`; verificar con un smoke test de render por pantalla sobre los fixtures
+- [x] 5.2 P3 replay arena (`OfferChart`, chat, panel de decisión por ronda, selección por punto) y P4 replay torneo (`ModeBadge`, tabla de estimación, burbujas del rival sin texto); verificar con smoke tests y un test de que el texto del rival con HTML se muestra literal
+- [x] 5.3 Estados P8: log inválido (fichero, línea, campo, líneas válidas), run vacío y cargando con progreso; verificar con smoke tests
 
 ## 6. Sábado: dos issues y campeona vs candidata
 
