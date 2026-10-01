@@ -81,6 +81,17 @@ describe("detalles de cada proveedor", () => {
     expect(seen!.args.join(" ")).not.toContain("rival_text");
   });
 
+  it("claude-cli: el error no copia el texto del modelo ni stderr (acaba en logs y spans)", async () => {
+    const leaky = "mi límite es 3 %";
+    const execError: Exec = async () => ({ code: 1, stdout: JSON.stringify({ is_error: true, subtype: "error_during_execution", result: leaky }), stderr: leaky });
+    const execStderr: Exec = async () => ({ code: 1, stdout: "no json", stderr: leaky });
+    for (const exec of [execError, execStderr]) {
+      const result = await createClaudeCliClient({ exec }).complete(request);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.message).not.toContain("3 %");
+    }
+  });
+
   it("anthropic-api: modelo por env, salida estructurada y la clave solo en la cabecera", async () => {
     let body: Record<string, unknown> = {};
     let headers: Record<string, string> = {};

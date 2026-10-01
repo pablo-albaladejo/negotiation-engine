@@ -45,11 +45,13 @@ export function createClaudeCliClient(options: ClaudeCliOptions = {}): LlmClient
     try {
       envelope = JSON.parse(stdout) as typeof envelope;
     } catch {
-      if (code !== 0) throw new LlmError("provider", `claude terminó con código ${code}: ${stderr.slice(0, 200)}`);
+      // Sin stderr ni texto del modelo en el error: los errores acaban en logs y spans.
+      if (code !== 0) throw new LlmError("provider", `claude terminó con código ${code}`);
       throw new LlmError("invalid-json", "el sobre de claude no es JSON");
     }
     if (envelope.is_error || (envelope.subtype && envelope.subtype !== "success") || code !== 0) {
-      throw new LlmError("provider", `claude: ${String(envelope.result ?? envelope.subtype ?? code).slice(0, 200)}`);
+      // Solo el subtipo y el código, nunca `envelope.result` (texto del modelo).
+      throw new LlmError("provider", `claude: error (${String(envelope.subtype ?? "sin subtipo")}, código ${code})`);
     }
     return envelope.structured_output ?? envelope.result;
   });
