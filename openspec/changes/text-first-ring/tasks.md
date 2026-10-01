@@ -9,7 +9,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 2. Normalizador numérico para cualquier escritura
 
-- [ ] 2.1 Fixtures `test/fixtures/numbers/` multiescritura (arábigo-índicos, persas, devanagari, ancho completo, `٫ ٬ ٪`, apóstrofo, espacio fino, agrupación india, caracteres de ancho cero) y test que recorre todo `\p{Nd}` y comprueba el mapeo a 0–9; luego NFKC + quitar `\p{Cf}` + tabla de ceros en `src/llm/numbers.ts`; verificar con `pnpm test test/llm/` sin regresiones en los fixtures existentes
+- [x] 2.1 Fixtures `test/fixtures/numbers/` multiescritura (arábigo-índicos, persas, devanagari, ancho completo, `٫ ٬ ٪`, apóstrofo, espacio fino, agrupación india, caracteres de ancho cero) y test que recorre todo `\p{Nd}` y comprueba el mapeo a 0–9; luego NFKC + quitar `\p{Cf}` + tabla de ceros en `src/llm/numbers.ts`; verificar con `pnpm test test/llm/` sin regresiones en los fixtures existentes
 
 ## 3. Parser con evidencia literal y políticas
 

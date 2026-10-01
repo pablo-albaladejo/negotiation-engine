@@ -1,5 +1,5 @@
 import type { Offer } from "../engine/issues.js";
-import { normalizeNumbers, type Mention } from "./numbers.js";
+import { foldText, normalizeNumbers, type Mention } from "./numbers.js";
 import { EMPTY_PARSE, type Intent, type ParserOutput, type Tactic, type TextParser } from "./parser.js";
 import { ACCEPT_RE, WALK_RE } from "./validator.js";
 
@@ -60,7 +60,8 @@ function assign(text: string, mention: Mention, issueNames: readonly string[]): 
  * Oferta solo si cada cifra se asigna a un issue declarado, cada issue tiene exactamente un valor
  * (repetido o no) y no hay rangos ni cifras ambiguas. Conservador: ante la duda, sin oferta.
  */
-export function extractOffer(text: string, issueNames: readonly string[]): Offer | undefined {
+export function extractOffer(raw: string, issueNames: readonly string[]): Offer | undefined {
+  const text = foldText(raw);
   const values = new Map<string, number>();
   for (const mention of normalizeNumbers(text)) {
     if (mention.kind === "range" || mention.ambiguous) return undefined;
