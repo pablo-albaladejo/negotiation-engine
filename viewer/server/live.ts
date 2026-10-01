@@ -22,10 +22,16 @@ interface Tail {
   offset: number;
   partial: Buffer;
   line: number;
+  /** La línea en curso superó `MAX_PARTIAL_BYTES`: ya se emitió `invalid`; se descarta hasta su salto. */
+  discarding: boolean;
 }
 
 export const LIVE_POLL_MS = 500;
 const NEWLINE = 0x0a;
+/** Bytes leídos como mucho por fichero y sondeo. */
+export const MAX_READ_BYTES = 1024 * 1024;
+/** Tope de la línea parcial retenida; una línea más larga se reporta como inválida y se descarta. */
+export const MAX_PARTIAL_BYTES = 256 * 1024;
 let tails = 0;
 
 /** Colas abiertas ahora mismo (una por cliente conectado); solo para tests y diagnóstico. */
@@ -86,12 +92,10 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
     const real = await resolveInside(dir, name);
     if (!real) return;
     let handle;
-    const MAX_READ_BYTES = 1024 * 1024; // 1 MiB per tick
-    const MAX_PARTIAL_BYTES = 256 * 1024; // 256 KiB cap on partial buffer
     try {
       handle = await open(real, "r");
       const { size } = await handle.stat();
-      if (size < tail.offset) Object.assign(tail, { offset: 0, partial: Buffer.alloc(0), line: 0 });
+      if (size < tail.offset) Object.assign(tail, { offset: 0, partial: Buffer.alloc(0), line: 0, discarding: false });
       if (size === tail.offset) return;
       const bytesToRead = Math.min(size - tail.offset, MAX_READ_BYTES);
       const chunk = Buffer.alloc(bytesToRead);
@@ -99,6 +103,15 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
       tail.offset += bytesRead;
       let buffer = Buffer.concat([tail.partial, chunk.subarray(0, bytesRead)]);
       let cut: number;
+      if (tail.discarding) {
+        cut = buffer.indexOf(NEWLINE);
+        if (cut < 0) {
+          tail.partial = Buffer.alloc(0);
+          return;
+        }
+        buffer = buffer.subarray(cut + 1);
+        tail.discarding = false;
+      }
       while ((cut = buffer.indexOf(NEWLINE)) >= 0) {
         const text = buffer.subarray(0, cut).toString("utf8");
         buffer = buffer.subarray(cut + 1);
@@ -108,18 +121,11 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
         if (parsed.ok) emit({ event: "record", data: { runId: runId!, session, line: tail.line, record: parsed.data } });
         else emit({ event: "invalid", data: parsed.error });
       }
-      // Cap the partial buffer to prevent unbounded growth
       if (buffer.length > MAX_PARTIAL_BYTES) {
-        emit({
-          event: "invalid",
-          data: {
-            file: `${runId}/${name}`,
-            line: tail.line,
-            path: "partial",
-            message: "partial buffer exceeded 256 KiB",
-          },
-        });
+        tail.line += 1;
+        if (!closed) emit({ event: "invalid", data: { file: `${runId}/${name}`, line: tail.line, path: "", message: "line exceeds 256 KiB without a newline; skipped" } });
         tail.partial = Buffer.alloc(0);
+        tail.discarding = true;
       } else {
         tail.partial = Buffer.from(buffer);
       }
@@ -148,7 +154,7 @@ export function startLiveTail(resultsDir: string, emit: (e: LiveEvent) => void, 
       let tail = files.get(f.name);
       if (!tail) {
         const fromStart = !first || f.name === replay;
-        tail = { offset: fromStart ? 0 : f.size, partial: Buffer.alloc(0), line: 0 };
+        tail = { offset: fromStart ? 0 : f.size, partial: Buffer.alloc(0), line: 0, discarding: false };
         files.set(f.name, tail);
         if (!fromStart) continue;
         emit({ event: "session", data: { runId: latest, session: f.name.slice(0, -".jsonl".length) } });
