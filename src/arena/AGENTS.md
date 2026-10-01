@@ -40,7 +40,7 @@ Desde root `AGENTS.md`:
 - **Candidata cargada desde `AgentConfig`**: validada por `parseConfig()`.
 - **Resultados guardados**: nunca en git (en `.gitignore`: `results/`, `config/candidates/`).
 - **Freeze**: `CHAMPION_FROZEN=1|true|yes` o `frozen: true` bloquea promoción. `--dry-run` aún ejecuta la puerta.
-- **`config/champion.json` y `config/gate.json` escritura atómica**: con `writeFileAtomic`.
+- **Escritura atómica**: `config/champion.json` con `writeFileAtomic`; `gate.json` escrito a `results/` durante promoción con `writeFileAtomic`.
 
 ## Cómo trabajar aquí
 
