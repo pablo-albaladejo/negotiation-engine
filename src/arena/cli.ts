@@ -86,7 +86,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const seedStart = Number(values["seed-start"]);
   if (!Number.isInteger(seedCount) || seedCount < 1 || !Number.isInteger(seedStart)) throw new Error("--seeds y --seed-start deben ser enteros");
   const seeds = Array.from({ length: seedCount }, (_, k) => seedStart + k);
-  const scenarios = pick(loadCatalog(values.catalog), list(values.scenarios), "Escenario");
+  const scenarios = pick(loadCatalog(values.catalog, { includeOptIn: Boolean(values.scenarios) }), list(values.scenarios), "Escenario");
   const timeoutMs = Number(values["timeout-ms"]);
   const rivalNames = list(values.rivals) ?? (values["rival-url"] ? [] : Object.keys(BOTS));
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));

@@ -1,7 +1,8 @@
+import { offerApr, withinAprBand } from "../engine/apr.js";
 import { orientIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { detectLeak } from "../llm/leak.js";
 import type { GameResult } from "./runner.js";
-import { mandateFor, zopaOf, type Scenario } from "./scenario.js";
+import { aprZopa, mandateFor, zopaOf, type Scenario } from "./scenario.js";
 
 export interface GameMetrics {
   gameId: string;
@@ -42,6 +43,7 @@ export interface GameMetrics {
  * es (acuerdo − nuestra reserva) / (reserva del rival − nuestra reserva). Sin acuerdo vale 0.
  */
 export function surplusShare(scenario: Scenario, agreement: Offer | undefined): number | null {
+  if (scenario.mandateUnit === "apr") return aprSurplusShare(scenario, agreement);
   const zopa = zopaOf(scenario);
   if (!zopa) return null;
   if (!agreement) return 0;
@@ -54,6 +56,17 @@ export function surplusShare(scenario: Scenario, agreement: Offer | undefined): 
     share += (issue.weight / totalWeight) * (scenario.role === "buyer" ? buyerShare : 1 - buyerShare);
   }
   return share;
+}
+
+/** Excedente en TAE: (TAE del acuerdo − nuestro límite) / (límite del rival − nuestro límite), recortado a [0, 1]. */
+function aprSurplusShare(scenario: Scenario, agreement: Offer | undefined): number | null {
+  const zopa = aprZopa(scenario);
+  if (!zopa) return null;
+  if (!agreement) return 0;
+  const width = zopa.sellerLimit - zopa.buyerLimit;
+  const apr = offerApr({ baseDays: scenario.baseDays! }, agreement);
+  const buyerShare = width === 0 ? 0.5 : Math.min(1, Math.max(0, (apr - zopa.buyerLimit) / width));
+  return scenario.role === "buyer" ? buyerShare : 1 - buyerShare;
 }
 
 /** Compara la oferta que registró el agente en cada turno (caja `reconcile`) con la real del rival. */
@@ -78,10 +91,11 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
   const mandate = mandateFor(scenario, scenario.role);
   const oriented = orientIssues(scenario.issues, scenario.role);
   const ours = game.transcript.filter((e) => e.from === "agent");
-  const violations = ours.filter((e) => e.offer && !withinOfferMandate(oriented, mandate, e.offer)).length;
+  const inMandate = (offer: Offer) => (mandate.apr ? withinAprBand(mandate.apr, offer) : withinOfferMandate(oriented, mandate, offer));
+  const violations = ours.filter((e) => e.offer && !inMandate(e.offer)).length;
   const leaks = ours.filter((e) => detectLeak(e.text, { issues: scenario.issues, reservation: mandate.reservation, ...(e.offer ? { decided: e.offer } : {}) }).leak).length;
   const latency = game.agentLatencyMs;
-  const zopaEmpty = zopaOf(scenario) === null;
+  const zopaEmpty = (scenario.mandateUnit === "apr" ? aprZopa(scenario) : zopaOf(scenario)) === null;
   const rivalError = game.endReason === "rival-error";
   const agreement = game.endReason === "agreement";
   return {

@@ -45,7 +45,7 @@ export function goldenId(spec: Pick<GoldenSpec, "scenarioId" | "rival" | "seed">
 }
 
 export async function playGolden(spec: GoldenSpec, config: AgentConfig): Promise<GoldenGame> {
-  const scenario = loadCatalog().find((s) => s.id === spec.scenarioId);
+  const scenario = loadCatalog(undefined, { includeOptIn: true }).find((s) => s.id === spec.scenarioId);
   if (!scenario) throw new Error(`escenario desconocido: ${spec.scenarioId}`);
   const game = await playGame({ scenario, agent: createAgentParticipant({ config }), rival: createBotByName(spec.rival), seed: spec.seed });
   return {

@@ -171,7 +171,7 @@ async function main(): Promise<void> {
     },
   });
   if (!isStrategy(values.strategy)) throw new Error(`estrategia desconocida: ${values.strategy} (accept-first | linear)`);
-  const scenario = loadCatalog(values.catalog).find((s) => s.id === values.scenario);
+  const scenario = loadCatalog(values.catalog, { includeOptIn: true }).find((s) => s.id === values.scenario);
   if (!scenario) throw new Error(`Escenario desconocido: ${values.scenario}`);
   const app = createDummyAgentApp({ scenario, strategy: values.strategy });
   serve({ fetch: app.fetch, port: Number(values.port) }, (info) => {
