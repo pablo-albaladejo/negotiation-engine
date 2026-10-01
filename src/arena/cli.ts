@@ -120,7 +120,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     onGame: (game, metrics, scenario) => {
       const { records, ...rest } = game;
       const reserves = { ours: mandateFor(scenario, scenario.role).reservation, rival: mandateFor(scenario, rivalRole(scenario.role)).reservation };
-      transcripts.write(`${JSON.stringify({ schemaVersion: 2, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
+      transcripts.write(`${JSON.stringify({ schemaVersion: 3, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
       if (values["no-traces"] || records.length === 0) return;
       writeJsonlTrace(join(runDir, "traces", `${game.gameId}.jsonl`), {
         kind: "header",
@@ -181,6 +181,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         `fugas ${o.leaks} · plantilla ${o.templateFallbacks} · latencia media ${o.latencyMeanMs === null ? "—" : `${o.latencyMeanMs.toFixed(2)} ms`} (máx ${o.latencyMaxMs.toFixed(1)} ms) · ` +
         `mal extraídas ${o.misExtracted} · sin extraer ${o.unextracted} · acuerdos distintos de los reales ${o.wrongAgreements}`,
     );
+    if (o.protocolViolations > 0) log(`violaciones de protocolo ${o.protocolViolations} (nuestro agente ${o.protocolViolationsByAgent})`);
     log(`resultados: ${runDir}`);
   }
   return { runDir, report, summary };

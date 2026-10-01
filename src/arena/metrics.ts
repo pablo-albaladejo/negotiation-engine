@@ -35,6 +35,8 @@ export interface GameMetrics {
   unextracted: number;
   /** Aceptamos valores que no eran la oferta real del rival. */
   wrongAgreement: boolean;
+  /** Lado que rompió el protocolo (`endReason: "protocol_violation"`); null si nadie. */
+  protocolViolation?: "agent" | "rival" | null;
 }
 
 /**
@@ -118,6 +120,7 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
     latencyMaxMs: latency.length ? Math.max(...latency) : 0,
     ...extraction(scenario, game),
     wrongAgreement: game.wrongAgreement,
+    protocolViolation: game.protocolViolation?.by ?? null,
   };
 }
 
@@ -142,6 +145,8 @@ export interface ClusterSummary {
   misExtracted: number;
   unextracted: number;
   wrongAgreements: number;
+  protocolViolations: number;
+  protocolViolationsByAgent: number;
 }
 
 const sum = (metrics: readonly GameMetrics[], f: (m: GameMetrics) => number) => metrics.reduce((s, m) => s + f(m), 0);
@@ -167,6 +172,8 @@ export function summarize(metrics: readonly GameMetrics[]) {
     misExtracted: sum(metrics, (m) => m.misExtracted),
     unextracted: sum(metrics, (m) => m.unextracted),
     wrongAgreements: metrics.filter((m) => m.wrongAgreement).length,
+    protocolViolations: metrics.filter((m) => m.protocolViolation).length,
+    protocolViolationsByAgent: metrics.filter((m) => m.protocolViolation === "agent").length,
   };
 }
 
