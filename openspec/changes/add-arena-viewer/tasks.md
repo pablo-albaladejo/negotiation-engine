@@ -32,7 +32,8 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 ## 6. Sábado: dos issues y campeona vs candidata
 
-- [ ] 6.1 Adaptador `twoIssueModel` y P5 (`Scatter2D` con mandato, utilidades de `explain`, tabla; sin isoutilidades); verificar con un fixture de `pct-day` y smoke test [aplazada: sábado]
+- [x] 6.1 Adaptador `twoIssueModel` y P5 (`Scatter2D` con mandato, utilidades de `explain`, tabla; sin isoutilidades); verificar con un fixture de `pct-day` y smoke test [aplazada: sábado]
+  - Nota: P5 vive en la misma ruta que P3 (`#/runs/<runId>/games/<gameId>`): una partida con exactamente 2 issues en sus ofertas abre P5. Ejes y límites de la entrada registrada del motor (`issues`), mandato de la cabecera de arena; la región del mandato son los límites de cada issue que cumple la reserva (sin utilidades). La tabla toma de la traza la oferta del rival enlazada en la ronda (registro `binding`), que es la que puntúa `explain.uRival`.
 - [x] 6.2 `gate.json` v2 (`configs`, `summaries` por fase con `candidateByRivalRole`, `dryRun`, `promoted`) y `pnpm promote --dry-run` en `src/arena/promote.ts` y `promote-main.ts`; verificar con `test/arena/promote.test.ts` que en seco `config/champion.json` no cambia y que `gate.json` valida con `GateFileSchema` [aplazada: sábado]
   - Nota: `PhaseEvaluator` devuelve `{ report, run }` para que `gate.json` lleve `summarize` por fase y por rival × rol. Además de `dryRun` y `promoted`, `gate.json` v2 lleva `schemaVersion: 2` y `promotedVersion` al promover (P6 muestra "promoted to champion v<n>" sin calcular N+1). En seco con la congelación activa la puerta se juega igualmente; la promoción real sigue bloqueada.
 - [ ] 6.3 Endpoint `/api/promote/:runId`, `gateModel` y P6 (métricas, checks con etiquetas inglesas, `Heatmap`, diff de parámetros, comando solo con `dryRun && pass`); verificar con smoke tests de aprobado, rechazado y ya promovido [aplazada: sábado]

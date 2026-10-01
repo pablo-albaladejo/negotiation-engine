@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { arenaReplayModel, matchesModel, runsModel, tournamentReplayModel } from "../../src/model/index.js";
+import { arenaReplayModel, isTwoIssue, matchesModel, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
 import { asV1Trace, generateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -136,6 +136,40 @@ describe("tournamentReplayModel (P4)", () => {
   });
 });
 
+describe("twoIssueModel (P5)", () => {
+  const pctDay = () => fx.games.find((g) => g.scenarioId === "pct-day-buyer-wide")!;
+
+  it("solo las partidas de 2 issues van a P5", () => {
+    expect(isTwoIssue(pctDay())).toBe(true);
+    expect(isTwoIssue(fx.games.find((g) => g.scenarioId === "price-buyer-wide")!)).toBe(false);
+  });
+
+  it("plano día × pct con un punto por oferta, mandato de la cabecera y utilidades de explain", () => {
+    const line = pctDay();
+    const m = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    expect(m.axes.y.name).toBe("pct");
+    expect(m.axes.x.name).toBe("day");
+    const offers = (from: "agent" | "rival") => line.transcript.filter((e) => e.from === from && e.offer);
+    expect(m.offers.ours).toHaveLength(offers("agent").length);
+    expect(m.offers.rival).toHaveLength(offers("rival").length);
+    expect(m.offers.ours[0]).toEqual({ round: 1, x: offers("agent")[0]!.offer!.day, y: offers("agent")[0]!.offer!.pct });
+    expect(m.mandate).toEqual({ role: "buyer", reservation: { pct: 2, day: 15 }, region: { x: [15, 60], y: [2, 10] } });
+    expect(m.hasExplain).toBe(true);
+    expect(m.utilities.length).toBe(m.rows!.length);
+    expect(m.rows![0]!.uOffer).toBe(m.utilities[0]!.uOffer);
+  });
+
+  it("traza v1 sin explain: utilidades not logged; sin traza: sin mandato ni tabla", () => {
+    const line = pctDay();
+    const v1 = twoIssueModel(line, asV1Trace(fx.traces.get(line.gameId)!));
+    expect(v1.utilities).toEqual([]);
+    expect(v1.rows!.every((r) => r.uOffer === null && r.uRival === null)).toBe(true);
+    const none = twoIssueModel(line, null);
+    expect(none).toMatchObject({ mandate: null, rows: null, hasTrace: false });
+    expect(none.offers.ours.length).toBeGreaterThan(0);
+  });
+});
+
 /** Hojas numéricas de un valor con su clave. */
 function numericLeaves(value: unknown, key = ""): { key: string; value: number }[] {
   if (typeof value === "number") return [{ key, value }];
@@ -154,6 +188,7 @@ describe("los modelos no calculan", () => {
       matchesModel(fx.summary, fx.games, { rival: "boulware" }),
       ...fx.games.map((g) => arenaReplayModel(g, fx.traces.get(g.gameId) ?? null)),
       tournamentReplayModel(fx.tournament.trace, fx.tournament.ref),
+      ...fx.games.filter(isTwoIssue).map((g) => twoIssueModel(g, fx.traces.get(g.gameId) ?? null)),
     ];
     const computed = numericLeaves(models).filter((l) => !source.has(l.value) && !l.key.endsWith("Count"));
     expect(computed).toEqual([]);

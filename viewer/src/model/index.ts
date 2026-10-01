@@ -4,3 +4,4 @@ export { arenaReplayModel, type ArenaReplayModel } from "./arenaReplay.js";
 export { tournamentReplayModel, type ScenarioRef, type TournamentReplayModel } from "./tournamentReplay.js";
 export { splitTrace } from "./rounds.js";
 export type { Offer, RoundPanel } from "./rounds.js";
+export { isTwoIssue, offerIssues, twoIssueModel, type LoggedIssue, type PlanePoint, type TwoIssueModel } from "./twoIssue.js";

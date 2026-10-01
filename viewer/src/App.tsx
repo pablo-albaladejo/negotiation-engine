@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import type { Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, runsModel, splitTrace, tournamentReplayModel, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, isTwoIssue, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { MatchesScreen } from "./screens/MatchesScreen.js";
 import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
+import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
 import { LoadingCard } from "./ui/states.js";
 
 const TABS = [
@@ -90,7 +91,9 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
   }, [runId, gameId]);
   if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
   if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={() => navigate(routeTo.matches(runId))} />;
+  const onBack = () => navigate(routeTo.matches(runId));
+  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} />;
+  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} />;
 }
 
 function TournamentReplayContainer({ runId, session }: { runId: string; session: string }) {
