@@ -11,7 +11,7 @@ Después, `pnpm promote` aplica la puerta (mejora + 0 violaciones) para subir a 
 ## Archivos clave
 
 - **`generators.ts`** — Generadores Zod: parámetros, issues, hyperparámetros.
-- **`space.ts`** — `SearchSpace`: definición del espacio explorable (ranges de β, márgenes, etc.).
+- **`space.ts`** — `PARAM_SPACE` (array de `ParamRange`), `TUNABLE` (nombres ajustables): definición del espacio explorable (ranges de β, márgenes, etc.).
 - **`sweep.ts`** — `runSweep()`: itera espacio, genera candidatas, evalúa con arena.
 - **`tune-main.ts`** — Entry point: `pnpm tune`, orquesta barrido.
 

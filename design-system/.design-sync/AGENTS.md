@@ -38,7 +38,7 @@ La carpeta `.design-sync/` contiene la configuración de sync con Claude Design:
 - **`provider`** — `{"component": "Root"}` envuelve cada celda automáticamente.
 - **`overrides`** — `cardMode:"column"` para `DataTable`, `Heatmap`, `OfferChart`, etc. (no invalida grados).
 - **`dtsPropsFor`** — contrato tipado: shape de props para cada componente (inline, sin importar tipos helper).
-- **`readmeHeader`** — `.design-sync/conventions.md`.
+- **`readmeHeader`** — `conventions.md`.
 
 ### `conventions.md`
 
@@ -58,7 +58,7 @@ Gotchas y riesgos de re-sync (v2, 2026-10-01):
 
 - **Render warns**: `[FONT_REMOTE]` en `dist/styles.css` (fuentes de Google — esperado y documentado).
 - **Gotchas**:
-  - `.provider: {"component":"Root"}` auto-envuelve cada celda. `Root.tsx` anida `<Root>` manualmente para demostrar el `theme` prop (harmless).
+  - `.provider: {"component":"Root"}` auto-envuelve cada celda. `previews/Root.tsx` anida `<Root>` manualmente para demostrar el `theme` prop (harmless).
   - `ChatMessage` alignment requiere flex-parent (`.nr-chat`). No es una propiedad standalone.
   - Componentes anchos (`DataTable`, `Heatmap`, `OfferChart`, `KpiStrip`) usan `cardMode:"column"` (no invalida grados).
   - Flag "walk" se ve pálido a escala thumbnail (legibilidad de paleta warn, no bug).

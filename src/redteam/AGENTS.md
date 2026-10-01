@@ -12,7 +12,7 @@ Red team estructurado:
 
 ## Archivos clave
 
-- **`harness.ts`** — `RedTeamHarness`: infraestructura para ejecutar escenarios.
+- **`harness.ts`** — `startRedteamServer(options)`: infraestructura para ejecutar escenarios (retorna `RedteamServer`).
 - **`main.ts`** — Entry point: `pnpm redteam`, carga escenarios, ejecuta, reporta.
 - **`report.ts`** — Formato de salida: hallazgos, estadísticas, recomendaciones.
 

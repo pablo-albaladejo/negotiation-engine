@@ -14,13 +14,13 @@ Self-play local:
 
 ## Archivos clave
 
-- **`arena.ts`** — `Arena`: orquesta partidas, sesiones, scoring.
-- **`metrics.ts`** — `Metrics`: excedente, win rate, violaciones de mandato, desglose por rol/escenario.
-- **`paired.ts`** — `PairedComparison`: compara candidata vs campeona con mismos bots y semillas.
+- **`arena.ts`** — `runArena(options)` → `ArenaReport`: orquesta partidas, sesiones, scoring.
+- **`metrics.ts`** — `GameMetrics` / `computeMetrics()`: excedente, win rate, violaciones de mandato, desglose por rol/escenario.
+- **`paired.ts`** — `runPaired`/`comparePaired`: compara candidata vs campeona con mismos bots y semillas.
 - **`promote.ts`** — Puerta: revalida campeona, evalúa candidata, decide si promueve a `config/champion.json`.
 - **`gate.ts`** — Criterio de decisión de promoción (mejora ≥ minEffectPp con 0 violaciones).
-- **`cli.ts`** — Línea de comandos: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`.
-- **`promote-main.ts`** — Puerta de promoción: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
+- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`.
+- **`promote-main.ts`** — Puerta de promoción `pnpm promote`: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
 - **`participant.ts`** — Interfaz: agente (config o HTTP) o bot.
 - **`agent-participant.ts`** — Wrapper: agente config como participante.
 - **`external.ts`** — Wrapper: agente HTTP externo como participante.

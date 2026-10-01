@@ -9,7 +9,7 @@ Define el esquema `TurnInput` / `TurnOutput` y proporciona adaptadores para conv
 ## Archivos clave
 
 - **`schemas.ts`** — Zod: `TurnInput` (oferta rival, acción, texto), `TurnOutput` (nuestra acción, oferta, respuesta), `ProtocolSchemas` (factory con issue names).
-- **`adapter.ts`** — Interfaz `ProtocolAdapter`: `turnInput()` y `turnOutput()` para convertir entre protocolo específico y canónico.
+- **`adapter.ts`** — Interfaz `RingAdapter { name; handle(raw): Promise<AdapterResult> }` y builders: `createCanonicalHandler`, `createInMemoryAdapter`, `createHttpApp`/`httpAdapterFromApp`, `createA2AApp`/`a2aAdapterFromApp`, `createMcpApp`/`mcpAdapterFromApp`.
 - **`a2a.ts`** — Adaptador para protocolo A2A (Alliance-to-Alliance SDK).
 - **`http.ts`** — Adaptador HTTP (POST /turn, GET /health).
 - **`mcp.ts`** — Adaptador MCP (Model Context Protocol).

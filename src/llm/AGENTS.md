@@ -13,10 +13,10 @@ La validación final (el número en el texto = el número del motor) garantiza q
 ## Archivos clave
 
 - **`parser.ts`** — Interfaz `TextParser`: `parse(text)` → `ParserOutput` (campos tipados del rival).
-- **`llm-parser.ts`** — `LLMParser`: invoca al LLM sin herramientas para estructurar el texto.
+- **`llm-parser.ts`** — `createLlmParser(client, options)` → `TextParser`: invoca al LLM sin herramientas para estructurar el texto.
 - **`deterministic-parser.ts`** — `parseDeterministic()` y `deterministicParser`: parsea reglas simples (no LLM), por defecto con `LLM_PROVIDER=none`.
 - **`narrator.ts`** — Interfaz `Narrator`: `narrate(input: NarratorInput, signal)` → texto (redacción de la respuesta).
-- **`llm-narrator.ts`** — `LLMNarrator`: invoca al LLM para redactar (la cifra ya está decidida, no varía).
+- **`llm-narrator.ts`** — `createLlmNarrator(client, options)` → `Narrator`: invoca al LLM para redactar (la cifra ya está decidida, no varía).
 - **`template.ts`** — `templateNarrator` y `renderTemplate()`: plantilla determinista sin LLM (fallback si timeout o error).
 - **`validator.ts`** — `validateText()`: comprueba que cifra en texto = cifra del motor.
 - **`provider.ts`** — Factory: instancia parser y narrador según `LLM_PROVIDER` (none, claude-cli, anthropic-api).

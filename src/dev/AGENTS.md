@@ -13,11 +13,11 @@ Facilitan debugging, testing y análisis post-mortem:
 
 ## Archivos clave
 
-- **`replay.ts`** — `replay()`: carga partida JSON, reproduce turno a turno mostrando decisiones.
+- **`replay.ts`** — `replayTrace(file, options)`: carga partida JSON, reproduce turno a turno mostrando decisiones.
 - **`replay-main.ts`** — Entry point: `pnpm replay <game.json>`.
-- **`golden.ts`** — `updateGolden()`: regenera fixtures en `test/golden/` a partir de run actual.
+- **`golden.ts`** — `writeGoldens`/`loadGoldens`/`compareGolden`/`playGolden`: regenera y compara fixtures en `test/golden/`.
 - **`golden-main.ts`** — Entry point: `pnpm golden:update`.
-- **`critic.ts`** — `criticize()`: analiza partida, calcula contrafácticos, sugiere mejoras.
+- **`critic.ts`** — `runCritic`/`lossesOf`: analiza partida, calcula contrafácticos, sugiere mejoras.
 - **`critic-main.ts`** — Entry point: `pnpm critic <game.json>`.
 - **`box.ts`** — `Box`: sandbox aislado del motor, inyectable con entrada/salida custom.
 - **`box-main.ts`** — Entry point: `pnpm box`.
