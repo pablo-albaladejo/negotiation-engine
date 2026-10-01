@@ -4,7 +4,7 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 ## 1. Paquete del visor
 
-- [ ] 1.1 Crear `viewer/` (`package.json` con react/react-dom 18, vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/react, zod, tsx; `tsconfig.json`; `vite.config.ts` con alias a `../design-system/src` y `dedupe` de React; `vitest.config.ts`), `vitest.config.ts` raíz que excluye `viewer/**`, y scripts raíz `viewer` y `viewer:test`; verificar con un test de render de `Root` + `KpiStrip` con un hook en `viewer/` y `pnpm test` y `pnpm typecheck` raíz sin cambios
+- [x] 1.1 Crear `viewer/` (`package.json` con react/react-dom 18, vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/react, zod, tsx; `tsconfig.json`; `vite.config.ts` con alias a `../design-system/src` y `dedupe` de React; `vitest.config.ts`), `vitest.config.ts` raíz que excluye `viewer/**`, y scripts raíz `viewer` y `viewer:test`; verificar con un test de render de `Root` + `KpiStrip` con un hook en `viewer/` y `pnpm test` y `pnpm typecheck` raíz sin cambios
 
 ## 2. Extensiones de los escritores
 

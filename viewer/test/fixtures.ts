@@ -1,6 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createAgent, createTournamentTrace } from "../../src/agent/agent.js";
 import { runArenaCli } from "../../src/arena/cli.js";
 import { SummarySchema, TranscriptLineSchema, type Summary, type TranscriptLine } from "../../src/arena/results-schema.js";
@@ -22,6 +23,11 @@ export interface ViewerFixtures {
   tournament: { trace: TraceLine[]; ref: ScenarioRef };
 }
 
+/** Raíz del repo: `pnpm viewer:test` corre con `cwd` en `viewer/`, así que las rutas de `config/` van absolutas. */
+export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const CHAMPION = join(REPO_ROOT, "config/champion.json");
+const CATALOG = join(REPO_ROOT, "config/arena/scenarios.json");
+
 export const RIVAL_HTML = "<img src=x onerror=alert(1)>";
 export const ARENA_SCENARIOS = ["price-buyer-wide", "price-seller-narrow", "price-buyer-empty", "pct-day-buyer-wide"];
 
@@ -34,7 +40,7 @@ const readJsonl = (file: string): unknown[] =>
 export async function generateFixtures(): Promise<ViewerFixtures> {
   const out = mkdtempSync(join(tmpdir(), "viewer-fixtures-"));
   const runId = "fx";
-  const { runDir } = await runArenaCli(["--seeds", "1", "--scenarios", ARENA_SCENARIOS.join(","), "--out", out, "--run-id", runId, "--quiet"]);
+  const { runDir } = await runArenaCli(["--seeds", "1", "--scenarios", ARENA_SCENARIOS.join(","), "--out", out, "--run-id", runId, "--config", CHAMPION, "--catalog", CATALOG, "--quiet"]);
   const summary = SummarySchema.parse(JSON.parse(readFileSync(join(runDir, "summary.json"), "utf8")));
   const games = readJsonl(join(runDir, "transcripts.jsonl")).map((l) => TranscriptLineSchema.parse(l));
   const traces = new Map<string, TraceLine[]>();
@@ -47,7 +53,7 @@ export async function generateFixtures(): Promise<ViewerFixtures> {
   const scenarioText = JSON.stringify({ role: "buyer", reservation: { pct: 3.37 } });
   writeFileSync(scenarioPath, scenarioText);
   const trace = createTournamentTrace(join(dir, "traces"), scenarioPath);
-  const agent = createAgent({ configPath: "config/champion.json", scenarioPath, provider: "none", logger: silentLogger, trace });
+  const agent = createAgent({ configPath: CHAMPION, scenarioPath, provider: "none", logger: silentLogger, trace });
   const sessionId = "ring-session-1";
   for (const round of [1, 2, 3]) {
     const body = { sessionId, round, roundLimit: 10, rivalAction: "offer", rivalOffer: { pct: round }, text: `${RIVAL_HTML} Te ofrezco un ${round} %.` };
