@@ -104,7 +104,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
-    : createAgentParticipant({ config, ...agentDeps });
+    : createAgentParticipant({ config, provider: llmProvider, ...agentDeps });
 
   const runId = values["run-id"] ?? `arena-${new Date().toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
   const runDir = join(values.out, runId);
