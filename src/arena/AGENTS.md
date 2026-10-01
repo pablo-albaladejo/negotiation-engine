@@ -19,7 +19,8 @@ Self-play local:
 - **`paired.ts`** — `PairedComparison`: compara candidata vs campeona con mismos bots y semillas.
 - **`promote.ts`** — Puerta: revalida campeona, evalúa candidata, decide si promueve a `config/champion.json`.
 - **`gate.ts`** — Criterio de decisión de promoción (mejora ≥ minEffectPp con 0 violaciones).
-- **`cli.ts`** — Línea de comandos: `--candidate`, `--seeds`, `--dry-run`, `--reval-seeds`.
+- **`cli.ts`** — Línea de comandos: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`.
+- **`promote-main.ts`** — Puerta de promoción: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
 - **`participant.ts`** — Interfaz: agente (config o HTTP) o bot.
 - **`agent-participant.ts`** — Wrapper: agente config como participante.
 - **`external.ts`** — Wrapper: agente HTTP externo como participante.
@@ -38,15 +39,17 @@ Desde root `AGENTS.md`:
 - **Métricas por rol**: buyer y seller separados (weights en config).
 - **Candidata cargada desde `AgentConfig`**: validada por `parseConfig()`.
 - **Resultados guardados**: nunca en git (en `.gitignore`: `results/`, `config/candidates/`).
+- **Freeze**: `CHAMPION_FROZEN=1|true|yes` o `frozen: true` bloquea promoción. `--dry-run` aún ejecuta la puerta.
+- **`config/champion.json` y `config/gate.json` escritura atómica**: con `writeFileAtomic`.
 
 ## Cómo trabajar aquí
 
 ```bash
 # Self-play: candidata vs campeona
-pnpm arena --candidate config/baselines/test.json --seeds 10
+pnpm arena --candidate config/baselines/dummy.json --seeds 10
 
 # Puerta completa (revalida campeona, evalúa candidata)
-pnpm promote config/baselines/test.json --dry-run --seeds 5 --reval-seeds 5
+pnpm promote config/baselines/dummy.json --dry-run --seeds 5 --reval-seeds 5
 
 # Barrido de sintonización
 pnpm tune
@@ -68,7 +71,7 @@ pnpm typecheck
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- ← Agente: [`agent/`](../agent/AGENTS.md) o config [`engine/config.ts`](../engine/config.ts)
+- ← Agente: [`agent/`](../agent/AGENTS.md) o config [`src/engine/config.ts`](../engine/config.ts)
 - ← Bots: [`bots/`](../bots/AGENTS.md)
 - → Tuning: [`tune/`](../tune/AGENTS.md)
 - → Config: [`config/`](../../config/AGENTS.md)

@@ -57,7 +57,7 @@ pnpm typecheck
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- ← Config: [`engine/config.ts`](../engine/config.ts)
+- ← Config: [`src/engine/config.ts`](../engine/config.ts)
 - ← Arena: [`arena/`](../arena/AGENTS.md) usa bots como rivales
 - → Protocol: [`protocol/`](../protocol/AGENTS.md)
 - → HTTP: `serve-app.ts` → rutas `/turn`, `/health`

@@ -21,7 +21,7 @@ Realiza cálculos deterministas sobre el estado de la sesión y produce una deci
 
 Desde root `AGENTS.md`:
 
-- **Toda oferta pasa por `enforceGuardrails`**: u(oferta) ≥ u(reserva) y u(oferta) ≥ u(última oferta nuestra).
+- **Toda oferta pasa por `enforceGuardrails` u `enforceOfferGuardrails`**: nunca cruza el mandato y concede monótonamente (u(oferta) ≥ u(reserva) y u(oferta) ≤ u(última oferta nuestra)).
 - **Decisión = (acción, oferta, explicación)**: acción y oferta son vinculantes; explicación es aditiva (no cambia lo anterior).
 - **Explicación nunca se redacta aquí**: solo schema. La redacción la hace `src/llm/narrator.ts` en la salida del turno.
 

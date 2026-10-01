@@ -17,9 +17,9 @@ Reutilizables en tests: JSON tipado, escenarios conocidos, sin tener que generar
 
 ## Cómo añadir
 
-1. Fichero JSON en subdirectorio apropiado (ej. `engine/accept-next.json`).
+1. Fichero JSON en subdirectorio apropiado (ej. `engine/ac-next.json`).
 2. Estructura: `{ input: {...}, expected: {...} }` o similar.
-3. Cargar en test: `import fixture from './fixtures/engine/accept-next.json'`.
+3. Cargar en test: `import fixture from './fixtures/engine/ac-next.json'`.
 4. Validar contra schema: `EngineInputSchema.parse(fixture.input)`.
 
 ## Links

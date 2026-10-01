@@ -14,14 +14,14 @@ La validación final (el número en el texto = el número del motor) garantiza q
 
 - **`parser.ts`** — Interfaz `TextParser`: `parse(text)` → `ParserOutput` (campos tipados del rival).
 - **`llm-parser.ts`** — `LLMParser`: invoca al LLM sin herramientas para estructurar el texto.
-- **`deterministic-parser.ts`** — `DeterministicParser`: parsea reglas simples (no LLM), por defecto con `LLM_PROVIDER=none`.
-- **`narrator.ts`** — Interfaz `Narrator`: `narrate(decision, context)` → texto (redacción de la respuesta).
+- **`deterministic-parser.ts`** — `parseDeterministic()` y `deterministicParser`: parsea reglas simples (no LLM), por defecto con `LLM_PROVIDER=none`.
+- **`narrator.ts`** — Interfaz `Narrator`: `narrate(input: NarratorInput, signal)` → texto (redacción de la respuesta).
 - **`llm-narrator.ts`** — `LLMNarrator`: invoca al LLM para redactar (la cifra ya está decidida, no varía).
-- **`template.ts`** — `TemplateNarrator`: plantilla determinista sin LLM (fallback si timeout o error).
+- **`template.ts`** — `templateNarrator` y `renderTemplate()`: plantilla determinista sin LLM (fallback si timeout o error).
 - **`validator.ts`** — `validateText()`: comprueba que cifra en texto = cifra del motor.
 - **`provider.ts`** — Factory: instancia parser y narrador según `LLM_PROVIDER` (none, claude-cli, anthropic-api).
 - **`numbers.ts`** — Normaliza y extrae números del texto rival (límpieza, manejo de rangos y ambigüedad).
-- **`leak.ts`** — `detectLeak()`: busca intentos del rival de influir en la decisión (sanity check).
+- **`leak.ts`** — `detectLeak(text, {issues, reservation, decided})`: verifica que nuestro texto saliente no revela la reserva ni el mandato (las cifras decididas están exentas).
 
 ## Invariantes
 
@@ -32,6 +32,7 @@ Desde root `AGENTS.md`:
 - **La cifra de la respuesta debe coincidir exactamente con la decisión del motor** (validador final).
 - **Timeout o error del narrador → plantilla determinista** con el mismo número.
 - **Leak (intento de influencia en la cifra) → registro, pero no cambia la decisión**.
+- **`NarratorInputSchema` es `.strict()`**: solo admite `action`, `offer` (decidida), `rivalIntent`/`tactics` (enums), `persona` y `ask`. Nunca lleva texto del rival.
 
 ## Cómo trabajar aquí
 

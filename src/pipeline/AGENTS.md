@@ -28,10 +28,10 @@ Maneja errores de esquema, timeouts, excepciones, y asegura respuesta siempre.
 Desde root `AGENTS.md`:
 
 - **Siempre hay respuesta**: timeout o error → plantilla determinista.
-- **Trace (explicación del motor) es sanitizado**: nunca incluye cifras sueltas, solo rutas y esquemas.
-- **RivalText solo a log local**: nunca a pino (evita registrar texto privado del rival).
-- **Protocol** (solo rutas Zod, códigos de error) sí se loguea.
-- **Timeout presupuestario**: `turnBudgetMs = timeoutMs - turnSafetyMarginMs` (por defecto: 5500 - 500 = 5000 ms).
+- **Local-only boxes** (`rivalText`, `protocol`): solo en la traza local (`results/*.jsonl`), nunca en OTel/Langfuse.
+- **Redactados en pino y OTel** (`explain`, `mandate`, `reservation`, `config`): censurados porque `explain` es equivalente a la reserva.
+- **La traza local** (`results/*.jsonl`) conserva todos los campos.
+- **Presupuesto del turno**: `Math.max(0, timeoutMs - turnSafetyMarginMs)` si el ring envía `timeoutMs`; en otro caso, `config.turnBudgetMs` (obligatorio, sin defecto). Solo el margen default a 500 ms.
 
 ## Cómo trabajar aquí
 
@@ -50,16 +50,16 @@ pnpm typecheck
 
 - `trace` (propiedad de `PipelineDeps`) acumula registros de cajas para acceso local.
 - Logs sanitizados van a pino (env: `LOG_LEVEL=debug`).
-- Ver `log.ts` para reglas de redacción (rutas censuradas en `REDACT_PATHS`).
+- Ver `log.ts` para reglas de redacción en pino (`REDACT_PATHS`) y `otel.ts` para OTel (`LOCAL_ONLY_BOXES` y `REDACT_KEYS`). En pipeline.ts: `logBoxRecord()` filtra antes de pasar a pino, y `LOCAL_ONLY_BOXES` solo tiene `rivalText`.
 
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
 - ← Entrada: `TurnInput` de [`protocol/`](../protocol/AGENTS.md)
 - → Salida: `TurnOutput` hacia [`protocol/`](../protocol/AGENTS.md)
-- ← Parser: [`llm/parser.ts`](../llm/parser.ts)
-- ← Motor: [`engine/engine.ts`](../engine/engine.ts)
-- ← Narrador: [`llm/narrator.ts`](../llm/narrator.ts)
+- ← Parser: [`src/llm/parser.ts`](../llm/parser.ts)
+- ← Motor: [`src/engine/engine.ts`](../engine/engine.ts)
+- ← Narrador: [`src/llm/narrator.ts`](../llm/narrator.ts)
 - → Sesión: [`session.ts`](session.ts)
 - → Log/trace: [`log.ts`](log.ts), [`trace.ts`](trace.ts), [`otel.ts`](otel.ts)
 - → Test: [`test/pipeline/`](../../test/pipeline/)

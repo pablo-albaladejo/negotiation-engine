@@ -10,7 +10,7 @@ Regenerable con `pnpm golden:update` cuando se intenta un cambio intencional.
 
 ## Archivos
 
-- Nombres: descripción del caso (ej. `boulware-with-reciprocity.json`).
+- Nombres: descripción del caso (ej. `price-buyer-wide__boulware__1.json`).
 - Estructura: simulación de turno a turno con decisiones esperadas.
 
 ## Cómo trabajar

@@ -20,7 +20,7 @@ Después, `pnpm promote` aplica la puerta (mejora + 0 violaciones) para subir a 
 - **Candidatas en `config/candidates/`**: directorio efímero (`.gitignore`).
 - **Reproducibilidad**: misma seed, mismas candidatas.
 - **Evaluación pareada**: compara con campeona con mismas semillas.
-- **Promoción**: solo si mejora y 0 violaciones (puerta en [`arena/promote.ts`](../arena/promote.ts)).
+- **Promoción**: solo si mejora y 0 violaciones (puerta en [`src/arena/promote.ts`](../arena/promote.ts)).
 
 ## Cómo trabajar aquí
 
@@ -44,8 +44,8 @@ pnpm typecheck
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- ← Motor params: [`engine/config.ts`](../engine/config.ts)
+- ← Motor params: [`src/engine/config.ts`](../engine/config.ts)
 - → Arena: [`arena/`](../arena/AGENTS.md) evalúa candidatas
-- → Promoción: [`arena/promote.ts`](../arena/promote.ts)
+- → Promoción: [`src/arena/promote.ts`](../arena/promote.ts)
 - → Candidatos: `config/candidates/` (efímero)
 - → Test: [`test/tune/`](../../test/tune/)

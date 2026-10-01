@@ -22,7 +22,7 @@ Agnóstico del protocolo del ring.
 
 ## Archivos clave
 
-- **`server/main.ts`** — Entry point: arranca servidor en 127.0.0.1:3000.
+- **`server/main.ts`** — Entry point: arranca servidor en http://127.0.0.1:5199 (puerto configurable con `VIEWER_PORT`, dirección fija).
 - **`src/model/`** — Lógica de modelo (carga resultados, procesa).
 - **`src/screens/`** — Vistas: arena, promoción, turno.
 - **`src/ui/`** — Componentes: tablas, gráficos, listados.
@@ -33,6 +33,7 @@ Agnóstico del protocolo del ring.
 - **127.0.0.1 solamente**: sin exposición a red abierta.
 - **Sin cálculos de métricas**: solo presentación (métricas calculadas por `src/arena/`).
 - **Datos de `results/`**: accede a JSON generado por arena.
+- **Texto rival**: mostrado solo como texto plano, nunca como HTML.
 
 ## Cómo usar
 

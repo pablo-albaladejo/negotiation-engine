@@ -40,5 +40,5 @@ pnpm typecheck
 - ↑ [`src/`](../AGENTS.md)
 - ← Motor: [`engine/`](../engine/AGENTS.md)
 - ← Pipeline: [`pipeline/`](../pipeline/AGENTS.md)
-- → Escenarios: `redteam/` (confidencial, fuera de git)
+- → Escenarios: `redteam/` (en git)
 - → Test: [`test/redteam/`](../../test/redteam/)

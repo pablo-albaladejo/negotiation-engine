@@ -1,6 +1,6 @@
 # viewer/server/ — Servidor Node del Visor
 
-Servidor Hono que sirve API y archivos estáticos del visor React.
+Servidor node:http que sirve API y archivos estáticos del visor React.
 
 ## Propósito
 
@@ -8,7 +8,7 @@ Entry point Node: carga archivo JSON de resultados desde `results/`, expone ruta
 
 ## Archivos
 
-- **`main.ts`** — Entry point: arranca servidor en 127.0.0.1:3000.
+- **`main.ts`** — Entry point: arranca servidor en http://127.0.0.1:5199 (puerto configurable con `VIEWER_PORT`, dirección fija `127.0.0.1`).
 
 ## Cómo trabajar
 

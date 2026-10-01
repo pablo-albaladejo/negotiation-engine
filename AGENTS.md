@@ -54,7 +54,7 @@ docs/           design docs (en Markdown)
 openspec/       propuestas de cambio (agencia arquitectónica)
 design-system/  componentes React (paquete independiente, con .design-sync/ para Claude Design)
 viewer/         visor local de resultados de arena/promoción/agente (paquete independiente)
-redteam/        escenarios y cadenas de red team (fuera de git: confidencial)
+redteam/        escenarios y cadenas de red team
 results/        partidas guardadas, trazas, métricas (fuera de git)
 ```
 
@@ -68,9 +68,9 @@ results/        partidas guardadas, trazas, métricas (fuera de git)
 - Node ≥ 22.
 
 ### `viewer/` (`@negotiation-ring/viewer`)
-- Paquete independiente: React + Vite + vitest, servidor Node en `server/main.ts`.
+- Paquete independiente: React + Vite + vitest, servidor Node en `viewer/server/main.ts`.
 - `pnpm --dir viewer install` → instala dependencias del visor.
-- `pnpm --dir viewer start` → servidor en http://127.0.0.1:3000/ (lectura, sin cálculos).
+- `pnpm --dir viewer start` → servidor en http://127.0.0.1:5199/ (puerto configurable con `VIEWER_PORT`, dirección fija). Lectura, sin cálculos. Texto rival solo como texto, nunca como HTML.
 - Lockfile: `viewer/pnpm-lock.yaml`.
 
 ### `design-system/` (`@negotiation-ring/design-system`)
@@ -112,7 +112,6 @@ Ver `.env.example`.
 | `pnpm tune` | Barrido de parámetros en el espacio del motor. |
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
 | `pnpm redteam` | Harness de red team. |
-| `pnpm arena` | Self-play local. |
 | `pnpm bot:serve` | Servidor de un bot como agente HTTP para sparring. |
 | `pnpm dummy:serve` | Servidor del dummy-agent (estrategia fija). |
 | `pnpm sparring` | Agente vs bot por HTTP: arena con `--rival-url`. |
