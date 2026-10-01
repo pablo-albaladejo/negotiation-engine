@@ -64,6 +64,38 @@ Despliegue por túnel: `AGENT_AUTH_TOKEN=… pnpm agent`, `cloudflared tunnel --
 (o `ngrok http 8787`) y, desde otra red, `scripts/tunnel-smoke.sh https://<url-del-túnel>`
 (`GET /health` + un turno por HTTPS validado contra el esquema).
 
+## Evaluar un agente cualquiera (baseline o externo)
+
+Hay dos formas de meter un agente "dummy" (u otro cualquiera) en la arena, para compararlo con la
+campeona exactamente con los mismos bots, escenarios y semillas:
+
+**(a) Como configuración de nuestro motor** (`AgentConfig`, válida por `parseConfig`):
+
+```bash
+pnpm arena --candidate config/baselines/dummy.json --seeds 5   # comparación pareada
+pnpm promote config/baselines/dummy.json --dry-run --seeds 5 --reval-seeds 5   # puerta completa, sin tocar champion.json
+```
+
+`config/candidates/` está en `.gitignore` (es el área de trabajo efímera de `pnpm tune`); una
+baseline que sí queremos versionar va en `config/baselines/` en su lugar.
+
+**(b) Como agente HTTP externo**, cualquier programa que no sea nuestro motor, con tal de que hable
+el contrato canónico `POST /turn` / `GET /health` (esquemas Zod de `src/protocol/schemas.ts`):
+
+```bash
+pnpm dummy:serve --strategy accept-first --port 8799 --scenario price-buyer-wide
+pnpm arena --agent-url http://localhost:8799 --scenarios price-buyer-wide --seeds 5
+```
+
+`--agent-url` **sustituye** a nuestro agente (no añade un rival: para eso está `--rival-url`). El
+turno que viaja por HTTP (`TurnInput`) no incluye el mandato del agente externo: cada servidor debe
+conocer su propio mandato por su cuenta (aquí, por `--scenario`, igual que `pnpm bot:serve`), no lo
+recibe de la arena. Para una partida directa campeona-contra-dummy por HTTP, ver `scripts/sparring.sh`
+o `scripts/eval-dummy.sh`.
+
+`pnpm eval:dummy [seeds]` (por defecto 5 semillas, ~20 s) corre de punta a punta los dos escenarios
+contra `config/baselines/dummy.json` y `src/bots/dummy-agent.ts`, y deja todo en `results/eval-dummy/`.
+
 ## Flujo de trabajo
 
 1. **Programar**: motor, bots y adaptadores. `pnpm test` tiene que pasar.
