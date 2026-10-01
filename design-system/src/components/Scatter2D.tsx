@@ -128,7 +128,11 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
           {iso.label ? (
             <text
               className="iso-label"
-              x={scatter2DXScale(iso.points[iso.points.length - 1]?.x ?? xDomain[0], xDomain)}
+              textAnchor="end"
+              x={Math.min(
+                scatter2DXScale(iso.points[iso.points.length - 1]?.x ?? xDomain[0], xDomain),
+                WIDTH - MARGIN.right - 2,
+              )}
               y={scatter2DYScale(iso.points[iso.points.length - 1]?.y ?? yDomain[0], yDomain) - 6}
             >
               {iso.label}
@@ -173,16 +177,28 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
         </g>
       ))}
 
-      {deal ? (
-        <>
-          <circle className="deal-ring" cx={scatter2DXScale(deal.x, xDomain)} cy={scatter2DYScale(deal.y, yDomain)} r={11} />
-          {deal.label ? (
-            <text className="deal-label" x={scatter2DXScale(deal.x, xDomain) + 14} y={scatter2DYScale(deal.y, yDomain) - 14}>
-              {deal.label}
-            </text>
-          ) : null}
-        </>
-      ) : null}
+      {deal
+        ? (() => {
+            const dealX = scatter2DXScale(deal.x, xDomain);
+            const dealY = scatter2DYScale(deal.y, yDomain);
+            const labelOnLeft = dealX > (WIDTH - MARGIN.left - MARGIN.right) / 2 + MARGIN.left;
+            return (
+              <>
+                <circle className="deal-ring" cx={dealX} cy={dealY} r={11} />
+                {deal.label ? (
+                  <text
+                    className="deal-label"
+                    textAnchor={labelOnLeft ? "end" : "start"}
+                    x={dealX + (labelOnLeft ? -14 : 14)}
+                    y={dealY - 14}
+                  >
+                    {deal.label}
+                  </text>
+                ) : null}
+              </>
+            );
+          })()
+        : null}
     </svg>
   );
 }

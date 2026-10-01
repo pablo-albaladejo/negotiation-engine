@@ -1,28 +1,28 @@
 import { KpiStrip } from "@negotiation-ring/design-system";
 
-export function PartidaConTrato() {
+export function MatchWithDeal() {
   return (
     <KpiStrip
       items={[
-        { label: "Resultado", value: "Trato", tone: "deal" },
-        { label: "Precio", value: "112" },
-        { label: "Excedente / ZOPA", value: "0,97" },
-        { label: "Rondas", value: "7 / 10" },
-        { label: "Rol · reserva", value: "vendedor · 80" },
-        { label: "Inyecciones detectadas", value: "0" },
+        { label: "Result", value: "Deal", tone: "deal" },
+        { label: "Price", value: "112" },
+        { label: "Surplus / ZOPA", value: "0.97" },
+        { label: "Rounds", value: "7 / 10" },
+        { label: "Role · reserve", value: "seller · 80" },
+        { label: "Injections detected", value: "0" },
       ]}
     />
   );
 }
 
-export function PartidaConRetirada() {
+export function MatchWithWalkAway() {
   return (
     <KpiStrip
       items={[
-        { label: "Resultado", value: "Retirada", tone: "walk" },
-        { label: "Excedente / ZOPA", value: "0" },
-        { label: "Rondas", value: "10 / 10" },
-        { label: "Rol · reserva", value: "comprador · 95" },
+        { label: "Result", value: "Walk away", tone: "walk" },
+        { label: "Surplus / ZOPA", value: "0" },
+        { label: "Rounds", value: "10 / 10" },
+        { label: "Role · reserve", value: "buyer · 95" },
       ]}
     />
   );

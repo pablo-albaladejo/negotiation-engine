@@ -1,6 +1,6 @@
 import { OfferChart, Legend } from "@negotiation-ring/design-system";
 
-export function ModoArenaConZopa() {
+export function ArenaModeWithZopa() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <OfferChart
@@ -44,35 +44,35 @@ export function ModoArenaConZopa() {
         theirReserve={112}
         zopa
         injectionRounds={[2]}
-        end={{ round: 7, kind: "deal", label: "AC_next → trato a 112" }}
+        end={{ round: 7, kind: "deal", label: "AC_next → deal at 112" }}
       />
       <Legend>
         <span>
           <i style={{ borderTop: "3px solid var(--us)" }} />
-          nuestra oferta
+          our offer
         </span>
         <span>
           <i style={{ borderTop: "3px solid var(--them)" }} />
-          oferta del rival
+          opponent offer
         </span>
         <span>
           <i style={{ borderTop: "2px dashed var(--us)" }} />
-          curva objetivo
+          target curve
         </span>
         <span>
           <i style={{ borderTop: "2px dotted var(--them)" }} />
-          estimación de su reserva
+          estimate of their reserve
         </span>
         <span>
           <i style={{ borderTop: "10px solid var(--zopa)" }} />
-          ZOPA (solo arena)
+          ZOPA (arena only)
         </span>
       </Legend>
     </div>
   );
 }
 
-export function ModoTorneoSinZopa() {
+export function TournamentModeNoZopa() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <OfferChart
@@ -94,11 +94,11 @@ export function ModoTorneoSinZopa() {
       <Legend>
         <span>
           <i style={{ borderTop: "3px solid var(--us)" }} />
-          nuestra oferta
+          our offer
         </span>
         <span>
           <i style={{ borderTop: "3px solid var(--them)" }} />
-          oferta del rival
+          opponent offer
         </span>
       </Legend>
     </div>

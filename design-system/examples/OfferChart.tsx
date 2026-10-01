@@ -44,14 +44,14 @@ export function OfferChartExample() {
         theirReserve={112}
         zopa
         injectionRounds={[2]}
-        end={{ round: 7, kind: "deal", label: "AC_next → trato a 112" }}
+        end={{ round: 7, kind: "deal", label: "AC_next → deal at 112" }}
       />
       <Legend>
-        <span>nuestra oferta</span>
-        <span>oferta del rival</span>
-        <span>curva objetivo</span>
-        <span>estimación de su reserva</span>
-        <span>ZOPA (solo arena)</span>
+        <span>our offer</span>
+        <span>opponent offer</span>
+        <span>target curve</span>
+        <span>estimate of their reserve</span>
+        <span>ZOPA (arena only)</span>
       </Legend>
     </div>
   );

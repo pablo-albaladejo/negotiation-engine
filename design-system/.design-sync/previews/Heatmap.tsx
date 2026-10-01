@@ -1,42 +1,42 @@
 import { Heatmap } from "@negotiation-ring/design-system";
 
-export function ComparativaPorRival() {
+export function ComparisonByOpponent() {
   return (
     <Heatmap
-      columns={["como vendedor", "como comprador"]}
+      columns={["as seller", "as buyer"]}
       rows={[
-        { rival: "Boulware", cells: [{ label: "0,71", value: 0.71 }, { label: "0,52", value: 0.52 }] },
-        { rival: "Conceder", cells: [{ label: "0,83", value: 0.83 }, { label: "0,77", value: 0.77 }] },
-        { rival: "Inject+Voss", cells: [{ label: "0,69", value: 0.69 }, { label: "0,55", value: 0.55 }] },
-        { rival: "Ancla extrema", cells: [{ label: "0,54", value: 0.54 }, { label: "0,38", value: 0.38 }] },
+        { rival: "Boulware", cells: [{ label: "0.71", value: 0.71 }, { label: "0.52", value: 0.52 }] },
+        { rival: "Conceder", cells: [{ label: "0.83", value: 0.83 }, { label: "0.77", value: 0.77 }] },
+        { rival: "Inject+Voss", cells: [{ label: "0.69", value: 0.69 }, { label: "0.55", value: 0.55 }] },
+        { rival: "Extreme anchor", cells: [{ label: "0.54", value: 0.54 }, { label: "0.38", value: 0.38 }] },
       ]}
     />
   );
 }
 
-export function BandaBuena() {
+export function GoodBand() {
   return (
     <Heatmap
-      columns={["como vendedor", "como comprador"]}
-      rows={[{ rival: "Conceder", cells: [{ label: "0,83", value: 0.83 }, { label: "0,77", value: 0.77 }] }]}
+      columns={["as seller", "as buyer"]}
+      rows={[{ rival: "Conceder", cells: [{ label: "0.83", value: 0.83 }, { label: "0.77", value: 0.77 }] }]}
     />
   );
 }
 
-export function BandaMedia() {
+export function MidBand() {
   return (
     <Heatmap
-      columns={["como vendedor", "como comprador"]}
-      rows={[{ rival: "Boulware", cells: [{ label: "0,52", value: 0.52 }, { label: "0,48", value: 0.48 }] }]}
+      columns={["as seller", "as buyer"]}
+      rows={[{ rival: "Boulware", cells: [{ label: "0.52", value: 0.52 }, { label: "0.48", value: 0.48 }] }]}
     />
   );
 }
 
-export function BandaBaja() {
+export function LowBand() {
   return (
     <Heatmap
-      columns={["como vendedor", "como comprador"]}
-      rows={[{ rival: "Ancla extrema", cells: [{ label: "0,38", value: 0.38 }, { label: "0,29", value: 0.29 }] }]}
+      columns={["as seller", "as buyer"]}
+      rows={[{ rival: "Extreme anchor", cells: [{ label: "0.38", value: 0.38 }, { label: "0.29", value: 0.29 }] }]}
     />
   );
 }

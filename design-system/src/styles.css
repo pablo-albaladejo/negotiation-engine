@@ -111,7 +111,7 @@
 .nr-scoreboard{display:flex;align-items:center;justify-content:space-between;gap:40px;border-bottom:1px solid var(--line);padding-bottom:28px}
 .nr-scoreboard-teams{display:flex;align-items:center;gap:28px}
 .nr-scoreboard-badge{font:700 22px var(--font-mono);letter-spacing:.14em;color:var(--bg);background:var(--ink);border-radius:var(--radius-sm);padding:6px 16px}
-.nr-scoreboard-match{font:800 64px/1 var(--font-display)}
+.nr-scoreboard-match{font:800 64px/1 var(--font-display);white-space:nowrap}
 .nr-scoreboard-us{color:var(--us)}
 .nr-scoreboard-vs{color:var(--muted);font-weight:700;margin:0 12px}
 .nr-scoreboard-rival{color:var(--them)}
