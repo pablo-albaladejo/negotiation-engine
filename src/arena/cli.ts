@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { parseArgs } from "node:util";
 import { createBotByName, BOTS } from "../bots/index.js";
-import { loadConfig } from "../engine/config.js";
+import { loadConfig, type AgentConfig } from "../engine/config.js";
 import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
 import { createHttpParticipant } from "./external.js";
@@ -11,7 +11,7 @@ import type { Participant } from "./participant.js";
 import { comparePaired, type PairedReport } from "./paired.js";
 import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
 import { writeJsonlTrace } from "../pipeline/trace.js";
-import { DEFAULT_CATALOG, loadCatalog, mandateFor } from "./scenario.js";
+import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.js";
 
 export interface ArenaCliResult {
   runDir: string;
@@ -30,6 +30,22 @@ function pick<T extends { id?: string; name?: string }>(items: T[], wanted: stri
     if (!found) throw new Error(`${what} desconocido: ${w}`);
     return found;
   });
+}
+
+/** Parámetros del motor con los que se jugó, para `summary.config.params` (v2). */
+function configParams(config: AgentConfig): Record<string, unknown> {
+  const { beta, openingMargin, acceptMargin, acTimeThreshold, noise, defaultHorizon, persona, reciprocity, acCombiThreshold } = config;
+  return {
+    beta,
+    openingMargin,
+    acceptMargin,
+    acTimeThreshold,
+    noise,
+    defaultHorizon,
+    persona,
+    ...(reciprocity === undefined ? {} : { reciprocity }),
+    ...(acCombiThreshold === undefined ? {} : { acCombiThreshold }),
+  };
 }
 
 /**
@@ -89,7 +105,8 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     seeds,
     onGame: (game, metrics, scenario) => {
       const { records, ...rest } = game;
-      transcripts.write(`${JSON.stringify({ ...rest, metrics })}\n`);
+      const reserves = { ours: mandateFor(scenario, scenario.role).reservation, rival: mandateFor(scenario, rivalRole(scenario.role)).reservation };
+      transcripts.write(`${JSON.stringify({ schemaVersion: 2, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
       if (values["no-traces"] || records.length === 0) return;
       writeJsonlTrace(join(runDir, "traces", `${game.gameId}.jsonl`), {
         kind: "header",
@@ -121,12 +138,13 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   }
 
   const summary: Record<string, unknown> = {
+    schemaVersion: 2,
     runId,
     createdAt: new Date().toISOString(),
     llmProvider: "none",
     network: Boolean(values["rival-url"] || values["agent-url"]),
     agent: agent.name,
-    config: { path: values.config, version: config.version, provenance: config.provenance },
+    config: { path: values.config, version: config.version, provenance: config.provenance, params: configParams(config) },
     seeds: { start: seedStart, count: seedCount },
     scenarios: scenarios.map((s) => s.id),
     rivals: rivals.map((r) => ({ name: r.name, pool: r.pool })),
