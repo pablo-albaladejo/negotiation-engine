@@ -1,6 +1,6 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAgent, createTournamentTrace } from "../../src/agent/agent.js";
 import { runArenaCli } from "../../src/arena/cli.js";
@@ -25,8 +25,12 @@ export interface ViewerFixtures {
   dirs: { runDir: string; tournamentDir: string; scenarioPath: string };
 }
 
-/** Raíz del repo: `pnpm viewer:test` corre con `cwd` en `viewer/`, así que las rutas de `config/` van absolutas. */
-export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+/**
+ * Raíz del repo: `pnpm viewer:test` corre con `cwd` en `viewer/`, así que las rutas de `config/` van
+ * absolutas. Se evita `new URL(..., import.meta.url)`: bajo el entorno `jsdom` de un test de render,
+ * el `URL` global resuelve contra `window.location`, no contra el fichero.
+ */
+export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../");
 const CHAMPION = join(REPO_ROOT, "config/champion.json");
 const CATALOG = join(REPO_ROOT, "config/arena/scenarios.json");
 
