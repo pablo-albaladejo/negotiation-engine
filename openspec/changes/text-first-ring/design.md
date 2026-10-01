@@ -13,7 +13,7 @@ Ver proposal.md (Why). Estado de partida medido en el código:
 
 ## Goals / Non-Goals
 
-**Goals:** leer ofertas y aceptaciones en lenguaje natural de cualquier idioma con el LLM como lector principal y el código como verificador; escribir en el idioma del rival; validador y detector de fugas independientes del idioma; caber en el tiempo del ring; medir todo esto en la arena; todo configurable con valores por defecto de solo texto.
+**Goals:** leer ofertas y aceptaciones en lenguaje natural de cualquier idioma con el LLM como lector principal y el código como verificador; escribir en el idioma del rival; validador y detector de fugas independientes del idioma; caber en el tiempo del ring; medir todo esto en la arena; todo configurable, con `hybrid` por defecto (texto cuando el ring no trae campos estructurados).
 
 **Non-Goals:** cambiar el motor, la estrategia o la campeona; escribir el adaptador del protocolo real (viernes 18:45); verificar palabras numéricas de todos los idiomas; traducir el texto del rival.
 
@@ -21,34 +21,51 @@ Ver proposal.md (Why). Estado de partida medido en el código:
 
 Tabla de claves (`config/runtime.json`, esquema cerrado en `src/pipeline/runtime-config.ts`, resuelto por modo; opciones de CLI en arena y eval):
 
-| Clave | Por defecto (text-only) | Alternativas | Test |
+| Clave | Por defecto (`hybrid`) | Alternativas | Test |
 |---|---|---|---|
-| `ring.mode` | `text-only` | `structured`, `hybrid` | esquema + resolución por modo |
+| `ring.mode` | `hybrid` | `text-only`, `structured` | esquema + resolución por modo |
 | `ring.timeoutMs` | sin valor | ms del protocolo publicado | presupuesto |
-| `parser.policy` | `llm-primary-verified` (`dual-strict` en structured) | `dual-strict`, `deterministic-only` | tabla de casos de reconcile |
+| `parser.policy` | `llm-primary-verified` (`dual-strict` en structured); solo se aplica a turnos sin `rivalOffer` | `dual-strict`, `deterministic-only` | tabla de casos de reconcile |
 | `parser.acceptWordNumbers` | `confirm` | `llm-only` | casos ja/fr en palabras |
 | `parser.onLlmFailure` | `deterministic` | `confirm` | fallo simulado del cliente |
-| `acceptance.signal` | `parser-intent-verified` (`ring-action` en structured) | `ring-action` | tabla de enlace |
-| `acceptance.walkSignal` | `trace-only` (`ring-action` en structured) | `parser-intent-verified`, `ring-action` | caso de retirada aparente |
+| `acceptance.signal` | `parser-intent-verified` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `ring-action` | tabla de enlace |
+| `acceptance.walkSignal` | `trace-only` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `parser-intent-verified`, `ring-action` | caso de retirada aparente |
 | `narrator.language` | `auto` | código BCP-47 fijo | entrada del narrador |
 | `template.languages` | `["en","es"]` | + `fr`, `ja`, `ar` | propiedad plantilla×idioma |
 | `template.fallbackLanguage` | `en` | cualquiera de `template.languages` | idioma sin plantilla |
 | `template.uncovered` | `neutral` | `fallback-language` | idioma sin plantilla |
 | `validator.coherence` | `known-languages` | `strict` | texto en ja |
-| `llm.parser.{provider,model,timeoutMs,attempts}` | `LLM_PROVIDER`, `ANTHROPIC_MODEL`, 1800, 1 | `none`/`claude-cli`/`anthropic-api`; 2 intentos | cliente simulado con latencia |
-| `llm.narrator.{provider,model,timeoutMs,attempts}` | `LLM_PROVIDER`, `ANTHROPIC_MODEL`, 1500, 1 | ídem | ídem |
+| `llm.parser.{provider,model,timeoutMs,attempts}` | `LLM_PROVIDER`, `ANTHROPIC_MODEL`, 1800, 1 (2 en structured) | `none`/`claude-cli`/`anthropic-api`; 2 intentos | cliente simulado con latencia |
+| `llm.narrator.{provider,model,timeoutMs,attempts}` | `LLM_PROVIDER`, `ANTHROPIC_MODEL`, 1500, 1 (2 en structured) | ídem | ídem |
 | `llm.narrator.minRemainingMs` | 900 | cualquier ms | narrador omitido |
 | `turn.budgetRatio` | 0.9 | (0, 1] | presupuesto relativo |
-| `mandate.source` | `scenario-file` | `brief-text` (requiere aprobación) | brief con discrepancia |
+| `mandate.source` | `scenario-file` (único valor admitido) | `brief-text` aplazado por decisión del usuario hasta conocer el ring; el esquema lo rechaza | esquema |
 
 ### 1. Modo de ring y contrato canónico
-El contrato canónico (`TurnInput`/`TurnOutput`) no cambia: el adaptador de solo texto rellena `rivalAction = message`, deriva la ronda de la sesión y envía solo el texto; acción y oferta canónicas siguen existiendo internamente (traza, validador, métricas). `hybrid` = estructurado cuando el ring lo trae, texto cuando no; una acción del ring distinta de `message` siempre gana. Alternativa descartada: un `TurnInput` distinto por modo (duplica el pipeline).
+El contrato canónico (`TurnInput`/`TurnOutput`) no cambia: el adaptador de solo texto rellena `rivalAction = message`, deriva la ronda de la sesión y envía solo el texto; acción y oferta canónicas siguen existiendo internamente (traza, validador, métricas). Alternativa descartada: un `TurnInput` distinto por modo (duplica el pipeline).
+
+**`hybrid` es el valor por defecto** (decisión del usuario): usa la oferta y la acción estructuradas cuando el ring las trae y siempre lee el texto; sin campos estructurados se comporta exactamente como `text-only`. Resolución por turno, igual en los tres modos (la diferencia entre modos está solo en los valores por defecto y en lo que el adaptador conserva):
+
+- **Oferta.** Con `rivalOffer` se usa la oferta estructurada (confianza `structured`) y `parser.policy` no interviene. Sin `rivalOffer`, la oferta se extrae del texto con `parser.policy`.
+- **Aceptación y retirada.** Con `rivalAction` distinta de `message` (`offer`, `accept`, `walk`) prevalece la acción del ring (comportamiento `ring-action`): la intención leída en el texto solo informa al narrador. Con `rivalAction = message` se aplican `acceptance.signal` y `acceptance.walkSignal`.
+- **Texto.** Si hay texto, el parser se llama siempre (intención, tácticas, idioma, narrador), también cuando hay campos estructurados.
+
+Valores por defecto resueltos:
+
+| Clave | `hybrid` | `text-only` | `structured` |
+|---|---|---|---|
+| `parser.policy` | `llm-primary-verified` | `llm-primary-verified` | `dual-strict` |
+| `acceptance.signal` | `parser-intent-verified` | `parser-intent-verified` | `ring-action` |
+| `acceptance.walkSignal` | `trace-only` | `trace-only` | `ring-action` |
+| `llm.*.attempts` | 1 | 1 | 2 |
+
+Así, un turno `hybrid` sin `rivalOffer` y con `rivalAction = message` usa exactamente los valores de `text-only`, y un turno con campos estructurados usa los de `structured` para esos campos. En `text-only` el adaptador descarta los campos estructurados, de modo que todo turno sigue la ruta de texto. Sin proveedor LLM (parser determinista), `llm-primary-verified` y `dual-strict` se degradan a `deterministic-only`, como hoy. Una clave fijada en el fichero o por CLI sustituye al valor por defecto del modo, pero no a la regla de que una acción del ring distinta de `message` prevalece.
 
 ### 2. Política del parser y verificación por evidencia
 Esquema LLM nuevo: `figures: {issue, value, evidence}[]`, `intent`, `intentEvidence?`, `language`, `claims`, `tactics`, `injectionSuspected` (cerrado). La oferta se deriva en código (`src/llm/verify.ts`), con los pasos de la spec: aparición del fragmento tras NFKC + quitar `\p{Cf}` + plegado; si tiene `\p{Nd}`, lectura igual al valor, filtrando lecturas por el rango del issue; si son palabras es/en, lectura del normalizador; si no, `llm-only`. El parser determinista pasa de llave conjunta a veto: solo bloquea si extrae una oferta completa distinta. Razón: la medición muestra que el AND pierde casi todas las ofertas en lenguaje natural, y la evidencia literal impide que el LLM invente una cifra que no esté en el texto. Lo que la verificación NO cubre: que el LLM atribuya bien una cifra al issue (`pct` vs `day`); lo mitigan el rango del issue y la tasa `misread` de la arena. `dual-strict` y `deterministic-only` siguen siendo el comportamiento anterior.
 
 ### 3. Aceptación y retirada desde el texto
-Aceptación verificada = intención `accept` + evidencia literal presente + sin negación detectada (es/en deterministas) + oferta nuestra previa + sin cifras nuevas o cifras verificadas iguales a nuestra última oferta. Un acuerdo inferido siempre es nuestra última oferta (ya dentro del mandato): el peor caso de una falsa aceptación es repetir nuestra oferta, no conceder. Al aceptar repetimos las cifras (validador). Acuerdo registrado en la sesión con origen y evidencia; tras él, respuestas idempotentes. Retirada: `trace-only` por defecto porque el motor se retira si `rivalWalked`, y un falso positivo destruye el acuerdo (0 para ambos), mientras que en un ring de texto la partida la cierra el ring.
+Aceptación verificada (solo en turnos con `rivalAction = message` y `acceptance.signal = parser-intent-verified`) = intención `accept` + evidencia literal presente + sin negación detectada (es/en deterministas) + oferta nuestra previa + sin cifras nuevas, o cada cifra citada verificada (dígitos o palabras, nunca `llm-only`) e igual al valor de ese issue en nuestra última oferta (puede citar solo algunos issues). Un acuerdo inferido siempre es nuestra última oferta (ya dentro del mandato): el peor caso de una falsa aceptación es repetir nuestra oferta, no conceder. Al aceptar repetimos las cifras (validador). Acuerdo registrado en la sesión con origen y evidencia; tras él, respuestas idempotentes. Retirada: `trace-only` por defecto porque el motor se retira si `rivalWalked`, y un falso positivo destruye el acuerdo (0 para ambos), mientras que en un ring de texto la partida la cierra el ring.
 
 ### 4. Idioma
 Idioma del parser (BCP-47) con respaldo determinista por escritura Unicode. Narrador con `language` en su entrada cerrada. Plantillas por idioma en `src/llm/templates/{en,es}.ts`, cifras con dígitos ASCII; forma neutral para el resto. Cambios exactos:
@@ -60,8 +77,8 @@ Idioma del parser (BCP-47) con respaldo determinista por escritura Unicode. Narr
 ### 5. Latencia
 `anthropic-api` (fetch con keep-alive y calentamiento al arrancar) recomendado en solo texto; `claude-cli` solo en desarrollo (≈2 s de arranque). Reparto con 4500 ms: parser ≤ 1800, motor ≈ 0, narrador ≤ min(1500, restante − 300 de reserva para validador, fugas y plantilla); narrador omitido si quedan < 900 ms; un solo intento por defecto. Proveedor por caja para poder poner el parser en HTTP y el narrador en plantilla.
 
-### 6. Origen del mandato (pendiente de aprobación)
-`scenario-file` por defecto. `brief-text` solo desde un canal de la organización al arrancar, con acuerdo exacto determinista+LLM y fallo cerrado. Es una desviación de "el LLM nunca fija el mandato" (aunque el canal sea de confianza y el código verifique): no se implementa sin el visto bueno del usuario.
+### 6. Origen del mandato
+Solo `scenario-file`: el esquema rechaza cualquier otro valor. `brief-text` (canal de la organización al arrancar, acuerdo exacto determinista+LLM y fallo cerrado) queda aplazado por decisión del usuario hasta conocer el ring: es una desviación de "el LLM nunca fija el mandato" y no se implementa en este cambio.
 
 ### 7. Arena realista
 `--text-mode full`: renderizador de lenguaje natural común (`src/bots/nl-renderer.ts`, generalización de `text-only.ts`) que envuelve cualquier estrategia; la arena guarda el movimiento canónico como verdad de terreno y decide el acuerdo real con él. `--languages` por semilla. Bot LLM en texto completo e idioma dado. `eval:llm`: matriz política × idioma × proveedor con las métricas de la spec.
@@ -78,11 +95,10 @@ Sin cambios en la cuarentena: el texto del rival solo lo lee el parser; las evid
 
 ## Migration Plan
 
-Todo detrás de `config/runtime.json`; `ring.mode = structured` reproduce el comportamiento actual (salvo los arreglos del normalizador). Archivar después de `add-agent-architecture`. Rollback: cambiar claves, sin despliegue.
+Todo detrás de `config/runtime.json`; `ring.mode = structured` reproduce el comportamiento actual (salvo los arreglos del normalizador); con `hybrid` por defecto, un ring estructurado tampoco cambia, porque su oferta y su acción prevalecen. Archivar después de `add-agent-architecture`. Rollback: cambiar claves, sin despliegue.
 
 ## Open Questions
 
-- ¿Mandato por brief de la organización? (aprobación del usuario; por defecto `scenario-file`).
-- ¿`acceptance.walkSignal = trace-only` por defecto? (por defecto sí).
+- Resueltas por el usuario: `ring.mode = hybrid` por defecto; `acceptance.walkSignal = trace-only`; una aceptación verificada leída en el texto puede cerrar el acuerdo; `mandate.source` solo `scenario-file` (`brief-text` aplazado hasta conocer el ring).
 - ¿`parser.acceptWordNumbers` por defecto `confirm` o `llm-only`? (por defecto `confirm` hasta medir `confirmRate`).
 - ¿Modelo del parser y del narrador en `anthropic-api` y su latencia real? (medir con `eval:llm` antes del viernes 18:45).

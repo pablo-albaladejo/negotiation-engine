@@ -4,7 +4,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 1. Configuración de ejecución
 
-- [ ] 1.1 Tests de `RuntimeConfigSchema` (esquema cerrado, valores por defecto por modo, `hybrid`, clave inválida señalada, clave secreta rechazada) y luego `src/pipeline/runtime-config.ts` con carga desde `config/runtime.json` / `RUNTIME_CONFIG` y `config/runtime.json` de ejemplo; verificar con `pnpm test` y `pnpm typecheck`
+- [ ] 1.1 Tests de `RuntimeConfigSchema` (esquema cerrado, valores por defecto por modo, `hybrid` por defecto y su resolución por turno, clave inválida señalada, clave secreta rechazada) y luego `src/pipeline/runtime-config.ts` con carga desde `config/runtime.json` / `RUNTIME_CONFIG` y `config/runtime.json` de ejemplo; verificar con `pnpm test` y `pnpm typecheck`
 - [ ] 1.2 Inyectar la configuración efectiva en el pipeline, el agente (`src/agent/`) y la arena (`--ring-mode`, `--parser-policy`, `--acceptance-signal`, `--narrator-language`, proveedor por caja), con su huella en cada entrada de la traza; verificar con un test que juega un turno con `dual-strict` por CLI y lee la huella en la traza
 
 ## 2. Normalizador numérico para cualquier escritura
@@ -56,7 +56,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 10. Mandato desde brief
 
-- [ ] 10.1 `mandate.source = brief-text` con acuerdo exacto determinista+LLM y fallo cerrado (`/health` no listo, sin valores) en `src/agent/` [aplazada: sábado] [requiere aprobación]
+- [ ] 10.1 `mandate.source = brief-text` con acuerdo exacto determinista+LLM y fallo cerrado (`/health` no listo, sin valores) en `src/agent/` [aplazada: sábado] [requiere aprobación] — aplazada por decisión del usuario hasta conocer el ring; no implementar (el esquema solo admite `scenario-file`)
 
 ## 11. Red team
 

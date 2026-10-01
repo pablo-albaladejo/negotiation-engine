@@ -7,7 +7,7 @@ Infiere del texto la aceptación y la retirada del rival sin dar al LLM autorida
 ## ADDED Requirements
 
 ### Requirement: Aceptación inferida del texto verificada
-Con `acceptance.signal = parser-intent-verified`, una aceptación del rival SHALL inferirse del texto solo si: la intención del parser es `accept`; el parser devuelve un fragmento literal de evidencia de esa intención que aparece en el texto (misma normalización que las cifras); el parser determinista no detecta una negación en los idiomas que cubre; existe una oferta nuestra previa; y el texto no trae cifras nuevas o las cifras verificadas coinciden con nuestra última oferta. Si el texto trae cifras sin verificar, el turno SHALL tratarse como sin oferta y sin acuerdo. Con `parser.policy = deterministic-only`, la intención SHALL venir del parser determinista. El acuerdo SHALL ser siempre exactamente nuestra última oferta, que ya pasó los guardarraíles.
+Con `acceptance.signal = parser-intent-verified` y un turno con `rivalAction = message` (una acción del ring distinta prevalece), una aceptación del rival SHALL inferirse del texto solo si: la intención del parser es `accept`; el parser devuelve un fragmento literal de evidencia de esa intención que aparece en el texto (misma normalización que las cifras); el parser determinista no detecta una negación en los idiomas que cubre; existe una oferta nuestra previa; y el texto no trae cifras nuevas o cada cifra que cita está verificada (dígitos o palabras; una cifra `llm-only` no basta) y coincide con el valor de ese issue en nuestra última oferta, aunque solo cite algunos issues. Al aceptar, nuestra respuesta repite las cifras del acuerdo. Si el texto trae cifras sin verificar, el turno SHALL tratarse como sin oferta y sin acuerdo. Con `parser.policy = deterministic-only`, la intención SHALL venir del parser determinista. El acuerdo SHALL ser siempre exactamente nuestra última oferta, que ya pasó los guardarraíles.
 
 #### Scenario: Aceptación en alemán sin cifras
 - **WHEN** nuestra última oferta fue 2 % a día 20 y el rival escribe "Einverstanden, das nehmen wir" con intención `accept` y evidencia "Einverstanden"
@@ -22,7 +22,7 @@ Con `acceptance.signal = parser-intent-verified`, una aceptación del rival SHAL
 - **THEN** el parser determinista detecta la negación, no hay acuerdo y el motor decide como en cualquier otro turno
 
 ### Requirement: Retirada inferida del texto
-La retirada leída en el texto SHALL tratarse según `acceptance.walkSignal`: `trace-only` (por defecto en `text-only`) la registra en la traza y la pasa al narrador como intención, sin marcar la retirada del rival en la sesión, de modo que respondemos con la decisión normal del motor; `parser-intent-verified` la trata como `rivalAction = walk` si su evidencia literal aparece en el texto; `ring-action` solo atiende a la acción del ring.
+La retirada leída en el texto SHALL tratarse según `acceptance.walkSignal`: `trace-only` (por defecto en `hybrid` y `text-only`; solo se aplica a turnos con `rivalAction = message`) la registra en la traza y la pasa al narrador como intención, sin marcar la retirada del rival en la sesión, de modo que respondemos con la decisión normal del motor; `parser-intent-verified` la trata como `rivalAction = walk` si su evidencia literal aparece en el texto; `ring-action` solo atiende a la acción del ring.
 
 #### Scenario: Retirada aparente con trace-only
 - **WHEN** con `trace-only` el rival escribe "we're done here unless you move" con intención `walk`
