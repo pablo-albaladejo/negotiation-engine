@@ -1,5 +1,6 @@
 import type { PairedCluster } from "./arena.js";
 import type { ClusterSummary } from "./metrics.js";
+import type { PairedReport } from "./paired.js";
 
 const pct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}`);
 
@@ -35,5 +36,18 @@ export function pairedTable(pairs: readonly PairedCluster[]): string {
   return table(
     ["escenario", "rival", "", "pares", "campeona%", "candidata%", "dif pp"],
     pairs.map((p) => [p.scenarioId, p.rival, "", String(p.pairs), pct(p.champion), pct(p.candidate), p.diffPp === null ? "—" : p.diffPp.toFixed(2)]),
+  );
+}
+
+const pp = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(2)} pp`);
+
+/** Resumen de una comparación pareada: diferencia media ponderada, test de signos y bootstrap. */
+export function pairedSummaryLine(report: PairedReport): string {
+  const s = report.sign;
+  const boot = report.bootstrap ? ` · IC95 bootstrap [${pp(report.bootstrap.lowPp)}, ${pp(report.bootstrap.highPp)}]` : "";
+  const rivals = report.byRival.map((r) => `${r.rival} ${pp(r.meanDiffPp)}`).join(", ");
+  return (
+    `diferencia media ${pp(report.meanDiffPp)} · signos +${s.positive}/−${s.negative}/=${s.ties} p=${s.pValue.toFixed(4)}${boot} · ` +
+    `violaciones ${report.violations.length} · fugas ${report.leaks.length}\npor rival: ${rivals}`
   );
 }

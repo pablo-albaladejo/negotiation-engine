@@ -1,0 +1,165 @@
+{
+  "id": "price-buyer-wide__boulware__1",
+  "scenarioId": "price-buyer-wide",
+  "rival": "boulware",
+  "seed": 1,
+  "configVersion": 1,
+  "endReason": "agreement",
+  "agreement": {
+    "pct": 4.43
+  },
+  "moves": [
+    {
+      "round": 1,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.3
+      }
+    },
+    {
+      "round": 1,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 0.7
+      }
+    },
+    {
+      "round": 2,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.3
+      }
+    },
+    {
+      "round": 2,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 0.7
+      }
+    },
+    {
+      "round": 3,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.29
+      }
+    },
+    {
+      "round": 3,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 0.71
+      }
+    },
+    {
+      "round": 4,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.25
+      }
+    },
+    {
+      "round": 4,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 0.76
+      }
+    },
+    {
+      "round": 5,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.1
+      }
+    },
+    {
+      "round": 5,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 0.9
+      }
+    },
+    {
+      "round": 6,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 8.81
+      }
+    },
+    {
+      "round": 6,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 1.2
+      }
+    },
+    {
+      "round": 7,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 8.27
+      }
+    },
+    {
+      "round": 7,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 1.75
+      }
+    },
+    {
+      "round": 8,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 7.33
+      }
+    },
+    {
+      "round": 8,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 2.85
+      }
+    },
+    {
+      "round": 9,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 5.48
+      }
+    },
+    {
+      "round": 9,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 4.43
+      }
+    },
+    {
+      "round": 10,
+      "from": "agent",
+      "action": "accept",
+      "offer": {
+        "pct": 4.43
+      }
+    }
+  ]
+}

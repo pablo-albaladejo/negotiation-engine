@@ -97,6 +97,15 @@ export function reservationUtility(issues: readonly Issue[], mandate: OfferManda
   return utility(issues, mandate.reservation);
 }
 
+/**
+ * Condición de toda aceptación (cualquier regla): dentro de los límites por issue y `u ≥ u(reserva)`.
+ * Con utilidad monótona lo segundo se sigue de lo primero; se comprueba igual para que ninguna
+ * regla de aceptación dependa de esa deducción.
+ */
+export function acceptableForUs(issues: readonly Issue[], mandate: OfferMandate, offer: Offer): boolean {
+  return withinOfferMandate(issues, mandate, offer) && utility(issues, offer) >= reservationUtility(issues, mandate);
+}
+
 export function sameOffer(issues: readonly Issue[], a: Offer, b: Offer, eps = 1e-6): boolean {
   return issues.every((issue) => Math.abs(valueOf(a, issue) - valueOf(b, issue)) <= eps);
 }

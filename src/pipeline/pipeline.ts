@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AgentConfig } from "../engine/config.js";
 import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInput } from "../engine/engine.js";
 import { enforceOfferGuardrails } from "../engine/guardrails.js";
-import { orientIssues, pickIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
+import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
 import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
@@ -105,7 +105,8 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
     rivalOffers: session.rivalOffers.map((o) => ({ ...o })),
     rivalAcceptedOurLast: session.rivalAcceptedOurLast,
     rivalWalked: session.rivalWalked,
-    rivalCanRespond: false,
+    // Sin el campo canónico se supone que el rival no responde tras nuestro último movimiento.
+    rivalCanRespond: session.rivalCanRespond ?? false,
   };
   if (currentOfferUnconfirmed) state.currentOfferUnconfirmed = true;
   if (session.roundLimit !== undefined) state.roundLimit = session.roundLimit;
@@ -124,6 +125,8 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
       acTimeThreshold: config.acTimeThreshold,
       noise: config.noise,
       defaultHorizon: config.defaultHorizon,
+      ...(config.reciprocity !== undefined ? { reciprocity: config.reciprocity } : {}),
+      ...(config.acCombiThreshold !== undefined ? { acCombiThreshold: config.acCombiThreshold } : {}),
     },
     state,
     seed: session.seed,
@@ -160,13 +163,54 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const deadline = startedAt + turnBudgetMs(input.timeoutMs, config);
     const remaining = () => Math.max(0, deadline - now());
 
+    /** Sanitiza entrada/salida de cajas LLM que pueden registrar textos sensibles. */
+    function sanitizeBox(box: string, role: "input" | "output", data: unknown): unknown {
+      if (role === "input") {
+        if (typeof data !== "object" || !data || Array.isArray(data)) return data;
+        const obj = data as Record<string, unknown>;
+        // Parser: rival text podría contener cifras de la reserva
+        if (box === "parser") {
+          const { text, ...rest } = obj;
+          return { ...rest, textLength: typeof text === "string" ? text.length : null };
+        }
+        // Narrator: solo persona, sin instrucciones
+        if (box === "narrator") return { persona: (obj as any).persona };
+        // Validator: no registrar el texto candidato
+        if (box === "validator") {
+          const { text, ...rest } = obj;
+          return { ...rest, textLength: typeof text === "string" ? text.length : null };
+        }
+        // Leak: no registrar el texto ni las razones
+        if (box === "leak") {
+          return { textLength: typeof obj.text === "string" ? obj.text.length : null };
+        }
+        return data;
+      }
+      // Salidas de LLM que podrían contener texto sensible
+      if (box === "narrator" && typeof data === "string") {
+        return { textLength: data.length };
+      }
+      if (box === "validator" && typeof data === "object" && data) {
+        // Validator returns { ok, reasons } con cifras quoted; solo guardar ok
+        const obj = data as Record<string, unknown>;
+        return { ok: obj.ok };
+      }
+      if (box === "leak" && typeof data === "object" && data) {
+        const obj = data as Record<string, unknown>;
+        // Registrar leak flag pero no las razones que delatarían cifras
+        if (obj.leak) return { leak: true };
+        return { leak: false };
+      }
+      return data;
+    }
+
     const record = (box: string, boxInput: unknown, output: unknown, result: BoxResult, t0: number, error?: string) => {
       const entry = {
         sessionId: session.id,
         round: input.round,
         box,
-        input: boxInput,
-        output,
+        input: sanitizeBox(box, "input", boxInput),
+        output: sanitizeBox(box, "output", output),
         result,
         latencyMs: now() - t0,
         seed: session.seed,
@@ -204,6 +248,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     session.round = input.round;
     if (input.roundLimit !== undefined) session.roundLimit = input.roundLimit;
     if (input.deadline !== undefined) session.deadlineMs = Date.parse(input.deadline);
+    if (input.rivalCanRespond !== undefined) session.rivalCanRespond = input.rivalCanRespond;
     record("input", { rivalAction: input.rivalAction, hasOffer: input.rivalOffer !== undefined, hasText: !!input.text }, { round: session.round, roundLimit: session.roundLimit ?? null }, "ok", t0);
 
     // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).
@@ -276,7 +321,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const engineInput = engineInputFor(session, now(), unconfirmed);
     const engineResult = await guarded(
       "engine",
-      { params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
+      { issues: engineInput.issues, params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
       async () => checkDecision(session, DecisionSchema.parse(await engine(engineInput))),
       remaining(),
       "fallback",
@@ -350,8 +395,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const last = ourLastOffer(session);
     const isCurrent = rivalCurrent !== undefined && sameOffer(issues, offer, rivalCurrent);
     const isAgreement = session.rivalAcceptedOurLast && last !== undefined && sameOffer(issues, offer, last);
-    if (!(isCurrent || isAgreement) || !withinOfferMandate(issues, mandate, offer)) {
-      throw new Error("accept sobre una oferta que no es la actual o fuera del mandato");
+    if (!(isCurrent || isAgreement) || !acceptableForUs(issues, mandate, offer)) {
+      throw new Error("accept sobre una oferta que no es la actual, fuera del mandato o por debajo de u(reserva)");
     }
     return { ...decision, offer };
   }
@@ -364,8 +409,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       // Sesión ya cerrada: la acción terminal coherente, nunca una contraoferta nueva.
       const last = ourLastOffer(session);
       const oriented = orientIssues(session.config.issues, session.mandate.role);
-      const agreed =
-        session.agreement ?? (session.rivalAcceptedOurLast && last && withinOfferMandate(oriented, session.mandate, last) ? last : undefined);
+      const candidate = session.agreement ?? (session.rivalAcceptedOurLast ? last : undefined);
+      const agreed = candidate && acceptableForUs(oriented, session.mandate, candidate) ? candidate : undefined;
       if (agreed) {
         session.agreement = { ...agreed };
         const offer = { ...agreed };

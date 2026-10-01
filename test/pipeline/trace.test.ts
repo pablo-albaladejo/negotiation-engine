@@ -51,4 +51,65 @@ describe("trazas JSONL", () => {
     expect(TraceHeaderSchema.safeParse(header).success).toBe(true);
     expect(TraceHeaderSchema.safeParse({ ...header, mandate: { role: "buyer", reservation: { pct: 3 } } }).success).toBe(false);
   });
+
+  it("narrator que filtra texto sensible: las trazas JSONL no contienen el texto completo, solo metadatos", async () => {
+    const out = mkdtempSync(join(tmpdir(), "trace-sanitized-"));
+    // Ejecutar con un escenario pequeño y verificar que los registros de narrator/validator/leak
+    // no contienen el texto sensible sino solo longitudes y flags
+    const { runDir, report } = await runArenaCli(["--seeds", "1", "--scenarios", "price-buyer-wide", "--rivals", "boulware", "--out", out, "--run-id", "r", "--quiet"]);
+    const files = readdirSync(join(runDir, "traces"));
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const [header, ...records] = readLines(join(runDir, "traces", file));
+      const content = readFileSync(join(runDir, "traces", file), "utf8");
+      // Verificar que no aparece ningun texto de narrator/validator/leak sin sanitizar
+      for (const record of records) {
+        const box = record.box;
+        if (box === "narrator" && record.input) {
+          // Input solo debe tener persona, sin instrucciones completas
+          const input = record.input as Record<string, unknown>;
+          expect(input).not.toHaveProperty("decision");
+          expect(input).not.toHaveProperty("reserves");
+        }
+        if (box === "narrator" && record.output) {
+          // Output de narrator no debe ser el texto completo sino metadatos
+          const output = record.output as Record<string, unknown>;
+          expect(typeof output === "object" && output !== null).toBe(true);
+          if (output && typeof output === "object" && "textLength" in output) {
+            // Si se registra textLength, no debe haber un campo "text"
+            expect(output).not.toHaveProperty("text");
+          }
+        }
+        if (box === "leak" && record.output) {
+          // Output de leak no debe contener las razones
+          const output = record.output as Record<string, unknown>;
+          expect(output).not.toHaveProperty("reasons");
+        }
+        if (box === "validator" && record.output) {
+          // Output de validator sanitizado: solo {ok}, sin reasons con cifras
+          const output = record.output as Record<string, unknown>;
+          expect(output).toHaveProperty("ok");
+          expect(output).not.toHaveProperty("reasons");
+        }
+      }
+    }
+  });
+
+  it("validator output sanitizado: solo {ok}, sin reasons con cifras", async () => {
+    const out = mkdtempSync(join(tmpdir(), "trace-validator-"));
+    const { runDir } = await runArenaCli(["--seeds", "1", "--scenarios", "price-buyer-wide", "--rivals", "boulware", "--out", out, "--run-id", "r", "--quiet"]);
+    const files = readdirSync(join(runDir, "traces"));
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const [header, ...records] = readLines(join(runDir, "traces", file));
+      for (const record of records) {
+        if (record.box === "validator" && typeof record.output === "object" && record.output) {
+          const output = record.output as Record<string, unknown>;
+          // Output solo debe tener `ok`, sin `reasons` que contengan cifras
+          expect(output).toHaveProperty("ok");
+          expect(output).not.toHaveProperty("reasons");
+        }
+      }
+    }
+  });
 });

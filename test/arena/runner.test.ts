@@ -72,3 +72,29 @@ describe("runner de partidas en proceso", () => {
     expect(game.endReason).toBe("rival-error");
   });
 });
+
+describe("escenarios con respuesta del rival tras nuestro último movimiento (10.10)", () => {
+  it("con rivalCanRespond el agente recibe el campo en cada turno; sin él, nunca", async () => {
+    const seen: unknown[] = [];
+    const spy: Participant = {
+      name: "spy",
+      kind: "agent",
+      pool: "tuning",
+      async start(setup) {
+        const inner = await agent.start(setup);
+        return {
+          respond: (turn) => {
+            seen.push(turn.rivalCanRespond);
+            return inner.respond(turn);
+          },
+        };
+      },
+    };
+    await playGame({ scenario: { ...scenario("price-buyer-narrow"), rivalCanRespond: true }, agent: spy, rival: createBotByName("boulware"), seed: 1 });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((v) => v === true)).toBe(true);
+    seen.length = 0;
+    await playGame({ scenario: scenario("price-buyer-narrow"), agent: spy, rival: createBotByName("boulware"), seed: 1 });
+    expect(seen.every((v) => v === undefined)).toBe(true);
+  });
+});

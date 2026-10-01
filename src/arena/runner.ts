@@ -98,7 +98,10 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
     return { ...result, endReason: "rival-error", error: message(error) };
   }
 
-  const visibleLimit = scenario.limitVisible ? { roundLimit: scenario.rounds } : {};
+  const visibleLimit = {
+    ...(scenario.limitVisible ? { roundLimit: scenario.rounds } : {}),
+    ...(scenario.rivalCanRespond ? { rivalCanRespond: true } : {}),
+  };
   let agentInput: TurnInput = { sessionId: gameId, round: 1, ...visibleLimit, rivalAction: "message", text: OPENING_TEXT };
   let rivalCurrent: Offer | undefined;
 

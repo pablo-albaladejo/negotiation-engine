@@ -23,6 +23,8 @@ export interface Session {
   round: number;
   roundLimit?: number;
   deadlineMs?: number;
+  /** Último valor del campo canónico `rivalCanRespond`; ausente si el ring nunca lo mandó. */
+  rivalCanRespond?: boolean;
   /** Nuestras ofertas enviadas; la última es la vigente. */
   ourOffers: Offer[];
   /** Ofertas registradas del rival; la última es la oferta actual. */

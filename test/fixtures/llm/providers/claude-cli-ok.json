@@ -1,0 +1,34 @@
+{
+  "_note": "Llamada real a claude -p --json-schema a través de createClaudeCliClient (2026-10-01, modelo por defecto del CLI), recortada: sin session_id, uuid ni costes. Cifras que no coinciden con ningún mandato.",
+  "request": {
+    "issues": [
+      "pct",
+      "day"
+    ],
+    "text": "Puedo ofrecer un 1,2 % si pagáis el día 20"
+  },
+  "stdout": {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 2,
+    "stop_reason": "tool_use",
+    "duration_ms": 2718,
+    "result": "{\"intent\":\"offer\",\"offer\":{\"pct\":1.2,\"day\":20},\"claims\":[\"Offers a 1.2% discount on condition of payment on day 20\"],\"tactics\":[],\"injectionSuspected\":false}",
+    "structured_output": {
+      "intent": "offer",
+      "offer": {
+        "pct": 1.2,
+        "day": 20
+      },
+      "claims": [
+        "Offers a 1.2% discount on condition of payment on day 20"
+      ],
+      "tactics": [],
+      "injectionSuspected": false
+    },
+    "modelUsage": {
+      "claude-opus-5-5": {}
+    }
+  }
+}

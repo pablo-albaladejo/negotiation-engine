@@ -21,6 +21,8 @@ export const ScenarioSchema = z
     issues: z.array(IssueSchema).min(1),
     rounds: z.number().int().min(1),
     limitVisible: z.boolean(),
+    /** El agente recibe `rivalCanRespond: true` (en la arena el rival responde siempre, también tras nuestro último movimiento). */
+    rivalCanRespond: z.boolean().optional(),
     mode: z.enum(["structured", "text-only"]),
     role: z.enum(["buyer", "seller"]),
     zopa: z.enum(["wide", "narrow", "empty"]),

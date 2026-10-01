@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { ConfigError } from "../engine/config.js";
 import { createInMemoryAdapter, runClientLoop } from "../protocol/adapter.js";
 import { createHttpRingClient } from "../protocol/http.js";
+import { createOtelSink, teeTrace } from "../pipeline/otel.js";
 import { createAgent, createTournamentTrace, serverAuthFromEnv, stderrLogger } from "./agent.js";
 
 // Agente que habla con el ring. Modo servidor (por defecto): el ring nos llama por HTTP JSON.
@@ -13,7 +14,9 @@ async function main(): Promise<void> {
   const scenarioPath = process.env.AGENT_SCENARIO ?? "config/scenario.json";
   // Trazas JSONL por sesión en results/ (AGENT_TRACE=off las desactiva).
   const traceDir = process.env.TRACE_DIR ?? `results/agent-${new Date().toISOString().replace(/[:.]/g, "")}`;
-  const trace = process.env.AGENT_TRACE === "off" ? undefined : createTournamentTrace(traceDir, scenarioPath);
+  const jsonl = process.env.AGENT_TRACE === "off" ? undefined : createTournamentTrace(traceDir, scenarioPath);
+  // Exportación OpenTelemetry/Langfuse solo con TRACE_EXPORT=otel; apagada no carga nada ni conecta.
+  const trace = teeTrace(jsonl, await createOtelSink());
   const agent = createAgent({
     configPath: process.env.AGENT_CONFIG ?? "config/champion.json",
     scenarioPath,

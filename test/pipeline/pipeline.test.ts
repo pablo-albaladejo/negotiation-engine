@@ -132,6 +132,11 @@ describe("inyección de fallos: cada turno produce salida válida", () => {
     for (const out of outputs) expect(out.action).toBe("counter");
   });
 
+  it("motor que acepta la oferta actual del rival por debajo de u(reserva) ⇒ emergencia, nunca accept", async () => {
+    const { outputs } = await playWith({ engine: async () => ({ action: "accept", offer: { pct: 1 }, rule: "x" }) });
+    for (const out of outputs) expect(out.action).toBe("counter");
+  });
+
   it("motor que propone cruzar el mandato ⇒ los guardarraíles lo recortan", async () => {
     const { outputs } = await playWith({ engine: async () => ({ action: "counter", offer: { pct: 0.5 }, rule: "x" }) });
     for (const out of outputs) expect(out.action !== "walk" && out.offer.pct).toBeGreaterThanOrEqual(3);
@@ -244,6 +249,13 @@ describe("ruta de emergencia con la sesión ya cerrada", () => {
     expect(brain.fallback(turn(2))).toMatchObject({ action: "accept", offer: (first as { offer: object }).offer });
   });
 
+  it("un acuerdo registrado por debajo de u(reserva) nunca sale como accept", async () => {
+    const { brain, store } = makeBrain();
+    await brain.turn(turn(1));
+    store.get("s1")!.agreement = { pct: 1 };
+    expect(brain.fallback(turn(2)).action).toBe("counter");
+  });
+
   it("tras la retirada del rival responde walk", async () => {
     const { brain } = makeBrain();
     await brain.turn(turn(1));
@@ -255,5 +267,36 @@ describe("ruta de emergencia con la sesión ya cerrada", () => {
     const { brain } = makeBrain();
     await brain.turn(turn(1));
     expect(brain.fallback(turn(2)).action).toBe("counter");
+  });
+});
+
+describe("último movimiento y respuesta del rival (10.10)", () => {
+  // Comprador con reserva 3 %: 2 % cruza la reserva en la última ronda.
+  const lastTurn = (extra: Record<string, unknown> = {}) =>
+    turn(10, { roundLimit: 10, rivalAction: "offer", rivalOffer: { pct: 2 }, ...extra });
+
+  it("sin el campo canónico se supone que el rival no responde ⇒ walk", async () => {
+    const { brain } = makeBrain();
+    expect((await brain.turn(lastTurn())).action).toBe("walk");
+  });
+
+  it("rivalCanRespond: false ⇒ walk", async () => {
+    const { brain } = makeBrain();
+    expect((await brain.turn(lastTurn({ rivalCanRespond: false }))).action).toBe("walk");
+  });
+
+  it("rivalCanRespond: true ⇒ contraoferta final dentro del mandato, nunca walk", async () => {
+    const { brain, trace } = makeBrain();
+    const out = await brain.turn(lastTurn({ rivalCanRespond: true }));
+    expect(out.action).toBe("counter");
+    expect(out.action === "counter" && out.offer.pct).toBeGreaterThanOrEqual(3);
+    const engine = trace.records.find((r) => r.box === "engine")!;
+    expect((engine.input as { state: { rivalCanRespond: boolean } }).state.rivalCanRespond).toBe(true);
+  });
+
+  it("el campo se recuerda en la sesión si el ring solo lo manda una vez", async () => {
+    const { brain } = makeBrain();
+    await brain.turn(turn(1, { roundLimit: 10, rivalCanRespond: true }));
+    expect((await brain.turn(lastTurn())).action).toBe("counter");
   });
 });

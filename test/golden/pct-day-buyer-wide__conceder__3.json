@@ -1,0 +1,167 @@
+{
+  "id": "pct-day-buyer-wide__conceder__3",
+  "scenarioId": "pct-day-buyer-wide",
+  "rival": "conceder",
+  "seed": 3,
+  "configVersion": 1,
+  "endReason": "agreement",
+  "agreement": {
+    "pct": 5.59,
+    "day": 41.93
+  },
+  "moves": [
+    {
+      "round": 1,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.21,
+        "day": 55.5
+      }
+    },
+    {
+      "round": 1,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 3.1,
+        "day": 23.29
+      }
+    },
+    {
+      "round": 2,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.2,
+        "day": 55.5
+      }
+    },
+    {
+      "round": 2,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 3.8,
+        "day": 28.55
+      }
+    },
+    {
+      "round": 3,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.19,
+        "day": 55.4
+      }
+    },
+    {
+      "round": 3,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 4.21,
+        "day": 31.59
+      }
+    },
+    {
+      "round": 4,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 9.13,
+        "day": 55.08
+      }
+    },
+    {
+      "round": 4,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 4.58,
+        "day": 34.39
+      }
+    },
+    {
+      "round": 5,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 8.98,
+        "day": 54.25
+      }
+    },
+    {
+      "round": 5,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 4.89,
+        "day": 36.71
+      }
+    },
+    {
+      "round": 6,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 8.67,
+        "day": 52.47
+      }
+    },
+    {
+      "round": 6,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 5.13,
+        "day": 38.5
+      }
+    },
+    {
+      "round": 7,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 7.94,
+        "day": 48.36
+      }
+    },
+    {
+      "round": 7,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 5.38,
+        "day": 40.4
+      }
+    },
+    {
+      "round": 8,
+      "from": "agent",
+      "action": "counter",
+      "offer": {
+        "pct": 6.8,
+        "day": 42
+      }
+    },
+    {
+      "round": 8,
+      "from": "rival",
+      "action": "counter",
+      "offer": {
+        "pct": 5.59,
+        "day": 41.93
+      }
+    },
+    {
+      "round": 9,
+      "from": "agent",
+      "action": "accept",
+      "offer": {
+        "pct": 5.59,
+        "day": 41.93
+      }
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import type { GameSetup, Participant, PlayerSession } from "../arena/participant.js";
+import type { Issue } from "../engine/config.js";
 import { enforceOfferGuardrails } from "../engine/guardrails.js";
 import { orientIssues, pickIssues, reservationUtility, roundInFavor, utility, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { concession, offerAboveReservation, openingUtility } from "../engine/offer.js";
@@ -37,6 +38,10 @@ export interface RenderInput {
   action: "accept" | "counter" | "walk";
   offer?: Offer;
   rng: Rng;
+  /** Ronda del turno: los bots adversariales eligen su texto por ronda sin consumir el rng (sus ofertas no cambian). */
+  round: number;
+  /** Issues orientados al rol del bot (`higher-better` = mejor para el bot). */
+  issues: readonly Issue[];
 }
 
 export type Renderer = (input: RenderInput) => string;
@@ -121,7 +126,7 @@ export function createBot(options: BotOptions): Participant {
       return {
         async respond(turn: TurnInput): Promise<TurnOutput> {
           const decided = move(turn);
-          const text = render({ ...decided, rng });
+          const text = render({ ...decided, rng, round: turn.round, issues });
           const base = { sessionId: turn.sessionId, round: turn.round, text };
           if (decided.action === "walk") return { ...base, action: "walk" };
           return { ...base, action: decided.action, offer: decided.offer! };

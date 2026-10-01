@@ -91,8 +91,26 @@ El sistema SHALL disponer de plantillas deterministas para `accept`, `counter` y
 - **THEN** el texto de la plantilla pasa el validador y el detector de fugas en todos los casos
 
 ### Requirement: Proveedores intercambiables
-El proveedor LLM SHALL elegirse por la variable `LLM_PROVIDER` (`none` | `claude-cli` | `anthropic-api`) y todos SHALL cumplir el mismo contrato: petición con esquema de salida, respuesta validada, tiempo máximo y error tipado; el modelo SHALL ser configurable.
+El proveedor LLM SHALL elegirse por la variable `LLM_PROVIDER` (`none` | `claude-cli` | `anthropic-api`) y todos SHALL cumplir el mismo contrato: petición con esquema de salida, respuesta validada, tiempo máximo y error tipado; el modelo SHALL ser configurable. Los proveedores `claude-cli` y `anthropic-api` usan transporte `fetch` directo, sin SDK de Anthropic. El proveedor `claude-cli` rechaza la clave `$schema` que emite `z.toJSONSchema()`, así que el contrato común la quita; verificar la forma de `output_config.format` (JSON Schema) en `anthropic-api` con una clave real antes del torneo.
 
 #### Scenario: Error del proveedor
 - **WHEN** el proveedor devuelve un error, un JSON inválido o excede su tiempo
 - **THEN** el componente devuelve un error tipado y no lanza una excepción no controlada
+
+#### Scenario: Esquema sin $schema
+- **WHEN** se llama a `claude --json-schema` con un esquema Zod que contiene la clave `$schema`
+- **THEN** el esquema se envía sin esa clave y la llamada tiene éxito
+
+### Requirement: LLM bot dentro del mandato
+Los bots guiados por LLM que participan en la arena SHALL tener su propio mandato declarado en la configuración del escenario o del bot, y sus ofertas y aceptaciones SHALL ser forzadas dentro de ese mandato antes de ser enviadas (misma validación y guardarraíles que el agente).
+
+#### Scenario: Bot LLM dentro del mandato
+- **WHEN** se crea un bot LLM con un mandato y genera una oferta fuera del mandato
+- **THEN** la oferta se rechaza y se genera una nueva o se devuelve una contraoferta dentro del mandato
+
+### Requirement: Crítico LLM sin textos ni mandato
+El crítico LLM, si existe, SHALL recibir solo acciones y cifras decididas de las partidas perdidas o de bajo excedente (sin textos del rival, sin mandato, sin plazo propio, sin instrucciones), y MUST producir sugerencias en texto libre que no modifican ninguna configuración ni promueven cambios.
+
+#### Scenario: Entrada del crítico
+- **WHEN** se inspecciona la entrada del crítico desde `results/`
+- **THEN** solo contiene acciones y cifras decididas de cada turno, sin textos, mandato ni instrucciones
