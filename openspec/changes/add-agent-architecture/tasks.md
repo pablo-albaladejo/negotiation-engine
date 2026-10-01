@@ -95,7 +95,8 @@ Orden = camino crítico del minuto 0 (grupos 1–8: agente determinista + adapta
 
 ## 12. Sábado: estrategia [Paula]
 
-- [ ] 12.1 [Paula] Tests con rivales sintéticos de reserva conocida (error dentro de tolerancia tras ≥ 5 concesiones) y luego el modelo del rival por regresión de concesiones + frecuencias [aplazada: sábado]
+- [x] 12.1 [Paula] Tests con rivales sintéticos de reserva conocida (error dentro de tolerancia tras ≥ 5 concesiones) y luego el modelo del rival por regresión de concesiones + frecuencias [aplazada: sábado]
+  - Nota: tolerancia del test = 5 % del rango del issue. El modelo necesita el `t` de cada oferta (`recordOffer(offer, t)`); el motor aún no lo pasa ni usa la estimación para decidir (el estado no guarda la ronda de cada oferta del rival).
 - [ ] 12.2 [Paula] Reciprocidad Tit-for-Tat como factor en [0, 1] sobre el paso, con la propiedad "nunca concede más que la curva Boulware con el mismo `ε`"; verificar con comparación pareada frente a la campeona [aplazada: sábado]
 - [ ] 12.3 [Paula] AC_combi en la caja de aceptación con su tabla de casos; verificar con comparación pareada [aplazada: sábado]
 
