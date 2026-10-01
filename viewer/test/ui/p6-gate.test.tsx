@@ -20,6 +20,7 @@ describe("GateScreen (P6)", () => {
     expect(container.querySelectorAll(".nr-flag.decision")).toHaveLength(gx.passed.gate.gate.checks.length);
     expect(container.querySelector(".nr-flag.walk")).toBeNull();
     expect(container.querySelectorAll(".nr-heat-cell")).toHaveLength(4);
+    for (const cell of container.querySelectorAll(".nr-heat-cell")) expect(cell.classList.contains("none")).toBe(cell.textContent === "n/a");
     expect(screen.getByText("− beta: 0.2")).toBeTruthy();
     expect(screen.getByText("+ beta: 0.3")).toBeTruthy();
     expect(screen.getByText(`pnpm promote ${gx.candidatePath}`)).toBeTruthy();

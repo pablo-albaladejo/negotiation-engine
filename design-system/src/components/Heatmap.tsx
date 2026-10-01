@@ -1,6 +1,7 @@
 export interface HeatmapCell {
   label: string;
-  value: number;
+  /** Sin valor (null/undefined): celda neutra rotulada "n/a", nunca con banda. */
+  value?: number | null;
 }
 
 export interface HeatmapRow {
@@ -13,7 +14,8 @@ export interface HeatmapProps {
   columns: string[];
 }
 
-export function heatmapBand(value: number): "good" | "mid" | "bad" {
+export function heatmapBand(value: number | null | undefined): "good" | "mid" | "bad" | "none" {
+  if (value === null || value === undefined || Number.isNaN(value)) return "none";
   if (value >= 0.6) return "good";
   if (value >= 0.45) return "mid";
   return "bad";
@@ -37,11 +39,14 @@ export function Heatmap({ rows, columns }: HeatmapProps) {
           {rows.map((row) => (
             <tr key={row.rival}>
               <td>{row.rival}</td>
-              {row.cells.map((cell, index) => (
-                <td key={`${row.rival}-${index}`} className={`nr-heat-cell ${heatmapBand(cell.value)}`}>
-                  {cell.label}
-                </td>
-              ))}
+              {row.cells.map((cell, index) => {
+                const band = heatmapBand(cell.value);
+                return (
+                  <td key={`${row.rival}-${index}`} className={`nr-heat-cell ${band}`}>
+                    {band === "none" ? "n/a" : cell.label}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

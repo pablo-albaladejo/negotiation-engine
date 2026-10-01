@@ -129,7 +129,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
               columns={heat.roles}
               rows={heat.rows.map((r) => ({
                 rival: r.rival,
-                cells: r.cells.map((c) => ({ label: c.meanSurplus === null ? "n/a" : formatNumber(c.meanSurplus, { locale: "en", decimals: 2 }), value: c.meanSurplus ?? Number.NaN })),
+                cells: r.cells.map((c) => ({ label: c.meanSurplus === null ? "n/a" : formatNumber(c.meanSurplus, { locale: "en", decimals: 2 }), value: c.meanSurplus })),
               }))}
             />
           ) : (
