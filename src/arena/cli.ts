@@ -12,6 +12,9 @@ import { comparePaired, type PairedReport } from "./paired.js";
 import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
 import { writeJsonlTrace } from "../pipeline/trace.js";
 import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.js";
+import { createLlmNarrator } from "../llm/llm-narrator.js";
+import { createLlmParser } from "../llm/llm-parser.js";
+import { createProviderClient, LlmProviderSchema } from "../llm/provider.js";
 
 export interface ArenaCliResult {
   runDir: string;
@@ -73,6 +76,8 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "rival-name": { type: "string", default: "external" },
       "agent-url": { type: "string" },
       "timeout-ms": { type: "string", default: "5000" },
+      "llm-provider": { type: "string", default: process.env.LLM_PROVIDER ?? "none" },
+      "no-narrator": { type: "boolean", default: false },
     },
     strict: true,
   });
@@ -87,10 +92,19 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));
   if (values["rival-url"]) rivals.push(createHttpParticipant({ name: values["rival-name"], baseUrl: values["rival-url"], timeoutMs }));
   const config = loadConfig(values.config);
+  // Proveedor LLM opcional (por defecto `none`, sin red): `--llm-provider claude-cli` activa el
+  // parser en cuarentena y, salvo `--no-narrator`, el narrador LLM (plantilla si no).
+  const llmProvider = LlmProviderSchema.parse(values["llm-provider"]);
+  const llmClient = createProviderClient(llmProvider);
+  const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator> } = {};
+  if (llmClient) {
+    agentDeps.parser = createLlmParser(llmClient);
+    if (!values["no-narrator"]) agentDeps.narrator = createLlmNarrator(llmClient);
+  }
   // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
-    : createAgentParticipant({ config });
+    : createAgentParticipant({ config, ...agentDeps });
 
   const runId = values["run-id"] ?? `arena-${new Date().toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
   const runDir = join(values.out, runId);
@@ -141,7 +155,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     schemaVersion: 2,
     runId,
     createdAt: new Date().toISOString(),
-    llmProvider: "none",
+    llmProvider,
     network: Boolean(values["rival-url"] || values["agent-url"]),
     agent: agent.name,
     config: { path: values.config, version: config.version, provenance: config.provenance, params: configParams(config) },
