@@ -93,6 +93,9 @@ conocer su propio mandato por su cuenta (aquí, por `--scenario`, igual que `pnp
 recibe de la arena. Para una partida directa campeona-contra-dummy por HTTP, ver `scripts/sparring.sh`
 o `scripts/eval-dummy.sh`.
 
+`pnpm eval:dummy [seeds]` (por defecto 5 semillas, ~20 s) corre de punta a punta los dos escenarios
+contra `config/baselines/dummy.json` y `src/bots/dummy-agent.ts`, y deja todo en `results/eval-dummy/`.
+
 ## Flujo de trabajo
 
 1. **Programar**: motor, bots y adaptadores. `pnpm test` tiene que pasar.
