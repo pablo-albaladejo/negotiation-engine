@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isLanguageTag } from "./language.js";
 import { IntentSchema, TacticSchema } from "./parser.js";
 import { AskSchema, renderTemplate, type TemplateDecision } from "./template.js";
 
@@ -14,6 +15,8 @@ export const NarratorInputSchema = z
     tactics: z.array(TacticSchema),
     persona: z.string().min(1),
     ask: AskSchema.optional(),
+    /** Idioma de salida (BCP-47): el de la sesión con `narrator.language = auto`, o el fijado. */
+    language: z.string().min(1).max(35).refine(isLanguageTag, { message: "etiqueta BCP-47 inválida" }).optional(),
   })
   .strict();
 export type NarratorInput = z.infer<typeof NarratorInputSchema>;
@@ -30,6 +33,6 @@ export const templateNarrator: Narrator = {
     const decision: TemplateDecision = { action: input.action };
     if (input.offer) decision.offer = input.offer;
     if (input.ask) decision.ask = input.ask;
-    return renderTemplate(decision);
+    return renderTemplate(decision, input.language);
   },
 };

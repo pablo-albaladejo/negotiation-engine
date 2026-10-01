@@ -26,10 +26,10 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 5. Validador, fugas y plantillas independientes del idioma
 
-- [ ] 5.1 Tests del validador con cifras de otras escrituras y `validator.coherence` (`known-languages` marca `coherence-unchecked`, `strict` rechaza) y luego `src/llm/validator.ts` con mapa de expresiones por idioma (en, es); verificar con `pnpm test test/llm/`
-- [ ] 5.2 Tests del detector de fugas con la reserva en `٣٪`, `３％` y palabras es/en, y luego `src/llm/leak.ts` con `MANDATE_RE` por idioma como señal secundaria; verificar con `pnpm test` y `pnpm redteam` sin fugas
-- [ ] 5.3 Propiedad plantilla × idioma × decisión (pasa validador y fugas) y luego `src/llm/templates/{en,es}.ts`, forma neutral y `template.uncovered` en `src/llm/template.ts`; verificar con `pnpm test`
-- [ ] 5.4 `language` en `NarratorInputSchema` (sigue `.strict()`) y prompt del narrador que escribe en ese idioma (`src/llm/narrator.ts`, `src/llm/llm-narrator.ts`); verificar con respuestas grabadas en en/es/fr
+- [x] 5.1 Tests del validador con cifras de otras escrituras y `validator.coherence` (`known-languages` marca `coherence-unchecked`, `strict` rechaza) y luego `src/llm/validator.ts` con mapa de expresiones por idioma (en, es); verificar con `pnpm test test/llm/`
+- [x] 5.2 Tests del detector de fugas con la reserva en `٣٪`, `３％` y palabras es/en, y luego `src/llm/leak.ts` con `MANDATE_RE` por idioma como señal secundaria; verificar con `pnpm test` y `pnpm redteam` sin fugas
+- [x] 5.3 Propiedad plantilla × idioma × decisión (pasa validador y fugas) y luego `src/llm/templates/{en,es}.ts`, forma neutral y `template.uncovered` en `src/llm/template.ts`; verificar con `pnpm test`
+- [x] 5.4 `language` en `NarratorInputSchema` (sigue `.strict()`) y prompt del narrador que escribe en ese idioma (`src/llm/narrator.ts`, `src/llm/llm-narrator.ts`); verificar con respuestas grabadas en en/es/fr
 
 ## 6. Latencia
 

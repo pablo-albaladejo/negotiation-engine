@@ -10,7 +10,7 @@ import { spanAppears } from "../llm/verify.js";
 import { turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
-import { renderTemplate, type Ask } from "../llm/template.js";
+import { renderTemplate, templateLanguage, type Ask } from "../llm/template.js";
 import { CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
 import {
   createProtocolSchemas,
@@ -224,7 +224,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       if (box === "validator" && typeof data === "object" && data) {
         // Validator returns { ok, reasons } con cifras quoted; solo guardar ok
         const obj = data as Record<string, unknown>;
-        return { ok: obj.ok };
+        return obj.coherence === "unchecked" ? { ok: obj.ok, coherence: "coherence-unchecked" } : { ok: obj.ok };
       }
       if (box === "leak" && typeof data === "object" && data) {
         const obj = data as Record<string, unknown>;
@@ -490,10 +490,13 @@ export function createPipeline(deps: PipelineDeps): Brain {
       persona: config.persona,
     };
     if (offer) narratorInput.offer = offer;
+    // Idioma de salida: el de la sesión (`narrator.language = auto`) o el fijado; sin idioma conocido, `template.fallbackLanguage`.
+    const outLanguage = runtime.narrator.language === "auto" ? (session.language ?? runtime.template.fallbackLanguage) : runtime.narrator.language;
+    narratorInput.language = outLanguage;
     const ask: Ask | undefined =
       decision.action !== "counter" ? undefined : confirmAcceptance ? "confirm-acceptance" : unconfirmed || llmOnlyBlocked ? "confirm-figures" : undefined;
     if (ask) narratorInput.ask = ask;
-    const check: TextCheck = { action: decision.action, text: "" };
+    const check: TextCheck = { action: decision.action, text: "", language: outLanguage, coherence: runtime.validator.coherence };
     if (offer) check.offer = offer;
     const leakCtx: LeakContext = { issues, reservation: mandate.reservation };
     if (offer) leakCtx.decided = offer;
@@ -521,8 +524,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
       text = candidate;
     }
     if (!text) {
-      text = renderTemplate({ action: decision.action, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) });
-      record("template", { action: decision.action, offer: offer ?? null, ask: ask ?? null }, { text }, "fallback", now());
+      text = renderTemplate({ action: decision.action, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) }, outLanguage, runtime.template);
+      record("template", { action: decision.action, offer: offer ?? null, ask: ask ?? null, language: templateLanguage(outLanguage, runtime.template) }, { text }, "fallback", now());
     }
 
     // 7. Salida canónica validada.

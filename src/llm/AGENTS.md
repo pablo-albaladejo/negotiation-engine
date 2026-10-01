@@ -17,7 +17,10 @@ La validación final (el número en el texto = el número del motor) garantiza q
 - **`deterministic-parser.ts`** — `parseDeterministic()` y `deterministicParser`: parsea reglas simples (no LLM), por defecto con `LLM_PROVIDER=none`.
 - **`narrator.ts`** — Interfaz `Narrator`: `narrate(input: NarratorInput, signal)` → texto (redacción de la respuesta).
 - **`llm-narrator.ts`** — `createLlmNarrator(client, options)` → `Narrator`: invoca al LLM para redactar (la cifra ya está decidida, no varía).
-- **`template.ts`** — `templateNarrator` y `renderTemplate()`: plantilla determinista sin LLM (fallback si timeout o error).
+- **`template.ts`** — `renderTemplate(decision, language, options)`: plantilla determinista sin LLM (fallback si timeout o error) por idioma (`templates/en.ts`, `templates/es.ts`); idioma no cubierto ⇒ forma neutral (`template.uncovered = neutral`: marca en `template.fallbackLanguage` y cifras con issue y unidad) o plantilla de `fallbackLanguage`. Asks: `confirm-figures`, `confirm-acceptance`. `templateNarrator` (en `narrator.ts`) la usa como narrador `none`.
+- **`validator.ts`** (idioma) — cifras de cualquier escritura con el normalizador; coherencia con `COHERENCE` por idioma (en, es); idioma no cubierto: `validator.coherence = known-languages` aprueba con `coherence: "unchecked"`, `strict` rechaza.
+- **`leak.ts`** (idioma) — proximidad numérica a la reserva en cualquier escritura (señal principal); `MANDATE_PATTERNS` por idioma (en, es) como señal secundaria.
+- **Narrador** — `NarratorInputSchema` añade solo `language` (BCP-47); el prompt de `llm-narrator.ts` pide escribir en ese idioma.
 - **`validator.ts`** — `validateText()`: comprueba que cifra en texto = cifra del motor.
 - **`provider.ts`** — Factory: instancia parser y narrador según `LLM_PROVIDER` (none, claude-cli, anthropic-api).
 - **`numbers.ts`** — Normaliza y extrae números del texto rival: `foldText()` (NFKC, sin `\p{Cf}`, dígitos `\p{Nd}` de cualquier escritura, separadores locales), rangos y ambigüedad.

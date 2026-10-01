@@ -128,6 +128,7 @@ describe("narrador LLM (11.5)", () => {
     const out = await brain.turn(turn(1, { rivalAction: "offer", rivalOffer: { pct: 1 } }));
     expect(sent).toHaveLength(2);
     expect(trace.records.filter((r) => r.box === "validator").map((r) => (r.output as { ok: boolean }).ok)).toEqual([false, false]);
-    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer }));
+    // Sin texto del rival el idioma de la sesión es desconocido: plantilla en `template.fallbackLanguage` (en).
+    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer }, "en"));
   });
 });

@@ -135,7 +135,8 @@ describe("pipeline con llm-primary-verified (valor por defecto en hybrid)", () =
     const confirmRun = makeBrain({ config: twoIssues, mandate: mandate2, parser: llmSaying(output) });
     const out = await confirmRun.brain.turn(t(1, { rivalAction: "message", text }));
     expect(confirmRun.store.get("s1")!.rivalOffers).toEqual([]);
-    expect(out.text).toMatch(/confirmar tus cifras/);
+    // Japonés sin plantilla: forma neutral (marca en `template.fallbackLanguage` y cifras con su issue).
+    expect(out.text).toMatch(/^Please restate your figures in digits\. Counter-offer: pct /);
 
     const runtime = resolveRuntimeConfig({ parser: { acceptWordNumbers: "llm-only" } });
     const llmOnly = makeBrain({ config: twoIssues, mandate: mandate2, parser: llmSaying(output), runtime });
@@ -144,7 +145,7 @@ describe("pipeline con llm-primary-verified (valor por defecto en hybrid)", () =
     const last = await llmOnly.brain.turn(t(10, { rivalAction: "message", text }));
     expect(llmOnly.store.get("s1")!.rivalOffers.at(-1)).toEqual({ pct: 9, day: 50 });
     expect(last.action).toBe("counter");
-    expect(last.text).toMatch(/confirmar tus cifras/);
+    expect(last.text).toMatch(/^Please restate your figures in digits\./);
     expect(llmOnly.store.get("s1")!.agreement).toBeUndefined();
     expect(llmOnly.trace.records.some((r) => r.box === "llm-only-accept-blocked")).toBe(true);
   });
