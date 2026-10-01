@@ -3,20 +3,23 @@ import { useEffect, useState } from "react";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, gateModel, isTwoIssue, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, gateModel, isTwoIssue, liveModel, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
+import { useLiveFeed } from "./live.js";
 import { GateScreen } from "./screens/GateScreen.js";
+import { LiveScreen } from "./screens/LiveScreen.js";
 import { MatchesScreen } from "./screens/MatchesScreen.js";
 import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
-import { LoadingCard } from "./ui/states.js";
+import { InvalidLogBanner, LoadingCard } from "./ui/states.js";
 
 const TABS = [
   { id: "runs", label: "Runs" },
   { id: "states", label: "States" },
+  { id: "live", label: "Live" },
 ];
 
 function useHashRoute() {
@@ -141,14 +144,30 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
   return <TournamentReplayScreen model={tournamentReplayModel(state.trace, state.ref)} />;
 }
 
+/** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */
+function LiveContainer() {
+  const { feed, errors, now } = useLiveFeed();
+  return (
+    <>
+      <LiveScreen model={liveModel(feed, now)} />
+      {errors.length > 0 ? (
+        <Root theme="dark">
+          <InvalidLogBanner errors={errors} validCount={feed.lines.length} />
+        </Root>
+      ) : null}
+    </>
+  );
+}
+
 export function App() {
   const route = useHashRoute();
+  if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "states" ? "states" : "runs";
   return (
     <Root theme="light">
       <header>
         <h1 className="nr-title">Arena Viewer</h1>
-        <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : routeTo.runs())} />
+        <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
       </header>
       <main>
         {route.screen === "runs" ? <RunsContainer /> : null}

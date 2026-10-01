@@ -1,0 +1,112 @@
+import { ChatMessage, type ChatMessageFlag, OfferChart, Root, Scoreboard, formatNumber } from "@negotiation-ring/design-system";
+import { useEffect, useState } from "react";
+import type { LiveModel, LiveOutcome, Offer } from "../model/index.js";
+
+export const PROJECTOR = { width: 1920, height: 1080 } as const;
+/** Nombre de nuestro equipo en el marcador (design.md, Open Questions). */
+export const US = "Us";
+
+const num = (v: number, decimals?: number) => formatNumber(v, { locale: "en", ...(decimals !== undefined ? { decimals } : {}) });
+
+/** Oferta registrada como texto: un issue ⇒ su valor; varios ⇒ `issue value` separados por " · ". */
+export function offerLabel(offer: Offer | null): string {
+  if (!offer) return "—";
+  const entries = Object.entries(offer);
+  if (entries.length === 1) return num(entries[0]![1]);
+  return entries.map(([k, v]) => `${k} ${num(v)}`).join(" · ");
+}
+
+function outcomeLabel(o: LiveOutcome): string {
+  return o.action === "accept" ? `Deal at ${offerLabel(o.offer)}` : "Walk · no deal";
+}
+
+function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span style={{ font: "800 76px/1 var(--font-display)", color }}>{value}</span>
+      <span style={{ font: "500 22px var(--font-body)", color: "var(--muted)" }}>{label}</span>
+    </div>
+  );
+}
+
+/** Escala el lienzo 1920 × 1080 al ancho de la ventana (el proyector lo ve a tamaño real). */
+function useProjectorScale(): number {
+  const [scale, setScale] = useState(() => (typeof window === "undefined" ? 1 : Math.min(1, window.innerWidth / PROJECTOR.width)));
+  useEffect(() => {
+    const onResize = () => setScale(Math.min(1, window.innerWidth / PROJECTOR.width));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return scale;
+}
+
+/** P7: proyector, siempre oscuro. Privacidad de torneo: sin ZOPA ni reserva del rival. */
+export function LiveScreen({ model }: { model: LiveModel }) {
+  const scale = useProjectorScale();
+  const rounds = model.roundLimit ?? model.round;
+  const playing = model.status !== "break";
+  const flags = (b: LiveModel["last3"][number]): ChatMessageFlag[] => [
+    ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
+    ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
+  ];
+  const stats =
+    model.status === "final" && model.outcome
+      ? [
+          { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
+          { value: `${model.round}/${model.roundLimit ?? "—"}`, label: "rounds", color: "var(--ink)" },
+          { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+          { value: num(model.attacksBlocked), label: "attacks blocked", color: "var(--warn)" },
+        ]
+      : [
+          { value: offerLabel(model.latest.theirOffer), label: "their latest offer", color: "var(--them)" },
+          { value: offerLabel(model.latest.ourOffer), label: "our latest offer", color: "var(--us)" },
+          { value: model.latest.uRival === null ? "—" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
+          { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+        ];
+  const headline = model.status === "final" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "—"}${model.role ? ` · ${model.role}` : ""}`;
+  const end = model.status === "final" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
+
+  return (
+    <div style={{ width: PROJECTOR.width * scale, height: PROJECTOR.height * scale, overflow: "hidden" }}>
+      <div style={{ width: PROJECTOR.width, height: PROJECTOR.height, transform: `scale(${scale})`, transformOrigin: "0 0" }}>
+        <Root
+          theme="dark"
+          data-screen="p7"
+          style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
+        >
+          <Scoreboard badge={model.badge} us={US} rival={model.sessionId ?? "—"} round={model.round} rounds={rounds} attacksBlocked={model.attacksBlocked} />
+          {playing ? (
+            <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 24 }}>
+                  <span style={{ font: "800 64px/1 var(--font-display)", color: model.status === "final" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
+                  <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
+                </div>
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <OfferChart rounds={Math.max(rounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 32, minHeight: 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px 32px" }}>
+                  {stats.map((s) => (
+                    <Stat key={s.label} {...s} />
+                  ))}
+                </div>
+                <div className="nr-chat" style={{ zoom: 1.6, gap: 10, overflow: "hidden" }}>
+                  {model.last3.map((b, i) => (
+                    <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, textAlign: "center" }}>
+              <span style={{ font: "800 96px/1.05 var(--font-display)" }}>Waiting for the next match</span>
+              {model.last ? <span style={{ font: "600 30px var(--font-mono)", color: model.last.action === "accept" ? "var(--ok)" : "var(--warn)", marginTop: 24 }}>Last: {outcomeLabel(model.last)}</span> : null}
+            </div>
+          )}
+        </Root>
+      </div>
+    </div>
+  );
+}
