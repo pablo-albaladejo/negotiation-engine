@@ -90,6 +90,37 @@
     }
   },
   {
+    "id": "price-buyer-narrow-respond",
+    "description": "Solo precio (pct de pronto pago), jugamos de comprador, ZOPA narrow; el ring admite respuesta del rival tras nuestro último movimiento",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "rivalCanRespond": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "narrow",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 4.5
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 5.25
+        }
+      }
+    }
+  },
+  {
     "id": "price-seller-narrow",
     "description": "Solo precio (pct de pronto pago), jugamos de vendedor, ZOPA narrow",
     "issues": [
@@ -103,6 +134,37 @@
     ],
     "rounds": 10,
     "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "narrow",
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 4.5
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 5.25
+        }
+      }
+    }
+  },
+  {
+    "id": "price-seller-narrow-respond",
+    "description": "Solo precio (pct de pronto pago), jugamos de vendedor, ZOPA narrow; el ring admite respuesta del rival tras nuestro último movimiento",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 10,
+        "direction": "higher-better",
+        "weight": 1
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "rivalCanRespond": true,
     "mode": "structured",
     "role": "seller",
     "zopa": "narrow",

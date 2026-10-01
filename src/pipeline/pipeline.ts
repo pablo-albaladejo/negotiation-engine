@@ -105,7 +105,8 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
     rivalOffers: session.rivalOffers.map((o) => ({ ...o })),
     rivalAcceptedOurLast: session.rivalAcceptedOurLast,
     rivalWalked: session.rivalWalked,
-    rivalCanRespond: false,
+    // Sin el campo canónico se supone que el rival no responde tras nuestro último movimiento.
+    rivalCanRespond: session.rivalCanRespond ?? false,
   };
   if (currentOfferUnconfirmed) state.currentOfferUnconfirmed = true;
   if (session.roundLimit !== undefined) state.roundLimit = session.roundLimit;
@@ -206,6 +207,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
     session.round = input.round;
     if (input.roundLimit !== undefined) session.roundLimit = input.roundLimit;
     if (input.deadline !== undefined) session.deadlineMs = Date.parse(input.deadline);
+    if (input.rivalCanRespond !== undefined) session.rivalCanRespond = input.rivalCanRespond;
     record("input", { rivalAction: input.rivalAction, hasOffer: input.rivalOffer !== undefined, hasText: !!input.text }, { round: session.round, roundLimit: session.roundLimit ?? null }, "ok", t0);
 
     // 2. Parser en cuarentena (2 intentos; si falla, solo campos estructurados).

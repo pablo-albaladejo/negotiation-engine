@@ -31,6 +31,11 @@ function buildSchemas(offer: z.ZodType<Offer>) {
       deadline: z.iso.datetime({ offset: true }).optional(),
       /** Tiempo máximo de respuesta declarado por el ring. */
       timeoutMs: z.number().int().positive().optional(),
+      /**
+       * El ring admite respuesta del rival tras nuestro movimiento (también el último). Ausente: se
+       * supone que no, y el último movimiento sin oferta aceptable termina en `walk`.
+       */
+      rivalCanRespond: z.boolean().optional(),
       rivalAction: RivalActionSchema,
       /** Oferta estructurada del rival; ausente en un ring de solo texto. */
       rivalOffer: offer.optional(),
