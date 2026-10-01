@@ -16,7 +16,8 @@ Orden = camino crítico del minuto 0 (grupos 1–5: servidor, extensiones de esc
 
 - [x] 3.1 Tests de enlace (`address === "127.0.0.1"`, sin host configurable), `Host` ajeno ⇒ 403, método no `GET` ⇒ 405, path traversal (codificado, absoluto, enlace simbólico hacia fuera) ⇒ 400/404, config fuera de la lista ⇒ 404; luego `viewer/server/` con `node:http` y guardas de ruta; verificar con `pnpm viewer:test`
 - [x] 3.2 Tests de validación por línea (línea inválida con número y campo, JSON truncado, fichero vacío) sin caída; luego lectores en streaming y endpoints `/api/runs`, `/api/runs/:runId`, `/api/runs/:runId/games/:gameId`, `/api/tournament/:runId/:session`, `/api/scenario-ref` (solo con nombre y hash coincidentes); verificar con `pnpm viewer:test`
-- [ ] 3.3 `pnpm viewer` arranca en un proceso servidor + Vite middleware; verificar a mano que `http://127.0.0.1:5199/` carga y `/api/runs` responde
+- [x] 3.3 `pnpm viewer` arranca en un proceso servidor + Vite middleware; verificar a mano que `http://127.0.0.1:5199/` carga y `/api/runs` responde
+  - Nota: `pnpm viewer` sirve la API y un `index.html` mínimo (Root del sistema de diseño); las pantallas llegan en 5.x. Verificado con curl: `/api/runs` 200 con los runs reales de `results/` y `/` 200.
 
 ## 4. Adaptadores (fichero → modelo de pantalla)
 

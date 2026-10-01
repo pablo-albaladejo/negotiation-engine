@@ -13,7 +13,7 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "paths": {
       "@negotiation-ring/design-system": ["../design-system/src/index.ts"],
       "react": ["./node_modules/@types/react"],
