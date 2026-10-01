@@ -3,7 +3,8 @@ import { defineBox, registerBox } from "../pipeline/box.js";
 import { decideAcceptance, computeTime, type AcceptanceRule, type TimeFields } from "./acceptance.js";
 import { IssueSchema, type Issue } from "./config.js";
 import { enforceOfferGuardrails } from "./guardrails.js";
-import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, type Offer, type OfferMandate } from "./issues.js";
+import { aprOffer, AprBandSchema, enforceAprGuardrails, offerApr, withinAprBand } from "./apr.js";
+import { acceptableForUs, orientIssues, pickIssues, reservationUtility, roundInFavor, utility, type AprBand, type Offer, type OfferMandate } from "./issues.js";
 import { boulwareTarget, generateOffer, offerAboveReservation, openingUtility, reciprocityFactor, sampleEpsilon } from "./offer.js";
 import { OpponentModel } from "./opponent.js";
 import { createRng, deriveSeed } from "./rng.js";
@@ -27,7 +28,7 @@ export type EngineParams = z.infer<typeof EngineParamsSchema>;
 export const EngineInputSchema = z.object({
   /** Issues tal como se declaran en la configuración (dirección desde el comprador). */
   issues: z.array(IssueSchema).min(1),
-  mandate: z.object({ role: z.enum(["buyer", "seller"]), reservation: OfferRecord }),
+  mandate: z.object({ role: z.enum(["buyer", "seller"]), reservation: OfferRecord, apr: AprBandSchema.optional() }),
   params: EngineParamsSchema,
   state: z.object({
     round: z.number().int().min(1),
@@ -87,6 +88,11 @@ function asMandate(input: EngineInput): OfferMandate {
 
 /** Nuestra oferta de apertura, ya por los guardarraíles (también la usa la ruta de emergencia). */
 export function openingOffer(issues: readonly Issue[], mandate: OfferMandate, params: Pick<EngineParams, "openingMargin" | "beta">): Offer {
+  if (mandate.apr) {
+    const synthetic = aprSynthetic(mandate.role, mandate.apr);
+    const apr = openingOffer(synthetic.issues, synthetic.mandate, params).apr!;
+    return enforceAprGuardrails(issues, { ...mandate, apr: mandate.apr }, aprOffer(mandate.apr, mandate.role, apr));
+  }
   const oriented = orientIssues(issues, mandate.role);
   const uRes = reservationUtility(oriented, mandate);
   const proposal = generateOffer(
@@ -102,6 +108,7 @@ export function openingOffer(issues: readonly Issue[], mandate: OfferMandate, pa
  * Puro: sin E/S ni reloj; la misma entrada y semilla dan la misma decisión.
  */
 export function decide(input: EngineInput): Decision {
+  if (input.mandate.apr) return decideApr(input, input.mandate.apr);
   const mandate = asMandate(input);
   const issues = orientIssues(input.issues, mandate.role);
   const { state, params } = input;
@@ -181,6 +188,41 @@ export function decide(input: EngineInput): Decision {
   if (verdict.verdict === "accept" && rivalCurrent) return decision("accept", rivalCurrent, verdict.rule, explain);
   if (verdict.verdict === "walk") return { action: "walk", rule: verdict.rule, explain };
   return decision("counter", counter, ourLast ? verdict.rule : "opening", explain);
+}
+
+/** Issue sintético `apr` con la banda como rango y la reserva en su borde desfavorable. */
+function aprSynthetic(role: OfferMandate["role"], band: AprBand): { issues: Issue[]; mandate: OfferMandate } {
+  return {
+    issues: [{ name: "apr", min: band.min, max: band.max, direction: "higher-better", weight: 1 }],
+    mandate: { role, reservation: { apr: role === "buyer" ? band.min : band.max } },
+  };
+}
+
+/**
+ * Motor con mandato en TAE (design.md D2): el mismo `decide` sobre un único issue sintético `apr`
+ * (la banda), con nuestras ofertas y las del rival convertidas a TAE. La TAE decidida se traduce a
+ * `{ pct, day }` en el día de referencia y pasa por el guardarraíl TAE. Nunca acepta fuera de la
+ * banda (tampoco por el lado favorable): en ese caso repite nuestra última oferta o la apertura.
+ */
+function decideApr(input: EngineInput, band: AprBand): Decision {
+  const role = input.mandate.role;
+  const mandate = { role, reservation: input.mandate.reservation, apr: band };
+  const synthetic = aprSynthetic(role, band);
+  const toApr = (offer: Offer): Offer => ({ apr: Math.min(1e6, Math.max(0, offerApr(band, offer))) });
+  const decided = decide({
+    ...input,
+    issues: synthetic.issues,
+    mandate: synthetic.mandate,
+    state: { ...input.state, ourOffers: input.state.ourOffers.map(toApr), rivalOffers: input.state.rivalOffers.map(toApr) },
+  });
+  const ourLast = input.state.ourOffers.at(-1);
+  const counter = (offer: Offer, rule: string): Decision => ({ action: "counter", offer: enforceAprGuardrails(input.issues, mandate, offer, ourLast), rule });
+  const hold = (rule: string) => counter(ourLast ?? openingOffer(input.issues, mandate, input.params), rule);
+  if (decided.action === "walk") return { action: "walk", rule: decided.rule };
+  if (decided.action === "counter") return counter(aprOffer(band, role, decided.offer.apr!), decided.rule);
+  const agreed = decided.rule === "rival-accepted" ? ourLast : input.state.rivalOffers.at(-1);
+  if (!agreed || !withinAprBand(band, agreed)) return hold("apr-band");
+  return { action: "accept", offer: pickIssues(input.issues, agreed), rule: decided.rule };
 }
 
 /** Utilidad de apertura (para tests y la ruta de emergencia). */

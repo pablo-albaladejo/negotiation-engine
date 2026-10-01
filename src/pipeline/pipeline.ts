@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { AgentConfig } from "../engine/config.js";
 import { DecisionSchema, engineBox, openingOffer, type Decision, type EngineInput } from "../engine/engine.js";
-import { enforceOfferGuardrails } from "../engine/guardrails.js";
-import { acceptableForUs, orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
+import { acceptable, offerGuardrails } from "../engine/apr.js";
+import { orientIssues, pickIssues, sameOffer, type Offer } from "../engine/issues.js";
 import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput } from "../llm/narrator.js";
 import { deterministicParser, parseDeterministic } from "../llm/deterministic-parser.js";
@@ -109,7 +109,7 @@ export function emergencyDecision(session: Session): Decision & { action: "count
   const issues = orientIssues(config.issues, mandate.role);
   const last = ourLastOffer(session);
   const base = last ?? openingOffer(config.issues, mandate, config);
-  return { action: "counter", offer: enforceOfferGuardrails(issues, mandate, base, last), rule: "emergency" };
+  return { action: "counter", offer: offerGuardrails(issues, mandate, base, last), rule: "emergency" };
 }
 
 function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed = false): EngineInput {
@@ -132,7 +132,7 @@ function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed
   }
   return {
     issues: config.issues.map((i) => ({ ...i })),
-    mandate: { role: session.mandate.role, reservation: { ...session.mandate.reservation } },
+    mandate: { role: session.mandate.role, reservation: { ...session.mandate.reservation }, ...(session.mandate.apr ? { apr: { ...session.mandate.apr } } : {}) },
     params: {
       beta: config.beta,
       openingMargin: config.openingMargin,
@@ -408,13 +408,13 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (Object.keys(decision.offer).length !== issues.length) throw new Error("oferta con issues no declarados");
     const offer = pickIssues(issues, decision.offer);
     if (decision.action === "counter") {
-      return { ...decision, offer: enforceOfferGuardrails(issues, mandate, offer, ourLastOffer(session)) };
+      return { ...decision, offer: offerGuardrails(issues, mandate, offer, ourLastOffer(session)) };
     }
     const rivalCurrent = session.rivalOffers.at(-1);
     const last = ourLastOffer(session);
     const isCurrent = rivalCurrent !== undefined && sameOffer(issues, offer, rivalCurrent);
     const isAgreement = session.rivalAcceptedOurLast && last !== undefined && sameOffer(issues, offer, last);
-    if (!(isCurrent || isAgreement) || !acceptableForUs(issues, mandate, offer)) {
+    if (!(isCurrent || isAgreement) || !acceptable(issues, mandate, offer)) {
       throw new Error("accept sobre una oferta que no es la actual, fuera del mandato o por debajo de u(reserva)");
     }
     return { ...decision, offer };
@@ -429,7 +429,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       const last = ourLastOffer(session);
       const oriented = orientIssues(session.config.issues, session.mandate.role);
       const candidate = session.agreement ?? (session.rivalAcceptedOurLast ? last : undefined);
-      const agreed = candidate && acceptableForUs(oriented, session.mandate, candidate) ? candidate : undefined;
+      const agreed = candidate && acceptable(oriented, session.mandate, candidate) ? candidate : undefined;
       if (agreed) {
         session.agreement = { ...agreed };
         const offer = { ...agreed };
