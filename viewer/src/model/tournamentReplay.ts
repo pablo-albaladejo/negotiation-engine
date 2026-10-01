@@ -1,5 +1,5 @@
 import type { TraceLine } from "../../../src/pipeline/trace.js";
-import { explainSeries, roundPanels, splitTrace, type Offer, type RoundPanel } from "./rounds.js";
+import { explainSeries, loggedProvider, protocolBreaks, roundPanels, splitTrace, type Offer, type RoundPanel } from "./rounds.js";
 
 /** Respuesta de `/api/scenario-ref`: nuestro mandato local, con el nombre y hash del fichero leído. */
 export interface ScenarioRef {
@@ -24,6 +24,9 @@ export interface TournamentReplayModel {
   /** "N of M via template": conteos de registros. */
   templateCount: number;
   ourMessageCount: number;
+  /** Registros `protocol`: el rival rompió el protocolo (rutas y códigos de Zod). */
+  protocol: { round: number; issues: { path: string; code: string }[] }[];
+  provider: string | null;
 }
 
 export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: ScenarioRef | null): TournamentReplayModel {
@@ -45,5 +48,7 @@ export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: 
     explain: explainSeries(rounds),
     templateCount: rounds.filter((p) => p.template).length,
     ourMessageCount: rounds.filter((p) => p.ourText !== null).length,
+    protocol: protocolBreaks(records),
+    provider: loggedProvider(records),
   };
 }

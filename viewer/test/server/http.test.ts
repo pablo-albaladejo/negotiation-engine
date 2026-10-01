@@ -45,6 +45,18 @@ describe("enlace solo a loopback", () => {
   });
 });
 
+describe("VIEWER_RESULTS_DIR", () => {
+  it("resultsDir sustituye a <repoRoot>/results", async () => {
+    const other = await startViewerServer({ repoRoot: repo.outside, resultsDir: join(repo.root, "results"), env: { VIEWER_PORT: "0" } });
+    try {
+      const res = await get(other.port, "/api/runs");
+      expect((res.json.data as { runId: string }[]).map((r) => r.runId)).toContain(fx.runId);
+    } finally {
+      await new Promise<void>((resolve) => other.server.close(() => resolve()));
+    }
+  });
+});
+
 describe("Host ajeno ⇒ 403 sin leer ficheros", () => {
   it.each(["evil.example:5199", "evil.example:{port}", "127.0.0.1", "127.0.0.1:{other}", "0.0.0.0:{port}", "[::1]:{port}"])("Host %s", async (host) => {
     const api = vi.fn();

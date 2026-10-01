@@ -1,6 +1,7 @@
 import { ChatMessage, type ChatMessageFlag, OfferChart, Root, Scoreboard, formatNumber } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
-import type { LiveModel, LiveOutcome, Offer } from "../model/index.js";
+import type { LiveModel, LiveOutcome } from "../model/index.js";
+import { offerLabel } from "../ui/offer.js";
 
 export const PROJECTOR = { width: 1920, height: 1080 } as const;
 /** Nombre de nuestro equipo en el marcador (design.md, Open Questions). */
@@ -8,13 +9,6 @@ export const US = "Us";
 
 const num = (v: number, decimals?: number) => formatNumber(v, { locale: "en", ...(decimals !== undefined ? { decimals } : {}) });
 
-/** Oferta registrada como texto: un issue ⇒ su valor; varios ⇒ `issue value` separados por " · ". */
-export function offerLabel(offer: Offer | null): string {
-  if (!offer) return "—";
-  const entries = Object.entries(offer);
-  if (entries.length === 1) return num(entries[0]![1]);
-  return entries.map(([k, v]) => `${k} ${num(v)}`).join(" · ");
-}
 
 function outcomeLabel(o: LiveOutcome): string {
   return o.action === "accept" ? `Deal at ${offerLabel(o.offer)}` : "Walk · no deal";

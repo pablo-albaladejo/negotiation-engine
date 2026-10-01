@@ -69,3 +69,18 @@ export function explainSeries(panels: readonly RoundPanel[]): { round: number; t
     p.explain ? [{ round: p.round, target: p.explain.target, uOffer: p.explain.uOffer, uRival: p.explain.uRival, rivalReserveEstimate: p.explain.rivalReserveEstimate }] : [],
   );
 }
+
+/** Registros `protocol` (rival que rompe el protocolo): solo rutas y códigos de Zod, tal como se escribieron. */
+export function protocolBreaks(records: readonly BoxLine[]): { round: number; issues: { path: string; code: string }[] }[] {
+  return records.flatMap((r) => {
+    if (r.box !== "protocol") return [];
+    const issues = obj(r.output)?.issues;
+    if (!Array.isArray(issues)) return [{ round: r.round, issues: [] }];
+    return [{ round: r.round, issues: issues.flatMap((i) => (obj(i) && typeof obj(i)!.path === "string" && typeof obj(i)!.code === "string" ? [{ path: obj(i)!.path as string, code: obj(i)!.code as string }] : [])) }];
+  });
+}
+
+/** `provider` del último registro que lo lleva (LLM_PROVIDER del agente); `null` si no se registró. */
+export function loggedProvider(records: readonly BoxLine[]): string | null {
+  return [...records].reverse().find((r) => typeof r.provider === "string")?.provider ?? null;
+}

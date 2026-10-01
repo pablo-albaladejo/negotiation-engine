@@ -19,6 +19,8 @@ export interface ViewerServerOptions {
   repoRoot: string;
   /** Resto de rutas (Vite en modo middleware o estáticos); sin él, 404. */
   middleware?: Middleware;
+  /** Raíz de resultados distinta de `<repoRoot>/results` (`VIEWER_RESULTS_DIR`); solo lectura igualmente. */
+  resultsDir?: string;
   /** Inyectable en tests; por defecto, el router de solo lectura sobre `results/` y `config/`. */
   api?: ApiHandler;
 }
@@ -46,8 +48,8 @@ function apiSegments(rawPath: string): string[] | null {
   }
 }
 
-export function createViewerServer({ repoRoot, middleware, api }: ViewerServerOptions): Server {
-  const roots: Roots = rootsFor(repoRoot);
+export function createViewerServer({ repoRoot, resultsDir, middleware, api }: ViewerServerOptions): Server {
+  const roots: Roots = { ...rootsFor(repoRoot), ...(resultsDir ? { results: resultsDir } : {}) };
   const handle: ApiHandler = api ?? ((segments, query) => handleApi(roots, segments, query));
 
   const server = createServer((req, res) => {

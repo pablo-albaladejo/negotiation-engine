@@ -1,8 +1,11 @@
-import { Card } from "@negotiation-ring/design-system";
-import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "../ui/states.js";
+import { Card, ChatMessage, OfferChart } from "@negotiation-ring/design-system";
+import { EmptyStateCard, EmptyZopaBanner, InvalidLogBanner, LoadingCard, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+
+const TEMPLATE_FLAG = [{ kind: "fallback" as const, label: "template · LLM down" }];
 
 /**
- * P8: estados límite del minuto 0 (log inválido, run vacío, carga en curso). Ninguno deja la pantalla
+ * P8: estados límite (log inválido, run vacío, carga en curso, rival que rompe el protocolo, ZOPA
+ * vacía con retirada, LLM caído). Las pantallas P3/P4 usan los mismos componentes con datos reales. Ninguno deja la pantalla
  * en blanco. Datos de ejemplo iguales en forma a los que produce la API real (`ReadError`).
  */
 export function StatesScreen() {
@@ -18,6 +21,29 @@ export function StatesScreen() {
             errors={[{ file: "results/r-1003.jsonl", line: 1834, path: "offer.value", message: "expected number, got string \"one hundred four\"" }]}
             validCount={1833}
           />
+        </Card>
+        <Card title="Opponent breaks protocol">
+          <span className="nr-cfg">ring-session-7 · tournament · R3</span>
+          <ProtocolBreakBanner round={3} detail="rivalOffer.pct (invalid_type)" />
+        </Card>
+        <Card title="Empty ZOPA → walk">
+          <EmptyZopaBanner ours="80" rival="76" walked />
+          <OfferChart
+            rounds={10}
+            yDomain={[60, 140]}
+            ourOffers={[{ round: 1, value: 124 }, { round: 2, value: 112 }, { round: 3, value: 104 }]}
+            theirOffers={[{ round: 1, value: 64 }, { round: 2, value: 68 }, { round: 3, value: 70 }]}
+            ourReserve={80}
+            theirReserve={76}
+            end={{ round: 3, kind: "walk", label: "walk" }}
+          />
+        </Card>
+        <Card title="LLM down · everything on template">
+          <TemplateBanner templateCount={5} ourMessageCount={5} provider="claude-cli" />
+          <div className="nr-chat" style={{ marginTop: "var(--space-3)" }}>
+            <ChatMessage side="us" round={4} offer={124} text="Our offer this round is 124." flags={TEMPLATE_FLAG} />
+            <ChatMessage side="us" round={5} offer={119} text="Our offer this round is 119." flags={TEMPLATE_FLAG} />
+          </div>
         </Card>
         <Card title="Run with no matches">
           <EmptyStateCard title="r-1005 has no matches" body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />

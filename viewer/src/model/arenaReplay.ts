@@ -1,6 +1,6 @@
 import type { TranscriptLine } from "../../../src/arena/results-schema.js";
 import type { TraceLine } from "../../../src/pipeline/trace.js";
-import { explainSeries, roundPanels, splitTrace, type Offer, type RoundPanel } from "./rounds.js";
+import { explainSeries, loggedProvider, roundPanels, splitTrace, type Offer, type RoundPanel } from "./rounds.js";
 
 export interface ArenaReplayModel {
   game: {
@@ -17,7 +17,13 @@ export interface ArenaReplayModel {
     agreedBy: "agent" | "rival" | null;
     surplusShare: number | null;
     zopaEmpty: boolean;
+    /** Error registrado por la arena (p. ej. con `endReason: "rival-error"`). */
+    error: string | null;
+    /** "N of M via template": `metrics.templateFallbacks` de N mensajes nuestros del transcript. */
+    templateCount: number;
+    ourMessageCount: number;
   };
+  provider: string | null;
   /** Reservas de ambas partes (transcript v2, solo arena); `null` en v1 ("not logged"). */
   reserves: { ours: Offer; rival: Offer } | null;
   offers: { ours: { round: number; offer: Offer }[]; rival: { round: number; offer: Offer }[] };
@@ -32,10 +38,12 @@ export interface ArenaReplayModel {
 /** P3: una línea de `transcripts.jsonl` y, si existe, su traza (`traces/<gameId>.jsonl`). */
 export function arenaReplayModel(line: TranscriptLine, trace: readonly TraceLine[] | null): ArenaReplayModel {
   let rounds: RoundPanel[] | null = null;
+  let provider: string | null = null;
   if (trace) {
     const { header, records } = splitTrace(trace);
     if (header && header.mode !== "arena") throw new Error(`traza de ${header.sessionId}: modo ${header.mode}, se esperaba arena`);
     rounds = roundPanels(records);
+    provider = loggedProvider(records);
   }
   const moves = (from: "agent" | "rival") =>
     line.transcript.flatMap((e) => (e.from === from && e.offer ? [{ round: e.round, offer: e.offer }] : []));
@@ -54,7 +62,11 @@ export function arenaReplayModel(line: TranscriptLine, trace: readonly TraceLine
       agreedBy: line.agreedBy ?? null,
       surplusShare: line.metrics.surplusShare,
       zopaEmpty: line.metrics.zopaEmpty,
+      error: line.error ?? null,
+      templateCount: line.metrics.templateFallbacks,
+      ourMessageCount: line.transcript.filter((e) => e.from === "agent").length,
     },
+    provider,
     reserves: line.reserves ?? null,
     offers: { ours: moves("agent"), rival: moves("rival") },
     chat: line.transcript.map((e) => ({ round: e.round, from: e.from, action: e.action, text: e.text, offer: e.offer ?? null })),

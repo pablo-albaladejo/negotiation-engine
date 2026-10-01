@@ -45,3 +45,38 @@ export function EmptyStateCard({ title, body, command }: { title: string; body: 
     </Card>
   );
 }
+
+/** P8: el rival rompió el protocolo. `detail`: rutas y códigos de Zod (torneo, registro `protocol`) o el error de la arena. */
+export function ProtocolBreakBanner({ round, detail }: { round: number | null; detail: string }) {
+  return (
+    <WarningBanner tone="warn" title={`Opponent breaks protocol${round !== null ? ` · R${round}` : ""}`}>
+      <Flag kind="walk">breaks protocol</Flag>
+      <span style={{ font: "13px var(--font-mono)", color: "var(--ink)" }}>{detail}</span>
+    </WarningBanner>
+  );
+}
+
+/** P8: LLM caído. Solo conteos registrados ("N of M via template"); sin hora ni porcentaje. */
+export function TemplateBanner({ templateCount, ourMessageCount, provider }: { templateCount: number; ourMessageCount: number; provider: string | null }) {
+  const all = ourMessageCount > 0 && templateCount === ourMessageCount;
+  return (
+    <WarningBanner tone="info" title={all ? `LLM down · ${provider ? `LLM_PROVIDER ${provider} · ` : ""}everything on template` : "Some messages on template"}>
+      <Flag kind="fallback">template</Flag>
+      <span style={{ color: "var(--ink)" }}>
+        {templateCount} of {ourMessageCount} via template. The engine decides the numbers and the validator still confirms them.
+      </span>
+    </WarningBanner>
+  );
+}
+
+/** P8: ZOPA vacía con retirada (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. */
+export function EmptyZopaBanner({ ours, rival, walked }: { ours: string; rival: string; walked: boolean }) {
+  return (
+    <WarningBanner tone="info" title={`Empty ZOPA${walked ? " → walk" : ""}`}>
+      <Flag kind={walked ? "walk" : "neutral"}>{walked ? "walk" : "empty ZOPA"}</Flag>
+      <span style={{ color: "var(--ink)" }}>
+        Their reserve ({rival}) and ours ({ours}) do not overlap: no deal is possible.
+      </span>
+    </WarningBanner>
+  );
+}
