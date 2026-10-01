@@ -18,7 +18,9 @@ Maneja errores de esquema, timeouts, excepciones, y asegura respuesta siempre.
 - **`box.ts`** — Sistema de cajas (`defineBox`, `runBox`): desacoplamiento, aislamiento de timeouts, aislamiento de fallas.
 - **`session.ts`** — `Session` y `SessionStore`: persistencia de estado entre turnos (historial, ofertas, decisiones).
 - **`binding.ts`** — `bindRivalMove()`: mapea acción rival a estructura `EngineInput`.
-- **`reconcile.ts`** — `reconcileTextOffer()`: en modo solo texto acepta la oferta extraída solo si el parser determinista y el LLM coinciden en cada issue (sin LLM, basta el determinista); si no coinciden, el turno va sin oferta del rival. Es la puerta que impide que el LLM fije una cifra por su cuenta: no quitarla.
+- **`reconcile.ts`** — `reconcileOffer()`: oferta del rival desde el texto según `parser.policy` (`llm-primary-verified`: cada cifra del LLM verificada por evidencia literal con `src/llm/verify.ts` y veto del determinista; `dual-strict` = `reconcileTextOffer()`, ambos parsers deben coincidir; `deterministic-only`). Registra confianza y motivo en la caja `reconcile`; las evidencias van solo a la caja local `evidence`. Es la puerta que impide que el LLM fije una cifra por su cuenta: no quitarla.
+- **`runtime-config.ts`** — `loadRuntimeConfig()`/`resolveRuntimeConfig()`: `config/runtime.json` (o `RUNTIME_CONFIG`), esquema cerrado, `ring.mode = hybrid` por defecto y valores por modo; su huella (`runtimeConfig`) va en cada entrada de la traza.
+- **`binding.ts`** — además, `verifyTextAcceptance()`: aceptación leída en el texto (solo turnos `message` con `acceptance.signal = parser-intent-verified`), siempre sobre nuestra última oferta.
 - **`otel.ts`** — Exporta traza a OpenTelemetry (spans, atributos sanitizados).
 - **`log.ts`** — Logger con pino. Redacta rutas de `explain` del motor (censura números sensibles).
 - **`trace.ts`** — `TraceSink`: acumula eventos de cajas para debugging.
@@ -28,7 +30,7 @@ Maneja errores de esquema, timeouts, excepciones, y asegura respuesta siempre.
 Desde root `AGENTS.md`:
 
 - **Siempre hay respuesta**: timeout o error → plantilla determinista.
-- **Local-only boxes** (`rivalText`, `protocol`): solo en la traza local (`results/*.jsonl`), nunca en OTel/Langfuse.
+- **Local-only boxes** (`rivalText`, `protocol`, `evidence`): solo en la traza local (`results/*.jsonl`), nunca en OTel/Langfuse.
 - **Redactados en pino y OTel** (`explain`, `mandate`, `reservation`, `config`): censurados porque `explain` es equivalente a la reserva.
 - **La traza local** (`results/*.jsonl`) conserva todos los campos.
 - **Presupuesto del turno**: `Math.max(0, timeoutMs - turnSafetyMarginMs)` si el ring envía `timeoutMs`; en otro caso, `config.turnBudgetMs` (obligatorio, sin defecto). Solo el margen default a 500 ms.

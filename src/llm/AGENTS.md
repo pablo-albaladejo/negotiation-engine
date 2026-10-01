@@ -5,7 +5,7 @@ Parse el texto del rival en JSON tipado, redacta la respuesta en nombre del agen
 ## Propósito
 
 Aisla el LLM en dos cajas desconectadas:
-1. **Parser**: lee el texto rival sin herramientas y devuelve JSON validado con Zod. Su oferta solo llega al motor vía `reconcileTextOffer` (el parser determinista y el LLM deben coincidir en cada issue); intención y tácticas solo van al narrador. Nunca fija mandato, reserva ni identidad.
+1. **Parser**: lee el texto rival sin herramientas (cualquier idioma) y devuelve JSON validado con Zod: cifras con evidencia literal (`figures`), intención con `intentEvidence` e idioma. Sus cifras solo llegan al motor vía `reconcileOffer` (`src/pipeline/reconcile.ts`) según `parser.policy`, tras `verifyFigures` (`verify.ts`); intención y tácticas solo van al narrador y a la aceptación verificada. Nunca fija mandato, reserva ni identidad.
 2. **Narrador**: redacta la respuesta (texto) a partir de la decisión del motor ya tomada.
 
 La validación final (el número en el texto = el número del motor) garantiza que no hay fuga de autoridad.
@@ -20,7 +20,9 @@ La validación final (el número en el texto = el número del motor) garantiza q
 - **`template.ts`** — `templateNarrator` y `renderTemplate()`: plantilla determinista sin LLM (fallback si timeout o error).
 - **`validator.ts`** — `validateText()`: comprueba que cifra en texto = cifra del motor.
 - **`provider.ts`** — Factory: instancia parser y narrador según `LLM_PROVIDER` (none, claude-cli, anthropic-api).
-- **`numbers.ts`** — Normaliza y extrae números del texto rival (límpieza, manejo de rangos y ambigüedad).
+- **`numbers.ts`** — Normaliza y extrae números del texto rival: `foldText()` (NFKC, sin `\p{Cf}`, dígitos `\p{Nd}` de cualquier escritura, separadores locales), rangos y ambigüedad.
+- **`verify.ts`** — `verifyFigures()`: verificación determinista de cada cifra del LLM (el fragmento aparece en el texto y su lectura es el valor, dentro del rango del issue).
+- **`language.ts`** — `detectLanguage()`/`turnLanguage()`: idioma BCP-47 del rival con respaldo por escritura Unicode.
 - **`leak.ts`** — `detectLeak(text, {issues, reservation, decided})`: verifica que nuestro texto saliente no revela la reserva ni el mandato (las cifras decididas están exentas).
 
 ## Invariantes

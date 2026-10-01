@@ -21,7 +21,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 ## 4. Aceptación, retirada y acuerdo desde el texto
 
 - [x] 4.1 Tabla de enlace ampliada (señal `ring-action` vs `parser-intent-verified`, evidencia de intención, negación es/en, sin oferta previa, cifras iguales/distintas/sin verificar, `llm-only` no acepta) y luego `src/pipeline/binding.ts`; verificar con `pnpm test`
-- [ ] 4.2 Tests de `walkSignal` (`trace-only` no marca `rivalWalked`) y del acuerdo registrado (origen, evidencia, respuestas idempotentes tras el acuerdo) y luego `session.ts`/`pipeline.ts`; verificar con una partida sembrada contra un bot que acepta por texto
+- [ ] 4.2 Tests de `walkSignal` (`trace-only` no marca `rivalWalked`) y del acuerdo registrado (origen, evidencia, respuestas idempotentes tras el acuerdo) y luego `session.ts`/`pipeline.ts`; verificar con una partida sembrada contra un bot que acepta por texto — implementado y probado por turnos (`test/pipeline/text-acceptance.test.ts`); falta la partida sembrada, que necesita el bot de texto completo de 7.1
 - [x] 4.3 Adaptador HTTP en `text-only` (entrada solo texto ⇒ `message`, ronda derivada, salida solo texto; `hybrid` con acción del ring) en `src/protocol/http.ts`; verificar con la batería común de contrato y fixtures nuevos en `test/fixtures/ring/`
 
 ## 5. Validador, fugas y plantillas independientes del idioma
