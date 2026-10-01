@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { z } from "zod";
+import { isLanguageTag } from "../llm/language.js";
 
 /**
  * Configuración de ejecución (`config/runtime.json`, ruta cambiable con `RUNTIME_CONFIG`): las
@@ -19,15 +20,6 @@ export type ParserPolicy = (typeof PARSER_POLICIES)[number];
 export type AcceptanceSignal = (typeof ACCEPTANCE_SIGNALS)[number];
 export type WalkSignal = (typeof WALK_SIGNALS)[number];
 export type ProviderName = (typeof PROVIDERS)[number];
-
-function isLanguageTag(value: string): boolean {
-  if (value === "und") return true;
-  try {
-    return Intl.getCanonicalLocales(value).length === 1;
-  } catch {
-    return false;
-  }
-}
 
 const LanguageTag = z.string().min(1).max(35).refine(isLanguageTag, { message: "etiqueta BCP-47 inválida" });
 

@@ -13,8 +13,8 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 3. Parser con evidencia literal y políticas
 
-- [ ] 3.1 Tests del esquema LLM nuevo (`figures` con evidencia, `intentEvidence`, `language` BCP-47, campos prohibidos siguen rechazados) y luego `src/llm/parser.ts` y el prompt de `src/llm/llm-parser.ts` (copiar el fragmento literal, cualquier idioma); verificar con respuestas grabadas
-- [ ] 3.2 Tabla de casos de `verifyFigures` (aparición, dígitos de otras escrituras, desambiguación por rango, `value-mismatch`, palabras es/en, `llm-only`/`confirm`, oferta parcial) y luego `src/llm/verify.ts`; verificar con `pnpm test`
+- [x] 3.1 Tests del esquema LLM nuevo (`figures` con evidencia, `intentEvidence`, `language` BCP-47, campos prohibidos siguen rechazados) y luego `src/llm/parser.ts` y el prompt de `src/llm/llm-parser.ts` (copiar el fragmento literal, cualquier idioma); verificar con respuestas grabadas
+- [x] 3.2 Tabla de casos de `verifyFigures` (aparición, dígitos de otras escrituras, desambiguación por rango, `value-mismatch`, palabras es/en, `llm-only`/`confirm`, oferta parcial) y luego `src/llm/verify.ts`; verificar con `pnpm test`
 - [ ] 3.3 Tabla de casos de las tres políticas y `onLlmFailure` (incluido el veto determinista) y luego `src/pipeline/reconcile.ts` y la rama de solo texto de `src/pipeline/pipeline.ts`, con confianza y motivo en la caja `reconcile` y evidencias solo en la traza local; verificar con `pnpm test test/pipeline/` y que `dual-strict` reproduce las doradas
 - [ ] 3.4 Detección de idioma de respaldo por escritura Unicode y palabras es/en en `src/llm/deterministic-parser.ts`, idioma en la sesión (`src/pipeline/session.ts`); verificar con fixtures por escritura
 
