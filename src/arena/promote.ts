@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { parseConfig, type AgentConfig } from "../engine/config.js";
 import { evaluateGate, formatGate, type Criterion, type GatePhase, type GateResult } from "./gate.js";
@@ -148,8 +149,13 @@ export async function promote(options: PromoteOptions): Promise<PromoteResult> {
     dryRun,
     promoted: false,
   };
-  const writeGate = (extra: Record<string, unknown> = {}) => writeFileSync(gatePath, `${JSON.stringify({ ...gateFile, ...extra }, null, 2)}\n`);
-  writeGate();
+  const writeGate = async (extra: Record<string, unknown> = {}) => {
+    const content = `${JSON.stringify({ ...gateFile, ...extra }, null, 2)}\n`;
+    const tmpPath = `${gatePath}.tmp`;
+    await writeFile(tmpPath, content, "utf8");
+    await rename(tmpPath, gatePath);
+  };
+  await writeGate();
 
   if (dryRun) log(`en seco: gate.json en ${gatePath}; ${championPath} no se toca`);
   if (!gate.pass) return { promoted: false, reason: `puerta rechazada: ${gate.failed.map((c) => `${c.phase}/${c.check}`).join(", ")}`, gate, dryRun, gatePath };
@@ -181,7 +187,7 @@ export async function promote(options: PromoteOptions): Promise<PromoteResult> {
   };
   parseConfig(next, "campeona nueva");
   writeFileSync(championPath, `${JSON.stringify(next, null, 2)}\n`);
-  writeGate({ promoted: true, promotedVersion: version });
+  await writeGate({ promoted: true, promotedVersion: version });
   log(`campeona v${version} escrita en ${championPath}; commit sugerido: champion v${version}`);
   return { promoted: true, gate, version, dryRun, gatePath };
 }

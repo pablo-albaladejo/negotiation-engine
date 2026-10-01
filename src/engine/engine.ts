@@ -163,10 +163,12 @@ export function decide(input: EngineInput): Decision {
   const uOpen = openingUtility(uRes, params.openingMargin);
   const target = boulwareTarget(time.t, uOpen, uRes, params.beta);
   const uRival = rivalCurrent ? utility(issues, rivalCurrent) : null;
+  // Avoid exposing the reservation offer when target is at or below reservation utility (with tolerance)
+  const EPS = 1e-6;
   const explain: Explain = {
     t: time.t,
     target,
-    targetOffer: target <= uRes ? null : roundInFavor(issues, offerAboveReservation(issues, mandate.reservation, target)),
+    targetOffer: target <= uRes + EPS ? null : roundInFavor(issues, offerAboveReservation(issues, mandate.reservation, target)),
     step: ourLast ? utility(issues, ourLast) - acceptance.ourNextUtility : null,
     uOffer: acceptance.ourNextUtility,
     uRival,
