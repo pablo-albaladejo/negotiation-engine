@@ -19,15 +19,16 @@ Self-play local:
 - **`paired.ts`** — `runPaired`/`comparePaired`: compara candidata vs campeona con mismos bots y semillas.
 - **`promote.ts`** — Puerta: revalida campeona, evalúa candidata, decide si promueve a `config/champion.json`.
 - **`gate.ts`** — Criterio de decisión de promoción (mejora ≥ minEffectPp con 0 violaciones).
-- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`, `--llm-provider` (defecto `LLM_PROVIDER` o `none`; sin red salvo que se pida) y `--no-narrator` (solo parser LLM, para medir).
+- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--agent-a2a`, `--rival-a2a`, `--agent-mcp`, `--rival-mcp` (mismo papel que `--agent-url`/`--rival-url` por A2A o MCP), `--timeout-ms`, `--llm-provider` (defecto `LLM_PROVIDER` o `none`; sin red salvo que se pida) y `--no-narrator` (solo parser LLM, para medir).
 - **`promote-main.ts`** — Puerta de promoción `pnpm promote`: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
 - **`participant.ts`** — Interfaz: agente (config o HTTP) o bot.
 - **`agent-participant.ts`** — Wrapper: agente config como participante.
-- **`external.ts`** — Wrapper: agente HTTP externo como participante.
-- **`scenario.ts`** — Escenarios: buyer, seller, con variaciones (wide, narrow, extreme).
+- **`external.ts`** — Wrapper: agente externo como participante (HTTP, A2A con `createA2AParticipant`, MCP con `createMcpParticipant`).
+- **`serve-agent.ts`** — `pnpm arena:serve-agent --scenario <id> --transport a2a|mcp|http --port <n>`: nuestro agente con el mandato del escenario; semilla derivada del `gameId` (`arenaSeedFor`), así repite la partida en proceso.
+- **`scenario.ts`** — Escenarios: buyer, seller, con variaciones (wide, narrow, extreme). Opcionales: `optIn` (fuera de la ejecución por defecto; `loadCatalog` los omite salvo con la opción includeOptIn) y `mandateUnit: "apr"` + `baseDays` + banda `apr { min, max }` por parte (mandato en % TAE, `aprZopa`). Escenarios `apr-buyer-wide`, `apr-seller-wide`, `apr-buyer-narrow`, `apr-seller-narrow` (opt-in).
 - **`report.ts`** — Formato de salida: tabla, JSON.
-- **`results-schema.ts`** — Zod: esquema de resultados guardados.
-- **`runner.ts`** — Ejecutor de partidas (session state, turnos, resultado final).
+- **`results-schema.ts`** — Zod: esquema de resultados guardados. `transcripts.jsonl` v3 (aditivo): fin protocol_violation, `protocolViolation`, `metrics.protocolViolation`; v1 y v2 siguen validando.
+- **`runner.ts`** — Ejecutor de partidas (session state, turnos, resultado final). Una salida fuera del esquema canónico, de otra sesión o de otra ronda (`checkTurnOutput`) termina con endReason protocol_violation, excedente 0 y `protocolViolation { by, detail }`; errores de red siguen siendo `*-error`.
 - **`stats.ts`** — Agregación de métricas.
 
 ## Invariantes
@@ -57,6 +58,13 @@ pnpm tune
 # Agente HTTP externo
 pnpm dummy:serve --port 8799 &
 pnpm arena --agent-url http://localhost:8799 --seeds 5
+
+# Ring estilo Causa Prima: escenarios apr y bot causa-prima-engine (opt-in, se piden por nombre)
+pnpm arena --scenarios apr-buyer-wide,apr-seller-wide --rivals causa-prima-engine,boulware --seeds 5
+
+# Nuestro agente por A2A
+pnpm arena:serve-agent --scenario apr-buyer-wide --transport a2a --port 8797 &
+pnpm arena --agent-a2a http://127.0.0.1:8797 --scenarios apr-buyer-wide --rivals causa-prima-engine --seeds 5
 
 # Reportes
 pnpm eval:dummy 5  # vs dummy en local

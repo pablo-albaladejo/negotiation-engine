@@ -15,12 +15,14 @@ Realiza cálculos deterministas sobre el estado de la sesión y produce una deci
 - **`acceptance.ts`** — Reglas de aceptación: `AC_next` (oferta rival ≥ última nuestra?), `AC_time` (tiempo agotándose?), `AC_combi` (combinada).
 - **`opponent.ts`** — Modelo del rival: historial de ofertas, concesión estimada, predicción.
 - **`guardrails.ts`** — `enforceGuardrails()`: valida que la oferta no viole mandato y es monótona.
+- **`apr.ts`** — Mandato opcional en % TAE (`mandate.apr`): `aprOf` (TAE = pct/(100 − pct) × 365/(baseDays − day) × 100), `pctForApr`, `withinAprBand`, `enforceAprGuardrails` (banda + monotonía en TAE) y los despachos `offerGuardrails` / `acceptable` que usa el pipeline. Con `apr`, `decide` delega en `decideApr` (mismo motor sobre un issue sintético `apr`); sin `apr`, decisiones idénticas byte a byte (`test/engine/baseline-decisions.test.ts`).
 - **`rng.ts`** — RNG determinista (seed reproducible).
 
 ## Invariantes
 
 Desde root `AGENTS.md`:
 
+- **Con mandato `apr`, ninguna oferta ni aceptación sale de la banda TAE** (`enforceAprGuardrails`, repetido en el pipeline vía `offerGuardrails`/`acceptable`).
 - **Toda oferta pasa por `enforceGuardrails` u `enforceOfferGuardrails`**: nunca cruza el mandato y concede monótonamente (u(oferta) ≥ u(reserva) y u(oferta) ≤ u(última oferta nuestra)).
 - **Decisión = (acción, oferta, explicación)**: acción y oferta son vinculantes; explicación es aditiva (no cambia lo anterior).
 - **Explicación nunca se redacta aquí**: solo schema. La redacción la hace `src/llm/narrator.ts` en la salida del turno.

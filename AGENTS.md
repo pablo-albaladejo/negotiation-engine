@@ -107,7 +107,8 @@ Ver `.env.example`.
 | `pnpm test` | Tests unitarios + propiedades (fast-check). Must pass antes de commit. |
 | `pnpm test:watch` | Vitest en modo watch. |
 | `pnpm typecheck` | TypeScript. |
-| `pnpm arena` | Self-play: candidata vs campeona, todos los bots/roles/escenarios. |
+| `pnpm arena` | Self-play: candidata vs campeona, todos los bots/roles/escenarios (sin los opt-in). |
+| `pnpm arena:serve-agent` | Nuestro agente con el mandato de un escenario de arena por A2A, MCP o HTTP en 127.0.0.1 (para `--agent-a2a`/`--agent-mcp`). |
 | `pnpm promote` | Puerta de promoción: revalida campeona, evalúa candidata, decide si promueve. |
 | `pnpm tune` | Barrido de parámetros en el espacio del motor. |
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
