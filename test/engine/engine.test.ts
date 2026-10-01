@@ -2,8 +2,15 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { decide, engineBox, type EngineInput } from "../../src/engine/engine.js";
+import { DecisionSchema, decide, engineBox, type EngineInput } from "../../src/engine/engine.js";
 import { createContext, runBox } from "../../src/pipeline/box.js";
+import { issuesArb, mandateArb, offerArb } from "./arbitraries.js";
+
+/** Decisión sin `explain`: lo que devolvía el motor antes de esta extensión aditiva. */
+function withoutExplain(decision: ReturnType<typeof decide>): unknown {
+  const { explain: _explain, ...rest } = decision as Record<string, unknown>;
+  return rest;
+}
 
 interface EngineFixture {
   description: string;
@@ -52,5 +59,61 @@ describe("motor determinista", () => {
   it("el motor no recibe texto: una afirmación del rival no puede forzar accept", () => {
     expect(Object.keys(base.state)).not.toContain("text");
     expect(decide(base).action).not.toBe("accept");
+  });
+});
+
+describe("explain: extensión aditiva, no cambia la decisión", () => {
+  it("las doradas y fixtures dan la misma acción/oferta/regla ignorando explain", () => {
+    for (const [, fixture] of fixtures) {
+      const decision = decide(fixture.input);
+      expect(withoutExplain(decision)).toEqual({ action: fixture.expected.action, rule: fixture.expected.rule, ...("offer" in decision ? { offer: decision.offer } : {}) });
+    }
+  });
+
+  const paramsArb = fc.record({
+    beta: fc.double({ min: 0, max: 5, noNaN: true }),
+    openingMargin: fc.double({ min: 0, max: 1, noNaN: true }),
+    acceptMargin: fc.double({ min: 0, max: 1, noNaN: true }),
+    acTimeThreshold: fc.double({ min: 0, max: 1, noNaN: true }),
+    noise: fc.double({ min: 0, max: 0.99, noNaN: true }),
+    defaultHorizon: fc.integer({ min: 1, max: 20 }),
+  });
+
+  it("propiedad: decisión sin explain es compatible con el esquema previo, explain no filtra reserva/mandato y es determinista", () => {
+    fc.assert(
+      fc.property(
+        issuesArb.chain((issues) =>
+          fc.record({
+            issues: fc.constant(issues),
+            mandate: mandateArb(issues),
+            params: paramsArb,
+            round: fc.integer({ min: 1, max: 12 }),
+            ourOffers: fc.array(offerArb(issues), { maxLength: 3 }),
+            rivalOffers: fc.array(offerArb(issues, 0.2), { maxLength: 5 }),
+            rivalAcceptedOurLast: fc.boolean(),
+            seed: fc.integer(),
+          }),
+        ),
+        (g) => {
+          const state: EngineInput["state"] = {
+            round: g.round,
+            ourOffers: g.ourOffers,
+            rivalOffers: g.rivalOffers,
+            rivalAcceptedOurLast: g.rivalAcceptedOurLast,
+            rivalWalked: false,
+          };
+          const input: EngineInput = { issues: g.issues, mandate: g.mandate, params: g.params, state, seed: g.seed };
+          const decision = decide(input);
+          // Byte-idéntica con y sin explain: misma entrada/semilla ⇒ misma acción, oferta y regla.
+          const again = decide(structuredClone(input));
+          expect(withoutExplain(again)).toEqual(withoutExplain(decision));
+          expect(DecisionSchema.safeParse(withoutExplain(decision)).success).toBe(true);
+          if ("explain" in decision && decision.explain) {
+            expect(JSON.stringify(decision.explain)).not.toMatch(/"reservation"|"mandate"/);
+          }
+        },
+      ),
+      { numRuns: 300 },
+    );
   });
 });

@@ -3,7 +3,7 @@ import type { TraceRecord, TraceSink } from "./box.js";
 import { REDACT_PATHS } from "./log.js";
 
 /** Claves que nunca salen en un span: las mismas que censura el logger (mandato, reserva, config). */
-const REDACT_KEYS = new Set(REDACT_PATHS.map((p) => p.split(".").at(-1)!));
+const REDACT_KEYS = new Set([...REDACT_PATHS.map((p) => p.split(".").at(-1)!), "explain"]);
 
 export function redactForExport(value: unknown, depth = 0): unknown {
   if (depth > 8 || value === null) return value;
