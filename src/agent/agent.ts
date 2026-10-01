@@ -7,6 +7,7 @@ import type { OfferMandate } from "../engine/issues.js";
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
 import { createProviderClient, currentProvider, type LlmClient, type LlmProvider } from "../llm/provider.js";
+import { loadRuntimeConfig, type RuntimeConfig } from "../pipeline/runtime-config.js";
 import type { Logger, TraceSink } from "../pipeline/box.js";
 import { createPipeline, type Brain } from "../pipeline/pipeline.js";
 import { SessionStore } from "../pipeline/session.js";
@@ -104,6 +105,8 @@ export interface AgentOptions {
   provider?: LlmProvider;
   /** Cliente LLM inyectado (tests); por defecto el de `provider`. */
   llmClient?: LlmClient;
+  /** Configuración de ejecución; por defecto `config/runtime.json` (o `RUNTIME_CONFIG`). */
+  runtime?: RuntimeConfig;
   logger?: Logger;
   trace?: TraceSink;
   auth?: { header: string; value: string };
@@ -150,13 +153,15 @@ export function createAgent(options: AgentOptions): Agent {
   const champion = createChampionProvider(options.configPath, logger);
   const mandate = loadScenario(options.scenarioPath, champion.initial);
   const store = new SessionStore({ mandateFor: () => mandate, configFor: champion.current, ...(options.seedFor ? { seedFor: options.seedFor } : {}) });
-  const deps: Parameters<typeof createPipeline>[0] = { store, logger, provider };
-  // Con un proveedor LLM: parser en cuarentena (doble lectura con el determinista) y narrador.
-  const client = options.llmClient ?? createProviderClient(provider);
-  if (client) {
-    deps.parser = createLlmParser(client);
-    deps.narrator = createLlmNarrator(client);
-  }
+  // Configuración de ejecución: un valor inválido impide arrancar (lanza nombrando la clave).
+  const runtime = options.runtime ?? loadRuntimeConfig({ env: { ...process.env, LLM_PROVIDER: provider } });
+  logger.info("runtime_config", { fingerprint: runtime.fingerprint, mode: runtime.ring.mode, parserPolicy: runtime.parser.policy, acceptanceSignal: runtime.acceptance.signal, walkSignal: runtime.acceptance.walkSignal, parserProvider: runtime.llm.parser.provider, narratorProvider: runtime.llm.narrator.provider });
+  const deps: Parameters<typeof createPipeline>[0] = { store, logger, provider, runtime };
+  // Proveedor por caja: parser en cuarentena (con el determinista según `parser.policy`) y narrador.
+  const parserClient = options.llmClient ?? createProviderClient(runtime.llm.parser.provider);
+  const narratorClient = options.llmClient ?? createProviderClient(runtime.llm.narrator.provider);
+  if (parserClient) deps.parser = createLlmParser(parserClient);
+  if (narratorClient) deps.narrator = createLlmNarrator(narratorClient);
   if (options.trace) deps.trace = options.trace;
   const brain = createPipeline(deps);
   const issueNames = () => champion.current().issues.map((i) => i.name);

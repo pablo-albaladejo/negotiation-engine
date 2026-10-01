@@ -15,6 +15,7 @@ import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
 import { createProviderClient, LlmProviderSchema } from "../llm/provider.js";
+import { loadRuntimeConfig, type RuntimeOverrides } from "../pipeline/runtime-config.js";
 
 export interface ArenaCliResult {
   runDir: string;
@@ -78,6 +79,13 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "timeout-ms": { type: "string", default: "5000" },
       "llm-provider": { type: "string", default: process.env.LLM_PROVIDER ?? "none" },
       "no-narrator": { type: "boolean", default: false },
+      "runtime-config": { type: "string" },
+      "ring-mode": { type: "string" },
+      "parser-policy": { type: "string" },
+      "acceptance-signal": { type: "string" },
+      "narrator-language": { type: "string" },
+      "parser-provider": { type: "string" },
+      "narrator-provider": { type: "string" },
     },
     strict: true,
   });
@@ -95,12 +103,26 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   // Proveedor LLM opcional (por defecto `none`, sin red): `--llm-provider claude-cli` activa el
   // parser en cuarentena y, salvo `--no-narrator`, el narrador LLM (plantilla si no).
   const llmProvider = LlmProviderSchema.parse(values["llm-provider"]);
-  const llmClient = createProviderClient(llmProvider);
-  const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator> } = {};
-  if (llmClient) {
-    agentDeps.parser = createLlmParser(llmClient);
-    if (!values["no-narrator"]) agentDeps.narrator = createLlmNarrator(llmClient);
-  }
+  // Configuración de ejecución (config/runtime.json o --runtime-config) con sobrescrituras de CLI;
+  // `--llm-provider` es el proveedor por defecto de cada caja.
+  const overrides: RuntimeOverrides = {};
+  const flag = (name: string) => values[name as keyof typeof values] as string | undefined;
+  const setIf = (key: keyof typeof overrides, name: string) => {
+    const v = flag(name);
+    if (v !== undefined) overrides[key] = v;
+  };
+  setIf("ringMode", "ring-mode");
+  setIf("parserPolicy", "parser-policy");
+  setIf("acceptanceSignal", "acceptance-signal");
+  setIf("narratorLanguage", "narrator-language");
+  setIf("parserProvider", "parser-provider");
+  setIf("narratorProvider", "narrator-provider");
+  const runtime = loadRuntimeConfig({ ...(values["runtime-config"] ? { path: values["runtime-config"] } : {}), env: { ...process.env, LLM_PROVIDER: llmProvider }, overrides });
+  const parserClient = createProviderClient(runtime.llm.parser.provider);
+  const narratorClient = values["no-narrator"] ? undefined : createProviderClient(runtime.llm.narrator.provider);
+  const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator>; runtime: typeof runtime } = { runtime };
+  if (parserClient) agentDeps.parser = createLlmParser(parserClient);
+  if (narratorClient) agentDeps.narrator = createLlmNarrator(narratorClient);
   // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
@@ -145,7 +167,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   let candidateSummary: Record<string, unknown> | undefined;
   if (values.candidate) {
     const candidateConfig = loadConfig(values.candidate);
-    const candidate = await runArena({ scenarios, rivals, agent: createAgentParticipant({ config: candidateConfig, name: "candidate" }), seeds });
+    const candidate = await runArena({ scenarios, rivals, agent: createAgentParticipant({ config: candidateConfig, name: "candidate", runtime }), seeds });
     paired = pairByCluster(report.games, candidate.games);
     comparison = comparePaired({ championGames: report.games, candidateGames: candidate.games }, { roleWeights: config.roleWeights, bootstrap: {} });
     candidateSummary = { path: values.candidate, version: candidateConfig.version, overall: candidate.overall };

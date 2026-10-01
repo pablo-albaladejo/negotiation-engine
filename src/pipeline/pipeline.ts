@@ -361,6 +361,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       {
         structured: input.rivalOffer !== undefined,
         policy,
+        configuredPolicy: runtime.parser.policy,
         llmCalled: llmActive && !!input.text,
         parserOffer: parse.offer ?? null,
         parserFigures: parse.figures?.map((f) => ({ issue: f.issue, value: f.value })) ?? null,

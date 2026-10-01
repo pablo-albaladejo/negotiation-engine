@@ -1,12 +1,25 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runArenaCli } from "../../src/arena/cli.js";
+import { applyOverrides, resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("pnpm arena", () => {
+  it("--parser-policy dual-strict: cada entrada de la traza lleva la huella y la política configurada", async () => {
+    const out = mkdtempSync(join(tmpdir(), "arena-"));
+    const { runDir } = await runArenaCli(["--seeds", "1", "--scenarios", "text-seller-wide", "--rivals", "text-only", "--parser-policy", "dual-strict", "--out", out, "--run-id", "rc", "--quiet"]);
+    const expected = resolveRuntimeConfig(applyOverrides(JSON.parse(readFileSync("config/runtime.json", "utf8")), { parserPolicy: "dual-strict" }), { LLM_PROVIDER: "none" });
+    const file = readdirSync(join(runDir, "traces"))[0]!;
+    const records = readFileSync(join(runDir, "traces", file), "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.kind === "box");
+    expect(records.length).toBeGreaterThan(3);
+    for (const r of records) expect(r.runtimeConfig).toBe(expected.fingerprint);
+    expect(records.find((r) => r.box === "reconcile").input).toMatchObject({ configuredPolicy: "dual-strict", policy: "deterministic-only" });
+    await expect(runArenaCli(["--seeds", "1", "--parser-policy", "llm-only", "--out", out, "--quiet"])).rejects.toThrow(/parser\.policy/);
+  }, 20_000);
+
   it("juega sin red, imprime la tabla y guarda resumen y una transcripción por partida", async () => {
     const fetchSpy = vi.fn(() => Promise.reject(new Error("red prohibida en la arena")));
     vi.stubGlobal("fetch", fetchSpy);
