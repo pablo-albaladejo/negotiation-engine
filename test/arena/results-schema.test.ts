@@ -71,4 +71,16 @@ describe("esquemas de resultados v2 (src/arena/results-schema.ts)", () => {
   it("rechaza campos desconocidos (esquema estricto)", () => {
     expect(TranscriptLineSchema.safeParse({ ...(lines[0] as object), extra: 1 }).success).toBe(false);
   });
+
+  // Regresión: en texto completo la arena escribe `extractable` y el visor no podía leer esos runs.
+  it("las líneas de un run en texto completo pasan TranscriptLineSchema", async () => {
+    const out = mkdtempSync(join(tmpdir(), "arena-full-text-"));
+    const { runDir: fullDir } = await runArenaCli([
+      "--text-mode", "full", "--llm-provider", "none", "--scenarios", "text-buyer-wide", "--seeds", "1", "--out", out, "--run-id", "ft", "--quiet",
+    ]);
+    const fullLines = readFileSync(join(fullDir, "transcripts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    expect(fullLines.length).toBeGreaterThan(0);
+    for (const raw of fullLines) expect(TranscriptLineSchema.safeParse(raw).success).toBe(true);
+    expect(fullLines.some((l: { transcript: Array<{ extractable?: boolean }> }) => l.transcript.some((t) => t.extractable !== undefined))).toBe(true);
+  }, 30_000);
 });

@@ -20,6 +20,8 @@ const TranscriptEntrySchema = z
     action: z.enum(["accept", "counter", "walk"]),
     offer: Offer.optional(),
     text: z.string(),
+    /** Solo en texto completo: si el texto del rival lleva la cifra en una forma que el parser determinista puede leer. */
+    extractable: z.boolean().optional(),
   })
   .strict();
 
@@ -85,6 +87,11 @@ export const TranscriptLineSchema = z
     /** v3: quién rompió el protocolo y por qué (solo con `endReason: "protocol-violation"`). */
     protocolViolation: z.object({ by: z.enum(["agent", "rival"]), detail: z.string() }).strict().optional(),
     reserves: z.object({ ours: Offer, rival: Offer }).strict().optional(),
+    /** Texto completo (`--text-mode full`): modo, idioma del rival y aciertos de la aceptación por texto. */
+    textMode: z.enum(["agent-side", "full"]).optional(),
+    language: z.string().optional(),
+    falseAccept: z.number().int().min(0).optional(),
+    missedAccept: z.number().int().min(0).optional(),
   })
   .strict();
 export type TranscriptLine = z.infer<typeof TranscriptLineSchema>;
