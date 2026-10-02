@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { BazaarAgent } from "./agent.js";
 import { BazaarClient } from "./client.js";
 import { loadBazaarEnv } from "./env.js";
+import { DEFAULT_NEGOTIATOR_PARAMS } from "./negotiator.js";
 import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
 
@@ -16,10 +17,19 @@ async function main() {
       once: { type: "boolean", default: false },
       "max-spend": { type: "string", default: "120" },
       dealer: { type: "string", default: "abuela" },
+      "buy-anchor-frac": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.buyAnchorFrac) },
+      "sell-anchor-mult": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.sellAnchorMult) },
+      "max-holds": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.maxHolds) },
     },
   });
   const maxSpend = Number(values["max-spend"]);
   if (!Number.isFinite(maxSpend) || maxSpend < 0) throw new Error("--max-spend debe ser un número ≥ 0");
+  const buyAnchorFrac = Number(values["buy-anchor-frac"]);
+  const sellAnchorMult = Number(values["sell-anchor-mult"]);
+  const maxHolds = Number(values["max-holds"]);
+  if (!Number.isFinite(buyAnchorFrac) || buyAnchorFrac <= 0) throw new Error("--buy-anchor-frac debe ser un número > 0");
+  if (!Number.isFinite(sellAnchorMult) || sellAnchorMult <= 0) throw new Error("--sell-anchor-mult debe ser un número > 0");
+  if (!Number.isInteger(maxHolds) || maxHolds < 0) throw new Error("--max-holds debe ser un entero ≥ 0");
   const env = loadBazaarEnv();
   if (!env.key) {
     console.error("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
@@ -37,6 +47,7 @@ async function main() {
     dealer: { id: dealerId, aliases },
     dryRun: values["dry-run"],
     maxSpendPerHour: maxSpend,
+    negotiator: { buyAnchorFrac, sellAnchorMult, maxHolds },
     trace,
     log: (line) => console.log(line),
   });

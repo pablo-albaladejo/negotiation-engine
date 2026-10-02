@@ -7,7 +7,7 @@ export interface TraceRecord {
   tick: number;
   dealer: string;
   dryRun: boolean;
-  action: "open" | "accept" | "counter" | "close" | "wait" | "idle" | "outcome" | "error" | "blocked";
+  action: "open" | "accept" | "counter" | "hold" | "close" | "wait" | "idle" | "outcome" | "error" | "blocked";
   thread?: number;
   target?: string;
   side?: "buy" | "sell";

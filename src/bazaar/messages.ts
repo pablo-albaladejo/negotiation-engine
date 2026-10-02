@@ -34,6 +34,11 @@ const CLOSE = [
   "Thank you so much for your time, Abuela. I could not quite make it work today, but I hope to see you again soon!",
   "That is a little beyond me this time. Thank you for being so kind, Abuela, have a lovely evening.",
 ];
+const HOLD = [
+  "Thank you, Abuela, you are very kind. I will stay right here at {p} P, if that is all right.",
+  "I do appreciate your patience. My offer still stands at {p} P, whenever you are ready.",
+  "No rush at all, Abuela. {p} P is still what I can do, with my thanks.",
+];
 
 function pick(list: readonly string[], round: number): string {
   return list[((round % list.length) + list.length) % list.length]!;
@@ -49,6 +54,13 @@ export function counterText(side: Side, round: number, price: number): string {
 
 export function closeText(round: number): string {
   return pick(CLOSE, round);
+}
+
+/** Texto para aguantar el precio `price` ya enviado (ronda `round`), sin abrir una oferta nueva. */
+export function holdText(round: number, price: number): string {
+  const text = pick(HOLD, round).replace("{p}", String(Math.round(price)));
+  if (!textMatchesPrice(text, price)) throw new Error("plantilla con cifra distinta del precio");
+  return text;
 }
 
 /** Todas las cifras del texto. */

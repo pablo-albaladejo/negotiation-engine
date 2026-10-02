@@ -1,6 +1,6 @@
 import { BazaarError, type BazaarClient } from "./client.js";
-import { closeText, counterText, textMatchesPrice } from "./messages.js";
-import { decide, type Decision, type ThreadView } from "./negotiator.js";
+import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
 import type { Catalog, Clock, Me, Thread } from "./schemas.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
@@ -21,6 +21,8 @@ export interface AgentOptions {
   /** Fracción de your_value que pagamos como máximo. */
   safety?: number;
   maxLookups?: number;
+  /** Sobrescribe parámetros del negociador (ancla, Boulware, aguantes...); el resto queda por defecto. */
+  negotiator?: Partial<NegotiatorParams>;
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
@@ -32,6 +34,8 @@ interface Active {
   lastSentTick?: number;
   /** Precios que hemos enviado en este hilo (fuente fiable; el hilo solo se usa al retomarlo). */
   sent: number[];
+  /** Aguantes (mismo precio, sin oferta nueva) ya gastados en este hilo. */
+  holdsUsed: number;
 }
 
 const HOUR_MS = 3_600_000;
@@ -52,6 +56,7 @@ export class BazaarAgent {
   private readonly log: (line: string) => void;
   private readonly safety: number;
   private readonly maxLookups: number;
+  private readonly negotiatorParams: NegotiatorParams;
 
   constructor(
     private readonly api: BazaarApi,
@@ -61,6 +66,7 @@ export class BazaarAgent {
     this.log = o.log ?? (() => {});
     this.safety = o.safety ?? 0.85;
     this.maxLookups = o.maxLookups ?? 12;
+    this.negotiatorParams = { ...DEFAULT_NEGOTIATOR_PARAMS, ...o.negotiator };
   }
 
   spentThisHour(): number {
@@ -103,7 +109,7 @@ export class BazaarAgent {
       }
       try {
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick, sent: [] };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0 };
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
           action: "open",
@@ -135,7 +141,7 @@ export class BazaarAgent {
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
-    if (target) this.active = { id: thread.id, target, sent: [] };
+    if (target) this.active = { id: thread.id, target, sent: [], holdsUsed: 0 };
     else if (!this.o.dryRun) await this.api.closeThread(thread.id);
   }
 
@@ -203,8 +209,9 @@ export class BazaarAgent {
       ...(p.herCurrent ? { herCurrent: p.herCurrent } : {}),
       canMessage: active.lastSentTick !== tick,
       canAccept: this.lastAcceptTick !== tick,
+      holdsUsed: active.holdsUsed,
     };
-    const d: Decision = decide(view);
+    const d: Decision = decide(view, this.negotiatorParams);
     const base = {
       thread: thread.id,
       target: target.key,
@@ -229,6 +236,15 @@ export class BazaarAgent {
           active.lastSentTick = tick;
           active.sent.push(d.action.price);
           emit({ ...base, action: "counter", ourPrice: d.action.price, text });
+          return;
+        }
+        case "hold": {
+          const text = holdText(p.ourPrices.length, d.action.price);
+          if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
+          if (!this.o.dryRun) await this.api.say(thread.id, text);
+          active.lastSentTick = tick;
+          active.holdsUsed += 1;
+          emit({ ...base, action: "hold", ourPrice: d.action.price, text });
           return;
         }
         case "close":

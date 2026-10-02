@@ -1,4 +1,4 @@
-import { closeText, counterText } from "../messages.js";
+import { closeText, counterText, holdText } from "../messages.js";
 import { decide, DEFAULT_NEGOTIATOR_PARAMS, type Action, type NegotiatorParams, type Side, type ThreadView } from "../negotiator.js";
 import type { Thread } from "../schemas.js";
 import { threadPrices, type DealerRef } from "../view.js";
@@ -17,6 +17,8 @@ export interface PolicyCtx {
   sent: readonly number[];
   lastSentTick?: number;
   lastAcceptTick: number;
+  /** Aguantes ya gastados en este hilo (política `ours`). */
+  holdsUsed?: number;
   dealer: DealerRef;
 }
 
@@ -47,10 +49,12 @@ export function oursPolicy(params: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS,
         ...(p.herCurrent ? { herCurrent: p.herCurrent } : {}),
         canMessage: ctx.lastSentTick !== ctx.tick,
         canAccept: ctx.lastAcceptTick !== ctx.tick,
+        holdsUsed: ctx.holdsUsed ?? 0,
       };
       const d = decide(view, params);
       const a = d.action;
       if (a.kind === "counter") return { action: a, text: counterText(ctx.side, p.ourPrices.length, a.price), rule: d.rule };
+      if (a.kind === "hold") return { action: a, text: holdText(p.ourPrices.length, a.price), rule: d.rule };
       if (a.kind === "close") return { action: a, text: closeText(p.ourPrices.length), rule: d.rule };
       return { action: a, rule: d.rule };
     },

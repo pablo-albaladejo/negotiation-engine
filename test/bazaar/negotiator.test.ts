@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { closeText, counterText, numbersIn, textMatchesPrice } from "../../src/bazaar/messages.js";
-import { decide, effectiveReservation, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
 import { buyTargets, missingPageCards, spareTargets } from "../../src/bazaar/planner.js";
 import { ThreadSchema } from "../../src/bazaar/schemas.js";
 import { threadPrices } from "../../src/bazaar/view.js";
@@ -30,7 +30,7 @@ function simulate(side: Side, reservation: number, herOpen: number, herLimit: nu
 describe("negotiator: compra", () => {
   it("abre lejos de su precio (ancla) y nunca acepta su precio de apertura", () => {
     const d = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false } }));
-    expect(d.action).toEqual({ kind: "counter", price: 33 });
+    expect(d.action).toEqual({ kind: "counter", price: 27 });
     expect(d.rule).toBe("anchor");
     const fin = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true }, ourPrices: [33] }));
     expect(fin.action.kind).not.toBe("accept");
@@ -59,10 +59,37 @@ describe("negotiator: compra", () => {
     expect(msg.action.kind).toBe("wait");
   });
 
-  it("cierra si ya no puede mejorar (en la reserva) y ella sigue por encima", () => {
+  it("aguanta el precio (no cierra) si ya no puede mejorar y ella no ha dado su final", () => {
     const d = decide(view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40] }));
-    expect(d.action.kind).toBe("close");
-    expect(d.rule).toBe("stuck-at-reservation");
+    expect(d.action).toEqual({ kind: "hold", price: 40 });
+    expect(d.rule).toBe("hold");
+  });
+
+  it("tras maxHolds aguantes sin su final, cierra", () => {
+    const stuckView = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40] });
+    for (let holdsUsed = 0; holdsUsed < DEFAULT_NEGOTIATOR_PARAMS.maxHolds; holdsUsed++) {
+      const d = decide({ ...stuckView, holdsUsed });
+      expect(d.action).toEqual({ kind: "hold", price: 40 });
+    }
+    const last = decide({ ...stuckView, holdsUsed: DEFAULT_NEGOTIATOR_PARAMS.maxHolds });
+    expect(last.action.kind).toBe("close");
+    expect(last.rule).toBe("holds-exhausted");
+  });
+
+  it("acepta su oferta final dentro del límite tras aguantar, y nunca su precio de apertura", () => {
+    const held = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40], holdsUsed: 1 });
+    expect(decide(held).action.kind).toBe("hold");
+    const final = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55, 38], herCurrent: { offerId: 4, price: 38, final: true }, ourPrices: [22, 40], holdsUsed: 2 });
+    const d = decide(final);
+    expect(d.action).toEqual({ kind: "accept", offerId: 4, price: 38 });
+    const atOpening = view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true } });
+    expect(decide(atOpening).action.kind).not.toBe("accept");
+  });
+
+  it("solo un mensaje de aguante por tic", () => {
+    const d = decide(view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40], canMessage: false }));
+    expect(d.action.kind).toBe("wait");
+    expect(d.rule).toBe("one-message-per-tick");
   });
 
   it("propiedad: concesiones monótonas, pequeñas, sin repetir precio y sin cruzar la reserva efectiva", () => {
@@ -97,7 +124,7 @@ describe("negotiator: compra", () => {
 describe("negotiator: venta", () => {
   it("abre por encima, concede hacia abajo y acepta pujas por encima de la reserva (no la de apertura)", () => {
     const first = decide(view({ side: "sell", reservation: 10, herOpening: 12, herPrices: [12], herCurrent: { offerId: 1, price: 12, final: false } }));
-    expect(first.action).toEqual({ kind: "counter", price: 19 });
+    expect(first.action).toEqual({ kind: "counter", price: 24 });
     const { decisions, ourPrices } = simulate("sell", 10, 12, 18);
     for (let i = 1; i < ourPrices.length; i++) expect(ourPrices[i]!).toBeLessThan(ourPrices[i - 1]!);
     const last = decisions[decisions.length - 1]!;

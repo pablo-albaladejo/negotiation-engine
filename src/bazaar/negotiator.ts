@@ -23,15 +23,18 @@ export interface NegotiatorParams {
   maxStepFrac: number;
   /** Reciprocidad: fracción de su último movimiento que devolvemos. */
   reciprocity: number;
+  /** Tics que aguantamos sin movernos (mensaje educado, mismo precio) antes de cerrar si estamos atascados. */
+  maxHolds: number;
 }
 
 export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
-  buyAnchorFrac: 0.55,
-  sellAnchorMult: 1.6,
+  buyAnchorFrac: 0.45,
+  sellAnchorMult: 2.0,
   beta: 0.5,
   horizon: 12,
   maxStepFrac: 0.08,
   reciprocity: 0.6,
+  maxHolds: 3,
 };
 
 export interface HerOffer {
@@ -56,6 +59,8 @@ export interface ThreadView {
   canMessage: boolean;
   /** El equipo aún no ha aceptado nada en este tick. */
   canAccept: boolean;
+  /** Mensajes de espera ya gastados en este hilo (mismo precio, sin nueva oferta) esperando su final. */
+  holdsUsed?: number;
 }
 
 export type Rule =
@@ -66,6 +71,8 @@ export type Rule =
   | "final-above-reservation"
   | "final-below-reservation"
   | "stuck-at-reservation"
+  | "hold"
+  | "holds-exhausted"
   | "no-zone"
   | "one-message-per-tick"
   | "one-accept-per-tick";
@@ -73,6 +80,7 @@ export type Rule =
 export type Action =
   | { kind: "accept"; offerId: number; price: number }
   | { kind: "counter"; price: number }
+  | { kind: "hold"; price: number }
   | { kind: "close" }
   | { kind: "wait" };
 
@@ -154,10 +162,18 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
     if (her.final) return { action: { kind: "close" }, rule: "final-below-reservation", effectiveReservation: effRes };
   }
 
-  if (next === undefined) return { action: { kind: "close" }, rule: "stuck-at-reservation", effectiveReservation: effRes };
-  // Nunca le ofrecemos más (compra) o menos (venta) que su propia oferta: eso sería aceptar peor.
-  if (her && !better(view.side, next.price, her.price)) {
-    return { action: { kind: "close" }, rule: "stuck-at-reservation", effectiveReservation: effRes };
+  // Atascados: nuestra siguiente contraoferta cruzaría la reserva efectiva (no mejora su oferta, o no hay
+  // margen para moverse). En vez de cerrar de golpe, aguantamos el precio unos tics (sin oferta final suya)
+  // para que ella diga su última palabra; solo cerramos si ya se agotaron los aguantes.
+  const stuck = next === undefined || (her !== undefined && !better(view.side, next.price, her.price));
+  if (stuck) {
+    const prevPrice = view.ourPrices[view.ourPrices.length - 1];
+    const holdsUsed = view.holdsUsed ?? 0;
+    if (her && !her.final && prevPrice !== undefined && holdsUsed < p.maxHolds) {
+      if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes };
+      return { action: { kind: "hold", price: prevPrice }, rule: "hold", effectiveReservation: effRes };
+    }
+    return { action: { kind: "close" }, rule: holdsUsed > 0 ? "holds-exhausted" : "stuck-at-reservation", effectiveReservation: effRes };
   }
   if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes, ourNext: next.price };
   return { action: { kind: "counter", price: next.price }, rule: next.rule, effectiveReservation: effRes, ourNext: next.price };

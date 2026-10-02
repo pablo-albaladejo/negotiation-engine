@@ -74,13 +74,14 @@ export async function runEpisode(o: EpisodeOptions): Promise<EpisodeResult> {
   const sent: number[] = [];
   let lastSentTick: number | undefined;
   let lastAcceptTick = -1;
+  let holdsUsed = 0;
   const maxTicks = o.maxTicks ?? 40;
   let ticks = 0;
   for (let tick = 0; tick < maxTicks; tick++) {
     const thread = await api.thread(id);
     if (thread.status !== "open") break;
     ticks = tick + 1;
-    const step = o.policy.act(thread, { side, reservation, tick, sent, ...(lastSentTick !== undefined ? { lastSentTick } : {}), lastAcceptTick, dealer });
+    const step = o.policy.act(thread, { side, reservation, tick, sent, ...(lastSentTick !== undefined ? { lastSentTick } : {}), lastAcceptTick, holdsUsed, dealer });
     try {
       const a = step.action;
       if (a.kind === "accept") {
@@ -90,6 +91,10 @@ export async function runEpisode(o: EpisodeOptions): Promise<EpisodeResult> {
         lastSentTick = tick;
         sent.push(a.price);
         await api.say(id, step.text ?? `${a.price} P?`, a.price);
+      } else if (a.kind === "hold") {
+        lastSentTick = tick;
+        holdsUsed += 1;
+        await api.say(id, step.text ?? `${a.price} P?`);
       } else if (a.kind === "close") {
         if (lastSentTick !== tick && step.text) await api.say(id, step.text);
         await api.closeThread(id);
