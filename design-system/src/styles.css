@@ -56,7 +56,7 @@
 .nr-pill.verdict{background:var(--ok-soft);color:var(--ok)}
 .nr-pill.rejected{background:var(--warn-soft);color:var(--warn)}
 .nr-pill.sample{font-family:var(--font-mono);font-weight:400;font-size:11px;padding:3px 9px;background:var(--them-soft);color:var(--ink)}
-.nr-pill.champion{background:var(--us-soft);color:var(--us)}
+.nr-pill.champion{background:var(--ok-soft);color:var(--ok)}
 
 /* Table */
 .nr-table-wrap{overflow-x:auto}
@@ -66,8 +66,7 @@
 .nr-table .num{text-align:right}
 .nr-table-row-clickable{cursor:pointer}
 .nr-table-row-clickable:hover{background:var(--us-soft)}
-.nr-table-row-clickable:focus-visible{outline:2px solid var(--us);outline-offset:-2px}
-.nr-table tr.is-selected{background:var(--us-soft)}
+.nr-table tr.is-selected{background:var(--us-soft);box-shadow:inset 3px 0 0 var(--us)}
 .nr-better{color:var(--ok);font-weight:600} .nr-worse{color:var(--warn);font-weight:600}
 
 /* Heatmap */

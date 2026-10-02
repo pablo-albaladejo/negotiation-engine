@@ -109,6 +109,14 @@ describe("component rendering", () => {
     expect(html).toContain("nr-pill champion");
   });
 
+  it("Pill kind=champion is styled green like verdict (--ok)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toContain(".nr-pill.champion{background:var(--ok-soft);color:var(--ok)}");
+  });
+
   it("DataTable rows get the clickable class when onRowClick is given, but are not a tab stop", () => {
     const html = renderToString(
       <DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }]} onRowClick={() => {}} />,
@@ -123,15 +131,31 @@ describe("component rendering", () => {
     expect(html).not.toContain("tabindex");
   });
 
+  it("styles.css gives the selected table row an inset box-shadow distinct from hover", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toContain(".nr-table tr.is-selected{background:var(--us-soft);box-shadow:inset 3px 0 0 var(--us)}");
+  });
+
   it("DataTable highlights the row at selectedRowIndex", () => {
     const html = renderToString(
       <DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }, { id: "r-2" }]} selectedRowIndex={1} />,
     );
     const bodyRows = html.split("<tbody>")[1]!.split("<tr").slice(1);
     expect(bodyRows[0]).not.toContain("is-selected");
-    expect(bodyRows[0]).not.toContain("aria-selected");
+    expect(bodyRows[0]).not.toContain("aria-current");
     expect(bodyRows[1]).toContain("is-selected");
-    expect(bodyRows[1]).toContain('aria-selected="true"');
+    expect(bodyRows[1]).toContain('aria-current="true"');
+  });
+
+  it("styles.css no longer has the dead .nr-table-row-clickable:focus-visible rule (rows are not a tab stop)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).not.toContain(".nr-table-row-clickable:focus-visible");
   });
 
   it("renders DataTable without throwing", () => {

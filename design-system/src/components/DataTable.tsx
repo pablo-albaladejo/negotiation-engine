@@ -49,7 +49,7 @@ export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataT
             <tr
               key={rowIndex}
               className={[onRowClick ? "nr-table-row-clickable" : "", rowIndex === selectedRowIndex ? "is-selected" : ""].filter(Boolean).join(" ") || undefined}
-              aria-selected={rowIndex === selectedRowIndex ? true : undefined}
+              aria-current={rowIndex === selectedRowIndex ? "true" : undefined}
               {...(onRowClick
                 ? {
                     onClick: (event: MouseEvent<HTMLTableRowElement>) => {
