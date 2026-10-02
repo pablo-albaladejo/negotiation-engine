@@ -43,6 +43,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
 | `pnpm bazaar:scan` | GET a todos los endpoints, guarda las respuestas. |
 | `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |
+| `pnpm bazaar:record` | Graba el stream en vivo (`/api/events/stream`, team y public) en `results/` para reconstruir el día. |
 | `pnpm bazaar:dump` | Volcado del estado y del día (cartas, hilos, duelos, feed) en `results/` (solo lectura). |
 | `pnpm bazaar:sim` | Nuestro negociador contra Abuela simulada (offline). |
 | `pnpm viewer` | Visor en http://127.0.0.1:5199/#bazaar |

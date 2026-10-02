@@ -136,7 +136,7 @@ L.push(`- Hilos: ${threads.length} (${Object.entries(count(threads, (t) => t.sta
 L.push(`- Duelos terminados: ${duelsDone.length} (${Object.entries(duelBy).map(([k, v]) => `${k} ${v}`).join(", ")})`);
 L.push(`- Traspasos de cartas nuestras: ${ours.length}`, "");
 L.push("## Mercado", "");
-L.push(`- Cartas con historial: ${cards.length}; traspasos: ${timeline.filter((e) => e.type === "transfer").length}`);
+L.push(`- Activos con historial (cartas y sobres): ${cards.length}; traspasos: ${timeline.filter((e) => e.type === "transfer").length}`);
 for (const [k, v] of Object.entries(why).sort((a, b) => b[1] - a[1])) L.push(`  - ${k}: ${v}`);
 L.push(`- Feed: ${feed.length} eventos desde el tick ${feedFrom} (lo anterior ya no lo da la API)`);
 L.push(`- Venues: ${venues.map((v) => v.venue).join(", ")}`, "");
