@@ -161,30 +161,40 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
 }
 
 function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId: string; query: string }) {
-  const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null; games: TranscriptLine[] } | null>(null);
+  /** T9: the run payload (summary + every game) is cached per `runId` and only refetched when it
+   * changes; switching games via the MatchSelector/onSelectGame only changes `gameId`, so only the
+   * trace is refetched below instead of the whole run again. */
+  const [games, setGames] = useState<TranscriptLine[] | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setState(null);
-    Promise.all([
-      fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`),
-      fetchApi<TraceLine[]>(`runs/${encodeURIComponent(runId)}/games/${encodeURIComponent(gameId)}`),
-    ]).then(([run, trace]) => {
-      if (cancelled) return;
-      const line = run.data?.games.find((g) => g.gameId === gameId) ?? null;
-      // MatchSelector shows the same games Matches would, under the filters carried in `query` (L14).
-      const games = filterGames(run.data?.games ?? [], queryToFilters(query));
-      setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null, games });
+    setGames(null);
+    fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`).then((run) => {
+      if (!cancelled) setGames(run.data?.games ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+  const [trace, setTrace] = useState<TraceLine[] | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    setTrace(undefined);
+    fetchApi<TraceLine[]>(`runs/${encodeURIComponent(runId)}/games/${encodeURIComponent(gameId)}`).then((res) => {
+      if (!cancelled) setTrace(res.data && res.data.length > 0 ? res.data : null);
     });
     return () => {
       cancelled = true;
     };
   }, [runId, gameId]);
-  if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
-  if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
+  if (!games || trace === undefined) return <LoadingCard label={`Reading ${gameId}`} />;
+  const line = games.find((g) => g.gameId === gameId) ?? null;
+  if (!line) return <LoadingCard label={`${gameId} is not available`} />;
+  // MatchSelector shows the same games Matches would, under the filters carried in `query` (L14).
+  const filteredGames = filterGames(games, queryToFilters(query));
   const onBack = () => navigate(routeTo.matches(runId, query));
   const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId, query));
-  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
+  if (isTwoIssue(line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(line, trace)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
+  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(line, trace)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
 }
 
 function CompareContainer({ runId }: { runId: string }) {

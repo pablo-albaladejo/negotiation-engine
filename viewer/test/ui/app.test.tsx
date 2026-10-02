@@ -168,6 +168,39 @@ describe("App Runs: invalid config/champion.json shows the InvalidLogBanner (L11
   });
 });
 
+describe("App routing: switching games in a replay caches the run payload (T9)", () => {
+  it("only refetches the trace, not the run summary/games list, when the game changes", async () => {
+    expect(fx.games.length).toBeGreaterThan(1);
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.includes("/api/champion")) return new Response(JSON.stringify({ data: null, errors: [] }));
+        if (url.includes("/api/runs/") && url.includes("/games/")) return new Response(JSON.stringify({ data: [], errors: [] }));
+        if (url.includes("/api/runs/")) return new Response(JSON.stringify({ data: { runId: fx.summary.runId, summary: fx.summary, games: fx.games }, errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    const [firstGame, secondGame] = fx.games;
+    window.location.hash = `#/runs/${fx.runId}/games/${encodeURIComponent(firstGame!.gameId)}`;
+    render(<App />);
+    await waitFor(() => expect(calls.some((u) => u.includes(`/games/${encodeURIComponent(firstGame!.gameId)}`))).toBe(true));
+    const runCallsAfterFirst = calls.filter((u) => u.includes("/api/runs/") && !u.includes("/games/")).length;
+    expect(runCallsAfterFirst).toBe(1);
+
+    window.location.hash = `#/runs/${fx.runId}/games/${encodeURIComponent(secondGame!.gameId)}`;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await waitFor(() => expect(calls.some((u) => u.includes(`/games/${encodeURIComponent(secondGame!.gameId)}`))).toBe(true));
+
+    const runCallsAfterSecond = calls.filter((u) => u.includes("/api/runs/") && !u.includes("/games/")).length;
+    expect(runCallsAfterSecond).toBe(1);
+    const traceCalls = calls.filter((u) => u.includes("/games/")).length;
+    expect(traceCalls).toBe(2);
+  });
+});
+
 describe("App Runs: a rejecting /api/champion fetch (T5)", () => {
   it("renders Runs with no champion pill instead of an unhandled rejection", async () => {
     vi.stubGlobal(
