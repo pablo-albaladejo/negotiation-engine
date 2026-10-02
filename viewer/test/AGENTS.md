@@ -1,22 +1,11 @@
-# viewer/test/ — Tests del Visor
+# viewer/test/ — Tests del visor
 
-Tests unitarios (vitest + testing-library) de componentes React.
-
-## Propósito
-
-Cobertura de componentes: modelo, pantallas, UI.
-
-## Subdirectorios
-
-- **`model/`** — Tests de lógica (carga, procesamiento).
-- **`server/`** — Tests de servidor (si aplica).
-- **`ui/`** — Tests de componentes (rendering, interacción).
-
-## Cómo trabajar
+- **`server/`** — servidor: solo local y solo lectura (`server/http.test.ts`), score, hilos, duelos y board del Bazaar.
+- **`model/`** — modelo del board y tema.
+- **`ui/`** — render de `BazaarScreen` y del sistema de diseño por alias.
 
 ```bash
-pnpm --dir viewer test
-pnpm --dir viewer test:watch  # (si está disponible)
+pnpm viewer:test
 ```
 
 ## Links

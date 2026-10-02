@@ -1,28 +1,15 @@
-# viewer/src/ — Componentes React
+# viewer/src/ — App React
 
-Componentes React: modelo de datos, pantallas (vistas) y UI (componentes básicos).
+Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del hash).
 
-## Propósito
-
-SPA de visor: carga JSON de resultados, renderiza tablas, gráficos, trazas.
-
-## Subdirectorios
-
-- **`model/`** — Lógica de modelo (tipos, carga de archivos, procesamiento).
-- **`screens/`** — Pantallas: arena, promoción, turno (top-level).
-- **`ui/`** — Componentes básicos: tablas, botones, gráficos (reusable).
-
-## Cómo trabajar
-
-```bash
-pnpm --dir viewer start   # Dev + React hot reload
-pnpm --dir viewer test    # Tests
-```
+- **`App.tsx`** — cabecera (tema claro/oscuro) y `BazaarScreen`; captura errores de render.
+- **`route.ts`** — `parseRoute` / `routeTo.bazaar`.
+- **`bazaarBoardLive.ts`** — `useBazaarBoard`: lee `/api/bazaar/board` y `/api/bazaar/score` una vez por tick.
+- **`model/`** — `model/bazaarBoard.ts` (lista unificada, filtros, línea temporal), `model/bazaar.ts` (historia de la cifra), `model/bazaarConversations.ts`.
+- **`screens/BazaarScreen.tsx`** — la vista.
+- **`ui/`** — piezas pequeñas (títulos, estados vacíos, botones, rejilla).
 
 ## Links
 
 - ↑ [`viewer/`](../AGENTS.md)
-- → [`model/`](model/) — lógica
-- → [`screens/`](screens/) — pantallas
-- → [`ui/`](ui/) — componentes
 - → Design system: [`design-system/`](../../design-system/AGENTS.md)

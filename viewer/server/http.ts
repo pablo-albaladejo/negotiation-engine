@@ -1,29 +1,25 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { handleApi, rootsFor, type ApiResponse, type Roots } from "./api.js";
+import type { ApiResponse } from "./api.js";
 import { BazaarDuels, BazaarLive, bazaarScore, BazaarThreads, type BazaarDuelsDeps, type BazaarLiveDeps, type BazaarThreadsDeps } from "./bazaar.js";
 import { BazaarBoard, type BazaarBoardDeps } from "./bazaar-board.js";
-import { serveLive } from "./live.js";
 
 /**
  * Servidor local del visor. SOLO escucha en 127.0.0.1 (la dirección no es configurable, solo el
  * puerto con VIEWER_PORT) y NO tiene autenticación: es una decisión deliberada porque nadie fuera
  * de esta máquina puede conectarse. La cabecera Host se comprueba contra DNS rebinding. Solo GET y
- * HEAD; nunca escribe ficheros ni ejecuta o renderiza contenido de los logs en el servidor.
+ * HEAD; solo sirve la pestaña del Bazaar (`/api/bazaar/*`) y el resto lo delega en Vite.
  */
 export const LOOPBACK = "127.0.0.1";
 export const DEFAULT_PORT = 5199;
 
 export type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
-export type ApiHandler = (segments: readonly string[], query: URLSearchParams) => Promise<ApiResponse>;
 
 export interface ViewerServerOptions {
   repoRoot: string;
   /** Resto de rutas (Vite en modo middleware o estáticos); sin él, 404. */
   middleware?: Middleware;
-  /** Raíz de resultados distinta de `<repoRoot>/results` (`VIEWER_RESULTS_DIR`); solo lectura igualmente. */
-  resultsDir?: string;
   /** Directorio de `score.jsonl` distinto de `<repoRoot>/results/bazaar-live` (`VIEWER_BAZAAR_DIR`). */
   bazaarDir?: string;
   /** Inyectable en tests (clase `BazaarLive`); por defecto, usa `BAZAAR_KEY`/`BAZAAR_URL` del entorno. */
@@ -34,8 +30,6 @@ export interface ViewerServerOptions {
   bazaarDuelsDeps?: BazaarDuelsDeps;
   /** Inyectable en tests (clase `BazaarBoard`, `/api/bazaar/board`). */
   bazaarBoardDeps?: BazaarBoardDeps;
-  /** Inyectable en tests; por defecto, el router de solo lectura sobre `results/` y `config/`. */
-  api?: ApiHandler;
 }
 
 function sendJson(req: IncomingMessage, res: ServerResponse, { status, body }: ApiResponse, extra: Record<string, string> = {}): void {
@@ -52,17 +46,7 @@ function sendJson(req: IncomingMessage, res: ServerResponse, { status, body }: A
 
 const failure = (status: number, message: string): ApiResponse => ({ status, body: { data: null, errors: [{ file: null, line: null, path: "", message }] } });
 
-/** Segmentos de `/api/...` decodificados sobre la ruta cruda (sin normalizar `..`); `null` si no decodifica. */
-function apiSegments(rawPath: string): string[] | null {
-  try {
-    return rawPath.slice("/api/".length).split("/").map((s) => decodeURIComponent(s));
-  } catch {
-    return null;
-  }
-}
-
-export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLiveDeps, bazaarThreadsDeps, bazaarDuelsDeps, bazaarBoardDeps, middleware, api }: ViewerServerOptions): Server {
-  const roots: Roots = { ...rootsFor(repoRoot), ...(resultsDir ? { results: resultsDir } : {}) };
+export function createViewerServer({ repoRoot, bazaarDir, bazaarLiveDeps, bazaarThreadsDeps, bazaarDuelsDeps, bazaarBoardDeps, middleware }: ViewerServerOptions): Server {
   const bazaarRoot = bazaarDir ?? join(repoRoot, "results", "bazaar-live");
   const bazaarLive = new BazaarLive(bazaarLiveDeps);
   const bazaarThreads = new BazaarThreads(bazaarRoot, bazaarThreadsDeps);
@@ -72,7 +56,6 @@ export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLive
     snapshotsFile: process.env.VIEWER_BAZAAR_SNAPSHOTS ?? join(repoRoot, "..", "causa-prima", "bazaar-sim", "monitor", "data", "snapshots.jsonl"),
     ...bazaarBoardDeps,
   });
-  const handle: ApiHandler = api ?? ((segments, query) => handleApi(roots, segments, query));
 
   const server = createServer((req, res) => {
     const port = (server.address() as AddressInfo | null)?.port;
@@ -87,10 +70,6 @@ export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLive
     }
     const raw = req.url ?? "/";
     const rawPath = raw.split("?", 1)[0] ?? "/";
-    if (rawPath === "/api/live") {
-      serveLive(req, res, roots.results);
-      return;
-    }
     if (rawPath === "/api/bazaar/score") {
       bazaarScore(bazaarRoot).then(
         (response) => sendJson(req, res, response),
@@ -127,16 +106,7 @@ export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLive
       return;
     }
     if (rawPath === "/api" || rawPath.startsWith("/api/")) {
-      const segments = apiSegments(rawPath);
-      if (!segments) {
-        sendJson(req, res, failure(400, "invalid identifier"));
-        return;
-      }
-      const query = new URL(raw, `http://${LOOPBACK}`).searchParams;
-      handle(segments, query).then(
-        (response) => sendJson(req, res, response),
-        () => sendJson(req, res, failure(500, "internal error")),
-      );
+      sendJson(req, res, failure(404, "not found"));
       return;
     }
     const notFound = () => sendJson(req, res, failure(404, "not found"));

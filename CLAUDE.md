@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-Agente negociador para un torneo (Negotiation Ring, hackathon Causa Prima). TypeScript, Node ≥ 22, pnpm, Zod, Vitest + fast-check.
+Agente del Equipo 2 para El Bazaar (hackathon Causa Prima). TypeScript, Node ≥ 22, pnpm, Zod, Vitest + fast-check.
 
 ## Flujo git de este repo (decisión del equipo, 3 oct 2026)
 
@@ -13,8 +13,8 @@ Agente negociador para un torneo (Negotiation Ring, hackathon Causa Prima). Type
 
 ## Notas de Claude Code
 
-- Reglas no negociables: ver [`AGENTS.md`](AGENTS.md) (motor, parser, guardarraíles, siempre respuesta, protocolo modular).
-- Orden de lectura recomendado: ver root `AGENTS.md` (sección "Para empezar").
+- Reglas no negociables: ver [`AGENTS.md`](AGENTS.md) (la cifra sale del código, solo estructura del rival, guardarraíles, nada en vivo sin aprobación).
+- Orden de lectura recomendado: ver root `AGENTS.md` y luego `src/bazaar/AGENTS.md`.
 - Scripts `pnpm`: ver root `AGENTS.md` (tabla).
 - Convención: código e identificadores en inglés; documentación y comentarios en español.
-- Proveedor LLM: `LLM_PROVIDER` (none|claude-cli|anthropic-api). Nunca subir claves.
+- Claves (`BAZAAR_KEY`, broker) solo en .env y .env.broker; nunca en docs ni código.

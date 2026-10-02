@@ -39,6 +39,8 @@ const allowlist = new Set([
   "config", "timeoutMs", "trace",
   // Fixture/test data
   "fixture", "input",
+  // Literales de estado de hilo del Bazaar y campos del sistema de diseño
+  "walked", "end",
 ]);
 
 // Standard tool flags to skip in code blocks
@@ -83,7 +85,7 @@ function loadSourceFiles() {
       const fullPath = join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        if ([".git", "node_modules", "dist", "results", ".claude"].includes(entry.name)) continue;
+        if ([".git", "node_modules", "dist", "results", ".claude", "handoff"].includes(entry.name)) continue;
         scanDir(fullPath);
       } else if ((entry.name.endsWith(".ts") || entry.name.endsWith(".tsx") || entry.name.endsWith(".mjs")) &&
                  (fullPath.includes("/src/") || fullPath.includes("/test/") ||
@@ -198,7 +200,7 @@ function checkAgentsMdFiles(dir, sources) {
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if ([".git", "node_modules", "dist", "results", ".claude"].includes(entry.name)) continue;
+      if ([".git", "node_modules", "dist", "results", ".claude", "handoff"].includes(entry.name)) continue;
       checkAgentsMdFiles(fullPath, sources);
     } else if (entry.name === "AGENTS.md" || entry.name === "CLAUDE.md") {
       checkIdentifiersInFile(fullPath, sources);
@@ -245,7 +247,7 @@ function extractIdentifiers(text) {
 function isFilePath(text) {
   // Skip file paths: contain / or . at the end with extension
   if (text.includes("/")) return true;
-  if (/\.(ts|tsx|js|jsx|mjs|json|css|scss|md|yaml|yml|lock|example|gitignore|sh)$/.test(text)) return true;
+  if (/\.(ts|tsx|js|jsx|mjs|json|jsonl|css|scss|md|yaml|yml|lock|example|gitignore|sh)$/.test(text)) return true;
   // Also skip plain filenames that are obviously files
   if (/^[a-z-]+\.(sh|ts|tsx|js|json|md)$/.test(text)) return true;
   return false;

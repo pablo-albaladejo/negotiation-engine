@@ -1,9 +1,0 @@
-{
-  "sessionId": "s3",
-  "round": 10,
-  "roundLimit": 10,
-  "rivalCanRespond": true,
-  "rivalAction": "offer",
-  "rivalOffer": { "pct": 2 },
-  "text": "Mi última oferta: 2 %"
-}

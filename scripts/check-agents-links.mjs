@@ -97,7 +97,7 @@ function checkAgentsMdFiles(dir) {
 
     // Skip ignored directories (but NOT .design-sync - we want to check design-system/.design-sync/AGENTS.md)
     if (entry.isDirectory()) {
-      if ([".git", "node_modules", "dist", ".ds-sync", "results", ".claude"].includes(entry.name)) {
+      if ([".git", "node_modules", "dist", ".ds-sync", "results", ".claude", "handoff"].includes(entry.name)) {
         continue;
       }
       checkAgentsMdFiles(fullPath);

@@ -11,11 +11,9 @@ const viewerRoot = fileURLToPath(new URL("../", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 let vite: ViteDevServer | undefined;
-const resultsDir = process.env.VIEWER_RESULTS_DIR ? resolve(process.env.VIEWER_RESULTS_DIR) : undefined;
 const bazaarDir = process.env.VIEWER_BAZAAR_DIR ? resolve(process.env.VIEWER_BAZAAR_DIR) : undefined;
 const { server, url } = await startViewerServer({
   repoRoot,
-  ...(resultsDir ? { resultsDir } : {}),
   ...(bazaarDir ? { bazaarDir } : {}),
   middleware: (req, res, next) => (vite ? vite.middlewares(req, res, next) : next()),
 });
@@ -26,7 +24,7 @@ vite = await createVite({
   server: { middlewareMode: true, ws: { server } },
 });
 
-console.log(`Visor en ${url} (solo local, solo lectura)${resultsDir ? ` · resultados de ${resultsDir}` : ""}`);
+console.log(`Visor en ${url}#bazaar (solo local)`);
 
 const stop = () => {
   void vite?.close();

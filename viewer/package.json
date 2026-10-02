@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Visor local (solo lectura, solo 127.0.0.1) de los resultados de la arena, la promoción y el agente.",
+  "description": "Visor local (solo 127.0.0.1) de la partida del Bazaar.",
   "engines": {
     "node": ">=22"
   },
