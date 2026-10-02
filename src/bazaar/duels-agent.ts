@@ -219,7 +219,7 @@ export class DuelsAgent {
       if (entry.outcome === "sent") acceptDone = true;
       // no_offer: nuestra contraoferta posterior anuló la oferta del rival (rival_offer queda obsoleta).
       // No se puede aceptar, pero sí igualarla: proponemos exactamente su precio/días y el rival la cierra.
-      else if (entry.outcome === "error:no_offer" && p.rival) {
+      else if (entry.outcome === "error:no_offer" && p.rival && !sameOffer(p.rival, p.state.ourOffers.at(-1))) {
         const offer: StructuredOffer = { ...p.rival };
         const terms = p.state.withDays && offer.days !== undefined ? `${offer.price} P with ${offer.days} days` : `${offer.price} P`;
         const match: DuelDecision = {

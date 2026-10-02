@@ -26,6 +26,8 @@ const normalizeDuel = (raw: unknown): unknown => {
 /** Un mensaje del hilo del duelo; `sender` es "you" en los nuestros, cualquier otra cosa en los del rival. */
 export const DuelMessageSchema = z.looseObject({
   sender: z.string().nullish(),
+  /** El servidor real usa `from` ("you" | nombre del rival); `sender` queda por compatibilidad. */
+  from: z.string().nullish(),
   price: num.nullish(),
   days: num.nullish(),
   text: z.string().nullish(),
@@ -93,7 +95,9 @@ export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): St
   const messages = duel.messages ?? [];
   for (let k = messages.length - 1; k >= 0; k--) {
     const m = messages[k]!;
-    if (m.sender === "you") continue;
+    // Solo mensajes que sabemos que son del rival: el servidor marca los nuestros con from="you".
+    const who = m.from ?? m.sender;
+    if (who == null || who === "you") continue;
     const offer = offerOfMessage(m);
     if (offer) return offer;
   }

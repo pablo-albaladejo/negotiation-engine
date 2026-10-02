@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { BazaarError } from "../../src/bazaar/client.js";
 import { textMatchesOffer } from "../../src/bazaar/duels.js";
 import { DuelsAgent, formatDuelEntry, formatNextDuels, loadDuelsMemory, ticksLeft } from "../../src/bazaar/duels-agent.js";
-import { DuelSchema, DuelsSchema, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
+import { DuelSchema, DuelsSchema, rivalOfferFrom, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
 
 interface FakeDuel {
   id: number | string;
@@ -139,6 +139,19 @@ describe("DuelsAgent (bucle con API de mentira)", () => {
       { kind: "say", id: 2, price: 150 },
       { kind: "accept", id: 1, price: undefined },
     ]);
+  });
+
+  it("nunca toma nuestro propio mensaje (from=\"you\") como oferta del rival", async () => {
+    const parsed = DuelsSchema.parse({
+      duels: [{ id: 36, role: "buyer", your_limit: 102, rival_offer: null, deadline: 500, issues: ["price"],
+        messages: [{ tick: 144, from: "you", text: "I would propose 68 P", price: 68 }] }],
+    });
+    expect(rivalOfferFrom(parsed.duels[0]!)).toBeUndefined();
+    const withRival = DuelsSchema.parse({
+      duels: [{ id: 37, role: "buyer", your_limit: 102, rival_offer: null, deadline: 500, issues: ["price"],
+        messages: [{ tick: 144, from: "you", price: 68 }, { tick: 145, from: "Rival Noche", price: 99 }] }],
+    });
+    expect(rivalOfferFrom(withRival.duels[0]!)?.price).toBe(99);
   });
 
   it("un error del servidor (wait_for_tick) no rompe el bucle ni cuenta como oferta enviada", async () => {
