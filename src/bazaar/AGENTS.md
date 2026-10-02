@@ -13,6 +13,7 @@ Negocia con los dealers del Bazaar (hoy, Abuela Carmen) por su API HTTP: vende r
 - **`planner.ts`** — objetivos: `spareTargets` (repetidas, reserva = su your_value) y `buyTargets` (cartas de página que faltan, reserva = your_value × 0,85, recortada por presupuesto de la hora y caja).
 - **`agent.ts`** — `BazaarAgent.step`: un paso por tick (un hilo por dealer, un mensaje por hilo y tick, una aceptación por tick). Gestiona persona_quota (hasta la hora siguiente), cooloff (until_tick), sold_out y walked (objetivo fuera durante una hora).
 - **`trace.ts`** — `FileTrace`: JSONL en `results/bazaar-live/<fecha>/decisions.jsonl` y `thread-<id>.jsonl` (tick, precios, reserva usada, acción, regla, resultado).
+- **`score.ts`** — la cifra que maximizamos: `ScoreTracker.record` lee de `/api/me` solo los campos públicos de la cifra (lista cerrada; los campos privados de rareza/suerte del servidor nunca se leen) y escribe un snapshot por tick en `results/bazaar-live/<fecha>/score.jsonl` (`FileScoreTrace`), con `delta` por campo y `cause` (hilo, dealer, acción, precio) desde la traza del propio tick. `formatScoreSummary`/`formatScoreBreakdown` dan la línea de la CLI y el desglose de `bazaar:status`.
 - **`main.ts`** / **`status-main.ts`** — CLI.
 - **[`sim/`](sim/AGENTS.md)** — Abuela simulada desde su ficha real y arnés `pnpm bazaar:sim` (offline, sin POST).
 
