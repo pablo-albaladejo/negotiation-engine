@@ -1,5 +1,5 @@
 import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
@@ -75,7 +75,8 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     onFiltersChange?.(next);
     setPage(0);
   };
-  const model = matchesModel(summary, games, filters);
+  // T10: summary/games/filters only change on a real filter action or a new run, not on every render.
+  const model = useMemo(() => matchesModel(summary, games, filters), [summary, games, filters]);
   /** T8: `injection` is meaningless (and its checkbox hidden) once the run has no injection data at
    * all; drop it from the filters/URL instead of silently filtering by a column nobody can see. */
   useEffect(() => {
