@@ -281,19 +281,35 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
   useEffect(() => {
     let cancelled = false;
     setState(null);
-    Promise.all([
-      fetchApi<TraceLine[]>(`tournament/${encodeURIComponent(runId)}/${encodeURIComponent(session)}`),
-      fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`),
-    ]).then(async ([traceRes, runRes]) => {
-      const trace = traceRes.data ?? [];
+    void (async () => {
+      // X6: the trace and the summary are fetched independently -- a summary fetch failure (e.g. a
+      // malformed summary.json) must not hide an otherwise good trace; it just leaves `summary` null.
+      let trace: TraceLine[] = [];
+      try {
+        const traceRes = await fetchApi<TraceLine[]>(`tournament/${encodeURIComponent(runId)}/${encodeURIComponent(session)}`);
+        trace = traceRes.data ?? [];
+      } catch {
+        trace = [];
+      }
       const { header } = splitTrace(trace);
       let ref: ScenarioRef | null = null;
       if (header && header.mode === "tournament") {
-        const scenarioRes = await fetchApi<ScenarioRef>(`scenario-ref?id=${encodeURIComponent(header.scenario.id)}&hash=${encodeURIComponent(header.scenario.hash)}`);
-        ref = scenarioRes.data;
+        try {
+          const scenarioRes = await fetchApi<ScenarioRef>(`scenario-ref?id=${encodeURIComponent(header.scenario.id)}&hash=${encodeURIComponent(header.scenario.hash)}`);
+          ref = scenarioRes.data;
+        } catch {
+          ref = null;
+        }
       }
-      if (!cancelled) setState({ trace, ref, summary: runRes.data?.summary ?? null });
-    });
+      let summary: Summary | null = null;
+      try {
+        const runRes = await fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`);
+        summary = runRes.data?.summary ?? null;
+      } catch {
+        summary = null;
+      }
+      if (!cancelled) setState({ trace, ref, summary });
+    })();
     return () => {
       cancelled = true;
     };
@@ -328,12 +344,19 @@ function FindContainer({ tab, replaceRoute }: { tab: FindTab; replaceRoute: (has
   useEffect(() => {
     let cancelled = false;
     setEmptyTitle(null);
-    fetchApi<RunEntry[]>("runs").then(async (res) => {
-      const result = await resolveFindTab(tab, res.data ?? []);
-      if (cancelled) return;
-      if (result.target) replaceRoute(result.target);
-      else setEmptyTitle({ tab, title: result.empty ?? "Not available" });
-    });
+    void (async () => {
+      // X6: a failed /api/runs (or any fetch resolveFindTab makes while resolving) used to leave
+      // this screen loading forever -- fall back to a named empty state instead.
+      try {
+        const res = await fetchApi<RunEntry[]>("runs");
+        const result = await resolveFindTab(tab, res.data ?? []);
+        if (cancelled) return;
+        if (result.target) replaceRoute(result.target);
+        else setEmptyTitle({ tab, title: result.empty ?? "Not available" });
+      } catch {
+        if (!cancelled) setEmptyTitle({ tab, title: "Could not read results/" });
+      }
+    })();
     return () => {
       cancelled = true;
     };

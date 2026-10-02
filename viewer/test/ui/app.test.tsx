@@ -345,6 +345,38 @@ describe("App Runs: a rejecting /api/champion fetch (T5)", () => {
   });
 });
 
+describe("App routing: failed fetches never leave a screen loading forever (X6)", () => {
+  it("FindContainer: a rejecting /api/runs shows a named empty state instead of hanging (test 15)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/runs")) throw new Error("network down");
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/find/matches";
+    render(<App />);
+    await screen.findByText("Could not read results/");
+  });
+
+  it("TournamentReplayContainer: a rejecting summary fetch still renders the trace, summary null (test 16)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/tournament/")) return new Response(JSON.stringify({ data: fx.tournament.trace, errors: [] }));
+        if (url.includes("/api/runs/")) throw new Error("summary.json malformed");
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/tournament/agent-1/ring-session-1";
+    render(<App />);
+    await screen.findByText("Outcome");
+    expect(screen.getByText("not logged · tournament mode")).toBeTruthy();
+  });
+});
+
 describe("App top-level error boundary (C11)", () => {
   it("renders the DS warning banner instead of a blank page when a screen throws while rendering", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
