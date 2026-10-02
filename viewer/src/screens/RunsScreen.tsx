@@ -2,6 +2,7 @@ import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatN
 import type { ApiError } from "../api.js";
 import { isChampionRun, type RunRow } from "../model/index.js";
 import { EmptyStateCard, InvalidLogBanner } from "../ui/states.js";
+import { PageTitle } from "../ui/page-title.js";
 import { PrimaryButton, TableLink } from "../ui/buttons.js";
 import { runKindLabel } from "../ui/labels.js";
 
@@ -57,7 +58,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-          <h2 className="nr-heading-lg">Runs</h2>
+          <PageTitle>Runs</PageTitle>
           <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
         </div>
         {onOpenLive ? <PrimaryButton onClick={onOpenLive}>Open live view</PrimaryButton> : null}

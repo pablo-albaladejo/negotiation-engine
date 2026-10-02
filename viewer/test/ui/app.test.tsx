@@ -123,7 +123,6 @@ describe("App routing (C2, C3)", () => {
     expect(buyerTab.getAttribute("aria-selected")).toBe("true");
 
     window.location.hash = `#/runs/${otherRunId}`;
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
     await waitFor(() => expect(screen.getByText(new RegExp(`${otherRunId} · matches`))).toBeTruthy());
     expect(screen.getByRole("tab", { name: "Buyer" }).getAttribute("aria-selected")).toBe("false");
   });
@@ -238,6 +237,44 @@ describe("App routing: switching games in a replay caches the run payload (T9)",
     expect(runCallsAfterSecond).toBe(1);
     const traceCalls = calls.filter((u) => u.includes("/games/")).length;
     expect(traceCalls).toBe(2);
+  });
+});
+
+describe("App focus-on-navigation (C1)", () => {
+  beforeEach(() => {
+    mockFetch(fx.summary, fx.games);
+  });
+
+  it("clicking a filter tab keeps focus on it instead of jumping to the heading", async () => {
+    window.location.hash = `#/runs/${fx.runId}`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+    const buyerTab = screen.getByRole("tab", { name: "Buyer" });
+    buyerTab.focus();
+    fireEvent.click(buyerTab);
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
+    expect(document.activeElement).toBe(buyerTab);
+  });
+
+  it("Clear filters focuses the results count, not the heading", async () => {
+    window.location.hash = `#/runs/${fx.runId}`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+    fireEvent.click(screen.getByLabelText("With fallback"));
+    await waitFor(() => expect(screen.getByText("No matches for these filters")).toBeTruthy());
+    fireEvent.click(screen.getByText("Clear filters"));
+    await waitFor(() => expect(document.activeElement?.textContent).toContain("matches"));
+    expect(document.activeElement?.textContent).toMatch(/^Showing/);
+  });
+
+  it("navigating from Runs to a run focuses its heading once data has loaded", async () => {
+    window.location.hash = "#/runs";
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Runs" })).toBeTruthy());
+    window.location.hash = `#/runs/${fx.runId}`;
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+    const heading = screen.getByRole("heading", { level: 2, name: new RegExp(`${fx.runId} · matches`) });
+    expect(document.activeElement).toBe(heading);
   });
 });
 

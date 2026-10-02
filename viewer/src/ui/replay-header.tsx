@@ -1,6 +1,7 @@
 import { ModeBadge } from "@negotiation-ring/design-system";
 import { BackLink } from "./buttons.js";
 import { MatchSelector, type MatchSelectorGame } from "./match-selector.js";
+import { PageTitle } from "./page-title.js";
 
 export interface ReplayHeaderProps {
   onBack: () => void;
@@ -25,7 +26,7 @@ export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena",
       <BackLink onClick={onBack}>{backLabel}</BackLink>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
         <ModeBadge mode={mode} />
-        <h2 className="nr-heading-lg">{rival ? `${gameId} · vs ${rival}` : gameId}</h2>
+        <PageTitle>{rival ? `${gameId} · vs ${rival}` : gameId}</PageTitle>
       </div>
       {games && onSelectGame ? <MatchSelector games={games} currentGameId={gameId} onSelectGame={onSelectGame} /> : null}
     </div>

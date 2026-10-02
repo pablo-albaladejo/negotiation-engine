@@ -1,6 +1,7 @@
 import { Card, ChatMessage, Legend, OfferChart } from "@negotiation-ring/design-system";
 import { gridCols } from "../ui/grid.js";
 import { EmptyStateCard, EmptyZopaBanner, InvalidLogBanner, LoadingCard, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+import { PageTitle } from "../ui/page-title.js";
 
 const TEMPLATE_FLAG = [{ kind: "fallback" as const, label: "template · LLM down" }];
 
@@ -13,7 +14,7 @@ export function StatesScreen() {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <h2 className="nr-heading-lg">States and edge cases</h2>
+        <PageTitle>States and edge cases</PageTitle>
         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
       </div>
       <div className="nr-grid" style={gridCols("repeat(auto-fit, minmax(420px, 1fr))")}>

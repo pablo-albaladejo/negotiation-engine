@@ -2,6 +2,7 @@ import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useRef, useState } from "react";
 import { SecondaryButton } from "./ui/buttons.js";
 import { initialTheme, storeTheme, watchSystemTheme, type Theme } from "./theme.js";
+import { requestPageFocus } from "./focus.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
@@ -257,25 +258,27 @@ function LiveContainer() {
 }
 
 export function App() {
-  const { route, hash, replaceRoute, navKey } = useHashRoute();
+  const { route, replaceRoute, navKey } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
-  const mainRef = useRef<HTMLElement | null>(null);
-  const skipFocus = useRef(true);
-  /** L27: title per screen on every hash change; focus moves to the page h2 so screen readers and
-   * keyboard users land on the new content, but not on the very first paint (no screen to leave).
+  const isFirstNav = useRef(true);
+  /** L27: document title per screen; kept on `route.screen` alone (not `navKey`/`hash`) so a
+   * filter/page change (which only touches the query via `replaceRoute`) never re-triggers it.
    * Runs before the `live` early return so this hook is called on every render (rules of hooks). */
   useEffect(() => {
     document.title = `${SCREEN_TITLE[route.screen]} · Arena viewer`;
-    if (skipFocus.current) {
-      skipFocus.current = false;
+  }, [route.screen]);
+  /** C1: flags a real navigation (`navKey`, bumped only by an actual `hashchange`, never by
+   * `replaceRoute`) so the screen's own `PageTitle` heading focuses itself once it has actually
+   * rendered — it may still be behind a `LoadingCard` right after this fires. Not on the very
+   * first paint (no screen to leave), and never on a filter/page change (L24's own focus move on
+   * "Clear filters" must not be fought over). */
+  useEffect(() => {
+    if (isFirstNav.current) {
+      isFirstNav.current = false;
       return;
     }
-    const heading = mainRef.current?.querySelector<HTMLElement>("h2");
-    if (heading) {
-      heading.tabIndex = -1;
-      heading.focus();
-    }
-  }, [hash]);
+    requestPageFocus();
+  }, [navKey]);
   /** D2: keep <html data-theme> (set pre-paint by the inline script in index.html) in sync with
    * React state, so color-scheme and the html/body background track every toggle too. */
   useEffect(() => {
@@ -301,7 +304,7 @@ export function App() {
           </div>
           <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>Dark mode</SecondaryButton>
         </header>
-        <main ref={mainRef}>
+        <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
           {route.screen === "matches" ? <MatchesContainer key={`${route.runId}-${navKey}`} runId={route.runId} query={route.query} replaceRoute={replaceRoute} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}

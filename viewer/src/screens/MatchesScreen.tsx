@@ -5,6 +5,7 @@ import { matchesModel, type MatchFilters } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
 import { resultLabel, roleLabel } from "../ui/labels.js";
 import { EmptyStateCard } from "../ui/states.js";
+import { PageTitle } from "../ui/page-title.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Match" },
@@ -123,10 +124,10 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
         <BackLink onClick={onBack}>← Runs</BackLink>
-        <h2 className="nr-heading-lg" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <PageTitle style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
           {runId} · matches
           {isChampion ? <Pill kind="champion">champion</Pill> : null}
-        </h2>
+        </PageTitle>
       </div>
       <KpiStrip
         items={[

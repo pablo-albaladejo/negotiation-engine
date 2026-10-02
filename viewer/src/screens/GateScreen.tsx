@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
 import { BackLink, PrimaryButton } from "../ui/buttons.js";
 import { gridCols } from "../ui/grid.js";
+import { PageTitle } from "../ui/page-title.js";
 
 const METRIC_COLUMNS = (model: GateModel): DataTableColumn[] => [
   { key: "k", label: "Metric" },
@@ -135,9 +136,9 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         <BackLink onClick={onBack}>← Runs</BackLink>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-            <h2 className="nr-heading-lg">
+            <PageTitle>
               Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
-            </h2>
+            </PageTitle>
             <span className="nr-cfg">
               {model.runId} · {model.candidatePath} · criterion: {model.criterion}
               {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
