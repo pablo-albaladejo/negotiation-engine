@@ -147,7 +147,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
         <BackLink onClick={onBack}>← Runs</BackLink>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <PageTitle>{runId} · matches</PageTitle>
           {isChampion ? <Pill kind="champion">champion</Pill> : null}
         </div>

@@ -55,9 +55,13 @@ describe("MatchesScreen (P2)", () => {
   });
 
   it("h2 \'{run} \u00b7 matches\' con Pill champion si corresponde", () => {
-    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} isChampion />);
+    const { container } = render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} isChampion />);
     expect(screen.getByText(`${fx.runId} \u00b7 matches`)).toBeTruthy();
     expect(screen.getByText("champion")).toBeTruthy();
+    // F11: title row wraps on narrow screens, champion Pill looks like verdict (same ok-soft/ok colors).
+    const titleRow = screen.getByText(`${fx.runId} \u00b7 matches`).closest("div")!;
+    expect(titleRow.getAttribute("style")).toContain("flex-wrap: wrap");
+    expect(container.querySelector(".nr-pill.champion")).toBeTruthy();
   });
 
   it("opciones de rol en ingl\u00e9s (Buyer/Seller) y \'All opponents\' para el rival", () => {
