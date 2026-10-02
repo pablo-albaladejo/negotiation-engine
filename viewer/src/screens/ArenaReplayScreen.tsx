@@ -44,6 +44,7 @@ const DECISION_COLUMNS: DataTableColumn[] = [
 ];
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
+const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
 
 export interface ArenaReplayScreenProps {
   runId: string;
@@ -110,7 +111,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         {
           k: "Validator",
           v: panel.validator
-            ? `${panel.validator.ok ? "ok" : `failed: ${Array.isArray(panel.validator.reasons) ? panel.validator.reasons.join(", ") : ""}`} (${panel.boxes.filter((b) => b.box === "validator").length} attempt(s))`
+            ? `${panel.validator.ok ? "ok" : `rejected · ${Array.isArray(panel.validator.reasons) && panel.validator.reasons.length > 0 ? panel.validator.reasons.join(", ") : "no reason logged"}`} (${panel.boxes.filter((b) => b.box === "validator").length} attempt(s))`
             : "not logged",
         },
         {
@@ -138,7 +139,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
       <KpiStrip
         items={[
           { label: "Result", value: result.label, ...(result.tone ? { tone: result.tone } : {}) },
-          { label: "Surplus", value: pct(model.game.surplusShare) },
+          { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds} / ${model.game.roundLimit}` : String(model.game.rounds) },
           { label: "ZOPA", value: zopaKpi(model.game.zopaEmpty) },
         ]}
@@ -201,17 +202,24 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
       </div>
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-          <h3 className="nr-heading">Engine decision this round</h3>
-          <span className="nr-cfg">
-            R{selectedRound} / {model.game.rounds}
-          </span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
+            <h3 className="nr-heading">Engine decision this round</h3>
+            <span className="nr-cfg">
+              R{selectedRound} / {model.game.rounds}
+            </span>
+          </div>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <SecondaryButton onClick={() => setSelectedRound((r) => Math.max(1, r - 1))}>← Previous round</SecondaryButton>
             <SecondaryButton onClick={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}>Next round →</SecondaryButton>
           </div>
         </div>
         {model.hasTrace ? (
-          <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
+          <>
+            <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
+            <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
+              Click a point on the chart to switch rounds. Values exactly as logged by the engine.
+            </p>
+          </>
         ) : (
           <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
         )}

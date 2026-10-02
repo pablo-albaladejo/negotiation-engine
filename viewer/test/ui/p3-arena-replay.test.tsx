@@ -14,6 +14,29 @@ beforeAll(async () => {
 afterEach(cleanup);
 
 describe("ArenaReplayScreen (P3)", () => {
+  it("KPI \"Surplus / ZOPA\" se muestra como decimal, nunca como porcentaje", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(screen.getByText("Surplus / ZOPA")).toBeTruthy();
+    expect(screen.queryByText(/%$/)).toBeNull();
+  });
+
+  it("la nota bajo la tabla de decisión explica cómo cambiar de ronda", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(screen.getByText("Click a point on the chart to switch rounds. Values exactly as logged by the engine.")).toBeTruthy();
+  });
+
+  it("el validador se muestra legible (ok / rejected · motivo), nunca JSON.stringify", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(container.textContent).not.toContain("{\"ok\"");
+    expect(container.textContent).toMatch(/ok \(\d+ attempt/);
+  });
+
   it("gráfico, chat y panel de decisión con ZOPA y ambas reservas", () => {
     const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
