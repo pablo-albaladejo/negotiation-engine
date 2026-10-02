@@ -119,6 +119,7 @@ export type Rule =
   | "final-below-reservation"
   | "fixed-price"
   | "fixed-price-out-of-range"
+  | "opening-last-chance"
   | "lowball-bid"
   | "stuck-at-reservation"
   | "stuck-accept-within-limit"
@@ -337,9 +338,14 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
     // AC_next: su oferta es al menos tan buena como la que le mandaríamos; o ya no podemos movernos.
     const acNext = withinRes && (next === undefined || atLeastAsGood(view.side, her.price, next.price));
     // Una oferta final se acepta si cabe en la reserva privada y crea valor, aunque sea su apertura (cuenta como trato).
-    const take = acNext || (her.final && valuePositive(view, her.price));
+    const finalTake = her.final && valuePositive(view, her.price);
+    // Está a punto de irse (final, o nuestro próximo mensaje agota la paciencia que le calculamos) con su apertura
+    // sin mover: mejor cerrar en efectivo positivo que arriesgar el no-deal (hilo 257: su apertura 13, reserva 9).
+    const aboutToWalk = her.final || view.ourPrices.length >= p.patienceBudget - 1;
+    const openingLastChance = isOpening && !finalTake && aboutToWalk && valuePositive(view, her.price);
+    const take = acNext || finalTake || openingLastChance;
     if (take) {
-      const rule: Rule = acNext ? "ac-next" : "final-above-reservation";
+      const rule: Rule = acNext ? "ac-next" : finalTake ? "final-above-reservation" : "opening-last-chance";
       if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
       return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule, effectiveReservation: effRes, ...(next ? { ourNext: next.price } : {}) };
     }

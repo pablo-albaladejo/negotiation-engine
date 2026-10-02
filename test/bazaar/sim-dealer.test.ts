@@ -2,12 +2,16 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent } from "../../src/bazaar/agent.js";
 import type { Topic } from "../../src/bazaar/client.js";
+import { negotiatorForDealer, traitsOf } from "../../src/bazaar/dealer-profile.js";
 import { numbersIn } from "../../src/bazaar/messages.js";
+import { DEFAULT_NEGOTIATOR_PARAMS } from "../../src/bazaar/negotiator.js";
 import type { TraceRecord } from "../../src/bazaar/trace.js";
 import { SimApi } from "../../src/bazaar/sim/api.js";
 import { DealerSim, type DealerSimOptions } from "../../src/bazaar/sim/dealer.js";
-import { deriveParams, limitFor, loadDealerProfile, menuItems, type DealerProfile } from "../../src/bazaar/sim/model.js";
+import { runEpisode } from "../../src/bazaar/sim/harness.js";
+import { CHATO_FIXTURE, deriveParams, limitFor, loadDealerProfile, menuItems, type DealerProfile } from "../../src/bazaar/sim/model.js";
 import { classifyTone } from "../../src/bazaar/sim/mood.js";
+import { oursPolicy } from "../../src/bazaar/sim/policies.js";
 
 const ABUELA = loadDealerProfile();
 const PACK: Topic = { buy: { pack: "sobre_barrio" } };
@@ -308,5 +312,29 @@ describe("SimApi: el agente real contra el simulador", () => {
     const outcome = records.find((r) => r.action === "outcome");
     expect(outcome?.status).toBe("deal");
     expect(s.deals[0]?.counts).toBe(true);
+  });
+});
+
+describe("modelo de El Chato (feed público: 16 tratos, 44 hilos, 9 equipos)", () => {
+  const CHATO = loadDealerProfile(CHATO_FIXTURE);
+
+  it("abre a 0,5× lista en uncommon (13 sobre 26) y su techo cae cerca de la mejor puja vista (16)", () => {
+    const p = deriveParams(CHATO);
+    const items = menuItems(CHATO, p);
+    const unc = items.find((i) => i.side === "sell" && i.key === "rarity:uncommon")!;
+    expect(unc.opening).toBe(13);
+    expect(limitFor(unc, p.floorFrac, p)).toBe(16);
+  });
+
+  it("vendiéndole una uncommon con reserva 9: o cierra por encima de su apertura (13) o se va sin trato, nunca con una caída nuestra de más de 2 P por mensaje", async () => {
+    const scenario = { name: "sell-uncommon", topic: { sell: { assets: [2] } }, side: "sell" as const, reservation: 9 };
+    const negotiator = { ...DEFAULT_NEGOTIATOR_PARAMS, ...negotiatorForDealer(traitsOf(CHATO), "chato") };
+    expect(negotiator.maxStep).toBe(1); // garantiza, por construcción, que nunca saltamos más de 1 P de golpe.
+    for (let seed = 0; seed < 8; seed++) {
+      const r = await runEpisode({ profile: CHATO, scenario, policy: oursPolicy(negotiator, "ours-chato"), seed, floorFrac: 0.25 });
+      expect(r.errors).toEqual([]);
+      if (r.status === "deal") expect(r.price!).toBeGreaterThanOrEqual(13); // 13 = su apertura: ya crea valor sobre la reserva (9).
+      else expect(r.status).not.toBe("deal");
+    }
   });
 });

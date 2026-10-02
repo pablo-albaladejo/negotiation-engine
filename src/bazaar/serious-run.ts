@@ -88,7 +88,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
       }
       const menu: DealerInfo | undefined = await api.dealer(id).catch(() => undefined);
       const summary = all.find((d) => d.id === id);
-      const profile = negotiatorForDealer(traitsOf(menu ?? summary));
+      const profile = negotiatorForDealer(traitsOf(menu ?? summary), id);
       const dealsPerHour = dealsPerHourOf(menu);
       const agent = new BazaarAgent(api, {
         dealer: { id, aliases: [...(summary?.name ? [summary.name] : []), ...(menu?.name ? [menu.name] : []), "persona", "dealer"] },

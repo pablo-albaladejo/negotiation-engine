@@ -160,8 +160,8 @@ describe("negotiator: compra", () => {
         const last = decisions[decisions.length - 1]!;
         if (last.action.kind === "accept") {
           expect(last.action.price).toBeLessThanOrEqual(res);
-          // A su apertura solo por la regla de precio fijo (no se movió tras nuestras concesiones).
-          if (last.action.price === open) expect(["final-above-reservation", "stuck-accept-within-limit"]).toContain(last.rule);
+          // A su apertura solo por precio fijo, o por aceptar antes de que se agote nuestra paciencia con el dealer.
+          if (last.action.price === open) expect(["final-above-reservation", "stuck-accept-within-limit", "opening-last-chance"]).toContain(last.rule);
         }
       }),
       { numRuns: 300 },
@@ -190,6 +190,30 @@ describe("negotiator: venta", () => {
   it("no acepta una puja final por debajo de nuestro valor", () => {
     const d = decide(view({ side: "sell", reservation: 30, herOpening: 12, herPrices: [12, 20], herCurrent: { offerId: 4, price: 20, final: true }, ourPrices: [48] }));
     expect(d.action.kind).toBe("close");
+  });
+
+  it("hilo 257 (El Chato): acepta su apertura sin mover si estamos en el último mensaje y crea valor, en vez de cerrar sin trato", () => {
+    const p = { ...DEFAULT_NEGOTIATOR_PARAMS, patienceBudget: 3 };
+    const d = decide(
+      view({ side: "sell", reservation: 9, herOpening: 13, herPrices: [13, 13, 13], herCurrent: { offerId: 7, price: 13, final: false }, ourPrices: [20, 17] }),
+      p,
+    );
+    expect(d.action).toEqual({ kind: "accept", offerId: 7, price: 13 });
+    expect(d.rule).toBe("opening-last-chance");
+  });
+
+  it("no acepta su apertura sin mover si aún nos queda paciencia o si no crea valor", () => {
+    const p = { ...DEFAULT_NEGOTIATOR_PARAMS, patienceBudget: 6 };
+    const early = decide(
+      view({ side: "sell", reservation: 9, herOpening: 13, herPrices: [13], herCurrent: { offerId: 7, price: 13, final: false }, ourPrices: [20] }),
+      p,
+    );
+    expect(early.action.kind).not.toBe("accept");
+    const noValue = decide(
+      view({ side: "sell", reservation: 14, herOpening: 13, herPrices: [13, 13, 13], herCurrent: { offerId: 7, price: 13, final: false }, ourPrices: [20, 17] }),
+      { ...DEFAULT_NEGOTIATOR_PARAMS, patienceBudget: 3 },
+    );
+    expect(noValue.action.kind).not.toBe("accept");
   });
 });
 
