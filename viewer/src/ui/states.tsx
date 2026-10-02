@@ -49,17 +49,22 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
   );
 }
 
-/** P8: run o partida sin registros: el estado vacío va directo en la Card, sin caja interior. */
-export function EmptyStateCard({ title, body, command }: { title: string; body: string; command: string }) {
+/**
+ * P8: run o partida sin registros: el estado vacío va directo en la Card, sin caja interior.
+ * `body`/`command` son opcionales (p. ej. "sin resultados para estos filtros" solo necesita un
+ * título y una acción); `action` añade un control debajo (botón "Clear filters", etc.).
+ */
+export function EmptyStateCard({ title, body, command, action }: { title: string; body?: string; command?: string; action?: ReactNode }) {
   return (
     <Card>
       <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", textAlign: "center", maxWidth: "48ch", margin: "0 auto" }}>
-        <h3 className="nr-heading" style={{ fontSize: 16 }}>
-          {title}
-        </h3>
-        <span className="nr-muted">
-          {body} <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code>
-        </span>
+        <h3 className="nr-heading-sm">{title}</h3>
+        {body ? (
+          <span className="nr-muted">
+            {body} {command ? <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code> : null}
+          </span>
+        ) : null}
+        {action}
       </div>
     </Card>
   );

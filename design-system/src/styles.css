@@ -6,6 +6,7 @@
 .nr-root h1,.nr-root h2,.nr-root h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
 .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}
 .nr-heading{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
+.nr-heading-sm{font-family:var(--font-display);font-size:16px;font-weight:700;margin:0}
 .nr-muted{color:var(--muted);font-size:13.5px}
 .nr-cfg{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .nr-stat-figure-wrap{display:flex;flex-direction:column;gap:var(--space-1)}

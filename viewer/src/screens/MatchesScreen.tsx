@@ -1,9 +1,10 @@
 import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
 import { resultLabel, roleLabel } from "../ui/labels.js";
+import { EmptyStateCard } from "../ui/states.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Match" },
@@ -55,6 +56,14 @@ export interface MatchesScreenProps {
 export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, onFiltersChange, isChampion }: MatchesScreenProps) {
   const [filters, setFiltersState] = useState<MatchFilters>(initialFilters ?? {});
   const [page, setPage] = useState(0);
+  // If the container re-renders this screen for another run without remounting it (e.g. no `key`
+  // on the route), re-initialise the filters from that run's URL query instead of keeping stale
+  // ones from the previous run (INBOX A4).
+  useEffect(() => {
+    setFiltersState(initialFilters ?? {});
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
   const setFilters = (updater: MatchFilters | ((f: MatchFilters) => MatchFilters)) => {
     setFiltersState((f) => {
       const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(f) : updater;
@@ -69,16 +78,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <BackLink onClick={onBack}>← Runs</BackLink>
-        <Card>
-          <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", textAlign: "center", maxWidth: "48ch", margin: "0 auto" }}>
-            <h3 className="nr-heading" style={{ fontSize: 16 }}>
-              {runId} has no matches
-            </h3>
-            <span className="nr-muted">
-              The log has a config header but 0 match lines. Check <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>pnpm arena --matches</code>
-            </span>
-          </div>
-        </Card>
+        <EmptyStateCard title={`${runId} has no matches`} body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
       </section>
     );
   }
@@ -139,40 +139,35 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
           if (key === "injection") setFilters((f) => withFilter(f, "injection", checked ? true : undefined));
         }}
       />
-      <Card>
-        {model.rows.length === 0 ? (
-          <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", textAlign: "center" }}>
-            <span className="nr-muted">No matches for these filters</span>
-            <SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>
+      {model.rows.length === 0 ? (
+        <EmptyStateCard title="No matches for these filters" action={<SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>} />
+      ) : (
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+            <span className="nr-muted">
+              Showing {model.rows.length} of {games.length} matches
+            </span>
           </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+          <DataTable
+            columns={COLUMNS}
+            rows={rows.map((r, i) => ({ ...r, id: <TableLink onClick={() => onOpenGame(pageRows[i]!.gameId)}>{r.id as string}</TableLink> }))}
+            onRowClick={(i) => onOpenGame(pageRows[i]!.gameId)}
+          />
+          {paginated ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
+              <SecondaryButton onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
+                Previous
+              </SecondaryButton>
               <span className="nr-muted">
-                Showing {rows.length} of {games.length} matches
+                Page {currentPage + 1} of {pageCount}
               </span>
+              <SecondaryButton onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={currentPage >= pageCount - 1}>
+                Next
+              </SecondaryButton>
             </div>
-            <DataTable
-              columns={COLUMNS}
-              rows={rows.map((r, i) => ({ ...r, id: <TableLink onClick={() => onOpenGame(pageRows[i]!.gameId)}>{r.id as string}</TableLink> }))}
-              onRowClick={(i) => onOpenGame(pageRows[i]!.gameId)}
-            />
-            {paginated ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
-                <SecondaryButton onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
-                  Previous
-                </SecondaryButton>
-                <span className="nr-muted">
-                  Page {currentPage + 1} of {pageCount}
-                </span>
-                <SecondaryButton onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={currentPage >= pageCount - 1}>
-                  Next
-                </SecondaryButton>
-              </div>
-            ) : null}
-          </>
-        )}
-      </Card>
+          ) : null}
+        </Card>
+      )}
     </section>
   );
 }
