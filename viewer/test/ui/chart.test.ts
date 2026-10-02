@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { offerDomain } from "../../src/ui/chart.js";
+import { arenaChartCaption, offerDomain } from "../../src/ui/chart.js";
 
 describe("offerDomain", () => {
   it("returns [0, 1] for empty values", () => {
@@ -64,5 +64,23 @@ describe("offerDomain", () => {
 
   it("filters out null and undefined", () => {
     expect(offerDomain([0.5, null, 9.3, undefined])).toEqual(offerDomain([0.5, 9.3]));
+  });
+});
+
+// Test 4: arenaChartCaption (A4) -- normal ZOPA, empty ZOPA, not logged.
+describe("arenaChartCaption", () => {
+  it("not logged when either reserve is missing (v1 transcripts without reserves)", () => {
+    expect(arenaChartCaption(null, 100, false)).toBe("not logged");
+    expect(arenaChartCaption(100, null, false)).toBe("not logged");
+  });
+
+  it("normal ZOPA: the span between both reserves, lowest first", () => {
+    expect(arenaChartCaption(80, 120, false)).toBe("ZOPA 80\u2013120 (arena: the opponent's reserve is revealed afterwards). Click a point to highlight its message.");
+    expect(arenaChartCaption(120, 80, false)).toBe("ZOPA 80\u2013120 (arena: the opponent's reserve is revealed afterwards). Click a point to highlight its message.");
+  });
+
+  it("empty ZOPA: names which side's reserve is out of range, relative to ours", () => {
+    expect(arenaChartCaption(100, 90, true)).toBe("Empty ZOPA: their reserve (90) is below ours (100). No ZOPA band.");
+    expect(arenaChartCaption(100, 110, true)).toBe("Empty ZOPA: their reserve (110) is above ours (100). No ZOPA band.");
   });
 });

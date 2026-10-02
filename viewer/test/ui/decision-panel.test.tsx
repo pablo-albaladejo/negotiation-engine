@@ -22,6 +22,14 @@ const panel = (round: number): RoundPanel => ({
   boxes: [],
 });
 
+const panelWithExplain = (round: number): RoundPanel => ({
+  ...panel(round),
+  explain: { t: 0.4, target: 0.5, targetOffer: null, step: 0.1, uOffer: 0.5, uRival: 0.4, acNext: true, acTime: "applies", rivalReserveEstimate: {} },
+  parser: { intent: "offer", injectionSuspected: true },
+  validator: { ok: true },
+  template: true,
+});
+
 describe("DecisionPanel (L4/L5/L25/L26)", () => {
   it("round label uses the actual round numbers, not a count (may start above 1 / skip)", () => {
     render(<DecisionPanel hasTrace panel={panel(7)} rounds={[3, 5, 7]} selectedRound={7} onSelectRound={() => {}} />);
@@ -82,5 +90,25 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
     expect(next.getAttribute("aria-disabled")).toBe("false");
     next.click();
     expect(onSelectRound).toHaveBeenCalledWith(3);
+  });
+
+  // Test 7: Status column flags per row, from the logged explain/parser/validator -- no separate "Rule" row (A7).
+  it("Status column: accept/applies/injection/template flags from the logged explain/parser/validator; no 'Rule' row", () => {
+    render(<DecisionPanel hasTrace panel={panelWithExplain(1)} rounds={[1]} selectedRound={1} onSelectRound={() => {}} />);
+    expect(screen.getByText("Turn step")).toBeTruthy();
+    expect(screen.queryByText("Rule")).toBeNull();
+    expect(screen.getByText("accept")).toBeTruthy();
+    expect(screen.getByText("applies")).toBeTruthy();
+    expect(screen.getByText("injection")).toBeTruthy();
+    expect(screen.getByText("template")).toBeTruthy();
+  });
+
+  it("Status column: no-accept/no/clean/ok flags when explain says so and nothing was flagged", () => {
+    const clean: RoundPanel = { ...panelWithExplain(1), explain: { ...panelWithExplain(1).explain!, acNext: false, acTime: "no" }, parser: { intent: "offer", injectionSuspected: false }, template: false };
+    render(<DecisionPanel hasTrace panel={clean} rounds={[1]} selectedRound={1} onSelectRound={() => {}} />);
+    expect(screen.getByText("no accept")).toBeTruthy();
+    expect(screen.getByText("no")).toBeTruthy();
+    expect(screen.getByText("clean")).toBeTruthy();
+    expect(screen.getByText("ok")).toBeTruthy();
   });
 });

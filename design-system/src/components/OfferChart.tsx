@@ -181,15 +181,22 @@ export function OfferChart({
   }
 
   const endPoint = end ? findOfferAt(end.round, ourOffers, theirOffers) : undefined;
-  const endPlacement = end && endPoint
+  // For walks, if there's no offer at the end round, use the last available offer
+  const effectiveEndPoint = end && !endPoint 
+    ? (() => {
+        const allOffers = [...ourOffers, ...theirOffers].sort((a, b) => b.round - a.round);
+        return allOffers.length > 0 ? { side: (allOffers[0]!.round <= ourOffers[ourOffers.length - 1]?.round || !theirOffers.length) ? "us" : "them", value: allOffers[0]!.value } : undefined;
+      })()
+    : endPoint;
+  const endPlacement = end && effectiveEndPoint
     ? endLabelPlacement(
         (() => {
-          const earlier = [...(endPoint.side === "us" ? ourOffers : theirOffers)]
+          const earlier = [...(effectiveEndPoint.side === "us" ? ourOffers : theirOffers)]
             .sort((a, b) => a.round - b.round)
             .filter((p) => p.round < end.round);
           return earlier.length > 0 ? earlier[earlier.length - 1]!.value : undefined;
         })(),
-        endPoint.value,
+        effectiveEndPoint.value,
       )
     : undefined;
 
@@ -319,18 +326,18 @@ export function OfferChart({
         })}
       </g>
 
-      {end && endPoint ? (
+      {end && effectiveEndPoint ? (
         <>
           <circle
             className={end.kind === "walk" ? "walk-ring" : "deal-ring"}
             cx={offerChartXScale(end.round, rounds)}
-            cy={offerChartYScale(endPoint.value, yDomain)}
+            cy={offerChartYScale(effectiveEndPoint.value, yDomain)}
             r={9}
           />
           <text
             className={end.kind === "walk" ? "walk-label" : "deal-label"}
             x={offerChartXScale(end.round, rounds) + (endPlacement?.dx ?? -13)}
-            y={offerChartYScale(endPoint.value, yDomain) + (endPlacement?.dy ?? -13)}
+            y={offerChartYScale(effectiveEndPoint.value, yDomain) + (endPlacement?.dy ?? -13)}
             textAnchor={endPlacement?.anchor ?? "end"}
           >
             {end.label}

@@ -166,6 +166,75 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(resultLabel(undefined).label).toBe("not logged");
   });
 
+  // Test 5: arena KPIs -- Price (deal vs walk), Role · reserve, Injections count + walk tone.
+  describe("KPI strip: Price / Role · reserve / Injections (A3)", () => {
+    it("Price shows the agreed offer on a deal", () => {
+      const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide" && g.endReason === "agreement")!;
+      const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+      render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const priceKpi = screen.getByText("Price").closest(".nr-kpi")!;
+      expect(within(priceKpi).getByText(String(Object.values(line.agreement!)[0]))).toBeTruthy();
+    });
+
+    it("Price is em-dash on a walk, never our last offer", () => {
+      const line = fx.games.find((g) => g.scenarioId === "price-buyer-empty")!;
+      expect(line.agreement).toBeUndefined();
+      const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+      render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const priceKpi = screen.getByText("Price").closest(".nr-kpi")!;
+      expect(within(priceKpi).getByText("\u2014")).toBeTruthy();
+    });
+
+    it("Role · reserve shows our role label and reserve value", () => {
+      const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+      const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+      render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const kpi = screen.getByText("Role · reserve").closest(".nr-kpi")!;
+      expect(kpi.textContent).toContain(model.game.role === "buyer" ? "Buyer" : "Seller");
+    });
+
+    it("Injections counts parser-flagged rounds and shows a walk tone only when > 0", () => {
+      const clean = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+      const cleanModel = arenaReplayModel(clean, fx.traces.get(clean.gameId)!);
+      render(<ArenaReplayScreen runId={fx.runId} model={cleanModel} onBack={() => {}} />);
+      const cleanKpi = screen.getByText("Injections").closest(".nr-kpi")!;
+      const injected = cleanModel.rounds?.filter((p) => p.parser?.injectionSuspected).length ?? 0;
+      expect(within(cleanKpi).getByText(String(injected))).toBeTruthy();
+      if (injected === 0) expect(cleanKpi.querySelector(".nr-kpi-value")!.className).not.toContain("walk");
+    });
+  });
+
+  // Test 6: chart end-marker labels -- "{rule} → deal at {price}" on a deal, "R{n} · walk" on a walk.
+  describe("chart end marker label (A9/X3)", () => {
+    it("deal: shows the logged acceptance rule, never a hardcoded one", () => {
+      const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide" && g.endReason === "agreement")!;
+      const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+      const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const endLabel = container.querySelector("text.deal-label")!;
+      expect(endLabel.textContent).toContain("deal at");
+      expect(endLabel.textContent).not.toContain("AC_next");
+    });
+
+    it("walk: 'R{n} · walk', no deal label", () => {
+      const line = fx.games.find((g) => (g.endReason === "agent-walk" || g.endReason === "rival-walk"))!;
+      const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+      const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      // Scope to the chart SVG to avoid AC_next collision with table labels
+      const chartSvg = container.querySelector("svg") as SVGSVGElement | null;
+      expect(chartSvg).toBeTruthy();
+      // DEBUG: Check if end marker is rendered
+      console.log("Model offers.ours:", model.offers.ours);
+      console.log("Model offers.rival:", model.offers.rival);
+      console.log("Last round should be:", line.rounds);
+      const walkLabels = chartSvg?.querySelectorAll("text.walk-label");
+      console.log("Walk labels found:", walkLabels?.length);
+      const endLabel = chartSvg?.querySelector("text.walk-label")!;
+      expect(endLabel).toBeTruthy();
+      expect(endLabel.textContent).toBe(`R${line.rounds} \u00b7 walk`);
+      expect(chartSvg?.querySelector("text.deal-label")).toBeNull();
+    });
+  });
+
   it("protocol-violation: label depends on who broke it (line.protocolViolation?.by ?? metrics.protocolViolation)", () => {
     expect(resultLabel("protocol-violation", "rival").label).toBe("Opponent protocol violation");
     expect(resultLabel("protocol-violation", "agent").label).toBe("Our protocol violation");
