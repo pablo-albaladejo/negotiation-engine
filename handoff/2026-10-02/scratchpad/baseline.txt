@@ -1,6 +1,0 @@
-text-seller-wide             extreme-anchor  seller  21       0.0         0.0     0       —      0          0    0.41       0/0          0
-text-seller-wide             causa-prima     seller  21       0.0         0.0     0       —      0          0    0.44     0/105          0
-
-2646 partidas en 11.4 s · acuerdo 61.1 % · excedente medio 26.8 % · violaciones 0 · ZOPA vacía correcta 100 % · errores del rival 0
-fugas 0 · plantilla 0 · latencia media 0.42 ms (máx 8.2 ms) · mal extraídas 0 · sin extraer 1150 · acuerdos distintos de los reales 0
-resultados: /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/res/baseline

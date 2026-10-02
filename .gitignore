@@ -1,12 +1,17 @@
 node_modules/
 dist/
 coverage/
+# Trazas en vivo: fuera de git (lo ya versionado de results/bazaar-live/ se mantiene)
 results/
+# Traspaso del día 1: solo HANDOFF.md en git
+handoff/*
+!handoff/2026-10-02/
+handoff/2026-10-02/*
+!handoff/2026-10-02/HANDOFF.md
 .env
 .env.*
 !.env.example
 .DS_Store
 *.log
-config/candidates/
 .omc/
 .claude/settings.local.json

@@ -1,2 +1,0 @@
-{"kind":"header","mode":"tournament","sessionId":"demo","configVersion":1,"createdAt":"2026-10-01T17:00:00.000Z","traceVersion":2,"scenario":{"id":"scenario.json","hash":"0123456789abcdef"},"role":"buyer"}
-{"kind":"box","sessionId":"demo","round":1,"box":"parser","input":{"textLength":5},"output":{"intent":"offer","injectionSuspected":true},"result":"ok","latencyMs":2,"provider":"none"}

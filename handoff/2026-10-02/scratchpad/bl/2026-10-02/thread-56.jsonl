@@ -1,4 +1,0 @@
-{"ts":"2026-10-02T18:48:07.142Z","tick":28,"dealer":"abuela","dryRun":false,"action":"open","thread":56,"target":"sell:23","side":"sell","reservation":3}
-{"ts":"2026-10-02T18:48:54.252Z","tick":29,"dealer":"abuela","dryRun":false,"action":"error","error":"bad_response","thread":56,"target":"sell:23"}
-{"ts":"2026-10-02T18:49:54.254Z","tick":30,"dealer":"abuela","dryRun":false,"action":"error","error":"bad_response","thread":56,"target":"sell:23"}
-{"ts":"2026-10-02T18:50:54.238Z","tick":31,"dealer":"abuela","dryRun":false,"action":"error","error":"bad_response","thread":56,"target":"sell:23"}

@@ -37,7 +37,7 @@ En una máquina nueva:
 ```bash
 git clone https://github.com/pablo-albaladejo/negotiation-ring.git && cd negotiation-ring
 pnpm i --frozen-lockfile
-pnpm test            # esperar 1209/1209
+pnpm test            # esperar 314/314
 ```
 
 Antes de las 09:00 (hora de Madrid), arrancar **todos** (el juego fue pausado):
@@ -51,7 +51,7 @@ set -a && . ./.env && set +a && VIEWER_RESULTS_DIR="$PWD/results/eval-dummy" pnp
 
 Para ver las conversaciones en vivo:
 ```bash
-node handoff/2026-10-02/scratchpad/convo-feed.mjs   # (después de cargar .env)
+set -a && . ./.env && set +a && pnpm bazaar:feed   # solo lectura
 ```
 
 ## Cambios hoy (viernes)
@@ -80,10 +80,10 @@ El visor está unificado en la pestaña `#bazaar` con `/api/bazaar/board`.
 ## Dónde está todo
 
 - **Planes y trazas:** `results/bazaar-live/2026-10-02/` (decisions.jsonl, thread-*.jsonl, score.jsonl, duels-state.json).
-- **Cartera del día 1:** `handoff/2026-10-02/` (estado, notas, transcripts de sesiones).
+- **Traspaso del día 1:** `handoff/2026-10-02/HANDOFF.md` (sesiones y scratchpad solo en la máquina de Pablo, fuera de git).
 - **Código:** `src/bazaar/` (agentes, dealers, duelos, trades, broker).
 - **Lecciones:** `docs/bazaar/lessons.json`, actualizado tras cada hilo.
-- **Original del Bazaar:** `handoff/2026-10-02/docs/bazaar/kit/`.
+- **Original del Bazaar:** `docs/bazaar/kit/`.
 
 ## Problemas abiertos
 

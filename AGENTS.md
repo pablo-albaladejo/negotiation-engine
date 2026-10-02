@@ -24,8 +24,8 @@ scripts/     escaneo de la API y comprobación de docs
 docs/        lecciones de los dealers y kit oficial del Bazaar
 viewer/         visor local del Bazaar (paquete independiente)
 design-system/  componentes React del visor (por alias, sin build)
-handoff/     traspaso del día 1
-results/     trazas en vivo (fuera de git salvo bazaar-live)
+handoff/     traspaso del día 1 (solo HANDOFF.md en git)
+results/     trazas en vivo (fuera de git)
 ```
 
 ## Scripts `pnpm`
@@ -42,6 +42,7 @@ results/     trazas en vivo (fuera de git salvo bazaar-live)
 | `pnpm bazaar:venue` | Plan de nuestro mercado (abrir exige `--confirm`). |
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
 | `pnpm bazaar:scan` | GET a todos los endpoints, guarda las respuestas. |
+| `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |
 | `pnpm bazaar:sim` | Nuestro negociador contra Abuela simulada (offline). |
 | `pnpm viewer` | Visor en http://127.0.0.1:5199/#bazaar |
 | `pnpm viewer:test` | Tests del visor. |

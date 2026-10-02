@@ -1,9 +1,0 @@
-
- RUN  v5.0.2 /Users/pablo/development/hackathon/negotiation-ring.worktrees/add-agent-architecture
-
-
- Test Files  2 passed (2)
-      Tests  18 passed (18)
-   Start at  01:17:02
-   Duration  304ms (tests 41%, transform 28%, import 27%, worker 4%)
-

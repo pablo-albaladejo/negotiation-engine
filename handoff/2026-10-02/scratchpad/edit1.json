@@ -1,5 +1,0 @@
-{
-  "file": "/Users/pablo/development/hackathon/negotiation-ring/viewer/src/App.tsx",
-  "old": "      {errors.length > 0 ? (\n        <Root theme=\"dark\">\n          <InvalidLogBanner errors={errors} validCount={feed.lines.length} />\n        </Root>\n      ) : null}",
-  "new": "      {errors.length > 0 ? (\n        <Root theme=\"dark\" className=\"nr-live-overlay\">\n          <InvalidLogBanner errors={errors} validCount={feed.lines.length} />\n        </Root>\n      ) : null}"
-}

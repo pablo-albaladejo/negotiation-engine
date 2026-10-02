@@ -1,9 +1,0 @@
-
-> negotiation-ring@0.1.0 viewer /Users/pablo/development/hackathon/negotiation-ring.worktrees/arena-viewer
-> pnpm --dir viewer start
-
-
-> @negotiation-ring/viewer@0.1.0 start /Users/pablo/development/hackathon/negotiation-ring.worktrees/arena-viewer/viewer
-> tsx server/main.ts
-
-Visor en http://127.0.0.1:5299/ (solo local, solo lectura) · resultados de /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/e2e/results
