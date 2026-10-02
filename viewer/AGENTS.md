@@ -6,7 +6,6 @@ Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: 
 
 - **[`server/`](server/AGENTS.md)** — `/api/bazaar/*` sobre la API del Bazaar y `results/bazaar-live/`.
 - **[`src/`](src/AGENTS.md)** — la app React (`BazaarScreen`).
-- **[`test/`](test/AGENTS.md)** — tests del servidor, modelo y render.
 - Sistema de diseño por alias a [`design-system/`](../design-system/AGENTS.md) (sin build).
 
 ## Invariantes
@@ -21,7 +20,6 @@ Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: 
 ```bash
 pnpm --dir viewer install
 set -a && . ./.env && set +a && pnpm viewer   # http://127.0.0.1:5199/#bazaar
-pnpm viewer:test
 pnpm viewer:typecheck
 ```
 

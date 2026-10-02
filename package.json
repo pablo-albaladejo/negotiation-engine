@@ -12,7 +12,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "viewer": "pnpm --dir viewer start",
-    "viewer:test": "pnpm --dir viewer test",
     "viewer:typecheck": "pnpm --dir viewer typecheck",
     "bazaar": "tsx src/dealers/main.ts",
     "bazaar:status": "tsx src/status/main.ts",

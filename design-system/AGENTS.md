@@ -9,7 +9,7 @@ Biblioteca de componentes compartida entre visor y posibles otros clientes. Buil
 ## Estructura
 
 - **`src/`** — Código fuente (TypeScript, componentes React).
-- **`test/`** — Tests.
+- **`test/`** — solo `no-dangerous-html` (nada de HTML inyectado).
 - **[`.design-sync/`](.design-sync/AGENTS.md)** — Sincronización con Claude Design (previews, config, convenciones).
 - **`examples/`** — Ejemplos de uso.
 - **`scripts/`** — Build scripts.

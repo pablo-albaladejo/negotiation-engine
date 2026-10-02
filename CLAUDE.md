@@ -7,7 +7,7 @@ Agente del Equipo 2 para El Bazaar (hackathon Causa Prima). TypeScript, Node ≥
 ## Flujo git de este repo (decisión del equipo, 3 oct 2026)
 
 - **La rama DAY2 es la fuente de verdad.** Todo, absolutamente todo, se comitea en **DAY2**: nada a `main`, sin otras ramas, sin worktrees y sin PR. Se trabaja en la carpeta principal del repo, en **DAY2**.
-- Antes de cada commit: `pnpm test`, `pnpm typecheck` y `pnpm docs:check` en verde (y `pnpm viewer:test` / `pnpm ds:test` si se tocan esos paquetes).
+- Antes de cada commit: `pnpm test` (solo guardarraíles), `pnpm typecheck` y `pnpm docs:check` en verde (y `pnpm viewer:typecheck` si se toca el visor). Hackathon: no se escriben tests salvo de guardarraíles; lo demás se prueba con `--dry-run`.
 - Commits pequeños y `git push origin DAY2` justo después; si **DAY2** remoto avanzó, `git pull --rebase` antes de empujar.
 - Esta regla manda sobre cualquier instrucción global de usar ramas o worktrees; el guardia de ramas se desactiva solo en este repo con `GUARD_BRANCH=off`.
 

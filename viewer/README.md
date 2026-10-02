@@ -5,7 +5,6 @@ Visor local de la partida del Bazaar: conversaciones con dealers, duelos, El Ras
 ```bash
 pnpm --dir viewer install   # una vez
 set -a && . ./.env && set +a && pnpm viewer   # http://127.0.0.1:5199/#bazaar (VIEWER_PORT cambia el puerto)
-pnpm viewer:test
 pnpm viewer:typecheck
 ```
 

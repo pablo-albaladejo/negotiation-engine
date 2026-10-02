@@ -25,7 +25,7 @@ src/
 ├─ broker/    casar ofertas en nuestro venue     (pnpm bazaar:broker)
 ├─ venue/     abrir nuestro mercado              (pnpm bazaar:venue)
 └─ status/    resumen de solo lectura            (pnpm bazaar:status)
-test/        tests unitarios y de propiedades (fast-check)
+test/        solo tests de guardarraíles (fast-check)
 scripts/     escaneo de la API y comprobación de docs
 docs/        lecciones de los dealers y kit oficial del Bazaar
 viewer/         visor local del Bazaar (paquete independiente)
@@ -38,7 +38,7 @@ results/     trazas en vivo (fuera de git)
 
 | Comando | Descripción |
 |---------|-------------|
-| `pnpm test` | Tests unitarios + propiedades. Deben pasar antes de cada commit. |
+| `pnpm test` | Tests de guardarraíles (límite, cifra = texto, un activo en un sitio, topes). Deben pasar antes de cada commit. |
 | `pnpm typecheck` | TypeScript. |
 | `pnpm docs:check` | Enlaces e identificadores de los AGENTS.md. |
 | `pnpm bazaar` | Agente de dealers (`--serious`, `--dry-run`, `--once`, `--max-spend`, `--cash-floor`…). |
@@ -52,8 +52,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:record` | Graba el stream en vivo (`/api/events/stream`, team y public) en `results/` para reconstruir el día. |
 | `pnpm bazaar:dump` | Volcado del estado y del día (cartas, hilos, duelos, feed) en `results/` (solo lectura). |
 | `pnpm viewer` | Visor en http://127.0.0.1:5199/#bazaar |
-| `pnpm viewer:test` | Tests del visor. |
-| `pnpm ds:test` | Tests del sistema de diseño (lo usa el visor). |
+| `pnpm ds:test` | Test de seguridad del sistema de diseño (sin HTML inyectado). |
 
 Detalle de cada pieza: [`src/AGENTS.md`](src/AGENTS.md).
 

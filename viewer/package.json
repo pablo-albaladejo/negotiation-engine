@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "tsx server/main.ts",
-    "test": "vitest run",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
