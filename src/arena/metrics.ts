@@ -165,7 +165,15 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
     wrongAgreement: game.wrongAgreement,
     ...(game.textMode === "full" ? textRates(game) : {}),
     protocolViolation: game.protocolViolation?.by ?? null,
-    injectionSuspected: game.records.filter((r) => r.box === "parser" && (r.output as { injectionSuspected?: boolean } | null)?.injectionSuspected === true).length,
+    ...(game.records.length > 0
+      ? {
+          injectionSuspected: new Set(
+            game.records
+              .filter((r) => r.box === "parser" && (r.output as { injectionSuspected?: boolean } | null)?.injectionSuspected === true)
+              .map((r) => r.round),
+          ).size,
+        }
+      : {}),
   };
 }
 

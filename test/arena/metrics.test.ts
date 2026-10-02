@@ -70,6 +70,21 @@ describe("métricas por partida y resumen", () => {
     expect(m.injectionSuspected).toBe(2);
   });
 
+  it("injectionSuspected: cuenta rondas distintas, no registros (dos registros parser en la misma ronda cuentan una vez)", () => {
+    const s = scenario("price-buyer-wide");
+    const record = (round: number, injectionSuspected: boolean) =>
+      ({ sessionId: "s", round, box: "parser", input: null, output: { intent: "offer", injectionSuspected }, result: "ok" as const, latencyMs: 1 });
+    const m = computeMetrics(s, game(s, { records: [record(1, true), record(1, true)] }, [agentOffer(5)]));
+    expect(m.injectionSuspected).toBe(1);
+  });
+
+  it("injectionSuspected: se omite (no 0) cuando no hay registros (p. ej. --agent-url)", () => {
+    const s = scenario("price-buyer-wide");
+    const m = computeMetrics(s, game(s, { records: [] }, [agentOffer(5)]));
+    expect(m.injectionSuspected).toBeUndefined();
+    expect("injectionSuspected" in m).toBe(false);
+  });
+
   it("cuenta violaciones de nuestras ofertas fuera del mandato", () => {
     const s = scenario("price-buyer-wide");
     const m = computeMetrics(s, game(s, {}, [agentOffer(4), agentOffer(2.5), agentOffer(2)]));
