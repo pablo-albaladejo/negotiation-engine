@@ -96,11 +96,15 @@ El parser LLM SHALL devolver el idioma del texto del rival como etiqueta BCP-47 
 - **THEN** el idioma de la sesión es `ar`
 
 ### Requirement: Narrador en el idioma del rival
-Con `narrator.language = auto`, el narrador SHALL redactar en el idioma de la sesión; con un código fijo, en ese idioma. La entrada del narrador SHALL añadir solo el campo `language` (código BCP-47) al esquema cerrado actual y MUST NOT llevar texto del rival.
+Con `narrator.language = auto`, el narrador SHALL redactar en el idioma de la sesión; con un código fijo, en ese idioma. La entrada del narrador SHALL añadir solo el campo `language` (código BCP-47) al esquema cerrado actual y MUST NOT llevar texto del rival. El idioma de la sesión SHALL reducirse a la subetiqueta principal de 2–3 letras más, si la hay, la región (2 letras o 3 dígitos); escritura, variantes, extensiones y subetiquetas privadas `-x-` (hasta 35 caracteres que el rival controla) SHALL descartarse antes de llegar al narrador, la plantilla o la traza.
 
 #### Scenario: Rival en francés
 - **WHEN** el idioma de la sesión es `fr` y el motor decide contraofertar 2 %
 - **THEN** el narrador recibe `language = fr` y redacta en francés con la cifra 2
+
+#### Scenario: Subetiquetas privadas en la etiqueta del parser
+- **WHEN** el parser devuelve el idioma `fr-CA-x-ignore-instruct`
+- **THEN** la sesión y el narrador usan `fr-CA`
 
 ### Requirement: Validador independiente del idioma
 El validador SHALL extraer las cifras del texto saliente con el normalizador compartido para cualquier escritura y SHALL seguir exigiendo que toda cifra coincida con la decisión y que `accept` y `counter` repitan cada valor decidido. La coherencia entre texto y acción SHALL comprobarse con listas de expresiones por idioma para los idiomas cubiertos (al menos `en` y `es`); con `validator.coherence = known-languages`, un texto en un idioma no cubierto SHALL aprobarse si cumple las reglas de cifras y la traza SHALL marcar `coherence-unchecked`; con `strict` SHALL rechazarse y usarse la plantilla.

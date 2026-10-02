@@ -10,6 +10,24 @@ export function canonicalLanguage(tag: string | undefined): string | undefined {
   }
 }
 
+/**
+ * Idioma de salida seguro (narrador, plantilla, traza): solo la subetiqueta principal de 2–3 letras
+ * y, si la hay, la región; se descarta todo lo demás (escritura, variantes, extensiones y subetiquetas
+ * privadas `-x-`, que el rival podría usar para colar texto en el prompt del narrador).
+ */
+export function outputLanguage(tag: string | undefined): string | undefined {
+  const canonical = canonicalLanguage(tag);
+  if (!canonical || canonical === "und") return undefined;
+  try {
+    const locale = new Intl.Locale(canonical);
+    if (!/^[a-z]{2,3}$/.test(locale.language)) return undefined;
+    const region = locale.region && /^(?:[A-Z]{2}|\d{3})$/.test(locale.region) ? `-${locale.region}` : "";
+    return `${locale.language}${region}`;
+  } catch {
+    return undefined;
+  }
+}
+
 export function isLanguageTag(tag: string): boolean {
   return canonicalLanguage(tag) !== undefined;
 }

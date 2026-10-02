@@ -7,7 +7,7 @@ import { detectLeak, type LeakContext } from "../llm/leak.js";
 import { templateNarrator, type Narrator, type NarratorInput, type TemplateContext } from "../llm/narrator.js";
 import { deterministicParser, extractOfferDetailed, negatedAccept, parseDeterministic } from "../llm/deterministic-parser.js";
 import { spanAppears } from "../llm/verify.js";
-import { turnLanguage } from "../llm/language.js";
+import { outputLanguage, turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
 import { renderTemplate, templateLanguage, templateVariant, type Ask, type Echo } from "../llm/template.js";
@@ -367,8 +367,8 @@ export function createPipeline(deps: PipelineDeps): Brain {
         if (runtime.parser.onLlmFailure === "deterministic") parse = fallback;
       }
       session.opponent.recordClaims(parse.claims);
-      const language = turnLanguage(parse.language, text);
-      if (language !== "und") session.language = language;
+      const language = outputLanguage(turnLanguage(parse.language, text));
+      if (language) session.language = language;
     } else {
       record("parser", { text: null }, EMPTY_PARSE, "ok", now());
     }
