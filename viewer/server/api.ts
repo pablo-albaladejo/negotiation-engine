@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { z } from "zod";
 import { ScenarioSchema as MandateFileSchema } from "../../src/agent/agent.js";
 import { GateFileSchema, SummarySchema, TranscriptLineSchema } from "../../src/arena/results-schema.js";
@@ -107,6 +107,12 @@ async function tournamentSessions(roots: Roots, runId: string): Promise<ApiRespo
   return ok(files.map((f) => f.slice(0, -".jsonl".length)));
 }
 
+/** Metadatos de solo lectura del visor: solo el nombre de la carpeta de `results/` (nunca la ruta
+ * absoluta), para la cabecera ("pnpm viewer · results/<folder>", ajuste 2). */
+function viewerInfo(roots: Roots): ApiResponse {
+  return ok({ resultsFolder: basename(roots.results) });
+}
+
 /** `config/champion.json`: solo expone `version`, de solo lectura (ajuste 2, §1 Runs). `null` si no existe. */
 async function championVersion(roots: Roots): Promise<ApiResponse> {
   const path = await resolveInside(roots.config, "champion.json");
@@ -154,6 +160,7 @@ export async function handleApi(roots: Roots, segments: readonly string[], query
   const [head, ...ids] = segments;
   if (head === "scenario-ref" && ids.length === 0) return scenarioRef(roots, query);
   if (head === "champion" && ids.length === 0) return championVersion(roots);
+  if (head === "info" && ids.length === 0) return viewerInfo(roots);
   if (!ids.every(isSafeId)) return badRequest();
   if (head === "runs") {
     const [runId, games, gameId] = ids;

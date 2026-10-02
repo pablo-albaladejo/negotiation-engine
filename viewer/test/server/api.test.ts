@@ -67,6 +67,13 @@ describe("API { data, errors } sobre los esquemas y adaptadores", () => {
     expect(res.json).toEqual({ data: { version: 1, path: "config/champion.json" }, errors: [] });
   });
 
+  it("/api/info: solo el nombre de la carpeta de results/, nunca la ruta absoluta", async () => {
+    const res = await get(port, "/api/info");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ data: { resultsFolder: "results" }, errors: [] });
+    expect(res.text).not.toContain(repo.root);
+  });
+
   it("una línea inválida y una truncada no tumban la respuesta: errores con fichero relativo y línea", async () => {
     const file = join(repo.root, "results", fx.runId, "transcripts.jsonl");
     appendFileSync(file, `${JSON.stringify({ ...fx.games[0], seed: "x" })}\n{"gameId":"cut`);
