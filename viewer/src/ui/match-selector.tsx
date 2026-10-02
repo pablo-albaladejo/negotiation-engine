@@ -1,40 +1,44 @@
-import { Pill } from "@negotiation-ring/design-system";
-import React from "react";
+import { MatchSelector as DsMatchSelector } from "@negotiation-ring/design-system";
+
+/** Lo mínimo de cada partida que usa el selector (sale tal cual de transcripts.jsonl). */
+export interface MatchSelectorGame {
+  gameId: string;
+  rival?: string;
+  endReason?: string;
+}
 
 export interface MatchSelectorProps {
-  games: Array<{ gameId: string }>;
+  games: MatchSelectorGame[];
   currentGameId: string;
   onSelectGame: (gameId: string) => void;
 }
 
+/** Partidas a cada lado de la actual: un run puede tener miles y el componente pinta un botón por partida. */
+export const MATCH_WINDOW = 3;
+
+/** Etiqueta de UI a partir del motivo de fin registrado; no se calcula nada. */
+export function endReasonLabel(endReason: string | undefined): { result: "deal" | "walk"; label: string } {
+  if (endReason === "agreement") return { result: "deal", label: "Deal" };
+  if (endReason === "agent-walk" || endReason === "rival-walk") return { result: "walk", label: "Walk" };
+  if (endReason === "limit") return { result: "walk", label: "Round limit" };
+  return { result: "walk", label: endReason ?? "not logged" };
+}
+
+/** Ventana de partidas alrededor de la actual, en el orden del log. */
+export function matchWindow(games: MatchSelectorGame[], currentGameId: string, size = MATCH_WINDOW): MatchSelectorGame[] {
+  const index = games.findIndex((game) => game.gameId === currentGameId);
+  if (index < 0) return games.slice(0, size * 2 + 1);
+  return games.slice(Math.max(0, index - size), index + size + 1);
+}
+
 /**
- * Match selector dropdown for replay screens.
- * Shows available games in the run and allows navigating to a selected game.
+ * Selector de partida del replay: usa el `MatchSelector` del design system (no un control propio)
+ * con una ventana de partidas vecinas para no pintar miles de botones.
  */
 export function MatchSelector({ games, currentGameId, onSelectGame }: MatchSelectorProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onSelectGame(e.target.value);
-  };
-
-  return (
-    <select
-      value={currentGameId}
-      onChange={handleChange}
-      style={{
-        padding: "7px 14px",
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--line)",
-        backgroundColor: "var(--bg)",
-        color: "var(--ink)",
-        font: "500 13px var(--font-body)",
-        cursor: "pointer",
-      }}
-    >
-      {games.map((game) => (
-        <option key={game.gameId} value={game.gameId}>
-          {game.gameId}
-        </option>
-      ))}
-    </select>
-  );
+  const matches = matchWindow(games, currentGameId).map((game) => {
+    const { result, label } = endReasonLabel(game.endReason);
+    return { id: game.gameId, rival: game.rival ?? "not logged", result, label };
+  });
+  return <DsMatchSelector matches={matches} selectedId={currentGameId} onSelect={onSelectGame} />;
 }
