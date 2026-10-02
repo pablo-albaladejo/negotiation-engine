@@ -11,13 +11,14 @@ import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
 import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./offer-structure.js";
+import { busyAssets, sellBlocked } from "./asset-locks.js";
 
 /**
  * Bucle observar → decidir → actuar contra un dealer, un hilo a la vez. Toda cifra sale de
  * `decide`; el texto, de plantillas con la misma cifra. En `dryRun` no hace ningún POST.
  */
 
-export type BazaarApi = Pick<BazaarClient, "me" | "catalog" | "value" | "myThreads" | "thread" | "openThread" | "say" | "closeThread" | "accept">;
+export type BazaarApi = Pick<BazaarClient, "me" | "catalog" | "value" | "myThreads" | "myOffers" | "thread" | "openThread" | "say" | "closeThread" | "accept">;
 
 export interface AgentOptions {
   dealer: DealerRef;
@@ -149,9 +150,15 @@ export class BazaarAgent {
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
     const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk });
-    const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
+    const busy = await busyAssets(this.api, me.id);
+    const blocked: string[] = [];
+    const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => {
+      const why = sellBlocked(c.topic, busy);
+      if (why) blocked.push(`not opened: ${c.label} (${why})`);
+      return !why;
+    });
     const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend, only: !!this.o.only });
-    const lines = formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams);
+    const lines = [...formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams), ...blocked];
     return this.o.only ? [`--only ${this.o.only.map((f) => f.raw).join(",")}: ${cands.length} matching candidate(s), opened in that order`, ...lines] : lines;
   }
 
@@ -349,10 +356,13 @@ export class BazaarAgent {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
       const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
-      const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
+      // Un activo, un sitio: nada que ya esté en otro hilo abierto o en una oferta abierta (El Rastro, otro dealer).
+      const busy = await busyAssets(this.api, me.id);
+      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !sellBlocked(c.topic, busy));
       return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
     }
-    const sell = spareTargets(me).find(free);
+    const busy = await busyAssets(this.api, me.id);
+    const sell = spareTargets(me).find((t) => free(t) && !sellBlocked(t.topic, busy));
     if (sell) return sell;
     const budget = this.budgetLeft(me.cash);
     if (budget < 1) return undefined;

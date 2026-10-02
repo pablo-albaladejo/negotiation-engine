@@ -111,6 +111,7 @@ describe("hilo real 56", () => {
       catalog: async () => ({ sets: [], packs: [] }) as never,
       value: async () => 0,
       myThreads: async () => ({ threads: [{ id: 56, status: "open", with: "abuela" }] }),
+      myOffers: async () => ({ offers: [] }),
       thread: async () => thread,
       openThread: async () => {
         throw new Error("no debe abrir");

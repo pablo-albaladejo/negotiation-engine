@@ -25,6 +25,7 @@ function fixedAbuela(opts: { walk?: boolean } = {}) {
     catalog: async () => CATALOG as never,
     value: async () => 1.2,
     myThreads: async () => ({ threads: [...threads.values()].filter((t) => t.status === "open").map((t) => ({ id: t.id, status: t.status, with: "abuela" })) }),
+    myOffers: async () => ({ offers: [] }),
     thread: async (id) => structuredClone(threads.get(id)!),
     openThread: async (_with, topic) => {
       posts.push("open");

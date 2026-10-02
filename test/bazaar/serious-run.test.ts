@@ -24,6 +24,7 @@ function fakeApi(clocks: (Clock | Error)[], unlocked: string[][] = [["abuela"]])
     catalog: async () => ({ sets: [{ id: "AAA", released: true, cards: [{ id: "AAA-01", rarity: "common" }] }], packs: [] }) as never,
     value: async () => 1,
     myThreads: async () => ({ threads: [] }),
+    myOffers: async () => ({ offers: [] }),
     thread: async () => {
       throw new Error("no threads");
     },

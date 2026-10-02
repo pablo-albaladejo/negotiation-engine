@@ -39,6 +39,10 @@ export class SimApi implements BazaarApi {
     const threads = this.sim.threadsOf(this.team).filter((t) => !status || t.status === status);
     return ThreadListSchema.parse({ threads });
   }
+  /** El simulador no tiene venues: ninguna oferta abierta fuera de los hilos. */
+  async myOffers(): Promise<unknown> {
+    return { offers: [] };
+  }
   async thread(id: number): Promise<Thread> {
     return ThreadSchema.parse(this.sim.view(id));
   }

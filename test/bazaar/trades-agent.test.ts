@@ -16,6 +16,7 @@ function fakeMarket() {
   const reads: string[] = [];
   let tick = 100;
   const myOffers: Record<string, unknown>[] = [];
+  const threads: Record<string, unknown>[] = [];
   let nextId = 5000;
   const api: TradesApi = {
     clock: async () => ({ tick, next_tick_in: 0.01, limits: { offers_per_team_per_tick: 12, max_open_offers_per_team: 30, accepts_per_team_per_tick: 1 } }),
@@ -44,6 +45,7 @@ function fakeMarket() {
       ],
     }),
     myOffers: async () => ({ offers: structuredClone(myOffers) }),
+    myThreads: async () => ({ threads: structuredClone(threads) as never }),
     feed: async () => ({ events: [{ type: "settlement", payload: { venue: "rastro", persona: null, price: 20, items: [{ ref: "SAL-06", rarity: "uncommon" }] } }] }),
     postOffer: async (body) => {
       calls.push(`post ${JSON.stringify(body)}`);
@@ -61,7 +63,7 @@ function fakeMarket() {
       return {};
     },
   };
-  return { api, calls, reads, myOffers, advance: () => (tick += 1) };
+  return { api, calls, reads, myOffers, threads, advance: () => (tick += 1) };
 }
 
 describe("TradesAgent loop (mocked)", () => {
@@ -96,6 +98,15 @@ describe("TradesAgent loop (mocked)", () => {
     m.calls.length = 0;
     await agent.step();
     expect(agent.spent).toBeGreaterThan((filled.give as { cash: number }).cash);
+  });
+
+  it("one asset, one place: an asset in an open dealer thread is neither listed nor used to pay", async () => {
+    const m = fakeMarket();
+    m.threads.push({ id: 260, status: "open", with: "abuela", topic: { sell: { assets: [3] } } });
+    const agent = new TradesAgent(m.api, { ...DEFAULT_TRADE_PARAMS, maxOffers: 3, maxSpend: 40 }, { dryRun: false, log: () => {} });
+    await agent.step();
+    expect(m.calls.filter((c) => c.startsWith("accept"))).toEqual(["accept 984 [2]"]);
+    expect(m.calls.some((c) => c.includes('"assets":[3]'))).toBe(false);
   });
 
   it("caches private values for the whole run", async () => {

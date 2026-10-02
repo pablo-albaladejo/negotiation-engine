@@ -46,6 +46,7 @@ describe("BazaarAgent: fallback de topic", () => {
       catalog: async () => catalog,
       value: async (c) => values[c]!,
       myThreads: async () => ({ threads: [] }),
+      myOffers: async () => ({ offers: [] }),
       thread: async (id) => ThreadSchema.parse({ id, status: "open", messages: [], standing_offers: [] }),
       openThread: async (_w, topic) => {
         opened.push(topic);

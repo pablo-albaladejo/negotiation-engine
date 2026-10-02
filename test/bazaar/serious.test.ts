@@ -106,6 +106,7 @@ function revealingAbuela() {
     catalog: async () => ({ sets: [{ id: "SAL", released: true, cards: ["SAL-07", "SAL-08", "SAL-09"].map((id) => ({ id, rarity: "uncommon" })) }], packs: [] }) as never,
     value: async (c) => values[c]!,
     myThreads: async () => ({ threads: [] }),
+    myOffers: async () => ({ offers: [] }),
     thread: async (id) => structuredClone(threads.get(id)!),
     openThread: async (_w, topic) => {
       posts.push(`open ${JSON.stringify(topic)}`);

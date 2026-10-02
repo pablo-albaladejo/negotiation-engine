@@ -1,5 +1,6 @@
 import { BazaarError, type BazaarClient } from "./client.js";
 import type { Catalog } from "./schemas.js";
+import { assetsInOffers, assetsInThreads } from "./asset-locks.js";
 import {
   buildValueModel,
   countHoldings,
@@ -17,7 +18,7 @@ import {
 } from "./trades.js";
 
 /** Lo que el bucle de trades necesita del cliente (inyectable en tests). */
-export type TradesApi = Pick<BazaarClient, "me" | "catalog" | "clock" | "value" | "board" | "myOffers" | "feed" | "postOffer" | "cancelOffer" | "acceptOffer">;
+export type TradesApi = Pick<BazaarClient, "me" | "catalog" | "clock" | "value" | "board" | "myOffers" | "myThreads" | "feed" | "postOffer" | "cancelOffer" | "acceptOffer">;
 
 export interface TradesAgentOptions {
   dryRun: boolean;
@@ -65,7 +66,10 @@ export class TradesAgent {
     const clock = await this.api.clock();
     const me = await this.api.me();
     const myId = me.id ?? "";
-    const { mine, toMe } = parseMyOffers(await this.api.myOffers(), myId);
+    const rawOffers = await this.api.myOffers();
+    const { mine, toMe } = parseMyOffers(rawOffers, myId);
+    // Un activo, un sitio: lo que está en un hilo abierto con un dealer (topic o oferta del hilo) no se lista ni se usa para pagar.
+    const inThreads = [...assetsInThreads((await this.api.myThreads("open")).threads)].concat([...assetsInOffers(rawOffers, myId)].filter(([, where]) => where.includes("in thread")));
     const board = parseOffers(await this.api.board("rastro"));
     let settlements: TradeState["settlements"] = [];
     try {
@@ -109,7 +113,7 @@ export class TradesAgent {
         acceptsPerTick: num(limits.accepts_per_team_per_tick, 1),
       },
       spent: this.spent,
-      reserved: new Set(this.reservedUntil.keys()),
+      reserved: new Set([...this.reservedUntil.keys(), ...inThreads.map(([id]) => id)]),
     };
   }
 

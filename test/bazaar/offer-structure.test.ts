@@ -72,6 +72,7 @@ function dealerWith(herOffer: (asset: number) => object) {
     catalog: async () => ({ sets: [{ id: "SAL", released: true, cards: [{ id: "SAL-07", rarity: "uncommon", book: 20 }] }], packs: [] }) as never,
     value: async () => 9,
     myThreads: async () => ({ threads: [...threads.values()].filter((t) => t.status === "open").map((t) => ({ id: t.id, status: t.status, with: "chato" })) }),
+    myOffers: async () => ({ offers: [] }),
     thread: async (id) => structuredClone(threads.get(id)!),
     openThread: async (_with, topic) => {
       posts.push("open");

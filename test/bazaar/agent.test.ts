@@ -25,6 +25,7 @@ function fakeApi(opts: { closeWith?: { status: string; reason: string } } = {}) 
     catalog: async () => ({ sets: [], packs: [] }) as never,
     value: async () => 0,
     myThreads: async () => ({ threads: [] }),
+    myOffers: async () => ({ offers: [] }),
     thread: async () => thread!,
     openThread: async (withId, topic) => {
       posts.push({ path: "open", body: { withId, topic } });
