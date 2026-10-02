@@ -142,7 +142,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
               Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
             </PageTitle>
             <span className="nr-cfg">
-              {model.runId} vs {model.candidatePath} · {gameCount !== null ? `${gameCount} matches each` : "not logged"} · same seeds · only change:{" "}
+              {model.runId} vs {model.candidatePath} · {gameCount !== null ? `${gameCount} matches each` : "not logged"} · {gameCount !== null ? "same seeds" : "seeds not logged"} · only change:{" "}
               {model.params ? (changed.length === 0 ? "no parameter changes" : changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")) : "not logged"}
             </span>
           </div>
