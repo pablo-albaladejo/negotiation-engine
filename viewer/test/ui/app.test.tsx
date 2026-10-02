@@ -240,6 +240,18 @@ describe("App routing: switching games in a replay caches the run payload (T9)",
   });
 });
 
+describe("App routing: dropping an unsupported 'injection' filter keeps the page (C5)", () => {
+  it("strips injection=1 for a run without injection data without resetting p= back to the first page", async () => {
+    const withoutInjectionField = fx.games.map((g) => ({ ...g, metrics: { ...g.metrics, injectionSuspected: undefined } }));
+    mockFetch(fx.summary, withoutInjectionField);
+    window.location.hash = `#/runs/${fx.runId}?injection=1&p=2`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`));
+    expect(screen.queryByText("With injection")).toBeNull();
+  });
+});
+
 describe("App routing: switching games never pairs the new game with the previous trace (C4)", () => {
   it("shows the loading state for the new game while its trace is still in flight, not the previous game's content", async () => {
     const [firstGame, secondGame] = fx.games;

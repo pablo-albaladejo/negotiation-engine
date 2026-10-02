@@ -135,6 +135,20 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
       cancelled = true;
     };
   }, [runId]);
+  /** C5: `injection` is meaningless (and its checkbox hidden) once the run has no injection data at
+   * all; `MatchesScreen` would drop it itself, but only via its own effect, and that goes through
+   * `onFiltersChange`, which always resets the page to 0 — losing a `p=` carried over e.g. from a
+   * replay's "← Matches". Stripping it here, before `MatchesScreen` ever mounts with it, keeps the
+   * page intact; the ref mutation is pure/idempotent (safe during render), the actual URL is scrubbed
+   * once in the effect below, without touching the page. */
+  if (state?.games && currentFilters.current.injection && !state.games.some((l) => l.metrics.injectionSuspected !== undefined)) {
+    const { injection: _injection, ...rest } = currentFilters.current;
+    currentFilters.current = rest;
+    currentQuery.current = queryWithPage(rest, initialPage);
+  }
+  useEffect(() => {
+    if (currentQuery.current !== query) replaceRoute(routeTo.matches(runId, currentQuery.current));
+  }, [state]);
   if (!state) return <LoadingCard label={`Reading results/${runId}`} />;
   if (!state.summary) return <LoadingCard label={`results/${runId}/summary.json is not available`} />;
   const isChampion = isChampionRun(state.summary.config, championVersion);
@@ -145,7 +159,7 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
       games={state.games}
       onOpenGame={(gameId) => navigate(routeTo.arenaReplay(runId, gameId, currentQuery.current))}
       onBack={() => navigate(routeTo.runs())}
-      initialFilters={initialFilters}
+      initialFilters={currentFilters.current}
       initialPage={initialPage}
       onFiltersChange={(filters) => {
         currentFilters.current = filters;
