@@ -98,6 +98,19 @@ function pagesOf(me: Me): Map<string, { have: number; of: number }> {
 
 const setOfCard = (ref: string, asset?: { set?: unknown }) => (typeof asset?.set === "string" ? asset.set : (ref.split("-")[0] ?? ref));
 
+/**
+ * Guarda final del menú (hilo 257): vender solo lo que su `menu.buys` compra (rareza y sets) y comprar solo lo que
+ * su `menu.sells` vende (la carta, o su rareza en esos sets). Devuelve el motivo si no lo permite.
+ */
+export function menuBlocks(dealer: DealerInfo, catalog: Catalog, c: Pick<Candidate, "side" | "rarity" | "set" | "card">): string | undefined {
+  const rarity = c.rarity?.toLowerCase();
+  const set = c.set ?? (c.card ? setOfCard(c.card) : undefined);
+  const covers = (e: { rarity?: string | null | undefined; sets?: string | string[] | null | undefined; card?: string | null | undefined }) =>
+    (c.card !== undefined && e.card === c.card) || (!e.card && !!rarity && e.rarity?.toLowerCase() === rarity && set !== undefined && setsOf(e, catalog).has(set));
+  if (c.side === "sell") return dealer.menu.buys.some(covers) ? undefined : `${dealer.id} does not buy ${rarity ?? "?"} ${set ?? "?"} (menu.buys)`;
+  return dealer.menu.sells.some((e) => !e.pack && covers(e)) ? undefined : `${dealer.id} does not sell ${c.card ?? `${rarity ?? "?"} ${set ?? "?"}`} (menu.sells)`;
+}
+
 export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   const { me, catalog, dealer, valueOf } = input;
   const safety = input.safety ?? 0.9;

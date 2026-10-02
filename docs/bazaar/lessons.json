@@ -1,7 +1,7 @@
 {
   "schema": "bazaar-lessons/v1",
   "description": "Lessons learned per Bazaar conversation (dealers, duels, trades). One entry per closed conversation; global lessons and open hypotheses at the end. Values are our private values from /api/me/value; prices in primas (P).",
-  "updated": "2026-10-02",
+  "updated": "2026-10-02T22:45:25",
   "conversations": [
     {
       "thread": 56,
@@ -236,6 +236,28 @@
       "lessons": [
         "Commons she sells: opens 12, drops to 10 (her list) after one counter; deal at 10 in 1 message."
       ]
+    },
+    {
+      "thread": 257,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "SAL-07 Mercado de la Paz (uncommon, list 26)",
+      "his_opening": 13,
+      "our_prices": [
+        20,
+        17
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "outcome": "closed (no standing offer ever made)",
+      "price": null,
+      "lessons": [
+        "Our text called him 'Abuela' twice; he answered 'I'm not Abuela' and repeated 13. With memory 0.9 and a bio that punishes being clever, a wrong name is a real cost: messages must name the dealer we are talking to.",
+        "His bid for an uncommon he buys: 13 P = 0.50 x list. He did not move in 2 ticks and never posted a standing offer, so there was nothing to accept.",
+        "We dropped 20 -> 17 at once while he held: with a strict dealer that only gives ground away."
+      ]
     }
   ],
   "global_lessons": [
@@ -252,7 +274,8 @@
     "Abuela accepts specific-card purchases; uncommon list 25 reached quickly from 29.",
     "Level-2 unlock needs good NEGOTIATED deals; a deal at her opening price probably does not count toward it.",
     "Abuela selling specific cards: uncommons 29 -> ~25, commons 12 -> 10 (her list); she reaches her list fast and stops there.",
-    "Duels (practice, 2 Oct): rivals are house bots (Rival Plata/Rojo/Luna); many do not reply for several ticks. Our duel agent conceded after 3 silent ticks: that is negotiating against ourselves. Never concede without a rival counter."
+    "Duels (practice, 2 Oct): rivals are house bots (Rival Plata/Rojo/Luna); many do not reply for several ticks. Our duel agent conceded after 3 silent ticks: that is negotiating against ourselves. Never concede without a rival counter.",
+    "El Chato (from /api/dealers): patience 0.35, generosity 0.25, shrewdness 0.85, memory 0.9, strictness 0.85, chattiness 0.30. Silver pack opening 188 = 1.25 x list 150 (Abuela's pack is 1.15 x). He buys uncommons and rares at no published price; first measured bid 13 P for an uncommon (0.50 x list). Be brief, use his name, small steps, no tricks."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",

@@ -79,7 +79,13 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
     locked.clear();
     for (const d of all) if (!open.includes(d.id)) locked.add(d.id);
     for (const id of open) {
-      if (slots.has(id)) continue;
+      const existing = slots.get(id);
+      if (existing) {
+        // El menú manda (qué compra y qué vende): se relee en cada refresco.
+        const fresh = await api.dealer(id).catch(() => undefined);
+        if (fresh) existing.agent.setMenu(fresh);
+        continue;
+      }
       const menu: DealerInfo | undefined = await api.dealer(id).catch(() => undefined);
       const summary = all.find((d) => d.id === id);
       const profile = negotiatorForDealer(traitsOf(menu ?? summary));
@@ -88,6 +94,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
         dealer: { id, aliases: [...(summary?.name ? [summary.name] : []), ...(menu?.name ? [menu.name] : []), "persona", "dealer"] },
         dryRun: o.dryRun,
         maxSpendPerHour: o.maxSpendPerHour,
+        requireMenu: true,
         team,
         safety: o.safety,
         negotiator: { ...o.negotiator, ...profile },
@@ -101,7 +108,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
         },
       });
       slots.set(id, { id, agent, state: "new" });
-      o.log(`dealer ${id}${menu?.name ? ` (${menu.name})` : ""}: unlocked · quota ${dealsPerHour ?? "?"} deals/hour · negotiator ${JSON.stringify(profile)}${menu ? "" : " · no menu: legacy planner"}`);
+      o.log(`dealer ${id}${menu?.name ? ` (${menu.name})` : ""}: unlocked · quota ${dealsPerHour ?? "?"} deals/hour · negotiator ${JSON.stringify(profile)}${menu ? "" : " · no menu: nothing opened until it can be read"}`);
       if (o.dryRun) for (const line of await agent.plan()) o.log(line);
     }
     lastRefresh = tick;

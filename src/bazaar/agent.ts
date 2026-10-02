@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "./client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
-import { applyOnly, formatPlan, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
+import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
 import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
 import { formatPatience, PatienceLog } from "./patience.js";
@@ -32,6 +32,8 @@ export interface AgentOptions {
   negotiator?: Partial<NegotiatorParams>;
   /** Ficha del dealer: con ella los objetivos salen del planificador por menú (`plan.ts`); sin ella, del antiguo. */
   menu?: DealerInfo;
+  /** Modo serio: sin ficha del dealer no se abre nada (el planificador antiguo vende a cualquiera, sin mirar su menú). */
+  requireMenu?: boolean;
   /** Topes de la ejecución: tratos (se para al llegar), conversaciones abiertas en total y gasto en compras. */
   maxDeals?: number;
   maxThreads?: number;
@@ -110,6 +112,11 @@ export class BazaarAgent {
     this.team = o.team ?? new TeamBudget({ maxSpendPerHour: o.maxSpendPerHour, ...(o.maxSpendTotal !== undefined ? { maxSpendTotal: o.maxSpendTotal } : {}), now: this.now });
   }
 
+  /** Ficha releída de `/api/dealers/{id}` (el menú puede cambiar a mitad de partida). */
+  setMenu(menu: DealerInfo): void {
+    this.o.menu = menu;
+  }
+
   get dealerId(): string {
     return this.o.dealer.id;
   }
@@ -152,8 +159,10 @@ export class BazaarAgent {
     const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
+    const menu = this.o.menu;
+    const catalog = this.catalog;
     const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => {
-      const why = sellBlocked(c.topic, busy);
+      const why = menuBlocks(menu, catalog, c) ?? sellBlocked(c.topic, busy);
       if (why) blocked.push(`not opened: ${c.label} (${why})`);
       return !why;
     });
@@ -358,9 +367,11 @@ export class BazaarAgent {
       const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
       // Un activo, un sitio: nada que ya esté en otro hilo abierto o en una oferta abierta (El Rastro, otro dealer).
       const busy = await busyAssets(this.api, me.id);
-      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !sellBlocked(c.topic, busy));
+      const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
+      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy));
       return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
     }
+    if (this.o.requireMenu) return undefined;
     const busy = await busyAssets(this.api, me.id);
     const sell = spareTargets(me).find((t) => free(t) && !sellBlocked(t.topic, busy));
     if (sell) return sell;
