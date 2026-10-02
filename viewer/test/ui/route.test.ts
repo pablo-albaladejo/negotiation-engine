@@ -35,3 +35,36 @@ describe("#/compare/:runId (INBOX B1: primary route, #/promote/:runId kept as al
     expect(parseRoute(routeTo.promote("r-1"))).toEqual({ screen: "compare", runId: "r-1" });
   });
 });
+
+describe("B3: round-trip per route — parse(format(x)) === x for every screen", () => {
+  it("runs", () => {
+    expect(parseRoute(routeTo.runs())).toEqual({ screen: "runs" });
+  });
+
+  it("matches, with and without a query", () => {
+    expect(parseRoute(routeTo.matches("r-1"))).toEqual({ screen: "matches", runId: "r-1", query: "" });
+    expect(parseRoute(routeTo.matches("r-1", "role=buyer"))).toEqual({ screen: "matches", runId: "r-1", query: "role=buyer" });
+  });
+
+  it("arena-replay (also covers two-issue, which shares the route), with and without a query", () => {
+    expect(parseRoute(routeTo.arenaReplay("r-1", "g-1"))).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-1", query: "" });
+    expect(parseRoute(routeTo.arenaReplay("r-1", "g-1", "role=buyer"))).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-1", query: "role=buyer" });
+  });
+
+  it("tournament-replay", () => {
+    expect(parseRoute(routeTo.tournamentReplay("r-1", "ring-session-1"))).toEqual({ screen: "tournament-replay", runId: "r-1", session: "ring-session-1" });
+  });
+
+  it("compare, and its promote alias", () => {
+    expect(parseRoute(routeTo.compare("r-1"))).toEqual({ screen: "compare", runId: "r-1" });
+    expect(parseRoute(routeTo.promote("r-1"))).toEqual({ screen: "compare", runId: "r-1" });
+  });
+
+  it("states", () => {
+    expect(parseRoute(routeTo.states())).toEqual({ screen: "states" });
+  });
+
+  it("live", () => {
+    expect(parseRoute(routeTo.live())).toEqual({ screen: "live" });
+  });
+});

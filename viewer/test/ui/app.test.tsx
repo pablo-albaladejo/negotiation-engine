@@ -79,3 +79,36 @@ describe("App routing (C2, C3)", () => {
     expect(screen.getByRole("tab", { name: "Buyer" }).getAttribute("aria-selected")).toBe("false");
   });
 });
+
+describe("App back/forward across routes (B3)", () => {
+  beforeEach(() => {
+    mockFetch(fx.summary, fx.games);
+  });
+
+  it("browser back/forward re-render the right screen after Runs -> Matches -> Replay", async () => {
+    window.location.hash = "#/runs";
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("Runs")).toBeTruthy());
+
+    window.location.hash = `#/runs/${fx.runId}`;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+
+    const firstGameId = fx.games[0]!.gameId;
+    fireEvent.click(screen.getByText(firstGameId));
+    await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
+
+    window.history.back();
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+
+    window.history.back();
+    await waitFor(() => expect(screen.getByText("Runs")).toBeTruthy());
+
+    window.history.forward();
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+
+    window.history.forward();
+    await waitFor(() => expect(screen.getByText(firstGameId)).toBeTruthy());
+  });
+});
+
