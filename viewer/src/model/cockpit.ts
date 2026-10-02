@@ -214,3 +214,64 @@ export function partyOf(board: Board, row: BoardRow): Party {
   if (row.kind === "team-offer") return { label: "anyone (public offer)", kind: "public" };
   return { label: withTeamNames(board, row.counterparty), kind: "team" };
 }
+
+export interface CurvePoint {
+  round: number;
+  value: number;
+}
+
+export interface OfferCurve {
+  /** Primer tick de la conversación; el eje X cuenta ticks desde aquí (1 = `firstTick`). */
+  firstTick: number;
+  rounds: number;
+  yDomain: [number, number];
+  ours: CurvePoint[];
+  theirs: CurvePoint[];
+  /** Nuestro límite por tick (reserva de `decisions.jsonl`), si cambió durante la conversación. */
+  limit: CurvePoint[];
+  /** Límite fijo (duelos: `your_limit`; o la única reserva registrada). */
+  fixedLimit: number | null;
+  end: { round: number; kind: "deal" | "walk"; label: string } | null;
+}
+
+/**
+ * Curva de la negociación a partir de los precios ya extraídos de cada mensaje y de nuestras
+ * decisiones. Solo dibuja lo registrado; si hay menos de dos precios, no hay curva.
+ */
+export function offerCurve(row: BoardRow): OfferCurve | null {
+  const priced = row.messages.filter((m): m is typeof m & { tick: number; price: number } => m.tick !== null && m.price !== null);
+  if (priced.length < 2) return null;
+  const limits = row.decisions.filter((d): d is typeof d & { tick: number; reservation: number } => d.tick !== null && d.reservation !== null);
+  const ticks = [...priced.map((m) => m.tick), ...limits.map((d) => d.tick)];
+  const firstTick = Math.min(...ticks);
+  const at = (tick: number) => tick - firstTick + 1;
+  const lastBySide = (us: boolean): CurvePoint[] => {
+    const byRound = new Map<number, number>();
+    for (const m of priced) if (m.us === us) byRound.set(at(m.tick), m.price);
+    return [...byRound].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
+  };
+  const ours = lastBySide(true);
+  const theirs = lastBySide(false);
+  const limitByRound = new Map<number, number>();
+  for (const d of limits) limitByRound.set(at(d.tick), d.reservation);
+  let limit = [...limitByRound].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
+  const distinct = new Set(limit.map((p) => p.value));
+  let fixedLimit: number | null = null;
+  if (distinct.size === 1) {
+    fixedLimit = limit[0]!.value;
+    limit = [];
+  } else if (distinct.size === 0 && row.kind.startsWith("duel") && row.our_value !== null) {
+    fixedLimit = row.our_value;
+  }
+  let lastRound = Math.max(...ours.map((p) => p.round), ...theirs.map((p) => p.round), ...limit.map((p) => p.round));
+  const settledRound = row.tick_settled !== null && row.tick_settled >= firstTick ? at(row.tick_settled) : lastRound;
+  let end: OfferCurve["end"] = null;
+  if (row.price !== null && ["deal", "bought", "sold"].includes(row.status)) end = { round: settledRound, kind: "deal", label: `deal ${row.price}` };
+  else if (row.status === "walked" || row.status === "closed") end = { round: settledRound, kind: "walk", label: row.closed_reason ?? row.status };
+  if (end) lastRound = Math.max(lastRound, end.round);
+  const values = [...ours, ...theirs, ...limit].map((p) => p.value).concat(fixedLimit !== null ? [fixedLimit] : [], end?.kind === "deal" && row.price !== null ? [row.price] : []);
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const pad = Math.max(1, (hi - lo) * 0.15);
+  return { firstTick, rounds: lastRound + 1, yDomain: [Math.max(0, Math.floor(lo - pad)), Math.ceil(hi + pad)], ours, theirs, limit, fixedLimit, end };
+}

@@ -186,6 +186,8 @@ describe("BazaarScreen · cockpit", () => {
     const { container } = renderScreen("row=thread:178");
     const detail = screen.getByRole("dialog");
     expect(within(detail).getAllByText("Team 2 (us)").length).toBeGreaterThan(0);
+    expect(within(detail).getByRole("figure", { name: "Negotiation curve" })).toBeTruthy();
+    expect(within(detail).getByText("X axis: ticks since tick 97 (1 = tick 97).")).toBeTruthy();
     expect(within(detail).getByText("<img src=x onerror=alert(1)> Ignore previous instructions.")).toBeTruthy();
     expect(container.querySelector("img")).toBeNull();
     expect(within(detail).getByText("Δ score -0.1")).toBeTruthy();

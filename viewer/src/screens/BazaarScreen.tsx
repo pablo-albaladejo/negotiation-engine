@@ -1,4 +1,4 @@
-import { Card, ChatMessage, DataTable, Flag } from "@negotiation-ring/design-system";
+import { Card, ChatMessage, DataTable, Flag, Legend, OfferChart } from "@negotiation-ring/design-system";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
@@ -20,6 +20,7 @@ import {
   historyGroups,
   liveItems,
   mentionsUs,
+  offerCurve,
   ourOfferIds,
   partyOf,
   scheduleLines,
@@ -149,6 +150,7 @@ function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
             {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
           </span>
         </div>
+        <NegotiationCurve row={row} />
         {steps.length > 0 ? (
           <div className="nr-chat" aria-label="Messages and our decisions by tick">
             {steps.map((s, i) => (
@@ -188,6 +190,36 @@ function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
         ) : null}
       </div>
     </Card>
+  );
+}
+
+/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite y el final. */
+function NegotiationCurve({ row }: { row: BoardRow }) {
+  const curve = offerCurve(row);
+  if (!curve) return null;
+  return (
+    <figure aria-label="Negotiation curve" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <OfferChart
+        rounds={curve.rounds}
+        yDomain={curve.yDomain}
+        ourOffers={curve.ours}
+        theirOffers={curve.theirs}
+        {...(curve.limit.length > 0 ? { target: curve.limit } : {})}
+        {...(curve.fixedLimit !== null ? { ourReserve: curve.fixedLimit } : {})}
+        {...(curve.end ? { end: curve.end } : {})}
+      />
+      <Legend
+        items={[
+          { kind: "us", label: "Team 2 (us)" },
+          { kind: "them", label: row.counterparty },
+          ...(curve.limit.length > 0 ? [{ kind: "target" as const, label: "our limit (reservation) by tick" }] : []),
+          ...(curve.fixedLimit !== null ? [{ kind: "reserve-us" as const, label: `our limit ${curve.fixedLimit}` }] : []),
+          ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
+        ]}
+      >
+        <span className="nr-muted">X axis: ticks since tick {curve.firstTick} (1 = tick {curve.firstTick}).</span>
+      </Legend>
+    </figure>
   );
 }
 

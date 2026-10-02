@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentLines, boardModel, bookMakerLabel, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
+import { agentLines, boardModel, bookMakerLabel, offerCurve, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
 
 const EMPTY: Board = boardModel(null);
 
@@ -151,5 +151,44 @@ describe("cockpit · quién es quién", () => {
     expect(bookMakerLabel(withOffer, { id: 7, maker: "m3950d43b" }, ours)).toEqual({ label: "Team 2 (us)", us: true });
     expect(bookMakerLabel(withOffer, { id: 8, maker: "m3950d43b" }, ours)).toEqual({ label: "another team (anonymous m3950)", us: false });
     expect(bookMakerLabel(withOffer, { id: 9, maker: "t05" }, ours)).toEqual({ label: "Los Gatos (t05)", us: false });
+  });
+});
+
+describe("cockpit · offerCurve", () => {
+  const msg = (tick: number, us: boolean, price: number | null) => ({ sender: us ? "t02" : "abuela", us, tick, price, text: "" });
+  const dec = (tick: number, reservation: number | null) => ({ tick, action: "counter", rule: null, reservation, ourPrice: null, herPrice: null });
+
+  it("ticks relativos, último precio de cada lado por tick, límite por tick y final del trato", () => {
+    const curve = offerCurve(
+      row({
+        id: "thread:227",
+        kind: "dealer-buy",
+        status: "deal",
+        price: 25,
+        tick_settled: 121,
+        messages: [msg(119, true, 22), msg(119, false, 29), msg(120, false, 26), msg(120, true, 25), msg(121, false, null)],
+        decisions: [dec(118, 32), dec(119, 28), dec(120, 28)],
+      }),
+    );
+    expect(curve).toMatchObject({
+      firstTick: 118,
+      rounds: 5,
+      ours: [{ round: 2, value: 22 }, { round: 3, value: 25 }],
+      theirs: [{ round: 2, value: 29 }, { round: 3, value: 26 }],
+      limit: [{ round: 1, value: 32 }, { round: 2, value: 28 }, { round: 3, value: 28 }],
+      fixedLimit: null,
+      end: { round: 4, kind: "deal", label: "deal 25" },
+    });
+    expect(curve!.yDomain[0]).toBeLessThan(22);
+    expect(curve!.yDomain[1]).toBeGreaterThan(32);
+  });
+
+  it("duelo: el límite fijo es your_limit; sin final si sigue vivo", () => {
+    const curve = offerCurve(row({ id: "duel:1", kind: "duel-buyer", status: "live", our_value: 116, messages: [msg(157, false, 119), msg(158, true, 90)] }));
+    expect(curve).toMatchObject({ fixedLimit: 116, limit: [], end: null, rounds: 3 });
+  });
+
+  it("menos de dos precios ⇒ sin curva", () => {
+    expect(offerCurve(row({ id: "x", kind: "dealer-buy", status: "open", messages: [msg(1, true, 5)] }))).toBeNull();
   });
 });
