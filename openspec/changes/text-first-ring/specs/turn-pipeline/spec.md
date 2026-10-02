@@ -7,7 +7,7 @@ Infiere del texto la aceptación y la retirada del rival sin dar al LLM autorida
 ## ADDED Requirements
 
 ### Requirement: Aceptación inferida del texto verificada
-Con `acceptance.signal = parser-intent-verified` y un turno con `rivalAction = message` (una acción del ring distinta prevalece), una aceptación del rival SHALL inferirse del texto solo si: la intención del parser es `accept`; el parser devuelve un fragmento literal de evidencia de esa intención que aparece en el texto (misma normalización que las cifras); el parser determinista no detecta una negación en los idiomas que cubre; existe una oferta nuestra previa; y el texto no trae cifras nuevas o cada cifra que cita está verificada (dígitos o palabras; una cifra `llm-only` no basta) y coincide con el valor de ese issue en nuestra última oferta, aunque solo cite algunos issues. Al aceptar, nuestra respuesta repite las cifras del acuerdo. Si el texto trae cifras sin verificar, el turno SHALL tratarse como sin oferta y sin acuerdo. Con `parser.policy = deterministic-only`, la intención SHALL venir del parser determinista. El acuerdo SHALL ser siempre exactamente nuestra última oferta, que ya pasó los guardarraíles.
+Con `acceptance.signal = parser-intent-verified` y un turno con `rivalAction = message` (una acción del ring distinta prevalece), una aceptación del rival SHALL inferirse del texto solo si: la intención del parser es `accept`; el parser devuelve un fragmento literal de evidencia de esa intención que aparece en el texto (misma normalización que las cifras); el parser determinista no detecta una negación en los idiomas que cubre; existe una oferta nuestra previa; y el texto no trae cifras nuevas o cada cifra que cita está verificada (dígitos o palabras; una cifra `llm-only` no basta) y coincide con el valor de ese issue en nuestra última oferta. Además, TODA cifra del texto del rival, normalizada con el normalizador compartido (cualquier escritura, pb, palabras es/en, rangos), MUST coincidir con una cifra de nuestra última oferta, la cite el parser o no; si alguna no coincide (o es un rango o una cifra con separador ambiguo), no es aceptación (motivo `figures-extra`) y pedimos confirmación. Al aceptar, nuestra respuesta repite las cifras del acuerdo. Si el texto trae cifras sin verificar, el turno SHALL tratarse como sin oferta y sin acuerdo. Con `parser.policy = deterministic-only`, la intención SHALL venir del parser determinista. El acuerdo SHALL ser siempre exactamente nuestra última oferta, que ya pasó los guardarraíles.
 
 #### Scenario: Aceptación en alemán sin cifras
 - **WHEN** nuestra última oferta fue 2 % a día 20 y el rival escribe "Einverstanden, das nehmen wir" con intención `accept` y evidencia "Einverstanden"
@@ -16,6 +16,10 @@ Con `acceptance.signal = parser-intent-verified` y un turno con `rivalAction = m
 #### Scenario: Aceptación con cifras ilegibles
 - **WHEN** el rival escribe "acepto, pero a tres y pico" con intención `accept`
 - **THEN** no se registra acuerdo y la respuesta pide confirmar las cifras
+
+#### Scenario: Aceptación con una cifra sin citar
+- **WHEN** nuestra última oferta es pct 9.1, día 55, el rival escribe "Agreed on 9.1% but day must be 155" (o "١٥٥", o añade "50 bps") y el parser solo cita pct
+- **THEN** no se registra acuerdo, la traza registra el motivo `figures-extra` y pedimos confirmación
 
 #### Scenario: Negación detectada
 - **WHEN** el rival escribe "no acepto ese 2 %" y el parser LLM devuelve intención `accept`

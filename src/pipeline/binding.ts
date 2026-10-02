@@ -1,5 +1,6 @@
 import type { Issue } from "../engine/config.js";
 import { sameOffer, type Offer } from "../engine/issues.js";
+import { normalizeNumbers } from "../llm/numbers.js";
 import { spanAppears, type FigureCheck } from "../llm/verify.js";
 import type { RivalAction } from "../protocol/schemas.js";
 
@@ -28,7 +29,7 @@ export function bindRivalMove(
   return offer ? { kind: "offer", offer: { ...offer } } : { kind: "none" };
 }
 
-export type TextAcceptReason = "range" | "not-accept" | "no-evidence" | "negated" | "no-prior-offer" | "figures-unverified" | "llm-only" | "figures-differ";
+export type TextAcceptReason = "range" | "not-accept" | "no-evidence" | "negated" | "no-prior-offer" | "figures-unverified" | "llm-only" | "figures-differ" | "figures-extra";
 
 export interface TextAcceptInput {
   issues: readonly Issue[];
@@ -51,8 +52,10 @@ export interface TextAcceptInput {
 /**
  * Aceptación verificada leída en el texto (`acceptance.signal = parser-intent-verified`): intención
  * `accept` con evidencia literal, sin negación, tras una oferta nuestra y sin cifras nuevas, o con
- * cada cifra citada verificada (nunca `llm-only`) e igual a nuestra última oferta. El acuerdo es
- * siempre nuestra última oferta, que ya pasó los guardarraíles.
+ * cada cifra citada verificada (nunca `llm-only`) e igual a nuestra última oferta. Además, TODA
+ * cifra del texto (normalizada: cualquier escritura, pb, palabras es/en) debe ser una cifra de
+ * nuestra última oferta, la cite el LLM o no ("acepto el 9,1 % pero el día 155" no es aceptación).
+ * El acuerdo es siempre nuestra última oferta, que ya pasó los guardarraíles.
  */
 export function verifyTextAcceptance(input: TextAcceptInput): { verified: true } | { verified: false; reason: TextAcceptReason } {
   const fail = (reason: TextAcceptReason) => ({ verified: false as const, reason });
@@ -62,6 +65,11 @@ export function verifyTextAcceptance(input: TextAcceptInput): { verified: true }
   const ourLast = input.ourLast;
   if (!ourLast) return fail("no-prior-offer");
   if (input.ranged || input.checks?.some((c) => c.confidence === "range")) return fail("range");
+  const ours = Object.values(ourLast);
+  const extra = normalizeNumbers(input.text).some(
+    (m) => m.kind === "range" || m.ambiguity === "separator" || !m.readings.some((r) => ours.some((v) => Math.abs(r - v) <= 1e-6)),
+  );
+  if (extra) return fail("figures-extra");
   const known = new Set(input.issues.map((i) => i.name));
   if (input.checks && input.checks.length > 0) {
     if (input.checks.some((c) => !c.ok)) return fail("figures-unverified");

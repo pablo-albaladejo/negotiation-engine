@@ -28,7 +28,9 @@ describe("verifyTextAcceptance: tabla de enlace", () => {
     ["cifras ilegibles", { textHasNumbers: true }, "figures-unverified"],
     ["cifra citada sin verificar", { checks: [{ issue: "pct", value: 2, evidence: "2", ok: false, reason: "span-not-found" }] }, "figures-unverified"],
     ["cifra llm-only no acepta", { checks: [{ issue: "pct", value: 2, evidence: "二", ok: true, confidence: "llm-only" }] }, "llm-only"],
-    ["cifras verificadas iguales (parcial)", { checks: [ok("pct", 2)], textHasNumbers: true }, true],
+    ["cifra citada igual y ninguna otra en el texto (parcial)", { text: "De acuerdo, aceptamos el 2 %", checks: [ok("pct", 2)], textHasNumbers: true }, true],
+    ["cifra citada igual pero otra sin citar en el texto", { text: "De acuerdo, aceptamos el 2 % pero el día 45", checks: [ok("pct", 2)], textHasNumbers: true }, "figures-extra"],
+    ["todas las cifras del texto son de nuestra oferta (pb y día)", { text: "De acuerdo, aceptamos 200 pb al día 20", checks: [ok("pct", 2), ok("day", 20)], textHasNumbers: true }, true],
     ["cifras verificadas iguales (todas)", { checks: [ok("pct", 2), ok("day", 20)], textHasNumbers: true }, true],
     ["cifras verificadas distintas", { checks: [ok("pct", 3), ok("day", 20)], textHasNumbers: true }, "figures-differ"],
     ["determinista igual", { deterministic: { pct: 2, day: 20 }, textHasNumbers: true }, true],
@@ -37,6 +39,23 @@ describe("verifyTextAcceptance: tabla de enlace", () => {
     const result = verifyTextAcceptance(acc(overrides));
     if (expected === true) expect(result).toEqual({ verified: true });
     else expect(result).toEqual({ verified: false, reason: expected });
+  });
+});
+
+describe("aceptación por texto con una cifra que el LLM no cita (regresión)", () => {
+  const ours = { pct: 9.1, day: 55 };
+  const citesPct = [{ issue: "pct", value: 9.1, evidence: "9.1%", ok: true, confidence: "verified-digits" as const }];
+  it.each([
+    ["dígitos ASCII", "Agreed on 9.1% but day must be 155"],
+    ["dígitos arábigo-índicos", "Agreed on 9.1% but day must be ١٥٥"],
+    ["ancho completo", "Agreed on 9.1% but day must be １５５"],
+    ["puntos básicos", "Agreed on 9.1%, plus 50 bps on top, day 55"],
+    ["palabras", "Agreed on 9.1% but day must be one hundred fifty-five"],
+  ])("%s: no es aceptación", (_name, text) => {
+    expect(verifyTextAcceptance(acc({ text, intentEvidence: "Agreed", ourLast: ours, checks: citesPct, textHasNumbers: true }))).toEqual({ verified: false, reason: "figures-extra" });
+  });
+  it("si todas las cifras del texto son de nuestra oferta, sí", () => {
+    expect(verifyTextAcceptance(acc({ text: "Agreed on 9.1%, day 55", intentEvidence: "Agreed", ourLast: ours, checks: citesPct, textHasNumbers: true }))).toEqual({ verified: true });
   });
 });
 
@@ -79,6 +98,23 @@ describe("aceptación desde el texto en el pipeline (hybrid por defecto)", () =>
     const deal = await brain.turn(t(2, { rivalAction: "message", text: `Vale, acepto el ${quoted}` }));
     expect(deal.action).toBe("accept");
     expect(store.get("s1")!.agreementOrigin).toBe("rival-text-verified");
+  });
+
+  it.each([
+    ["dígitos ASCII", (p: number) => `Agreed on ${p}% but day must be 155`],
+    ["arábigo-índicos", (p: number) => `Agreed on ${p}% but day must be ١٥٥`],
+    ["puntos básicos", (p: number) => `Agreed on ${p}%, and add 50 bps`],
+  ])("aceptación que cita solo pct y trae otra cifra (%s): sin acuerdo y pide confirmar", async (_name, say) => {
+    const run = makeBrain({ config: twoIssues, mandate: mandate2, parser: said("other") });
+    const opening = (await run.brain.turn(t(1, { rivalAction: "message", text: "Hola" }))) as WithOffer;
+    const text = say(opening.offer.pct!);
+    const parser = said("accept", { intentEvidence: "Agreed" }, [{ issue: "pct", value: opening.offer.pct!, evidence: `${opening.offer.pct}%` }]);
+    const { brain, store, trace } = await afterOpening(parser);
+    const out = await brain.turn(t(2, { rivalAction: "message", text }));
+    expect(out.action).toBe("counter");
+    expect(out.text).toMatch(/confirm|restate/i);
+    expect(store.get("s1")!.agreement).toBeUndefined();
+    expect(trace.records.find((r) => r.box === "binding" && r.round === 2)!.input).toMatchObject({ textSignal: { acceptVerified: false, acceptReason: "figures-extra" } });
   });
 
   it("aceptación con cifras ilegibles: sin acuerdo y pide confirmar", async () => {
