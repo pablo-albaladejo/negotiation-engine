@@ -1,7 +1,7 @@
 import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useRef, useState } from "react";
 import { SecondaryButton } from "./ui/buttons.js";
-import { initialTheme, storeTheme, type Theme } from "./theme.js";
+import { initialTheme, storeTheme, watchSystemTheme, type Theme } from "./theme.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
@@ -281,6 +281,9 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  /** D9: once the user picks a theme explicitly, OS changes stop overriding it (watchSystemTheme
+   * checks for a stored choice on every change event). */
+  useEffect(() => watchSystemTheme(setTheme), []);
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "states" ? "states" : "runs";
   const toggleTheme = () => {
@@ -296,7 +299,7 @@ export function App() {
             <h1 className="nr-title">Arena viewer</h1>
             <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
           </div>
-          <SecondaryButton onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</SecondaryButton>
+          <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>Dark mode</SecondaryButton>
         </header>
         <main ref={mainRef}>
           {route.screen === "runs" ? <RunsContainer /> : null}

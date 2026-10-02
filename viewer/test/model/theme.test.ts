@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initialTheme, storeTheme } from "../../src/theme.js";
+import { hasStoredTheme, initialTheme, storeTheme, watchSystemTheme } from "../../src/theme.js";
 
 describe("theme (B1)", () => {
   afterEach(() => {
@@ -39,6 +39,43 @@ describe("theme (B1)", () => {
     // @ts-expect-error simulating an environment without matchMedia
     delete window.matchMedia;
     expect(() => initialTheme()).not.toThrow();
+    window.matchMedia = original;
+  });
+});
+
+describe("watchSystemTheme (D9)", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("follows OS changes only while there is no stored (explicit) choice", () => {
+    let listener: ((e: MediaQueryListEvent) => void) | undefined;
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: (_event: string, cb: (e: MediaQueryListEvent) => void) => {
+        listener = cb;
+      },
+      removeEventListener: () => {},
+    } as unknown as MediaQueryList);
+
+    const changes: string[] = [];
+    const unsubscribe = watchSystemTheme((t) => changes.push(t));
+    expect(hasStoredTheme()).toBe(false);
+    listener?.({ matches: true } as MediaQueryListEvent);
+    expect(changes).toEqual(["dark"]);
+
+    storeTheme("light");
+    listener?.({ matches: false } as MediaQueryListEvent);
+    expect(changes).toEqual(["dark"]); // no second entry: a stored choice now blocks OS-driven changes
+    unsubscribe();
+  });
+
+  it("never throws when matchMedia is unavailable", () => {
+    const original = window.matchMedia;
+    // @ts-expect-error simulating an environment without matchMedia
+    delete window.matchMedia;
+    expect(() => watchSystemTheme(() => {})()).not.toThrow();
     window.matchMedia = original;
   });
 });
