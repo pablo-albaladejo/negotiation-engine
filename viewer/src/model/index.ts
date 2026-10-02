@@ -9,3 +9,28 @@ export { checkLabel, formatPp, gateModel, PHASE_LABEL, PHASES, type GateCheckRow
 export { emptyLiveFeed, liveModel, type LiveBubble, type LiveFeed, type LiveModel, type LiveOutcome, type LiveStatus } from "./live.js";
 export { bazaarModel, type BazaarLiveInfo, type BazaarModel, type MovedRow, type ScoreCause, type ScorePoint, type ScoreSnapshot } from "./bazaar.js";
 export { conversationsModel, duelsModel, type ConversationMessage, type ConversationOffer, type ConversationThread, type ConversationTraceEntry, type Duel, type ThreadStatus } from "./bazaarConversations.js";
+export {
+  ALL,
+  boardFilterOptions,
+  boardModel,
+  boardQuery,
+  boardTimeline,
+  EMPTY_BOARD,
+  filterBoardRows,
+  KIND_LABEL,
+  parseBoardQuery,
+  type Board,
+  type BoardBookLine,
+  type BoardClock,
+  type BoardDecision,
+  type BoardFilters,
+  type BoardHeader,
+  type BoardMarket,
+  type BoardMessage,
+  type BoardOffer,
+  type BoardRow,
+  type BoardRowKind,
+  type BoardSort,
+  type BoardVerdict,
+  type TimelineStep,
+} from "./bazaarBoard.js";

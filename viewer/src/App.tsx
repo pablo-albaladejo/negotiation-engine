@@ -6,7 +6,7 @@ import { requestPageFocus } from "./focus.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, filterGames, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, queryToPage, queryWithPage, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, boardQuery, filterGames, gateModel, parseBoardQuery, isChampionRun, isTwoIssue, liveModel, queryToFilters, queryToPage, queryWithPage, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo, type FindTab, type Route } from "./route.js";
 import { resolveFindTab } from "./find.js";
 import { lastViewed } from "./last-viewed.js";
@@ -18,8 +18,7 @@ import { MatchesScreen } from "./screens/MatchesScreen.js";
 import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
 import { BazaarScreen } from "./screens/BazaarScreen.js";
-import { useBazaarData } from "./bazaarLive.js";
-import { useBazaarConversations } from "./bazaarConversationsLive.js";
+import { useBazaarBoard } from "./bazaarBoardLive.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
 import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "./ui/states.js";
@@ -129,10 +128,9 @@ function useResultsFolder(): string | null {
   return folder;
 }
 
-function BazaarContainer() {
-  const { model, live } = useBazaarData();
-  const { threads, duels } = useBazaarConversations();
-  return <BazaarScreen model={model} live={live} conversations={threads} duels={duels} />;
+function BazaarContainer({ query, replaceRoute }: { query: string; replaceRoute: (hash: string) => void }) {
+  const { board, model } = useBazaarBoard();
+  return <BazaarScreen board={board} model={model} filters={parseBoardQuery(query)} onFiltersChange={(f) => replaceRoute(routeTo.bazaar(boardQuery(f)))} />;
 }
 
 function RunsContainer() {
@@ -479,7 +477,7 @@ function AppContent() {
         {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
         {route.screen === "find" ? <FindContainer tab={route.tab} replaceRoute={replaceRoute} /> : null}
         {route.screen === "states" ? <StatesScreen /> : null}
-        {route.screen === "bazaar" ? <BazaarContainer /> : null}
+        {route.screen === "bazaar" ? <BazaarContainer query={route.query} replaceRoute={replaceRoute} /> : null}
       </main>
     </Root>
   );

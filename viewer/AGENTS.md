@@ -24,7 +24,7 @@ Agnóstico del protocolo del ring.
 
 - **`server/main.ts`** — Entry point: arranca servidor en http://127.0.0.1:5199 (puerto configurable con `VIEWER_PORT`, dirección fija).
 - **`src/model/`** — Lógica de modelo (carga resultados, procesa).
-- **`src/screens/`** — Vistas: arena, promoción, turno, `BazaarScreen` (cifra del Bazaar, de solo lectura).
+- **`src/screens/`** — Vistas: arena, promoción, turno, `BazaarScreen` (vista unificada del Bazaar: una lista de todas nuestras conversaciones —dealers, duelos, tratos y ofertas entre equipos— con valor, excedente, veredicto y Δ de la cifra servidos por `/api/bazaar/board`; filtros en la query del hash, detalle con mensajes literales y nuestras decisiones por tick, y panel de mercado: reloj, clasificación, feed, El Rastro y nuestro venue).
 - **`src/ui/`** — Componentes: tablas, gráficos, listados.
 
 ## Invariantes
@@ -53,7 +53,7 @@ pnpm --dir viewer test
 pnpm --dir viewer typecheck
 ```
 
-Accede a http://127.0.0.1:5199 (puerto con `VIEWER_PORT`; la dirección es fija). `VIEWER_RESULTS_DIR` cambia la raíz de `results/`; `VIEWER_BAZAAR_DIR` cambia de dónde lee la pestaña "Bazaar" (`score.jsonl`, por defecto `results/bazaar-live`); `BAZAAR_KEY` (opcional, igual que en `src/bazaar/`) habilita `/api/bazaar/live` para esa pestaña.
+Accede a http://127.0.0.1:5199 (puerto con `VIEWER_PORT`; la dirección es fija). `VIEWER_RESULTS_DIR` cambia la raíz de `results/`; `VIEWER_BAZAAR_DIR` cambia de dónde lee la pestaña "Bazaar" (`score.jsonl`, por defecto `results/bazaar-live`); `BAZAAR_KEY` (opcional, igual que en `src/bazaar/`) habilita la parte privada de `/api/bazaar/board` (sin clave solo se ve el mercado público). La pestaña se refresca una vez por tick del juego (`next_tick_in`) y el servidor nunca pasa de 2 req/s al Bazaar. Excepción a "solo lectura": el visor escribe `results/bazaar-live/<fecha>/verdicts.json` (valor de cada trato calculado una vez). `VIEWER_BAZAAR_SNAPSHOTS` apunta al fichero de snapshots del monitor de causa-prima, respaldo de solo lectura si el Bazaar no responde.
 
 ## Links
 

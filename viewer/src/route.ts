@@ -11,7 +11,7 @@ export type Route =
   | { screen: "tournament-replay"; runId: string; session: string }
   | { screen: "compare"; runId: string }
   | { screen: "states" }
-  | { screen: "bazaar" }
+  | { screen: "bazaar"; query: string }
   | { screen: "live" }
   | { screen: "find"; tab: FindTab };
 
@@ -37,7 +37,7 @@ export function parseRoute(hash: string): Route {
   const parts = pathPart.split("/").filter(Boolean).map(safeDecode);
   const [head, a, mid, b] = parts;
   if (head === "states") return { screen: "states" };
-  if (head === "bazaar") return { screen: "bazaar" };
+  if (head === "bazaar") return { screen: "bazaar", query };
   if (head === "live") return { screen: "live" };
   if ((head === "compare" || head === "promote") && a !== undefined) return { screen: "compare", runId: a };
   if (head === "tournament" && a !== undefined && mid !== undefined) return { screen: "tournament-replay", runId: a, session: mid };
@@ -57,7 +57,7 @@ export const routeTo = {
   compare: (runId: string): string => `#/compare/${encodeURIComponent(runId)}`,
   promote: (runId: string): string => `#/promote/${encodeURIComponent(runId)}`,
   states: (): string => "#/states",
-  bazaar: (): string => "#/bazaar",
+  bazaar: (query?: string): string => `#/bazaar${query ? `?${query}` : ""}`,
   live: (): string => "#/live",
   find: (tab: FindTab): string => `#/find/${tab}`,
 };

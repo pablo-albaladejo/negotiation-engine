@@ -1,188 +1,347 @@
-import { Card, ChatMessage, DataTable, Flag, KpiStrip, OfferChart } from "@negotiation-ring/design-system";
-import { useState } from "react";
-import { conversationChartPoints, offerChipLabel, threadFlagKind, topicLabel } from "../ui/conversation.js";
+import { Card, ChatMessage, DataTable, Flag, KpiStrip } from "@negotiation-ring/design-system";
+import { useId } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
-import type { BazaarLiveInfo, BazaarModel, ConversationThread, Duel } from "../model/index.js";
+import {
+  ALL,
+  boardFilterOptions,
+  boardTimeline,
+  filterBoardRows,
+  KIND_LABEL,
+  type Board,
+  type BazaarModel,
+  type BoardFilters,
+  type BoardRow,
+  type BoardRowKind,
+  type BoardVerdict,
+} from "../model/index.js";
 
 export interface BazaarScreenProps {
+  board: Board;
+  /** Snapshots locales de `score.jsonl` (historia de la cifra y qué la movió). */
   model: BazaarModel;
-  live: BazaarLiveInfo | null;
-  conversations?: ConversationThread[];
-  duels?: Duel[];
+  filters: BoardFilters;
+  onFiltersChange: (filters: BoardFilters) => void;
 }
 
 const NOT_LOGGED = "not logged";
 
-function kpi(label: string, value: number | string | undefined): { label: string; value: string } {
-  return { label, value: value === undefined ? NOT_LOGGED : String(value) };
+const show = (v: number | string | null | undefined, empty = NOT_LOGGED): string => (v === null || v === undefined ? empty : String(v));
+
+function toned(v: number | null): { value: string; tone?: "better" | "worse" } {
+  if (v === null) return { value: NOT_LOGGED };
+  return v > 0 ? { value: `+${v}`, tone: "better" } : v < 0 ? { value: String(v), tone: "worse" } : { value: String(v) };
 }
 
-/** Lista de hilos, más reciente primero: estado, con quién y tema. Seleccionar uno abre su chat. */
-function ThreadList({ threads, selectedId, onSelect }: { threads: ConversationThread[]; selectedId: number | null; onSelect: (id: number) => void }) {
+function verdictCell(v: BoardVerdict): { value: string; tone?: "better" | "worse" } {
+  if (v === "good") return { value: v, tone: "better" };
+  if (v === "bad") return { value: v, tone: "worse" };
+  return { value: v };
+}
+
+function SelectField({ label, value, options, onChange, format }: { label: string; value: string; options: string[]; onChange: (v: string) => void; format?: (v: string) => string }) {
+  const id = useId();
   return (
-    <ul className="nr-list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-      {threads.map((t) => (
-        <li key={t.id}>
-          <TableLink aria-pressed={t.id === selectedId} onClick={() => onSelect(t.id)} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", width: "100%", textAlign: "left" }}>
-            <Flag kind={threadFlagKind(t.status)}>{t.status}</Flag>
-            <span>{t.with ?? "?"}</span>
-            <span className="nr-muted">{topicLabel(t.topic)}</span>
-          </TableLink>
-        </li>
-      ))}
-    </ul>
+    <div className="nr-filter-field">
+      <label className="nr-muted nr-filter-label" htmlFor={id}>
+        {label}
+      </label>
+      <select id={id} className="nr-filter-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value={ALL}>All</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {format ? format(o) : o}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
-/** El hilo seleccionado como chat: mensajes literales (texto sin interpretar, puede traer un
- * intento de inyección), chips de precio de las ofertas abiertas y el gráfico de precios de la
- * traza local (si el agente la ha trazado para este hilo). */
-function ThreadChat({ thread }: { thread: ConversationThread }) {
-  const chart = conversationChartPoints(thread.trace);
+function FiltersBar({ rows, filters, onChange }: { rows: BoardRow[]; filters: BoardFilters; onChange: (f: BoardFilters) => void }) {
+  const opts = boardFilterOptions(rows);
+  const sortId = useId();
+  const set = (patch: Partial<BoardFilters>) => onChange({ ...filters, ...patch });
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        <Flag kind={threadFlagKind(thread.status)}>{thread.status}</Flag>
-        <span>{thread.with ?? "?"}</span>
-        <span className="nr-muted">{topicLabel(thread.topic)}</span>
-        {thread.closed_reason ? <span className="nr-muted">· {thread.closed_reason}</span> : null}
+    <div className="nr-filters" role="group" aria-label="Conversation filters">
+      <SelectField label="Kind" value={filters.kind} options={opts.kind} onChange={(kind) => set({ kind })} format={(k) => KIND_LABEL[k as BoardRowKind] ?? k} />
+      <SelectField label="Counterparty" value={filters.counterparty} options={opts.counterparty} onChange={(counterparty) => set({ counterparty })} />
+      <SelectField label="Status" value={filters.status} options={opts.status} onChange={(status) => set({ status })} />
+      <SelectField label="Verdict" value={filters.verdict} options={opts.verdict} onChange={(verdict) => set({ verdict })} />
+      <div className="nr-filter-field">
+        <label className="nr-muted nr-filter-label" htmlFor={sortId}>
+          Sort by
+        </label>
+        <select id={sortId} className="nr-filter-select" value={filters.sort} onChange={(e) => set({ sort: e.target.value === "surplus" ? "surplus" : "tick" })}>
+          <option value="tick">Tick (newest first)</option>
+          <option value="surplus">Surplus (best first)</option>
+        </select>
       </div>
-      {thread.standing_offers.length > 0 ? (
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          {thread.standing_offers.map((o, i) => (
-            <Flag key={i} kind="neutral">
-              {offerChipLabel(o)}
-            </Flag>
-          ))}
+    </div>
+  );
+}
+
+function ConversationList({ rows, selectedId, onSelect }: { rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void }) {
+  const selectedIndex = rows.findIndex((r) => r.id === selectedId);
+  return (
+    <DataTable
+      columns={[
+        { key: "counterparty", label: "Counterparty" },
+        { key: "kind", label: "Kind" },
+        { key: "item", label: "Item" },
+        { key: "status", label: "Status" },
+        { key: "price", label: "Price", numeric: true },
+        { key: "value", label: "Our value", numeric: true },
+        { key: "surplus", label: "Surplus", numeric: true },
+        { key: "verdict", label: "Verdict" },
+        { key: "neg", label: "Δ neg", numeric: true },
+        { key: "ladder", label: "Δ ladder", numeric: true },
+        { key: "score", label: "Δ score", numeric: true },
+        { key: "ticks", label: "Ticks" },
+      ]}
+      rows={rows.map((r) => ({
+        counterparty: (
+          <TableLink aria-pressed={r.id === selectedId} aria-label={`Open conversation with ${r.counterparty} (${r.id})`} onClick={() => onSelect(r.id)}>
+            {r.counterparty}
+          </TableLink>
+        ),
+        kind: KIND_LABEL[r.kind] ?? r.kind,
+        item: r.item,
+        status: r.closed_reason ? `${r.status} · ${r.closed_reason}` : r.status,
+        price: show(r.price, "—"),
+        value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
+        surplus: r.surplus === null ? "—" : toned(r.surplus),
+        verdict: verdictCell(r.verdict),
+        neg: toned(r.d_neg_points),
+        ladder: toned(r.d_ladder_points),
+        score: toned(r.d_score),
+        ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
+      }))}
+      onRowClick={(i) => {
+        const row = rows[i];
+        if (row) onSelect(row.id);
+      }}
+      {...(selectedIndex >= 0 ? { selectedRowIndex: selectedIndex } : {})}
+    />
+  );
+}
+
+/** Conversación completa: mensajes literales (nunca interpretados) alineados por tick con nuestras
+ * decisiones (`decisions.jsonl`), y la línea de tiempo de ofertas. */
+function ConversationDetail({ row }: { row: BoardRow }) {
+  const steps = boardTimeline(row);
+  return (
+    <Card title={`Conversation · ${row.counterparty} · ${KIND_LABEL[row.kind] ?? row.kind}`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+          <Flag kind={row.verdict === "bad" ? "walk" : row.verdict === "good" ? "decision" : "neutral"}>{row.verdict}</Flag>
+          <span>{row.item}</span>
+          <span className="nr-muted">
+            {row.status}
+            {row.closed_reason ? ` · ${row.closed_reason}` : ""} · price {show(row.price, "—")} · our value {show(row.our_value)}
+            {row.value_source ? ` (${row.value_source})` : ""} · surplus {show(row.surplus, "—")}
+            {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
+          </span>
         </div>
-      ) : null}
-      {thread.messages.length > 0 ? (
-        <div className="nr-chat" aria-live="polite">
-          {thread.messages.map((m, i) => (
-            <ChatMessage key={i} side={m.sender === thread.with ? "them" : "us"} round={m.ts ?? i + 1} text={m.text} />
-          ))}
-        </div>
-      ) : (
-        <span className="nr-muted">No messages logged yet.</span>
-      )}
-      {chart.rounds > 0 ? (
-        <div style={{ height: 220 }}>
-          <OfferChart rounds={chart.rounds} yDomain={chart.yDomain} ourOffers={chart.ours} theirOffers={chart.theirs} />
-        </div>
+        {steps.length > 0 ? (
+          <div className="nr-chat" aria-label="Messages and our decisions by tick">
+            {steps.map((s, i) => (
+              <div key={`${s.tick ?? "?"}-${i}`} className="nr-grid" style={gridCols("minmax(0, 2fr) minmax(0, 1fr)")}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  {s.messages.map((m, j) => (
+                    <ChatMessage key={j} side={m.us ? "us" : "them"} round={m.tick ?? 0} {...(m.price !== null ? { offer: m.price } : {})} flags={[{ kind: "neutral", label: m.sender }]} text={m.text} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                  {s.decisions.map((d, j) => (
+                    <span key={j} className="nr-muted">
+                      {[`tick ${show(d.tick, "?")}`, d.action, d.rule ? `rule ${d.rule}` : null, d.reservation !== null ? `reservation ${d.reservation}` : null, d.ourPrice !== null ? `our price ${d.ourPrice}` : null, d.herPrice !== null ? `their price ${d.herPrice}` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <span className="nr-muted">No messages for this entry.</span>
+        )}
+        {row.offers.length > 0 ? (
+          <DataTable
+            columns={[
+              { key: "tick", label: "Tick", numeric: true },
+              { key: "maker", label: "Maker" },
+              { key: "give", label: "Gives" },
+              { key: "want", label: "Wants" },
+              { key: "final", label: "Final" },
+              { key: "status", label: "Status" },
+            ]}
+            rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: o.maker, give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
+          />
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function MarketPanel({ board }: { board: Board }) {
+  const { clock, market } = board;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <Card title="Clock">
+        {clock ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+            <span>Tick {clock.tick}</span>
+            <span className="nr-muted">{show(clock.round_name ?? clock.round, "round ?")}</span>
+            <span className="nr-muted">
+              Next tick in {clock.next_tick_in !== null ? `${Math.round(clock.next_tick_in)} s` : "?"} · doors {show(clock.doors, "?")}
+            </span>
+            {board.source === "snapshot" ? <span className="nr-muted">From the monitor snapshot (Bazaar unreachable).</span> : null}
+          </div>
+        ) : (
+          <span className="nr-muted">{NOT_LOGGED}</span>
+        )}
+      </Card>
+      <Card title="Leaderboard">
+        {market.leaderboard.length > 0 ? (
+          <DataTable
+            columns={[
+              { key: "rank", label: "Rank", numeric: true },
+              { key: "team", label: "Team" },
+              { key: "score", label: "Score", numeric: true },
+            ]}
+            rows={market.leaderboard.map((t) => ({ rank: show(t.rank, "?"), team: t.us ? { value: `${t.name} (us)`, tone: "better" as const } : t.name, score: show(t.score, "?") }))}
+            {...(market.leaderboard.findIndex((t) => t.us) >= 0 ? { selectedRowIndex: market.leaderboard.findIndex((t) => t.us) } : {})}
+          />
+        ) : (
+          <span className="nr-muted">{NOT_LOGGED}</span>
+        )}
+      </Card>
+      <Card title="Recent feed">
+        {market.feed.length > 0 ? (
+          <ul className="nr-list" aria-label="Recent feed events" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+            {market.feed.map((e) => (
+              <li key={e.id}>
+                <span className="nr-muted">
+                  {show(e.tick, "?")} · {e.type}
+                </span>{" "}
+                <span>{e.text}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="nr-muted">{NOT_LOGGED}</span>
+        )}
+      </Card>
+      <Card title="El Rastro book">
+        {market.rastro.length > 0 ? (
+          <DataTable
+            columns={[
+              { key: "maker", label: "Maker" },
+              { key: "give", label: "Gives" },
+              { key: "want", label: "Wants" },
+              { key: "exp", label: "Expires", numeric: true },
+            ]}
+            rows={market.rastro.map((o) => ({ maker: o.maker === board.team ? { value: `${o.maker} (us)`, tone: "better" as const } : o.maker, give: o.give, want: o.want, exp: show(o.expires_tick, "—") }))}
+          />
+        ) : (
+          <span className="nr-muted">{NOT_LOGGED}</span>
+        )}
+      </Card>
+      {market.venue ? (
+        <Card title={`Our venue · ${market.venue.venue}`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            <span>{show(market.venue.name, market.venue.venue)}</span>
+            <span className="nr-muted">
+              {show(market.venue.status, "?")} · trades {show(market.venue.trades, "?")} · volume {show(market.venue.volume, "?")}
+            </span>
+            {market.venue.book.length > 0 ? (
+              <DataTable
+                columns={[
+                  { key: "maker", label: "Maker" },
+                  { key: "give", label: "Gives" },
+                  { key: "want", label: "Wants" },
+                ]}
+                rows={market.venue.book.map((o) => ({ maker: o.maker, give: o.give, want: o.want }))}
+              />
+            ) : (
+              <span className="nr-muted">No offers on our venue.</span>
+            )}
+          </div>
+        </Card>
       ) : null}
     </div>
   );
 }
 
-function ConversationsCard({ conversations }: { conversations: ConversationThread[] }) {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  if (conversations.length === 0) return <EmptyStateCard title="No Bazaar conversations yet" />;
-  const selected = conversations.find((t) => t.id === selectedId) ?? conversations[0]!;
-  return (
-    <Card title="Conversations">
-      <div className="nr-grid" style={gridCols("minmax(220px, 1fr) minmax(0, 2fr)")}>
-        <ThreadList threads={conversations} selectedId={selected.id} onSelect={setSelectedId} />
-        <ThreadChat thread={selected} />
-      </div>
-    </Card>
-  );
-}
-
-function DuelsCard({ duels }: { duels: Duel[] }) {
-  if (duels.length === 0) return null;
-  return (
-    <Card title="Duels">
-      <DataTable
-        columns={[
-          { key: "id", label: "Duel", numeric: true },
-          { key: "rival", label: "Rival" },
-          { key: "role", label: "Role" },
-          { key: "status", label: "Status" },
-          { key: "limit", label: "Our limit", numeric: true },
-        ]}
-        rows={duels.map((d) => ({
-          id: d.id,
-          rival: d.rival ?? NOT_LOGGED,
-          role: d.role ?? NOT_LOGGED,
-          status: d.done ? { value: d.status ?? "done", tone: "better" as const } : (d.status ?? "open"),
-          limit: d.your_limit ?? NOT_LOGGED,
-        }))}
-      />
-    </Card>
-  );
-}
-
 /**
- * Bazaar: la cifra que maximizamos, tal como la trazó el agente, más las conversaciones en vivo
- * (dealers, equipos, duelos). La UI nunca calcula; solo presenta los campos y deltas ya logueados
- * por `src/bazaar/score.ts`, lo que `/api/bazaar/live` sirve en vivo (sin `rarest`/`luck`/
- * `luck_private`) y lo que `/api/bazaar/threads` + `/api/bazaar/duels` sirven en vivo (sin la clave).
+ * Bazaar: UNA lista de todas nuestras conversaciones (dealers, duelos, tratos y ofertas entre
+ * equipos) con precio, valor, excedente, veredicto y deltas ya calculados por el servidor
+ * (`/api/bazaar/board`); la UI nunca calcula métricas. Clic en una fila → conversación completa.
+ * Filtros en la query del hash. Panel de mercado: reloj, clasificación, feed, El Rastro y nuestro venue.
  */
-export function BazaarScreen({ model, live, conversations = [], duels = [] }: BazaarScreenProps) {
-  // Si aun no hay snapshots logueados (`score.jsonl`), se cae a la cifra que ya sirvió
-  // `/api/bazaar/live` para no mostrar "not logged" teniendo el dato a mano.
-  const latest = model.latest ?? live?.score ?? null;
+export function BazaarScreen({ board, model, filters, onFiltersChange }: BazaarScreenProps) {
+  const h = board.header;
+  const latest = model.latest;
+  const rows = filterBoardRows(board.rows, filters);
+  const selected = board.rows.find((r) => r.id === filters.row) ?? null;
+  const select = (id: string) => onFiltersChange({ ...filters, row: id });
+  const clock = board.clock;
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
         <PageTitle>Bazaar</PageTitle>
         <span className="nr-muted" aria-live="polite">
-          {live ? `${live.team ?? "?"} · ${live.round ?? "?"} · tick ${live.tick ?? "?"}` : NOT_LOGGED}
+          {clock ? `${h?.team ?? board.team ?? "?"} · ${clock.round_name ?? "?"} · tick ${clock.tick}` : NOT_LOGGED}
         </span>
       </div>
       <KpiStrip
         items={[
-          kpi("Score", latest?.score),
-          kpi("Rank", latest?.rank),
-          kpi("Negotiating", latest?.neg_points),
-          kpi("Market-making", latest?.mm_points),
-          kpi("Duels", latest?.duel_points),
-          kpi("Ladder", latest?.ladder_points),
-          kpi("Bench efficiency", latest?.bench_efficiency),
-          kpi("Deals", latest?.deals),
+          { label: "Score", value: show(h?.score ?? latest?.score) },
+          { label: "Negotiating", value: show(h?.negotiating ?? latest?.negotiating) },
+          { label: "Neg points", value: show(h?.neg_points ?? latest?.neg_points) },
+          { label: "Ladder", value: show(h?.ladder_points ?? latest?.ladder_points) },
+          { label: "Market", value: show(h?.market ?? latest?.market) },
+          { label: "Duel points", value: show(h?.duel_points ?? latest?.duel_points) },
+          { label: "Rank", value: show(h?.rank ?? latest?.rank) },
+          { label: "Cash", value: show(h?.cash) },
+          { label: "Level", value: show(h?.level ?? latest?.level) },
         ]}
       />
-      <ConversationsCard conversations={conversations} />
-      <DuelsCard duels={duels} />
-      <div className="nr-grid" style={gridCols("repeat(2, minmax(0, 1fr))")}>
-        <Card title="Score over time">
-          {model.chart.length > 0 ? (
-            <DataTable
-              columns={[
-                { key: "tick", label: "Tick", numeric: true },
-                { key: "score", label: "Score", numeric: true },
-              ]}
-              rows={model.chart.map((p) => ({ tick: p.tick, score: p.score }))}
-            />
+      <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 1fr)")}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
+          {board.rows.length === 0 ? (
+            <EmptyStateCard title={board.live ? "No Bazaar conversations yet" : "No live Bazaar data (BAZAAR_KEY not set on the viewer server, or the Bazaar is unreachable)"} />
           ) : (
-            <EmptyStateCard title="No logged score ticks yet" />
+            <Card title={`Conversations (${rows.length} of ${board.rows.length})`}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+                <FiltersBar rows={board.rows} filters={filters} onChange={onFiltersChange} />
+                {rows.length > 0 ? <ConversationList rows={rows} selectedId={filters.row} onSelect={select} /> : <span className="nr-muted">No conversations match these filters.</span>}
+              </div>
+            </Card>
           )}
-        </Card>
-        <Card title="What moved the score">
-          {model.moved.length > 0 ? (
-            <DataTable
-              columns={[
-                { key: "tick", label: "Tick", numeric: true },
-                { key: "component", label: "Component" },
-                { key: "delta", label: "Delta", numeric: true },
-                { key: "cause", label: "Cause" },
-              ]}
-              rows={model.moved.map((m) => ({
-                tick: m.tick,
-                component: m.component,
-                delta: m.delta > 0 ? { value: m.delta, tone: "better" as const } : m.delta < 0 ? { value: m.delta, tone: "worse" as const } : { value: m.delta },
-                cause: m.cause,
-              }))}
-            />
-          ) : (
-            <EmptyStateCard title="No logged score changes yet" />
-          )}
-        </Card>
+          {selected ? <ConversationDetail row={selected} /> : board.rows.length > 0 ? <span className="nr-muted">Select a conversation to see every message.</span> : null}
+          <Card title="What moved the score">
+            {model.moved.length > 0 ? (
+              <DataTable
+                columns={[
+                  { key: "tick", label: "Tick", numeric: true },
+                  { key: "component", label: "Component" },
+                  { key: "delta", label: "Delta", numeric: true },
+                  { key: "cause", label: "Cause" },
+                ]}
+                rows={model.moved.map((m) => ({ tick: m.tick, component: m.component, delta: toned(m.delta), cause: m.cause }))}
+              />
+            ) : (
+              <span className="nr-muted">No logged score changes yet.</span>
+            )}
+          </Card>
+        </div>
+        <MarketPanel board={board} />
       </div>
-      <span className="nr-muted">Judges: not scored yet (not reported by /api/me).</span>
     </section>
   );
 }

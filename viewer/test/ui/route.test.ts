@@ -110,3 +110,12 @@ describe("T1: malformed percent-encoding does not throw (falls back to the raw s
     expect(parseRoute("#/runs/r-1/games/g-%")).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-%", query: "" });
   });
 });
+
+describe("route · bazaar", () => {
+  it("keeps the filter query of the Bazaar tab (#bazaar and #/bazaar)", () => {
+    expect(parseRoute("#bazaar")).toEqual({ screen: "bazaar", query: "" });
+    expect(parseRoute("#/bazaar?verdict=bad&row=thread%3A178")).toEqual({ screen: "bazaar", query: "verdict=bad&row=thread%3A178" });
+    expect(routeTo.bazaar("verdict=bad")).toBe("#/bazaar?verdict=bad");
+    expect(routeTo.bazaar()).toBe("#/bazaar");
+  });
+});
