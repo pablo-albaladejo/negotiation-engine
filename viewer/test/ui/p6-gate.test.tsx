@@ -13,7 +13,7 @@ beforeAll(async () => {
 afterEach(cleanup);
 
 describe("GateScreen (P6)", () => {
-  it("aprobada en seco: píldora de aprobación, checks con su Flag, heatmap, diff y comando para copiar", () => {
+  it("aprobada en seco: píldora de aprobación, checks con su Flag, heatmap, diff y comando para copiar", async () => {
     const model = gateModel("promote-x", gx.passed.gate);
     const { container } = render(<GateScreen model={model} onBack={() => {}} />);
     expect(container.querySelector(".nr-pill.verdict")?.textContent).toMatch(/gate passed · dry run/);
@@ -26,8 +26,11 @@ describe("GateScreen (P6)", () => {
     expect(screen.getByText(`pnpm promote ${gx.candidatePath}`)).toBeTruthy();
     const copyButton = screen.getByRole("button", { name: "Copy" });
     expect(copyButton.className).toContain("nr-btn-primary");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
     fireEvent.click(copyButton);
-    expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
+    await screen.findByRole("button", { name: "Copied" });
+    expect(writeText).toHaveBeenCalledWith(`pnpm promote ${gx.candidatePath}`);
     expect(screen.getAllByText("+2.30 pp")).toHaveLength(3);
   });
 
@@ -55,11 +58,16 @@ describe("GateScreen (P6)", () => {
     expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
   });
 
-  it("Copy label resets to 'Copy' after 1.5s, and the timer is cleared on unmount (B2)", () => {
+  it("Copy label resets to 'Copy' after 1.5s, and the timer is cleared on unmount (B2)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
     vi.useFakeTimers();
     try {
       const { unmount } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
       fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+      await act(async () => {
+        await Promise.resolve();
+      });
       expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
       act(() => {
         vi.advanceTimersByTime(1500);
@@ -71,6 +79,26 @@ describe("GateScreen (P6)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("Copy shows 'Copy failed' when the clipboard API is unavailable (C1)", () => {
+    const originalClipboard = navigator.clipboard;
+    Object.assign(navigator, { clipboard: undefined });
+    try {
+      render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+      expect(screen.getByRole("button", { name: "Copy failed" })).toBeTruthy();
+    } finally {
+      Object.assign(navigator, { clipboard: originalClipboard });
+    }
+  });
+
+  it("Copy shows 'Copy failed' when writeText rejects (C1)", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await screen.findByRole("button", { name: "Copy failed" });
   });
 
   it("parameter diff uses the 22px sign-column DS classes (B3)", () => {

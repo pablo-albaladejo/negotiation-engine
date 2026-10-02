@@ -60,13 +60,20 @@ function Verdict({ model }: { model: GateModel }) {
   );
 }
 
-/** B2: label flips to "Copied" and resets after 1.5 s; the timer is cleared on unmount. */
+type CopyStatus = "idle" | "copied" | "failed";
+
+/** C1: label reflects the actual clipboard outcome ("Copied" / "Copy failed"), resets after 1.5 s; the timer is cleared on unmount. */
 function CopyCommand({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<CopyStatus>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (timer.current !== null) clearTimeout(timer.current);
   }, []);
+  const scheduleReset = () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setStatus("idle"), 1500);
+  };
+  const label = status === "copied" ? "Copied" : status === "failed" ? "Copy failed" : "Copy";
   return (
     <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "stretch", margin: "var(--space-3) 0 var(--space-2)" }}>
       <code className="nr-code-box" style={{ flex: 1, minWidth: 0 }}>
@@ -74,13 +81,19 @@ function CopyCommand({ command }: { command: string }) {
       </code>
       <PrimaryButton
         onClick={() => {
-          void navigator.clipboard?.writeText(command).catch(() => {});
-          setCopied(true);
-          if (timer.current !== null) clearTimeout(timer.current);
-          timer.current = setTimeout(() => setCopied(false), 1500);
+          if (!navigator.clipboard) {
+            setStatus("failed");
+            scheduleReset();
+            return;
+          }
+          navigator.clipboard
+            .writeText(command)
+            .then(() => setStatus("copied"))
+            .catch(() => setStatus("failed"))
+            .finally(scheduleReset);
         }}
       >
-        {copied ? "Copied" : "Copy"}
+        {label}
       </PrimaryButton>
     </div>
   );
