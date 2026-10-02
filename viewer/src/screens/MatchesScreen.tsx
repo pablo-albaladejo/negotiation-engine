@@ -1,9 +1,10 @@
-import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
+import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, Flag, type FlagProps, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
-import { matchesModel, type MatchFilters } from "../model/index.js";
+import { matchesModel, type MatchFilters, type MatchRow } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
 import { resultLabel, roleLabel } from "../ui/labels.js";
+import { offerLabel } from "../ui/offer.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { PageTitle } from "../ui/page-title.js";
 
@@ -13,6 +14,7 @@ const COLUMNS: DataTableColumn[] = [
   { key: "rival", label: "Opponent" },
   { key: "rol", label: "Role" },
   { key: "res", label: "Outcome" },
+  { key: "precio", label: "Price", numeric: true },
   { key: "exc", label: "Surplus", numeric: true },
   { key: "rondas", label: "Rounds", numeric: true },
   { key: "inc", label: "Incidents" },
@@ -25,6 +27,10 @@ const PAGINATE_ABOVE = 200;
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
 /** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
 const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
+/** `summary.durationMs` -> seconds with one decimal (design: "11.7 s"). */
+const durationLabel = (ms: number): string => `${formatNumber(ms / 1000, { locale: "en", decimals: 1 })} s`;
+/** Price column: the logged agreement offer, or "\u2014" when there was no deal (M2). */
+const priceLabel = (agreement: MatchRow["agreement"]): string => (agreement ? offerLabel(agreement) : "\u2014");
 
 function withFilter<K extends keyof MatchFilters>(filters: MatchFilters, key: K, value: MatchFilters[K] | undefined): MatchFilters {
   const next = { ...filters };
@@ -33,12 +39,28 @@ function withFilter<K extends keyof MatchFilters>(filters: MatchFilters, key: K,
   return next;
 }
 
-function incidents(row: { violations: number; leaks: number; templateFallbacks: number }): string {
-  const parts: string[] = [];
-  if (row.violations > 0) parts.push(`${row.violations} violation(s)`);
-  if (row.leaks > 0) parts.push(`${row.leaks} leak(s)`);
-  if (row.templateFallbacks > 0) parts.push(`${row.templateFallbacks} template`);
-  return parts.length === 0 ? "clean" : parts.join(" \u00b7 ");
+/** Incidents column (M4): a row of `Flag`s from logged fields, empty (not "clean") when none apply. */
+function incidentFlags(row: Pick<MatchRow, "violations" | "leaks" | "templateFallbacks" | "injectionSuspected" | "zopaEmpty">): { kind: FlagProps["kind"]; label: string }[] {
+  const flags: { kind: FlagProps["kind"]; label: string }[] = [];
+  if (row.injectionSuspected > 0) flags.push({ kind: "injection", label: row.injectionSuspected === 1 ? "injection" : `injection \u00d7${row.injectionSuspected}` });
+  if (row.templateFallbacks > 0) flags.push({ kind: "fallback", label: "template" });
+  if (row.zopaEmpty) flags.push({ kind: "walk", label: "empty ZOPA" });
+  if (row.violations > 0) flags.push({ kind: "walk", label: `${row.violations} violation(s)` });
+  if (row.leaks > 0) flags.push({ kind: "walk", label: `${row.leaks} leak(s)` });
+  return flags;
+}
+
+function IncidentFlags({ items }: { items: { kind: FlagProps["kind"]; label: string }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <span style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      {items.map((f, i) => (
+        <Flag key={i} kind={f.kind}>
+          {f.label}
+        </Flag>
+      ))}
+    </span>
+  );
 }
 
 export interface MatchesScreenProps {
@@ -104,16 +126,20 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     onPageChange?.(next);
   };
 
-  const rows: DataTableRow[] = pageRows.map((r) => ({
-    id: r.gameId,
-    esc: r.scenarioId,
-    rival: r.rival,
-    rol: roleLabel(r.role),
-    res: resultLabel(r.endReason, r.protocolViolationBy).label,
-    exc: dec(r.surplusShare),
-    rondas: r.roundLimit !== null ? `${r.rounds} / ${r.roundLimit}` : String(r.rounds),
-    inc: incidents(r),
-  }));
+  const rows: DataTableRow[] = pageRows.map((r) => {
+    const outcome = resultLabel(r.endReason, r.protocolViolationBy);
+    return {
+      id: r.gameId,
+      esc: r.scenarioId,
+      rival: r.rival,
+      rol: roleLabel(r.role),
+      res: <Flag kind={outcome.tone === "deal" ? "decision" : "walk"}>{outcome.label}</Flag>,
+      precio: priceLabel(r.agreement),
+      exc: dec(r.surplusShare),
+      rondas: r.roundLimit !== null ? `${r.rounds}/${r.roundLimit}` : String(r.rounds),
+      inc: <IncidentFlags items={incidentFlags(r)} />,
+    };
+  });
 
   const clearFilters = () => {
     setFilters({});
@@ -124,19 +150,25 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
         <BackLink onClick={onBack}>← Runs</BackLink>
-        <PageTitle style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-          {runId} · matches
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <PageTitle>{runId} · matches</PageTitle>
           {isChampion ? <Pill kind="champion">champion</Pill> : null}
-        </PageTitle>
+        </div>
+        <span className="nr-cfg">{`${runId} · ${formatNumber(model.kpis.games, { locale: "en" })} matches · ${durationLabel(model.kpis.durationMs)} · ${
+          summary.config.params
+            ? `β=${summary.config.params.beta} · openingMargin ${summary.config.params.openingMargin} · acceptMargin ${summary.config.params.acceptMargin} · acTimeThreshold ${summary.config.params.acTimeThreshold} · noise ${summary.config.params.noise} · horizon ${summary.config.params.defaultHorizon}`
+            : "not logged"
+        }`}</span>
       </div>
       <KpiStrip
         items={[
           { label: "Matches", value: formatNumber(model.kpis.games, { locale: "en" }) },
-          { label: "Deal", value: pct(model.kpis.agreementRate), tone: model.kpis.agreementRate ? "deal" : "walk" },
+          { label: "Agreement", value: pct(model.kpis.agreementRate) },
           { label: "Avg. surplus", value: dec(model.kpis.meanSurplus) },
           { label: "Violations", value: formatNumber(model.kpis.violations, { locale: "en" }), tone: model.kpis.violations > 0 ? "walk" : "deal" },
           { label: "Leaks", value: formatNumber(model.kpis.leaks, { locale: "en" }), tone: model.kpis.leaks > 0 ? "walk" : "deal" },
-          { label: "Template fallbacks", value: formatNumber(model.kpis.templateFallbacks, { locale: "en" }) },
+          { label: "Empty ZOPA detected", value: pct(model.kpis.emptyZopaCorrect) },
+          { label: "Duration", value: durationLabel(model.kpis.durationMs) },
         ]}
       />
       <Filters
@@ -150,8 +182,8 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
         result={filters.result ?? ""}
         onResultChange={(v) => setFilters((f) => withFilter(f, "result", v === "" ? undefined : (v as MatchFilters["result"])))}
         checkboxes={[
-          { key: "template", label: "With fallback", checked: filters.template ?? false },
-          ...(model.hasInjectionData ? [{ key: "injection", label: "With injection", checked: filters.injection ?? false }] : []),
+          ...(model.hasInjectionData ? [{ key: "injection", label: "with injection", checked: filters.injection ?? false }] : []),
+          { key: "template", label: "with fallback", checked: filters.template ?? false },
         ]}
         onCheckboxChange={(key, checked) => {
           if (key === "template") setFilters((f) => withFilter(f, "template", checked ? true : undefined));
@@ -167,7 +199,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
         <EmptyStateCard title="No matches for these filters" action={<SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>} />
       ) : (
         <Card>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
             <span className="nr-muted" ref={countRef} tabIndex={-1}>
               {`Showing ${paginated ? currentPage * PAGE_SIZE + 1 : 1}–${paginated ? currentPage * PAGE_SIZE + pageRows.length : model.rows.length} of ${model.rows.length} matches`}
               {model.rows.length !== games.length ? ` (filtered from ${games.length})` : ""}

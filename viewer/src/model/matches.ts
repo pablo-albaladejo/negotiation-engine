@@ -1,4 +1,5 @@
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
+import type { Offer } from "./rounds.js";
 
 export type EndReason = TranscriptLine["endReason"];
 export type Role = TranscriptLine["role"];
@@ -29,13 +30,23 @@ export interface MatchRow {
   templateFallbacks: number;
   violations: number;
   leaks: number;
+  /** Oferta final acordada (`line.agreement`); `null` sin deal o si no se registró. */
+  agreement: Offer | null;
+  zopaEmpty: boolean;
+  /** Rondas marcadas `injectionSuspected`; `0` si el run no trae ese campo (ver `hasInjectionData`). */
+  injectionSuspected: number;
 }
 
 export interface MatchesModel {
   runId: string;
   /** `summary.overall.games = 0`: P2 muestra "has no matches", no una tabla vacía. */
   empty: boolean;
-  kpis: Pick<Summary["overall"], "games" | "agreementRate" | "meanSurplus" | "violations" | "leaks" | "templateFallbacks" | "rivalErrors">;
+  kpis: Pick<Summary["overall"], "games" | "agreementRate" | "meanSurplus" | "violations" | "leaks" | "templateFallbacks" | "rivalErrors"> & {
+    /** `summary.overall.emptyZopaCorrect`; `null` también cuando el run no trae ese campo ("not logged"). */
+    emptyZopaCorrect: number | null;
+    /** `summary.durationMs`, siempre registrado. */
+    durationMs: number;
+  };
   options: { rivals: string[]; roles: Role[]; results: EndReason[] };
   rows: MatchRow[];
   /** Partidas que pasan los filtros (conteo de filas). */
@@ -68,7 +79,7 @@ export function filterGames(games: readonly TranscriptLine[], filters: MatchFilt
 
 /** P2: KPIs de `summary.overall` y tabla de `transcripts.jsonl` filtrada. */
 export function matchesModel(summary: Summary, games: readonly TranscriptLine[], filters: MatchFilters = {}): MatchesModel {
-  const { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors } = summary.overall;
+  const { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors, emptyZopaCorrect } = summary.overall;
   const hasInjectionData = games.some((l) => l.metrics.injectionSuspected !== undefined);
   const rows = filterGames(games, filters)
     .map(
@@ -86,12 +97,15 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
         templateFallbacks: line.metrics.templateFallbacks,
         violations: line.metrics.violations,
         leaks: line.metrics.leaks,
+        agreement: line.agreement ?? null,
+        zopaEmpty: line.metrics.zopaEmpty,
+        injectionSuspected: line.metrics.injectionSuspected ?? 0,
       }),
     );
   return {
     runId: summary.runId,
     empty: g === 0,
-    kpis: { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors },
+    kpis: { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors, emptyZopaCorrect: emptyZopaCorrect ?? null, durationMs: summary.durationMs },
     options: {
       rivals: distinct(games.map((l) => l.rival)),
       roles: distinct(games.map((l) => l.role)),

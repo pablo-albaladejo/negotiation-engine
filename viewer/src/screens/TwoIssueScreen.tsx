@@ -118,7 +118,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
           },
           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
           { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
-          { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds} / ${model.game.roundLimit}` : String(model.game.rounds) },
+          { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds}/${model.game.roundLimit}` : String(model.game.rounds) },
           { label: "Role", value: model.game.role },
         ]}
       />

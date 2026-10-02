@@ -108,6 +108,8 @@ const RoleSummarySchema = z.looseObject({
   leaks: z.number().int().nonnegative(),
   templateFallbacks: z.number().int().nonnegative(),
   rivalErrors: z.number().int().nonnegative(),
+  /** Partidas en ZOPA vacía resueltas sin acuerdo ni violaciones, sobre el total de ZOPA vacía (`summarize`); `null` sin partidas en ZOPA vacía. Optional: runs anteriores a este campo no lo traen. */
+  emptyZopaCorrect: z.number().nullable().optional(),
 });
 export type RoleSummary = z.infer<typeof RoleSummarySchema>;
 

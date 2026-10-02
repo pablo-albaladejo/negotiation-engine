@@ -107,7 +107,7 @@ describe("MatchesScreen Clear filters moves focus to the results count (L24)", (
   it("focuses the count span after clearing filters", () => {
     const games = manyGames(fx.games[0]!, 10);
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
-    fireEvent.click(screen.getByLabelText("With fallback"));
+    fireEvent.click(screen.getByLabelText("with fallback"));
     fireEvent.click(screen.getByText("Clear filters"));
     expect(document.activeElement?.textContent).toContain("Showing 1\u201310 of 10 matches");
   });

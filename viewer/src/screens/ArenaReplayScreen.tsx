@@ -79,7 +79,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         items={[
           { label: "Result", value: result.label, ...(result.tone ? { tone: result.tone } : {}) },
           { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
-          { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds} / ${model.game.roundLimit}` : String(model.game.rounds) },
+          { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds}/${model.game.roundLimit}` : String(model.game.rounds) },
           { label: "ZOPA", value: zopaKpi(model.game.zopaEmpty) },
         ]}
       />

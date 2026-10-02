@@ -248,7 +248,7 @@ describe("App routing: dropping an unsupported 'injection' filter keeps the page
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`));
-    expect(screen.queryByText("With injection")).toBeNull();
+    expect(screen.queryByText("with injection")).toBeNull();
   });
 });
 
@@ -308,7 +308,7 @@ describe("App focus-on-navigation (C1)", () => {
     window.location.hash = `#/runs/${fx.runId}`;
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
-    fireEvent.click(screen.getByLabelText("With fallback"));
+    fireEvent.click(screen.getByLabelText("with fallback"));
     await waitFor(() => expect(screen.getAllByText("No matches for these filters").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByText("Clear filters"));
     await waitFor(() => expect(document.activeElement?.textContent).toContain("matches"));
