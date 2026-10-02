@@ -173,8 +173,11 @@ export class DuelsAgent {
       });
 
     // Una aceptación por equipo y tick: la de mayor excedente; el resto espera.
-    const accepts = planned.filter((p) => p.decision.action === "accept" && !p.already);
-    const chosen = accepts.length > 0 ? accepts.reduce((best, p) => (p.decision.surplus > best.decision.surplus ? p : best)) : undefined;
+    // Si la aceptación elegida falla (p. ej. no_offer: el rival retiró la oferta), se prueba la siguiente en el mismo tick.
+    const accepts = planned
+      .filter((p) => p.decision.action === "accept" && !p.already)
+      .sort((a, b) => b.decision.surplus - a.decision.surplus);
+    let acceptDone = false;
 
     const entries: DuelStepEntry[] = [];
     for (const p of planned) {
@@ -191,15 +194,27 @@ export class DuelsAgent {
       };
       entries.push(entry);
       if (p.already || p.decision.action === "wait") continue;
-      if (p.decision.action === "accept" && p !== chosen) {
-        entry.outcome = "deferred";
-        continue;
-      }
+      if (p.decision.action === "accept") continue; // se resuelven abajo, por excedente
       if (this.options.dryRun) {
         entry.outcome = "dry-run";
         continue;
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
+    }
+    for (const p of accepts) {
+      const entry = entries.find((e) => e.duelId === p.duel.id);
+      if (!entry) continue;
+      if (acceptDone) {
+        entry.outcome = "deferred";
+        continue;
+      }
+      if (this.options.dryRun) {
+        entry.outcome = "dry-run";
+        acceptDone = true;
+        continue;
+      }
+      entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
+      if (entry.outcome === "sent") acceptDone = true;
     }
     if (!this.options.dryRun && this.options.stateFile) saveDuelsMemory(this.options.stateFile, this.memory);
     return { tick: clock.tick, entries };

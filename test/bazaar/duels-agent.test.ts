@@ -118,6 +118,23 @@ describe("DuelsAgent (bucle con API de mentira)", () => {
     expect(s.posts).toEqual([{ tick: 100, kind: "accept", id: 2 }]);
   });
 
+  it("si la aceptación de más excedente falla (no_offer), acepta la siguiente en el mismo tick", async () => {
+    const duels: FakeDuel[] = [
+      { id: 1, role: "seller", limit: 40, rivalLimit: 200, rivalOffer: { price: 100 }, issues: ["price"], deadline: 116 },
+      { id: 2, role: "seller", limit: 40, rivalLimit: 200, rivalOffer: { price: 150 }, issues: ["price"], deadline: 116 },
+    ];
+    const s = fakeServer(duels);
+    const realAccept = s.api.accept;
+    s.api.accept = async (id) => {
+      if (id === 2) throw new BazaarError("no_offer", "", 409);
+      return realAccept(id);
+    };
+    const r = await new DuelsAgent(s.api, { dryRun: false }).step();
+    expect(r.entries.find((e) => e.duelId === 2)!.outcome).toBe("error:no_offer");
+    expect(r.entries.find((e) => e.duelId === 1)!.outcome).toBe("sent");
+    expect(s.posts).toEqual([{ tick: 100, kind: "accept", id: 1 }]);
+  });
+
   it("un error del servidor (wait_for_tick) no rompe el bucle ni cuenta como oferta enviada", async () => {
     const s = fakeServer([{ id: 1, role: "seller", limit: 40, rivalLimit: 100, issues: ["price"], deadline: 116 }], { failSay: "wait_for_tick" });
     const agent = new DuelsAgent(s.api, { dryRun: false });
