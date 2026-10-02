@@ -73,7 +73,7 @@ describe("plan: riesgo de repetida, carta concreta y puja desconocida", () => {
   });
 
   it("venta: su puja es desconocida; solo se abre si su techo plausible (lista × 1,3) alcanza nuestro mínimo", async () => {
-    const assets = [asset(1, "AAA-01", "common", 12), asset(2, "BBB-01", "common", 14), asset(3, "BBB-01", "common", 2)];
+    const assets = [asset(1, "AAA-01", "common", 6), asset(2, "BBB-01", "common", 14), asset(3, "BBB-01", "common", 2)];
     const cands = await rankCandidates({ me: me(assets), catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, safety: 1, budget: 50, cardTopic: false });
     const sells = cands.filter((c) => c.side === "sell");
     expect(sells.every((c) => c.bidUnknown)).toBe(true);
@@ -137,14 +137,35 @@ describe("plan: candidatos por menú", () => {
     expect(chosen[0]!.reason).toContain("fallback");
   });
 
-  it("camino previsto contra su puja fija de 13: ancla 26, paso 3 sin respuesta → pasos de 1, y acepta 13 (precio fijo)", async () => {
+  it("página casi completa (9/10): nuestra única copia nunca se ofrece; una repetida sí", async () => {
+    const m = {
+      cash: 413,
+      level: 1,
+      assets: [asset(1, "AAA-01", "common", 5), asset(2, "AAA-02", "common", 3), asset(3, "AAA-02", "common", 1)],
+      album: { pages: [{ set: "AAA", have: 9, of: 10 }, { set: "BBB", have: 6, of: 10 }] },
+      score: { deals: 1 },
+    } as Me;
+    const cands = await rankCandidates({ me: m, catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, budget: 50 });
+    const sells = cands.filter((c) => c.side === "sell");
+    const onlyCopy = sells.find((c) => c.key === "sell:1")!;
+    expect(onlyCopy.copy).toBe("only");
+    expect(onlyCopy.room).toBe(false);
+    expect(onlyCopy.why).toContain("NEVER");
+    const duplicate = sells.find((c) => c.key === "sell:3")!;
+    expect(duplicate.copy).toBe("duplicate");
+    expect(duplicate.room).toBe(true);
+    expect(selectCandidates(cands, { maxThreads: 2, maxSpend: 50 }).map((s) => s.candidate.key)).toEqual(["sell:3"]);
+  });
+
+  it("camino previsto contra su puja fija de 13: ancla tope lista × 1,3 = 14 (no 26), y acepta 13 (precio fijo)", async () => {
     const cands = await rankCandidates({ me: me([asset(1, "AAA-01", "common", 5)]), catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, budget: 50 });
     const sell = cands.find((c) => c.key === "sell:1")!;
+    expect(sell.herList).toBe(10);
     const path = previewPath(sell);
-    expect(path.prices).toEqual([26, 23, 22]);
-    expect(path.rule).toBe("fixed-price");
+    expect(path.prices).toEqual([14]);
+    expect(path.rule).toBe("stuck-accept-within-limit");
     expect(path.outcome).toContain("accept her 13");
-    expect(path.firstText).toContain("26 P");
+    expect(path.firstText).toContain("14 P");
   });
 
   it("formatPlan lista estado, candidatos, elegidos y primer mensaje con su precio", async () => {
@@ -155,7 +176,7 @@ describe("plan: candidatos por menú", () => {
     expect(text).toContain("cash 413 P · level 1 · deals 1 (next level unlocks early at 3 deals: 2 to go)");
     expect(text).toContain("[no room] BUY common AAA");
     expect(text).toContain("[ROOM] SELL AAA-01 (common, ONLY copy)");
-    expect(text).toContain('first message (price 26): "');
+    expect(text).toContain('first message (price 14): "');
     expect(text).not.toMatch(/sobre_barrio/);
   });
 

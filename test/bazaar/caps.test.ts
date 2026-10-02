@@ -71,7 +71,7 @@ function agentFor(api: BazaarApi, extra: Partial<ConstructorParameters<typeof Ba
 }
 
 describe("topes de la ejecución y precio fijo en el bucle", () => {
-  it("vende 2 comunes a su 13 fijo tras 2 concesiones cada una y se para en max-deals (2 hilos, uno a la vez)", async () => {
+  it("vende 2 comunes a su 13 fijo y se para en max-deals (2 hilos, uno a la vez)", async () => {
     const { api, posts } = fixedAbuela();
     const { a, records } = agentFor(api);
     let tick = 1;
@@ -80,21 +80,15 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(a.runStats()).toEqual({ deals: 2, threads: 2, spent: 0 });
     expect(posts.filter((p) => p === "open")).toHaveLength(2);
     expect(posts.filter((p) => p.startsWith("accept"))).toHaveLength(2);
-    // Cada hilo: ancla 26, paso adaptativo 3 (23) sin respuesta → paso de 1 (22), nunca un precio repetido.
-    expect(posts.filter((p) => p.startsWith("say "))).toEqual(["say 26", "say 23", "say 22", "say 26", "say 23", "say 22"]);
+    // Ancla tope lista × 1,3 = 14 (no 26): ya cubre su fijo 13 y cierra en el primer mensaje.
+    expect(posts.filter((p) => p.startsWith("say "))).toEqual(["say 14", "say 14"]);
     expect(records.filter((r) => r.action === "accept").map((r) => [r.rule, r.ourPrice])).toEqual([
-      ["fixed-price", 13],
-      ["fixed-price", 13],
+      ["stuck-accept-within-limit", 13],
+      ["stuck-accept-within-limit", 13],
     ]);
-    // Paciencia: 3 mensajes nuestros, su respuesta a cada paso (0: no se movió de 13) y tics hasta el trato.
     const acc = records.find((r) => r.action === "accept")!;
-    expect(acc.patience).toMatchObject({ ourMsgs: 3, untilFinal: false, ticks: 4 });
-    expect(acc.patience!.steps.map((s) => [s.ourPrice, s.step, s.herMove])).toEqual([
-      [26, undefined, 0],
-      [23, 3, 0],
-      [22, 1, 0],
-    ]);
-    expect(records.filter((r) => r.action === "outcome").every((r) => r.patience?.ourMsgs === 3)).toBe(true);
+    expect(acc.patience).toMatchObject({ ourMsgs: 1, untilFinal: false });
+    expect(acc.patience!.steps.map((s) => [s.ourPrice, s.step, s.herMove])).toEqual([[14, undefined, 0]]);
     const before = posts.length;
     const after = await a.step({ tick: tick + 1, tick_seconds: 60 });
     expect(posts.length).toBe(before);
@@ -107,7 +101,8 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     const { a, records } = agentFor(api, { only: parseOnly("sell:AAA-03,sell:AAA-01"), maxDeals: 2, log: (l) => lines.push(l) });
     for (let tick = 1; tick < 40 && !a.done(); tick++) await a.step({ tick, tick_seconds: 60 });
     expect(records.filter((r) => r.action === "open").map((r) => r.target)).toEqual(["sell:3", "sell:1"]);
-    expect(lines.filter((l) => /\n  patience: 3 msgs \/ [45] ticks until close · her replies 0 · steps: anchor 26/.test(l))).toHaveLength(4);
+    // Ancla tope lista × 1,3 = 14 (no 26): ya cubre su fijo 13 y cierra en el primer mensaje.
+    expect(lines.filter((l) => /\n  patience: 1 msgs \/ [23] ticks until close · her replies 0 · steps: anchor 14/.test(l))).toHaveLength(4);
   });
 
   it("max-threads: no abre más conversaciones que el tope aunque no haya trato", async () => {
@@ -126,7 +121,7 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     for (let tick = 1; tick < 4; tick++) await a.step({ tick, tick_seconds: 60 });
     expect(posts).toEqual([]);
     expect(plan).toContain("would open 2 conversation(s)");
-    expect(plan).toContain("first message (price 26)");
-    expect(plan).toContain("accept her 13 (rule fixed-price)");
+    expect(plan).toContain("first message (price 14)");
+    expect(plan).toContain("accept her 13 (rule stuck-accept-within-limit)");
   });
 });

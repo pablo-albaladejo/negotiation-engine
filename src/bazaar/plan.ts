@@ -27,6 +27,17 @@ export const MAX_DUPLICATE_P = 0.34;
 export const MAX_WORST_CASE_LOSS = 3;
 export const RARITY_SET_MARGIN = { min: 2, frac: 0.1 };
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
+/**
+ * Nuestra ÚNICA copia en una página ≥ 70 % completa nunca se vende: ese último tramo es justo donde más pesa el
+ * bonus de página en el valor de la carta (completar puntúa fuerte y perder una pieza tan cerca del final no se
+ * recupera fácil), así que usamos el propio porcentaje de la página como proxy simple de "el bonus de página
+ * manda en su valor" en vez de tratar de separar el valor de mercado del bonus. Las repetidas no tienen este
+ * problema (la página no cambia) y se prefieren siempre; fuera de este umbral, una única copia solo se ofrece si
+ * crea al menos `ONLY_COPY_MIN_SURPLUS` P (vender la única copia de un conjunto casi vacío por una miseria tampoco
+ * compensa) — como solo se ofrece una copia a la vez, la página siempre queda como mucho en `have − 1`.
+ */
+export const ONLY_COPY_PAGE_COMPLETE_BLOCK = 0.7;
+export const ONLY_COPY_MIN_SURPLUS = 5;
 
 export type CandidateKind = "buy-card" | "buy-rarity-set" | "sell";
 
@@ -220,10 +231,22 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       if (typeof a.your_value !== "number") continue;
       const value = a.your_value;
       const reservation = Math.max(1, Math.ceil(value / safety));
-      const room = bid.price >= reservation && bid.price > value;
+      const surplus = round1(bid.price - value);
+      let room = bid.price >= reservation && bid.price > value;
       const pg = pages.get(set);
       const page = copy === "only" && pg && PAGE_RARITIES.has(rarity) ? { set, ...pg, after: pg.have - 1 } : undefined;
       const impact = page ? `our ONLY copy: ${set} page ${page.have}/${page.of} → ${page.after}/${page.of} (further from complete)` : "DUPLICATE: no album impact";
+      let guard = "";
+      if (room && copy === "only") {
+        const pageComplete = page ? page.have / page.of : undefined;
+        if (pageComplete !== undefined && pageComplete >= ONLY_COPY_PAGE_COMPLETE_BLOCK) {
+          room = false;
+          guard = `; NEVER: our only copy and ${set} page is ${page!.have}/${page!.of} (≥ ${Math.round(ONLY_COPY_PAGE_COMPLETE_BLOCK * 100)} %) — that near-complete a page is where the page bonus drives most of the card's value, so we keep it and sell a duplicate instead`;
+        } else if (surplus < ONLY_COPY_MIN_SURPLUS) {
+          room = false;
+          guard = `; SKIP: only copy needs at least +${ONLY_COPY_MIN_SURPLUS} P of value created to give it up (plausible +${surplus} P)`;
+        }
+      }
       sells.push({
         kind: "sell",
         key: `sell:${a.id}`,
@@ -235,15 +258,15 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
         card: ref,
         value,
         reservation,
-        herList: undefined,
+        herList: sellList,
         herOpening: bid.price,
         herOpeningSource: bid.source,
-        surplus: round1(bid.price - value),
+        surplus,
         room,
         bidUnknown: true,
         copy,
         ...(page ? { page } : {}),
-        why: `her bid is unknown (could reach ${bid.price}); our value ${round1(value)} → min ${reservation}; ${room ? `plausible: up to +${round1(bid.price - value)} P; if her first bid < ${DEFAULT_NEGOTIATOR_PARAMS.lowballFrac} × ${reservation} we close after one counter` : "her plausible ceiling does not reach our minimum: not opened"}; ${impact}`,
+        why: `her bid is unknown (could reach ${bid.price}); our value ${round1(value)} → min ${reservation}; ${room ? `plausible: up to +${surplus} P; if her first bid < ${DEFAULT_NEGOTIATOR_PARAMS.lowballFrac} × ${reservation} we close after one counter` : "her plausible ceiling does not reach our minimum: not opened"}; ${impact}${guard}`,
       });
     }
   }
@@ -355,6 +378,7 @@ export function previewPath(c: Candidate, params: NegotiatorParams = DEFAULT_NEG
         reservation: c.reservation,
         privateValue: c.value,
         herOpening: c.herOpening,
+        herList: c.herList,
         herPrices: [...herPrices],
         herCurrent: { offerId: 1, price: c.herOpening, final: false },
         ourPrices: [...prices],
@@ -415,7 +439,7 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
   chosen.forEach((s, i) => {
     const c = s.candidate;
     const path = previewPath(c, params);
-    const planned = plannedSchedule({ side: c.side, reservation: c.reservation, herOpening: c.herOpening }, params);
+    const planned = plannedSchedule({ side: c.side, reservation: c.reservation, herOpening: c.herOpening, herList: c.herList }, params);
     const limitWhy = c.side === "buy" ? `value × ${caps.safety ?? "safety"}, capped by spend/cash` : `value ÷ ${caps.safety ?? "safety"}`;
     L.push(`  #${i + 1} ${c.label} · topic ${JSON.stringify(c.topic)}`);
     L.push(`      why chosen: ${s.reason}`);

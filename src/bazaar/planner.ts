@@ -17,6 +17,8 @@ export interface Target {
   label: string;
   /** Nuestro valor privado de lo que se compra o vende (esperado si es por rareza y set): un trato crea valor si el precio lo mejora. */
   value?: number;
+  /** Su lista publicada para esa rareza (tope del ancla de venta, `sellAnchorCapMult`); sin ella, sin tope. */
+  herList?: number | undefined;
 }
 
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);

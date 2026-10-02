@@ -15,7 +15,7 @@ import {
 function view(partial: Partial<ThreadView> & Pick<ThreadView, "side" | "reservation">): ThreadView {
   return { herPrices: [], ourPrices: [], canMessage: true, canAccept: true, ...partial };
 }
-const anchor = (v: Pick<ThreadView, "side" | "reservation" | "herOpening">, p = P) => anchorPrice(v, p, effectiveReservation(v));
+const anchor = (v: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herList">, p = P) => anchorPrice(v, p, effectiveReservation(v));
 
 describe("paso adaptativo a su paciencia (hilos 56 y 125)", () => {
   it("paso = ⌈hueco ÷ paciencia restante⌉, entre 1 y maxStep", () => {
@@ -89,6 +89,14 @@ describe("anclas moderadas", () => {
     expect(anchor({ side: "sell", reservation: 6, herOpening: 13 })).toBe(26);
     expect(anchor({ side: "sell", reservation: 6, herOpening: 20 })).toBe(36);
     expect(anchor({ side: "sell", reservation: 6, herOpening: 20 }, { ...P, maxStep: 2 })).toBe(31);
+  });
+
+  it("venta con su lista: el ancla nunca pasa de lista × sellAnchorCapMult, aunque el múltiplo de su puja dé más (lista 10 → ≤ 13)", () => {
+    expect(P.sellAnchorCapMult).toBe(1.3);
+    expect(anchor({ side: "sell", reservation: 6, herOpening: 10, herList: 10 })).toBe(13);
+    expect(anchor({ side: "sell", reservation: 6, herOpening: 10, herList: 10 })).toBeLessThanOrEqual(13);
+    // sin su lista, sin tope: el múltiplo de su puja manda, como antes.
+    expect(anchor({ side: "sell", reservation: 6, herOpening: 10 })).toBe(20);
   });
 
   it("hilo 125 con el negociador nuevo: puja 5 < 0,7 × mínimo 10 ⇒ una contraoferta (13) y cierre educado (lowball-bid)", () => {

@@ -420,6 +420,7 @@ export class BazaarAgent {
       ourPrices: p.ourPrices,
       ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
       ...(p.herCurrent ? { herCurrent: p.herCurrent } : {}),
+      ...(target.herList !== undefined ? { herList: target.herList } : {}),
       canMessage: active.lastSentTick !== tick,
       canAccept: this.team.canAccept(tick),
       holdsUsed: active.holdsUsed,

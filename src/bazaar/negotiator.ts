@@ -27,6 +27,13 @@ export interface NegotiatorParams {
   sellAnchorMult: number;
   /** Venta con su puja por debajo de nuestro mínimo (o sin puja): apertura = ⌈mínimo × esto⌉ (modo adaptativo). */
   sellFloorAnchorMult: number;
+  /**
+   * Venta: el ancla nunca pasa de `herList` (su lista de venta de esa rareza) × esto, aunque su puja plausible o
+   * `sellFloorAnchorMult` × nuestro mínimo den más; sin su lista, sin tope. Su lista es lo único público y estable
+   * que tenemos del dealer, así que es la vara de medir un ancla razonable (evita anclas como 2× una puja ya
+   * inflada, p. ej. 107 para una lista de rareza bien menor). El mínimo sigue siendo nuestra reserva efectiva.
+   */
+  sellAnchorCapMult: number;
   /** β de la curva Boulware (< 1 concede despacio al principio). */
   beta: number;
   /** Número de contraofertas en que la curva llega a la reserva efectiva. */
@@ -57,6 +64,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   buyAnchorFrac: 0.75,
   sellAnchorMult: 2.0,
   sellFloorAnchorMult: 1.3,
+  sellAnchorCapMult: 1.3,
   beta: 1,
   horizon: 12,
   maxStepFrac: 0.08,
@@ -87,6 +95,8 @@ export interface ThreadView {
   reservation: number;
   /** Su primer precio en el hilo (cerrar a ese precio no cuenta en la escalera). */
   herOpening?: number;
+  /** Venta: su lista de venta publicada para esa rareza (tope del ancla, `sellAnchorCapMult`); sin ella, sin tope. */
+  herList?: number | undefined;
   /** Sus precios en orden (incluido el actual). */
   herPrices: readonly number[];
   /** Su oferta vigente (abierta), si hay. */
@@ -156,23 +166,26 @@ export function effectiveReservation(view: Pick<ThreadView, "side" | "reservatio
   return Math.ceil(herOpening === undefined ? reservation : Math.max(reservation, herOpening + 1));
 }
 
-export function anchorPrice(view: Pick<ThreadView, "side" | "reservation" | "herOpening">, p: NegotiatorParams, effRes: number): number {
+export function anchorPrice(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herList">, p: NegotiatorParams, effRes: number): number {
+  // Venta: el ancla nunca pasa de su lista × sellAnchorCapMult (sin su lista, sin tope); el mínimo sigue siendo effRes.
+  const sellCap = view.herList !== undefined ? Math.round(view.herList * p.sellAnchorCapMult) : undefined;
+  const clampSell = (x: number) => Math.max(effRes, sellCap !== undefined ? Math.min(x, sellCap) : x);
   if (p.stepMode === "adaptive") {
     if (view.side === "buy") {
       const ref = view.herOpening ?? view.reservation;
       return Math.max(1, Math.min(effRes - 1, Math.round(ref * p.buyAnchorFrac)));
     }
-    if (view.herOpening === undefined || view.herOpening < view.reservation) return Math.max(effRes, Math.ceil(view.reservation * p.sellFloorAnchorMult));
+    if (view.herOpening === undefined || view.herOpening < view.reservation) return clampSell(Math.ceil(view.reservation * p.sellFloorAnchorMult));
     // Su puja ya cubre nuestro mínimo: ancla relativa a ella, pero cerrable en la paciencia con pasos de `maxStep`.
     const closable = effRes + Math.max(1, p.maxStep) * Math.max(0, p.patienceBudget - 1);
-    return Math.max(effRes, Math.min(closable, Math.round(view.herOpening * p.sellAnchorMult)));
+    return clampSell(Math.min(closable, Math.round(view.herOpening * p.sellAnchorMult)));
   }
   if (view.side === "buy") {
     const ref = Math.min(view.reservation, view.herOpening ?? view.reservation);
     return Math.max(1, Math.min(effRes, Math.round(ref * p.buyAnchorFrac)));
   }
   const ref = Math.max(view.reservation, view.herOpening ?? view.reservation);
-  return Math.max(effRes, Math.round(ref * p.sellAnchorMult));
+  return clampSell(Math.round(ref * p.sellAnchorMult));
 }
 
 /** Lo que concedió en su último movimiento, en nuestra dirección (0 si no se movió o retrocedió). */
@@ -247,7 +260,7 @@ export function adaptiveStep(gap: number, sent: number, p: Pick<NegotiatorParams
 }
 
 /** Camino previsto del ancla a nuestro límite en `patienceBudget` mensajes si ella responde (sin vuelta a pasos de 1). */
-export function plannedSchedule(view: Pick<ThreadView, "side" | "reservation" | "herOpening">, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): number[] {
+export function plannedSchedule(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herList">, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): number[] {
   const effRes = effectiveReservation(view);
   if (effRes < 1) return [];
   const dir = view.side === "buy" ? 1 : -1;
