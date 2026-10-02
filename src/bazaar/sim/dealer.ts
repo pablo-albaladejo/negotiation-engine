@@ -221,7 +221,7 @@ export class DealerSim {
       const range = Math.abs(t.opening - t.limit);
       const step = t.ourBest === undefined ? undefined : s * (q - t.ourBest);
       if (t.ourBest === undefined || (step ?? 0) > 0) t.ourBest = q;
-      const move = step === undefined ? sround(range * p.firstMoveFrac, t.rng) : step > 0 ? sround(Math.min(step * this.reciprocity(t), range * p.maxStepFrac), t.rng) : 0;
+      const move = t.item.fixed ? 0 : step === undefined ? sround(range * p.firstMoveFrac, t.rng) : step > 0 ? sround(Math.min(step * this.reciprocity(t), range * p.maxStepFrac), t.rng) : 0;
       if (move > 0) {
         const next = s > 0 ? Math.max(t.limit, t.herPrice - move) : Math.min(t.limit, t.herPrice + move);
         if (next !== t.herPrice) kind = "counter";
@@ -344,7 +344,8 @@ export class DealerSim {
       final: acceptedBy === "team" && t.final,
       acceptedBy,
       atOpening,
-      counts: !atOpening,
+      // REAL (hilo 56): a precio fijo, el trato a su puja contó (deals 1, ladder_points 0,022).
+      counts: !atOpening || t.item.fixed === true,
       share,
     });
     t.status = "deal";

@@ -90,7 +90,15 @@ export interface SimParams {
   ticksPerHour: number;
   /** ASSUMPTION. Frases por mensaje = 1 + round(chattiness × 3). Solo afecta al texto, nunca al precio. */
   sentences: number;
+  /**
+   * REAL (hilo 56). Rarezas que el dealer nos compra a precio fijo: puja ese precio, no se mueve por
+   * mucho que concedamos (sin reciprocidad), su final es el mismo precio y el trato cuenta. Abuela: comunes a 13.
+   */
+  fixedBuyPrices: Record<string, number>;
 }
+
+/** Lo aprendido en vivo por dealer (ver `fixedBuyPrices`). */
+export const LEARNED_FIXED_BUY_PRICES: Record<string, Record<string, number>> = { abuela: { common: 13 } };
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
@@ -124,6 +132,7 @@ export function deriveParams(profile: DealerProfile, overrides: Partial<SimParam
     dealsPerHour: profile.menu.deals_per_team_per_hour ?? 8,
     ticksPerHour: 60,
     sentences: 1 + Math.round(t.chattiness * 3),
+    fixedBuyPrices: { ...(LEARNED_FIXED_BUY_PRICES[profile.id] ?? {}) },
     ...overrides,
   };
 }
@@ -140,10 +149,12 @@ export interface MenuItem {
   /** Primer precio: REAL si el menú trae opening_ask; si no, derivado. */
   opening: number;
   perTeamPerHour?: number;
+  /** Precio fijo (REAL al comprarnos comunes la Abuela): su límite es su apertura y nunca se mueve. */
+  fixed?: boolean;
 }
 
 /** Menú resuelto. Al comprar, la referencia es el list_price de su venta de la misma rareza (ASSUMPTION: `buys` no trae precio). */
-export function menuItems(profile: DealerProfile, p: Pick<SimParams, "openingMarkup" | "buyOpenFrac">): MenuItem[] {
+export function menuItems(profile: DealerProfile, p: Pick<SimParams, "openingMarkup" | "buyOpenFrac"> & Partial<Pick<SimParams, "fixedBuyPrices">>): MenuItem[] {
   const out: MenuItem[] = [];
   for (const s of profile.menu.sells) {
     const key = s.pack ? `pack:${s.pack}` : s.rarity ? `rarity:${s.rarity}` : undefined;
@@ -153,6 +164,11 @@ export function menuItems(profile: DealerProfile, p: Pick<SimParams, "openingMar
   }
   for (const b of profile.menu.buys) {
     if (!b.rarity) continue;
+    const fixed = p.fixedBuyPrices?.[b.rarity];
+    if (fixed !== undefined) {
+      out.push({ side: "sell", key: `rarity:${b.rarity}`, list: b.list_price ?? fixed, opening: fixed, fixed: true, ...(b.per_team_per_hour !== undefined ? { perTeamPerHour: b.per_team_per_hour } : {}) });
+      continue;
+    }
     const list = b.list_price ?? profile.menu.sells.find((s) => s.rarity === b.rarity)?.list_price;
     if (list === undefined) continue;
     const opening = Math.max(1, Math.round(list * p.buyOpenFrac));
@@ -163,6 +179,7 @@ export function menuItems(profile: DealerProfile, p: Pick<SimParams, "openingMar
 
 /** Límite secreto de un hilo para un `floorFrac` dado: suelo al vender, techo al comprar; al menos 1 P mejor que la apertura. */
 export function limitFor(item: MenuItem, floorFrac: number, p: Pick<SimParams, "buyMargin">): number {
+  if (item.fixed) return item.opening;
   if (item.side === "buy") return Math.min(item.opening - 1, Math.ceil(item.list * (1 - floorFrac)));
   return Math.max(item.opening + 1, Math.floor(item.list * (1 - floorFrac) * p.buyMargin));
 }

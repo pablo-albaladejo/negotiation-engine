@@ -140,6 +140,27 @@ describe("DealerSim", () => {
     expect(s.deals[0]!.share).toBeCloseTo((30 - ours) / (30 - s.secret(id).limit));
   });
 
+  it("REAL (hilo 56): al comprarnos comunes su precio es fijo a 13, sin reciprocidad; su final es 13 y el trato cuenta", () => {
+    expect(deriveParams(ABUELA).fixedBuyPrices).toEqual({ common: 13 });
+    for (const seed of [1, 2, 3]) {
+      const s = sim(seed);
+      const id = s.open("t01", SELL_COMMON).id;
+      expect(herPrice(s, id)).toEqual({ price: 13, final: false });
+      expect(s.secret(id).limit).toBe(13);
+      const { patience } = s.secret(id);
+      const seen = play(s, id, [26, 21, 18, 16, 15, 14, 30, 29, 28, 27, 26, 25].slice(0, Math.ceil(patience)));
+      expect(seen.every((h) => h.price === 13)).toBe(true);
+      expect(seen.at(-1)?.final).toBe(true);
+      const offer = s.view(id).standing_offers.find((o) => o.maker === "abuela" && o.status === "open")!;
+      s.accept("t01", offer.id);
+      expect(s.deals.at(-1)).toMatchObject({ price: 13, atOpening: true, counts: true });
+    }
+    // Las infrecuentes siguen el modelo recíproco (sin dato real de precio fijo).
+    const s = sim(4);
+    const id = s.open("t01", { sell: { assets: [2] } }).id;
+    expect(s.secret(id).limit).toBeGreaterThan(herPrice(s, id)!.price);
+  });
+
   it("un trato a su precio de apertura queda marcado como que no cuenta", () => {
     const s = sim(2);
     const t = s.open("t01", PACK);
