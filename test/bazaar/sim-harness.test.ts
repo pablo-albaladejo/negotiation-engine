@@ -18,7 +18,9 @@ describe("arnés bazaar:sim", () => {
     // Al venderle, si no se mueve tras 2 concesiones la regla de precio fijo acepta su puja (hilo 56): cuenta como trato.
     expect(rs.filter((r) => r.atOpening && r.scenario.startsWith("buy"))).toEqual([]);
     expect(rs.flatMap((r) => r.errors)).toEqual([]);
-    expect(stats(rs).dealRate).toBeGreaterThan(0.5);
+    // El simulador aún da su final tras aguantes largos; en vivo (hilo 184) aguantar provocó no_progress, así que
+    // ahora se aguanta una vez como mucho y en el simulador se pierden algunos de esos finales.
+    expect(stats(rs).dealRate).toBeGreaterThan(0.4);
   });
 
   it("el starter ingenuo sube 2 P por ronda desde 0,6 × presupuesto", async () => {

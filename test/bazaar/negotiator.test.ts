@@ -68,16 +68,29 @@ describe("negotiator: compra", () => {
     expect(msg.action.kind).toBe("wait");
   });
 
+  it("atascados con su precio dentro de nuestro límite y creando valor: acepta ya en vez de aguantar (hilo 184)", () => {
+    const d = decide(view({ side: "buy", reservation: 10, privateValue: 11, herOpening: 12, herPrices: [12, 11, 10], herCurrent: { offerId: 5, price: 10, final: false }, ourPrices: [8, 9, 10] }));
+    expect(d.action).toEqual({ kind: "accept", offerId: 5, price: 10 });
+    // Su apertura sin moverse, dentro del límite, y nosotros ya en el tope efectivo (apertura − 1): acepta, no aguanta.
+    const atOpen = decide(view({ side: "buy", reservation: 10, privateValue: 11, herOpening: 10, herPrices: [10, 10], herCurrent: { offerId: 6, price: 10, final: false }, ourPrices: [8, 9] }));
+    expect(atOpen.action).toEqual({ kind: "accept", offerId: 6, price: 10 });
+    expect(atOpen.rule).toBe("stuck-accept-within-limit");
+    // Su 10 por encima de nuestro límite 9: un aguante y luego cierre.
+    const over = view({ side: "buy", reservation: 9, privateValue: 9.5, herOpening: 12, herPrices: [12, 11, 10], herCurrent: { offerId: 5, price: 10, final: false }, ourPrices: [8, 9] });
+    expect(decide(over).action.kind).toBe("hold");
+    expect(decide({ ...over, holdsUsed: 1 }).rule).toBe("holds-exhausted");
+  });
+
   it("aguanta el precio (no cierra) si ya no puede mejorar y ella no ha dado su final", () => {
     const d = decide(view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40] }));
     expect(d.action).toEqual({ kind: "hold", price: 40 });
     expect(d.rule).toBe("hold");
   });
 
-  it("agotados los aguantes sin su final, cierra (adaptativo: hasta su paciencia + maxHolds mensajes; boulware: maxHolds)", () => {
+  it("agotados los aguantes sin su final, cierra: como mucho maxHolds (1) aguante, también en adaptativo (hilo 184: aguantar provocó no_progress)", () => {
     const stuckView = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40] });
     const allowed = holdsAllowed(2, DEFAULT_NEGOTIATOR_PARAMS);
-    expect(allowed).toBe(DEFAULT_NEGOTIATOR_PARAMS.patienceBudget + DEFAULT_NEGOTIATOR_PARAMS.maxHolds - 2);
+    expect(allowed).toBe(1);
     expect(holdsAllowed(8, DEFAULT_NEGOTIATOR_PARAMS)).toBe(DEFAULT_NEGOTIATOR_PARAMS.maxHolds);
     expect(holdsAllowed(2, LEGACY_NEGOTIATOR_PARAMS)).toBe(LEGACY_NEGOTIATOR_PARAMS.maxHolds);
     for (let holdsUsed = 0; holdsUsed < allowed; holdsUsed++) {
@@ -117,8 +130,9 @@ describe("negotiator: compra", () => {
   });
 
   it("acepta su oferta final dentro del límite tras aguantar, y nunca su precio de apertura", () => {
-    const held = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40], holdsUsed: 1 });
+    const held = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40], holdsUsed: 0 });
     expect(decide(held).action.kind).toBe("hold");
+    expect(decide({ ...held, holdsUsed: 1 }).action.kind).toBe("close");
     const final = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55, 38], herCurrent: { offerId: 4, price: 38, final: true }, ourPrices: [22, 40], holdsUsed: 2 });
     const d = decide(final);
     expect(d.action).toEqual({ kind: "accept", offerId: 4, price: 38 });
@@ -147,7 +161,7 @@ describe("negotiator: compra", () => {
         if (last.action.kind === "accept") {
           expect(last.action.price).toBeLessThanOrEqual(res);
           // A su apertura solo por la regla de precio fijo (no se movió tras nuestras concesiones).
-          if (last.action.price === open) expect(last.rule).toBe("final-above-reservation");
+          if (last.action.price === open) expect(["final-above-reservation", "stuck-accept-within-limit"]).toContain(last.rule);
         }
       }),
       { numRuns: 300 },

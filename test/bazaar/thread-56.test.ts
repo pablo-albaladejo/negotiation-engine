@@ -74,7 +74,7 @@ describe("hilo real 56", () => {
     expect(d.action).toEqual({ kind: "accept", offerId: 356, price: 13 });
   });
 
-  it("sin la regla de precio fijo: concede por debajo de 21, nunca repite precio, nunca baja a su apertura (13) y aguanta en 14", () => {
+  it("sin la regla de precio fijo: concede por debajo de 21, nunca repite precio ni baja a su apertura (13); atascado en 14, acepta su 13 (dentro del mínimo)", () => {
     const thread = ThreadSchema.parse(RAW);
     const params = { ...DEFAULT_NEGOTIATOR_PARAMS, fixedAfterConcessions: 0 };
     let v = sellView(thread);
@@ -85,7 +85,8 @@ describe("hilo real 56", () => {
     for (let i = 0; i < 30; i++) {
       const d = decide(v, params);
       if (d.action.kind !== "counter") {
-        expect(d.action).toEqual({ kind: "hold", price: 14 });
+        expect(d.action).toEqual({ kind: "accept", offerId: 356, price: 13 });
+        expect(d.rule).toBe("stuck-accept-within-limit");
         break;
       }
       expect(d.action.price).toBeLessThan(sent[sent.length - 1]!);

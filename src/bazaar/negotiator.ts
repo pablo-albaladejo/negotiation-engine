@@ -60,7 +60,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   horizon: 12,
   maxStepFrac: 0.08,
   reciprocity: 0.6,
-  maxHolds: 3,
+  maxHolds: 1,
   fixedAfterConcessions: 2,
   lowballFrac: 0.7,
 };
@@ -120,6 +120,7 @@ export type Rule =
   | "fixed-price-out-of-range"
   | "lowball-bid"
   | "stuck-at-reservation"
+  | "stuck-accept-within-limit"
   | "hold"
   | "holds-exhausted"
   | "no-zone"
@@ -292,13 +293,12 @@ export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTI
 }
 
 /**
- * Aguantes permitidos. Boulware: `maxHolds`. Adaptativo: si llegamos pronto a nuestro límite (hueco pequeño),
- * seguimos aguantando hasta pasar su paciencia estimada + `maxHolds` mensajes, porque su oferta final llega al
- * agotarse su paciencia (hilo 125: tras nuestro 6.º mensaje) y cerrar antes la perdería.
+ * Aguantes permitidos: `maxHolds` (1 por defecto). Antes, en adaptativo, se aguantaba hasta su paciencia + maxHolds
+ * mensajes esperando su final; en vivo (hilo 184: aguantamos 9 durante 6 tics) no llegó ninguna final y ella se
+ * marchó con `no_progress`, así que aguantar el mismo precio no le arranca la final: provoca la retirada.
  */
-export function holdsAllowed(pricedSent: number, p: Pick<NegotiatorParams, "stepMode" | "maxHolds" | "patienceBudget">): number {
-  if (p.stepMode !== "adaptive") return p.maxHolds;
-  return Math.max(p.maxHolds, p.patienceBudget + p.maxHolds - pricedSent);
+export function holdsAllowed(_pricedSent: number, p: Pick<NegotiatorParams, "stepMode" | "maxHolds" | "patienceBudget">): number {
+  return p.maxHolds;
 }
 
 /** Venta: su primera puja y la vigente quedan por debajo de `lowballFrac` × nuestro mínimo tras una contraoferta nuestra. */
@@ -342,6 +342,11 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
   // para que ella diga su última palabra; solo cerramos si ya se agotaron los aguantes.
   const stuck = next === undefined || (her !== undefined && !better(view.side, next.price, her.price));
   if (stuck) {
+    // Atascados con su precio dentro de nuestro límite privado y creando valor: se acepta ya (el trato cuenta).
+    if (her && valuePositive(view, her.price)) {
+      if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
+      return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule: "stuck-accept-within-limit", effectiveReservation: effRes };
+    }
     const prevPrice = view.ourPrices[view.ourPrices.length - 1];
     const holdsUsed = view.holdsUsed ?? 0;
     if (her && !her.final && prevPrice !== undefined && holdsUsed < holdsAllowed(view.ourPrices.length, p)) {
