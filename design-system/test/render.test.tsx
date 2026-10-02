@@ -90,6 +90,25 @@ describe("component rendering", () => {
     expect(() => renderToString(<Pill kind="verdict">challenger-v4 pasa a campeón</Pill>)).not.toThrow();
   });
 
+  it("renders Pill kind=champion with its own class", () => {
+    const html = renderToString(<Pill kind="champion">champion</Pill>);
+    expect(html).toContain("nr-pill champion");
+  });
+
+  it("DataTable rows are clickable and keyboard-focusable when onRowClick is given", () => {
+    const html = renderToString(
+      <DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }]} onRowClick={() => {}} />,
+    );
+    expect(html).toContain("nr-table-row-clickable");
+    expect(html).toContain('tabindex="0"');
+  });
+
+  it("DataTable rows are not focusable when onRowClick is not given", () => {
+    const html = renderToString(<DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }]} />);
+    expect(html).not.toContain("nr-table-row-clickable");
+    expect(html).not.toContain("tabindex");
+  });
+
   it("renders DataTable without throwing", () => {
     expect(() =>
       renderToString(

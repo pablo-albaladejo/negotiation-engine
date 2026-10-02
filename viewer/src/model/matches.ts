@@ -80,3 +80,27 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
     shownCount: rows.length,
   };
 }
+
+/** Encodes `MatchFilters` as a query string for the hash route (INBOX §2: persisted on reload/back). */
+export function filtersToQuery(filters: MatchFilters): string {
+  const params = new URLSearchParams();
+  if (filters.rival !== undefined) params.set("rival", filters.rival);
+  if (filters.role !== undefined) params.set("role", filters.role);
+  if (filters.result !== undefined) params.set("result", filters.result);
+  if (filters.template) params.set("template", "1");
+  return params.toString();
+}
+
+/** Reads `MatchFilters` back out of the hash route's query string; unknown or empty values are dropped. */
+export function queryToFilters(query: string): MatchFilters {
+  const params = new URLSearchParams(query);
+  const filters: MatchFilters = {};
+  const rival = params.get("rival");
+  if (rival) filters.rival = rival;
+  const role = params.get("role");
+  if (role === "buyer" || role === "seller") filters.role = role;
+  const result = params.get("result");
+  if (result) filters.result = result as EndReason;
+  if (params.get("template") === "1") filters.template = true;
+  return filters;
+}

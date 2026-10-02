@@ -1,4 +1,5 @@
 import type { TranscriptLine } from "../../../src/arena/results-schema.js";
+import type { RunKind } from "../model/index.js";
 
 export type EndReason = TranscriptLine["endReason"];
 
@@ -41,4 +42,25 @@ export function resultTone(endReason: EndReason | string | undefined): "deal" | 
 /** ZOPA KPI label: the engine only logs whether it was empty. */
 export function zopaKpi(zopaEmpty: boolean): string {
   return zopaEmpty ? "Empty" : "Open";
+}
+
+/**
+ * Label for the Runs table "Type" column: raw `RunKind` values never reach the UI (INBOX §1).
+ */
+export function runKindLabel(kind: RunKind): string {
+  switch (kind) {
+    case "arena":
+      return "Arena run";
+    case "promotion":
+      return "Promotion";
+    case "tournament":
+      return "Tournament run";
+    default:
+      return kind;
+  }
+}
+
+/** English label for the logged `role` ("buyer"/"seller"), used in Filters (INBOX §2). */
+export function roleLabel(role: string): string {
+  return role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : role;
 }

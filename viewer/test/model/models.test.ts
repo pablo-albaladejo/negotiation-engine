@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { arenaReplayModel, gateModel, isTwoIssue, matchesModel, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
+import { arenaReplayModel, filtersToQuery, gateModel, isTwoIssue, matchesModel, queryToFilters, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
 import { asV1Trace, generateFixtures, generateGateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -60,6 +60,14 @@ describe("matchesModel (P2)", () => {
   it("run vacío: overall.games = 0 ⇒ empty", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     expect(matchesModel(summary, []).empty).toBe(true);
+  });
+
+  it("filtersToQuery/queryToFilters: round-trip para persistir en la URL (INBOX §2)", () => {
+    const filters = { rival: "boulware", role: "buyer" as const, result: "agreement" as const, template: true };
+    expect(queryToFilters(filtersToQuery(filters))).toEqual(filters);
+    expect(filtersToQuery({})).toBe("");
+    expect(queryToFilters("")).toEqual({});
+    expect(queryToFilters("role=not-a-role")).toEqual({});
   });
 });
 

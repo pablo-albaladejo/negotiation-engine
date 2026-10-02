@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, gateModel, isTwoIssue, liveModel, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, filtersToQuery, gateModel, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
@@ -36,8 +36,24 @@ function navigate(hash: string) {
   window.location.hash = hash;
 }
 
+/** `/api/champion`: solo `version`, de solo lectura (ajuste 2); `null` si el fichero no existe. */
+function useChampionVersion(): number | null {
+  const [version, setVersion] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchApi<{ version: number } | null>("champion").then((res) => {
+      if (!cancelled) setVersion(res.data?.version ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return version;
+}
+
 function RunsContainer() {
   const [state, setState] = useState<{ entries: RunEntry[]; errors: ApiError[] } | null>(null);
+  const championVersion = useChampionVersion();
   useEffect(() => {
     let cancelled = false;
     fetchApi<RunEntry[]>("runs").then((res) => {
@@ -52,11 +68,13 @@ function RunsContainer() {
     const kind = state.entries.find((e) => e.runId === runId)?.kind;
     navigate(kind === "promotion" ? routeTo.promote(runId) : routeTo.matches(runId));
   };
-  return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={open} />;
+  return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={open} onOpenLive={() => navigate(routeTo.live())} championVersion={championVersion} />;
 }
 
-function MatchesContainer({ runId }: { runId: string }) {
+function MatchesContainer({ runId, query }: { runId: string; query: string }) {
   const [state, setState] = useState<{ summary: Summary | null; games: TranscriptLine[] } | null>(null);
+  const championVersion = useChampionVersion();
+  const [initialFilters] = useState<MatchFilters>(() => queryToFilters(query));
   useEffect(() => {
     let cancelled = false;
     setState(null);
@@ -69,6 +87,7 @@ function MatchesContainer({ runId }: { runId: string }) {
   }, [runId]);
   if (!state) return <LoadingCard label={`Reading results/${runId}`} />;
   if (!state.summary) return <LoadingCard label={`results/${runId}/summary.json is not available`} />;
+  const isChampion = championVersion != null && state.summary.config.version === championVersion;
   return (
     <MatchesScreen
       runId={runId}
@@ -76,6 +95,9 @@ function MatchesContainer({ runId }: { runId: string }) {
       games={state.games}
       onOpenGame={(gameId) => navigate(routeTo.arenaReplay(runId, gameId))}
       onBack={() => navigate(routeTo.runs())}
+      initialFilters={initialFilters}
+      onFiltersChange={(filters) => window.history.replaceState(null, "", routeTo.matches(runId, filtersToQuery(filters)))}
+      isChampion={isChampion}
     />
   );
 }
@@ -174,7 +196,7 @@ export function App() {
         </header>
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
-          {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
+          {route.screen === "matches" ? <MatchesContainer runId={route.runId} query={route.query} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
           {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}

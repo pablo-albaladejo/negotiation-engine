@@ -1,8 +1,9 @@
-import { Card, DataTable, type DataTableColumn, type DataTableRow, formatNumber } from "@negotiation-ring/design-system";
+import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatNumber } from "@negotiation-ring/design-system";
 import type { ApiError } from "../api.js";
 import type { RunRow } from "../model/index.js";
 import { EmptyStateCard, InvalidLogBanner } from "../ui/states.js";
-import { TableLink } from "../ui/buttons.js";
+import { PrimaryButton, TableLink } from "../ui/buttons.js";
+import { runKindLabel } from "../ui/labels.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Run" },
@@ -24,37 +25,49 @@ export interface RunsScreenProps {
   rows: RunRow[];
   errors: ApiError[];
   onOpenRun: (runId: string) => void;
+  onOpenLive?: () => void;
+  /** `config/champion.json#version`, read-only (ajuste 2); `null` if the file is absent or no run matches it. */
+  championVersion?: number | null;
 }
 
 /** P1: runs de `results/` por tipo, con su `summary.json`. */
-export function RunsScreen({ rows, errors, onOpenRun }: RunsScreenProps) {
-  const tableRows: DataTableRow[] = rows.map((r) => ({
-    id: r.runId,
-    kind: r.kind,
-    date: r.createdAt ?? "not logged",
-    cfg: r.config ? `${r.config.path} v${r.config.version}` : "not logged",
-    n: num(r.games),
-    exc: pct(r.meanSurplus),
-    acu: pct(r.agreementRate),
-    vio: num(r.violations),
-    fug: num(r.leaks),
-    act: (
-      <TableLink onClick={() => onOpenRun(r.runId)}>Open</TableLink>
-    ),
-  }));
+export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersion }: RunsScreenProps) {
+  const tableRows: DataTableRow[] = rows.map((r) => {
+    const isChampion = championVersion != null && r.config?.version === championVersion;
+    return {
+      id: (
+        <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          <TableLink onClick={() => onOpenRun(r.runId)}>{r.runId}</TableLink>
+          {isChampion ? <Pill kind="champion">champion</Pill> : null}
+        </span>
+      ),
+      kind: runKindLabel(r.kind),
+      date: r.createdAt ?? "not logged",
+      cfg: r.config ? `${r.config.path} v${r.config.version}` : "not logged",
+      n: num(r.games),
+      exc: pct(r.meanSurplus),
+      acu: pct(r.agreementRate),
+      vio: num(r.violations),
+      fug: num(r.leaks),
+      act: <TableLink onClick={() => onOpenRun(r.runId)}>Open</TableLink>,
+    };
+  });
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <h2 className="nr-heading">Runs</h2>
-        <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+          <h2 className="nr-heading">Runs</h2>
+          <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
+        </div>
+        {onOpenLive ? <PrimaryButton onClick={onOpenLive}>Open live view</PrimaryButton> : null}
       </div>
       {errors.length > 0 ? <InvalidLogBanner errors={errors} validCount={rows.length} /> : null}
       {rows.length === 0 ? (
         <EmptyStateCard title="No runs yet" body="Run" command="pnpm arena" />
       ) : (
         <Card>
-          <DataTable columns={COLUMNS} rows={tableRows} />
+          <DataTable columns={COLUMNS} rows={tableRows} onRowClick={(i) => onOpenRun(rows[i]!.runId)} />
         </Card>
       )}
     </section>
