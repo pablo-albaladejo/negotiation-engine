@@ -21,6 +21,8 @@ export interface LiveOutcome {
   round: number;
   action: "accept" | "walk";
   offer: Offer | null;
+  /** L2: our utility of the accepted offer (the last logged explain.uOffer); `null` on a walk or when explain wasn't logged. */
+  utility: number | null;
 }
 
 export interface LiveBubble {
@@ -68,7 +70,8 @@ function outcomeOf(lines: readonly TraceLine[]): LiveOutcome | null {
   const output = [...records].reverse().find((r) => r.box === "output");
   const out = obj(output?.output);
   if (!output || !out || (out.action !== "accept" && out.action !== "walk")) return null;
-  return { sessionId: output.sessionId, round: output.round, action: out.action, offer: (out.offer as Offer | undefined) ?? null };
+  const utility = out.action === "accept" ? (explainSeries(roundPanels(records)).at(-1)?.uOffer ?? null) : null;
+  return { sessionId: output.sessionId, round: output.round, action: out.action, offer: (out.offer as Offer | undefined) ?? null, utility };
 }
 
 export function liveModel(feed: LiveFeed): LiveModel {

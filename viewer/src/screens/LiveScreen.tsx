@@ -14,7 +14,9 @@ const num = (v: number, decimals?: number) => formatNumber(v, { locale: "en", ..
 
 
 function outcomeLabel(o: LiveOutcome): string {
-  return o.action === "accept" ? `Deal at ${offerLabel(o.offer)}` : "Walk · no deal";
+  if (o.action !== "accept") return "Walk · no deal";
+  const base = `Deal at ${offerLabel(o.offer)}`;
+  return o.utility !== null ? `${base} · utility ${num(o.utility, 2)}` : base;
 }
 
 function Stat({ value, label, color }: { value: string; label: string; color: string }) {
@@ -66,22 +68,23 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   const waiting = model.status === "waiting";
   const rival = waiting ? "next opponent" : (model.rival ?? "not logged");
   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
-    ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
+    ...(b.injection ? [{ kind: "injection" as const, label: "attack blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
+    ...(b.side === "us" && model.outcome?.action === "accept" && model.outcome.round === b.round ? [{ kind: "decision" as const, label: "AC_next · accepts" }] : []),
   ];
   const stats =
     model.status === "finished" && model.outcome
       ? [
-          { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
+          { value: model.outcome.utility !== null ? num(model.outcome.utility, 2) : "not logged", label: "utility", color: model.outcome.utility !== null ? "var(--ok)" : "var(--muted)" },
           { value: model.roundLimit !== null ? `${model.round}/${model.roundLimit}` : String(model.round), label: "rounds", color: "var(--ink)" },
-          { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+          { value: String(model.templateCount), label: model.templateCount === 1 ? "template message" : "template messages", color: "var(--ink)" },
           { value: num(model.attacksBlocked), label: "attacks blocked", color: model.attacksBlocked > 0 ? "var(--warn)" : "var(--muted)" },
         ]
       : [
           { value: offerLabel(model.latest.theirOffer), label: "their latest offer", color: "var(--them)" },
           { value: offerLabel(model.latest.ourOffer), label: "our latest offer", color: "var(--us)" },
           { value: model.latest.uRival === null ? "not logged" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
-          { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+          { value: String(model.templateCount), label: model.templateCount === 1 ? "template message" : "template messages", color: "var(--ink)" },
         ];
   /** C9: `sessionId` missing shouldn't read as a literal "Session not logged" -- drop the "Session"
    * label entirely rather than pairing it with a placeholder it doesn't apply to. */
@@ -89,7 +92,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     model.status === "finished" && model.outcome
       ? outcomeLabel(model.outcome)
       : model.sessionId !== null
-        ? `Session ${model.sessionId}${model.role ? ` · ${model.role}` : ""}`
+        ? `Match ${model.sessionId}${model.role ? ` · ${model.role}` : ""}`
         : (model.role ?? "not logged");
   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
@@ -111,16 +114,18 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
           <h1 className="nr-sr-only">Live match</h1>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: projectorMode ? "flex-end" : "space-between", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {!projectorMode ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+              <div style={{ display: "flex", width: "100%" }}>
                 <Scoreboard badge={model.badge} us={US} rival={rival} rivalPending={waiting} round={waiting ? null : model.round} rounds={rounds} attacksBlocked={waiting ? null : model.attacksBlocked} />
-                <ModeBadge mode="tournament" />
               </div>
             ) : null}
-            <SecondaryButton aria-pressed={projectorMode} onClick={() => setProjectorMode((v) => !v)}>
-              {projectorMode ? "Exit projector mode (Esc)" : "Projector mode"}
-            </SecondaryButton>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 24 }}>
+              {!projectorMode ? <ModeBadge mode="tournament" /> : null}
+              <SecondaryButton aria-pressed={projectorMode} onClick={() => setProjectorMode((v) => !v)}>
+                {projectorMode ? "Exit projector mode (Esc)" : "Projector mode"}
+              </SecondaryButton>
+            </div>
           </div>
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
@@ -149,6 +154,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           ) : (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, textAlign: "center" }}>
               <span className="nr-live-waiting">Waiting for the next match</span>
+              <span className="nr-live-caption">Next: not logged</span>
               {model.last ? <span style={{ font: "600 30px var(--font-mono)", color: model.last.action === "accept" ? "var(--ok)" : "var(--warn)", marginTop: 24 }}>Last: {outcomeLabel(model.last)}</span> : null}
             </div>
           )}
