@@ -116,7 +116,8 @@ Ver `.env.example`.
 | `pnpm promote` | Puerta de promoción: revalida campeona, evalúa candidata, decide si promueve. |
 | `pnpm tune` | Barrido de parámetros en el espacio del motor. |
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
-| `pnpm bazaar` | Agente del Bazaar: un paso por tick contra Abuela Carmen (`--dry-run`, `--once`, `--max-spend`). Ver [`src/bazaar/`](src/bazaar/AGENTS.md). |
+| `pnpm bazaar` | Agente del Bazaar: un paso por tick contra Abuela Carmen (`--dry-run`, `--once`, `--max-spend`, `--max-deals`, `--max-threads`). Ver [`src/bazaar/`](src/bazaar/AGENTS.md). |
+| `pnpm bazaar:venue` | Plan de nuestro mercado (`--dry-run` solo lee; abrir exige `--confirm`). Ver [`src/bazaar/`](src/bazaar/AGENTS.md). |
 | `pnpm bazaar:status` | Resumen de solo lectura del Bazaar (equipo, reloj, dealers, hilos). |
 | `pnpm bazaar:sim` | Nuestro negociador y el starter contra Abuela simulada (offline). Ver [`src/bazaar/sim/`](src/bazaar/sim/AGENTS.md). |
 | `pnpm redteam` | Harness de red team. |

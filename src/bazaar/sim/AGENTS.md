@@ -36,6 +36,8 @@ Un hilo tiene apertura *O* y límite secreto *L* (suelo cuando ella vende, techo
 5. **Cuotas.** Abrir con `deals_per_team_per_hour` tratos en la hora, o con `per_team_per_hour` sobres → "persona_quota".
 6. **Charlatanería.** Solo el número de frases de relleno; la única cifra del texto es el precio.
 
+**Precio fijo.** Un artículo con `fixed` (hoy, Abuela comprándonos comunes) tiene límite = apertura: nunca concede, acepta cualquier precio nuestro que lo alcance, su final repite el mismo precio y el trato cuenta aunque sea a su apertura.
+
 Escala de la escalera: `share = (O − precio) / (O − L)` al comprar, `(precio − O) / (L − O)` al vender; 0 si el precio es su apertura (o peor).
 
 ### REAL vs ASSUMPTION
@@ -44,6 +46,7 @@ Escala de la escalera: `share = (O − precio) / (O − L)` al comprar, `(precio
 |---|---|---|
 | Rasgos (patience 0,85, generosity 0,8, shrewdness 0,2, memory 0,15, strictness 0,1, chattiness 0,75) | REAL (`/api/dealers/abuela`) | — |
 | Sobre: list 26, apertura 30, 3 por hora; comunes list 10, infrecuentes list 25; 8 tratos por hora | REAL (menú) | — |
+| Al comprarnos comunes, precio fijo (`fixedBuyPrices`): puja 13, no se mueve por mucho que concedamos, su final es 13 y el trato cuenta | REAL (hilo 56: 21→14 nuestro, ella 13 siempre; deals 1, ladder_points 0,022) | comunes 13 |
 | Solo se mueve si nos movemos; repetir no gana nada; pasos pequeños → pasos pequeños; final y luego se va; un límite secreto por hilo; cooloff con `until_tick`; trato a la apertura no cuenta | REAL (RULES.md), forma exacta ASSUMPTION | — |
 | Apertura sin `opening_ask` = list × `openingMarkup` | ASSUMPTION (30/26) | 1,15 → común 12, infrecuente 29 |
 | Suelo = list × (1 − f), f = `floorFrac` × (1 ± `floorJitter`) | ASSUMPTION; f barrido 0,15–0,35 | 0,26 ± 20 % |
