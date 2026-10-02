@@ -29,6 +29,8 @@ export interface TournamentReplayModel {
   /** Registros `protocol`: el rival rompió el protocolo (rutas y códigos de Zod). */
   protocol: { round: number; issues: { path: string; code: string }[] }[];
   provider: string | null;
+  /** Fin de sesión tal como lo registró el `binding` más reciente (`agreement` | `walk`); `null` si no se registró (p. ej. sesión en curso o límite de rondas). */
+  outcome: { kind: "agreement" | "walk"; offer: Offer | null } | null;
 }
 
 export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: ScenarioRef | null): TournamentReplayModel {
@@ -53,5 +55,6 @@ export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: 
     ourMessageCount: rounds.filter((p) => p.ourText !== null).length,
     protocol: protocolBreaks(records),
     provider: loggedProvider(records),
+    outcome: [...rounds].reverse().find((p) => p.outcome !== null)?.outcome ?? null,
   };
 }

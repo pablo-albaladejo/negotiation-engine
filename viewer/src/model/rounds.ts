@@ -22,6 +22,8 @@ export interface RoundPanel {
   ourOffer: Offer | null;
   /** Oferta del rival enlazada este turno (registro `binding` con `kind: "offer"`). */
   rivalOffer: Offer | null;
+  /** Fin de partida registrado este turno (`binding` con `kind: "agreement" | "walk"`); `null` el resto de turnos. */
+  outcome: { kind: "agreement" | "walk"; offer: Offer | null } | null;
   boxes: { box: string; result: string; latencyMs: number }[];
 }
 
@@ -53,6 +55,12 @@ function panel(round: number, records: readonly BoxLine[]): RoundPanel {
     ourText: typeof output?.text === "string" ? output.text : null,
     ourOffer: (output?.offer as Offer | undefined) ?? null,
     rivalOffer: binding?.kind === "offer" ? (binding.offer as Offer) : null,
+    outcome:
+      binding?.kind === "agreement"
+        ? { kind: "agreement", offer: (binding.offer as Offer | undefined) ?? null }
+        : binding?.kind === "walk"
+          ? { kind: "walk", offer: null }
+          : null,
     boxes: records.map((r) => ({ box: r.box, result: r.result, latencyMs: r.latencyMs })),
   };
 }

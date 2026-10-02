@@ -165,6 +165,11 @@ describe("tournamentReplayModel (P4)", () => {
     expect(tournamentReplayModel(fx.tournament.trace, null).ourReserve).toBeNull();
   });
 
+  it("outcome: null sin binding agreement/walk registrado (L3 fixture solo intercambia ofertas)", () => {
+    const m = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
+    expect(m.outcome).toBeNull();
+  });
+
   it("traza v1: sin rol ni explain", () => {
     const v1 = asV1Trace(fx.tournament.trace).map((l) => {
       if (l.kind !== "header" || l.mode !== "tournament") return l;

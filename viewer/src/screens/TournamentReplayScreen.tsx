@@ -52,10 +52,14 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
   const rounds = model.rounds.length;
 
   const lastRoundPanel = model.rounds[model.rounds.length - 1] ?? null;
-  const finalOffer = offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
+  const finalOffer =
+    model.outcome?.kind === "agreement"
+      ? offerValue(model.outcome.offer)
+      : offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
   const lastEstimate = model.explain[model.explain.length - 1] ?? null;
   const finalEstimate = lastEstimate ? offerValue(lastEstimate.rivalReserveEstimate) : null;
-  const result = lastRoundPanel?.decision?.action ?? "not logged";
+  const result = model.outcome ? (model.outcome.kind === "agreement" ? "Deal" : "Opponent walked") : "not logged";
+  const resultTone = model.outcome ? (model.outcome.kind === "agreement" ? ("deal" as const) : ("walk" as const)) : undefined;
 
   const estRows: DataTableRow[] = model.rounds.map((p) => {
     const estimateForRound = model.explain.find((e) => e.round === p.round);
@@ -91,7 +95,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
       </div>
       <KpiStrip
         items={[
-          { label: "Result", value: result },
+          { label: "Result", value: result, ...(resultTone ? { tone: resultTone } : {}) },
           { label: "Rounds", value: formatNumber(rounds, { locale: "en" }) },
           { label: "Final offer", value: finalOffer !== null ? formatNumber(finalOffer, { locale: "en" }) : "not logged" },
           { label: "Final estimate", value: finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged" },
