@@ -71,6 +71,13 @@ describe("matchesModel (P2)", () => {
     expect(m.rows.map((r) => r.gameId)).toEqual(["flagged"]);
   });
 
+  it("filtro injection se ignora si el run no trae datos de inyección (hasInjectionData=false)", () => {
+    const noInjectionField = fx.games.map((g) => ({ ...g, metrics: { ...g.metrics, injectionSuspected: undefined } }));
+    const m = matchesModel(fx.summary, noInjectionField, { injection: true });
+    expect(m.hasInjectionData).toBe(false);
+    expect(m.rows.length).toBe(noInjectionField.length);
+  });
+
   it("run vacío: overall.games = 0 ⇒ empty", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     expect(matchesModel(summary, []).empty).toBe(true);

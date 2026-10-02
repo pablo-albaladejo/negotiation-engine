@@ -47,6 +47,7 @@ const distinct = <T extends string>(values: readonly T[]): T[] => [...new Set(va
 /** P2: KPIs de `summary.overall` y tabla de `transcripts.jsonl` filtrada. */
 export function matchesModel(summary: Summary, games: readonly TranscriptLine[], filters: MatchFilters = {}): MatchesModel {
   const { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors } = summary.overall;
+  const hasInjectionData = games.some((l) => l.metrics.injectionSuspected !== undefined);
   const rows = games
     .filter(
       (line) =>
@@ -54,7 +55,7 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
         (filters.role === undefined || line.role === filters.role) &&
         (filters.result === undefined || line.endReason === filters.result) &&
         (!filters.template || line.metrics.templateFallbacks > 0) &&
-        (!filters.injection || (line.metrics.injectionSuspected ?? 0) > 0),
+        (!hasInjectionData || !filters.injection || (line.metrics.injectionSuspected ?? 0) > 0),
     )
     .map(
       (line): MatchRow => ({
@@ -83,7 +84,7 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
     },
     rows,
     shownCount: rows.length,
-    hasInjectionData: games.some((l) => l.metrics.injectionSuspected !== undefined),
+    hasInjectionData,
   };
 }
 
