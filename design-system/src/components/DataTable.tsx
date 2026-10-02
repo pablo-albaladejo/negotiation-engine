@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 export interface DataTableColumn {
   key: string;
@@ -16,7 +16,7 @@ export type DataTableRow = Record<string, ReactNode | DataTableCell>;
 export interface DataTableProps {
   columns: DataTableColumn[];
   rows: DataTableRow[];
-  /** Makes the whole row clickable (mouse and keyboard, Enter/Space), in addition to any link inside a cell. */
+  /** Makes the whole row clickable on click, as a mouse convenience; the row itself is not a tab stop (use an inner link/button for keyboard access). Clicks starting on an interactive child (button, a, input, select, textarea, [role=button]) are ignored. */
   onRowClick?: (rowIndex: number) => void;
   /** Row index visually highlighted as "selected" (e.g. the round picked on a chart). */
   selectedRowIndex?: number;
@@ -24,6 +24,11 @@ export interface DataTableProps {
 
 function isCell(value: ReactNode | DataTableCell): value is DataTableCell {
   return typeof value === "object" && value !== null && "value" in (value as object);
+}
+
+/** True when the click originated on (or inside) an interactive child, e.g. the row's TableLink. */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.closest('button, a, input, select, textarea, [role="button"]') !== null;
 }
 
 export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataTableProps) {
@@ -46,13 +51,9 @@ export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataT
               className={[onRowClick ? "nr-table-row-clickable" : "", rowIndex === selectedRowIndex ? "is-selected" : ""].filter(Boolean).join(" ") || undefined}
               {...(onRowClick
                 ? {
-                    tabIndex: 0,
-                    onClick: () => onRowClick(rowIndex),
-                    onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onRowClick(rowIndex);
-                      }
+                    onClick: (event: MouseEvent<HTMLTableRowElement>) => {
+                      if (isInteractiveTarget(event.target)) return;
+                      onRowClick(rowIndex);
                     },
                   }
                 : {})}

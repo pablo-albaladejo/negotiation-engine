@@ -47,13 +47,21 @@ describe("RunsScreen (P1)", () => {
     expect(opened).toBe(true);
   });
 
-  it("la fila entera es clicable (y accesible por teclado) y lleva a la misma partida que el link", () => {
+  it("la fila entera es clicable (conveniencia de rat\u00f3n) y lleva a la misma partida que el link", () => {
     const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
-    let openedId: string | null = null;
-    render(<RunsScreen rows={rows} errors={[]} onOpenRun={(id) => (openedId = id)} />);
+    let opens = 0;
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => opens++} />);
     const row = screen.getByText(fx.runId).closest("tr")!;
-    fireEvent.keyDown(row, { key: "Enter" });
-    expect(openedId).toBe(fx.runId);
+    fireEvent.click(row.querySelector("td")!);
+    expect(opens).toBe(1);
+  });
+
+  it("clicar el TableLink dentro de la fila no duplica la llamada (INBOX A1)", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
+    let opens = 0;
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => opens++} />);
+    fireEvent.click(screen.getAllByText(fx.runId)[0]!);
+    expect(opens).toBe(1);
   });
 
   it("muestra el banner de log inválido cuando hay errores", () => {

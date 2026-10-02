@@ -95,12 +95,12 @@ describe("component rendering", () => {
     expect(html).toContain("nr-pill champion");
   });
 
-  it("DataTable rows are clickable and keyboard-focusable when onRowClick is given", () => {
+  it("DataTable rows get the clickable class when onRowClick is given, but are not a tab stop", () => {
     const html = renderToString(
       <DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }]} onRowClick={() => {}} />,
     );
     expect(html).toContain("nr-table-row-clickable");
-    expect(html).toContain('tabindex="0"');
+    expect(html).not.toContain("tabindex");
   });
 
   it("DataTable rows are not focusable when onRowClick is not given", () => {

@@ -75,6 +75,21 @@ describe("MatchesScreen (P2)", () => {
     expect(screen.getAllByText(fx.games[0]!.gameId).length).toBeGreaterThan(0);
   });
 
+  it("clicking the inner TableLink opens the game exactly once (INBOX A1)", () => {
+    let opens = 0;
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => opens++} onBack={() => {}} />);
+    fireEvent.click(screen.getAllByText(fx.games[0]!.gameId)[0]!);
+    expect(opens).toBe(1);
+  });
+
+  it("clicking a row cell (not the link) opens the game once (INBOX A1)", () => {
+    let opens = 0;
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => opens++} onBack={() => {}} />);
+    const cell = screen.getAllByText(fx.games[0]!.rival).find((el) => el.closest("tr") !== null)!;
+    fireEvent.click(cell);
+    expect(opens).toBe(1);
+  });
+
   it("run vacío: 'has no matches'", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     render(<MatchesScreen runId={fx.runId} summary={summary} games={[]} onOpenGame={() => {}} onBack={() => {}} />);
