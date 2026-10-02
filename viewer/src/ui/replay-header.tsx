@@ -4,8 +4,9 @@ import { BackLink } from "./buttons.js";
 import { PageTitle } from "./page-title.js";
 
 export interface ReplayHeaderProps {
-  onBack: () => void;
-  backLabel: string;
+  /** Omitted when the design has no back link for this screen (R3: tournament replay uses the Tabs for navigation instead). */
+  onBack?: () => void;
+  backLabel?: string;
   gameId: string;
   /** Omitted for modes with no single logged opponent (e.g. a tournament session). */
   rival?: string;
@@ -27,7 +28,7 @@ export interface ReplayHeaderProps {
 export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena", sub, cfg }: ReplayHeaderProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-      <BackLink onClick={onBack}>{backLabel}</BackLink>
+      {onBack && backLabel ? <BackLink onClick={onBack}>{backLabel}</BackLink> : null}
       <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)", flexWrap: "wrap" }}>
         {mode === "tournament" ? <ModeBadge mode={mode} /> : null}
         <PageTitle>{rival ? `${gameId} · vs ${rival}` : gameId}</PageTitle>

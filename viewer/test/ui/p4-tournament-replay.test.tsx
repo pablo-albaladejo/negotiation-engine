@@ -111,6 +111,64 @@ describe("TournamentReplayScreen 'Our offer' column never invents data (C3)", ()
   });
 });
 
+describe("TournamentReplayScreen KPIs/injections/end marker (R1, R2, R6)", () => {
+  function traceWithExplain() {
+    return tournamentTrace([
+      { round: 1, box: "binding", output: { kind: "offer", offer: { pct: 30 } } },
+      { round: 1, box: "parser", output: { intent: "counter", injectionSuspected: true } },
+      {
+        round: 1,
+        box: "engine",
+        output: { action: "counter", rule: "r1", offer: { pct: 15 }, explain: { target: 12, targetOffer: { pct: 15 }, uOffer: 0.4, uRival: null, rivalReserveEstimate: { pct: 28 }, step: 2, t: 0.5, acNext: false, acTime: "n/a" } },
+      },
+      { round: 2, box: "binding", output: { kind: "agreement", offer: { pct: 18 } } },
+      {
+        round: 2,
+        box: "engine",
+        output: { action: "accept", rule: "r2", offer: { pct: 18 }, explain: { target: 10, targetOffer: null, uOffer: 0.63, uRival: null, rivalReserveEstimate: { pct: 20 }, step: 1, t: 0.9, acNext: true, acTime: "applies" } },
+      },
+    ]);
+  }
+
+  it("shows Utility and Estimated opponent reserve KPIs from the last logged explain, and counts injections with walk tone", () => {
+    const model = tournamentReplayModel(traceWithExplain(), null);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(screen.getByText("Utility")).toBeTruthy();
+    expect(screen.getByText("0.63")).toBeTruthy();
+    const estimateKpi = screen.getByText("Estimated opponent reserve").closest(".nr-kpi")!;
+    expect(estimateKpi.querySelector(".nr-kpi-value")!.textContent).toBe("20");
+    const injectionsKpi = screen.getByText("Injections").closest(".nr-kpi")!;
+    expect(injectionsKpi.textContent).toContain("1");
+    expect(injectionsKpi.querySelector(".nr-kpi-value")!.className).toContain("walk");
+    void container;
+  });
+
+  it("draws an injection marker and an end marker on the offers chart, with Injection in the Legend (R1)", () => {
+    const model = tournamentReplayModel(traceWithExplain(), null);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(container.querySelector("circle.injection, .injection")).toBeTruthy();
+    expect(screen.getByText("Injection")).toBeTruthy();
+  });
+
+  it("final-estimate caption names the closing price only when the session actually closed (R6)", () => {
+    const model = tournamentReplayModel(traceWithExplain(), null);
+    render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(screen.getByText(/final estimate · the opponent closed at 18/)).toBeTruthy();
+  });
+
+  it("no back link in the header: the Tabs already cover navigation (R3)", () => {
+    const model = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(container.querySelector(".nr-link-back")).toBeNull();
+  });
+
+  it("config line: full logged params + 'tournament mode', falling back to 'not logged' without a summary (R4)", () => {
+    const model = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(container.querySelector(".nr-cfg")!.textContent).toBe("not logged · tournament mode");
+  });
+});
+
 describe("TournamentReplayScreen (P4)", () => {
   it("ModeBadge TOURNAMENT, nuestra reserva presente, estimate y mensajes del rival como texto", () => {
     const model = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
@@ -149,10 +207,11 @@ describe("TournamentReplayScreen (P4)", () => {
     expect(screen.getByText("Opponent walked")).toBeTruthy();
   });
 
-  it("sin escenario local coincidente: our reserve not available, nunca ZOPA ni reserva del rival dibujadas", () => {
+  it("sin escenario local coincidente: role · reserve dice 'not logged' (R5), nunca ZOPA ni reserva del rival dibujadas", () => {
     const model = tournamentReplayModel(fx.tournament.trace, null);
     const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
-    expect(screen.getByText("not available")).toBeTruthy();
+    expect(screen.queryByText("not available")).toBeNull();
+    expect(container.textContent).toContain("Role · reserve");
     expect(container.querySelector("rect.zopa")).toBeNull();
     expect(container.querySelector("line.reserve-them")).toBeNull();
   });

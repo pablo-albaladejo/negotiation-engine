@@ -277,26 +277,29 @@ function CompareContainer({ runId }: { runId: string }) {
 
 
 function TournamentReplayContainer({ runId, session }: { runId: string; session: string }) {
-  const [state, setState] = useState<{ trace: TraceLine[]; ref: ScenarioRef | null } | null>(null);
+  const [state, setState] = useState<{ trace: TraceLine[]; ref: ScenarioRef | null; summary: Summary | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
     setState(null);
-    fetchApi<TraceLine[]>(`tournament/${encodeURIComponent(runId)}/${encodeURIComponent(session)}`).then(async (res) => {
-      const trace = res.data ?? [];
+    Promise.all([
+      fetchApi<TraceLine[]>(`tournament/${encodeURIComponent(runId)}/${encodeURIComponent(session)}`),
+      fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`),
+    ]).then(async ([traceRes, runRes]) => {
+      const trace = traceRes.data ?? [];
       const { header } = splitTrace(trace);
       let ref: ScenarioRef | null = null;
       if (header && header.mode === "tournament") {
         const scenarioRes = await fetchApi<ScenarioRef>(`scenario-ref?id=${encodeURIComponent(header.scenario.id)}&hash=${encodeURIComponent(header.scenario.hash)}`);
         ref = scenarioRes.data;
       }
-      if (!cancelled) setState({ trace, ref });
+      if (!cancelled) setState({ trace, ref, summary: runRes.data?.summary ?? null });
     });
     return () => {
       cancelled = true;
     };
   }, [runId, session]);
   if (!state) return <LoadingCard label={`Reading tournament session ${session}`} />;
-  return <TournamentReplayScreen model={tournamentReplayModel(state.trace, state.ref)} onBack={() => navigate(routeTo.runs())} />;
+  return <TournamentReplayScreen model={tournamentReplayModel(state.trace, state.ref)} summary={state.summary} onBack={() => navigate(routeTo.runs())} />;
 }
 
 /** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */

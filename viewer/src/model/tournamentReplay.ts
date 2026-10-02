@@ -19,6 +19,8 @@ export interface TournamentReplayModel {
   traceVersion: 1 | 2 | 3;
   /** `configVersion` de la cabecera: el único dato de configuración que registra el torneo (sin `summary.json`). */
   configVersion: number;
+  /** R7: límite de rondas, del registro `input` más reciente que lo trae (el ring lo da); `null` si no se registró. */
+  roundLimit: number | null;
   ourReserve: Offer | null;
   offers: { ours: { round: number; offer: Offer }[]; rival: { round: number; offer: Offer }[] };
   rounds: RoundPanel[];
@@ -39,17 +41,22 @@ export interface TournamentReplayModel {
   outcome: { kind: "agreement" | "walk"; by: "agent" | "rival"; offer: Offer | null } | null;
 }
 
+const obj = (value: unknown): Record<string, unknown> | null => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null);
+
 export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: ScenarioRef | null): TournamentReplayModel {
   const { header, records } = splitTrace(trace);
   if (!header || header.mode !== "tournament") throw new Error("traza sin cabecera de torneo");
   const rounds = roundPanels(records);
   const matches = scenarioRef !== null && scenarioRef.id === header.scenario.id && scenarioRef.hash === header.scenario.hash;
+  const inputs = records.filter((r) => r.box === "input").map((r) => obj(r.output)?.roundLimit);
+  const roundLimit = [...inputs].reverse().find((v): v is number => typeof v === "number") ?? null;
   return {
     sessionId: header.sessionId,
     role: header.role ?? null,
     scenario: { id: header.scenario.id, hash: header.scenario.hash },
     traceVersion: header.traceVersion ?? 1,
     configVersion: header.configVersion,
+    roundLimit,
     ourReserve: matches ? { ...scenarioRef.mandate.reservation } : null,
     offers: {
       ours: rounds.flatMap((p) => (p.ourOffer ? [{ round: p.round, offer: p.ourOffer }] : [])),
