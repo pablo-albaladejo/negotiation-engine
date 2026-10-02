@@ -255,6 +255,16 @@ export class BazaarAgent {
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
+    // Un activo, un sitio también al retomar: si el activo ya está en otra oferta u otro hilo abierto, este hilo se cierra.
+    const busyWhy = target?.side === "sell" ? sellBlocked(target.topic, (await busyAssets(this.api, me.id, thread.id)) ?? new Map()) : undefined;
+    if (busyWhy) {
+      this.log(`  thread ${thread.id}: not resumed, ${busyWhy}: ${this.o.dryRun ? "would close it politely" : "closing it politely"}`);
+      if (!this.o.dryRun) {
+        await this.api.say(thread.id, closeText(0)).catch(() => undefined);
+        await this.api.closeThread(thread.id);
+      }
+      return;
+    }
     if (target) {
       this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
       this.threadsOpened += 1;
@@ -422,6 +432,14 @@ export class BazaarAgent {
     if (mismatch) {
       this.log(`  thread ${thread.id}: structure-mismatch (${mismatch}): closing politely, never accepting`);
       d = { action: { kind: "close" }, rule: "structure-mismatch", effectiveReservation: d.effectiveReservation };
+    } else if (d.action.kind === "accept" && target.side === "sell") {
+      // Justo antes de vender: el activo no puede estar ya en otra oferta u otro hilo (p. ej. listado en El Rastro).
+      const busy = await busyAssets(this.api, me.id, thread.id);
+      const why = sellBlocked(target.topic, busy);
+      if (why) {
+        this.log(`  thread ${thread.id}: asset-busy (${why}): ${busy ? "closing politely" : "not accepting this tick"}`);
+        d = { action: busy ? { kind: "close" } : { kind: "wait" }, rule: "asset-busy", effectiveReservation: d.effectiveReservation };
+      }
     }
     active.lastRule = d.rule;
     const base = {

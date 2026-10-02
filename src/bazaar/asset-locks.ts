@@ -22,7 +22,7 @@ function offersOf(raw: unknown): unknown[] {
 }
 
 /** Activos que damos en ofertas abiertas nuestras (`/api/me/offers`), con dónde están. */
-export function assetsInOffers(raw: unknown, selfId?: string | null): BusyAssets {
+export function assetsInOffers(raw: unknown, selfId?: string | null, excludeThread?: number): BusyAssets {
   const out: BusyAssets = new Map();
   for (const x of offersOf(raw)) {
     const p = StandingOfferSchema.safeParse(x);
@@ -30,6 +30,7 @@ export function assetsInOffers(raw: unknown, selfId?: string | null): BusyAssets
     const o = p.data as typeof p.data & { venue?: unknown; thread?: unknown };
     if (!OPEN.has(o.status ?? "open")) continue;
     if (selfId && o.maker && o.maker.toLowerCase() !== selfId.toLowerCase()) continue;
+    if (excludeThread !== undefined && o.thread === excludeThread) continue;
     const where = typeof o.thread === "number" ? `offer ${o.id} in thread ${o.thread}` : `offer ${o.id}${typeof o.venue === "string" ? ` on ${o.venue}` : ""}`;
     for (const id of assetIdsOf(o.give)) if (!out.has(id)) out.set(id, where);
   }
@@ -37,22 +38,25 @@ export function assetsInOffers(raw: unknown, selfId?: string | null): BusyAssets
 }
 
 /** Activos de los topics de venta de nuestros hilos abiertos (`/api/me/threads?status=open`). */
-export function assetsInThreads(threads: readonly unknown[]): BusyAssets {
+export function assetsInThreads(threads: readonly unknown[], excludeThread?: number): BusyAssets {
   const out: BusyAssets = new Map();
   for (const t of threads) {
     const th = t as { id?: unknown; status?: unknown; with?: unknown; topic?: { sell?: { assets?: unknown } } };
-    if (typeof th.status === "string" && th.status !== "open") continue;
+    if ((typeof th.status === "string" && th.status !== "open") || (excludeThread !== undefined && th.id === excludeThread)) continue;
     const ids = Array.isArray(th.topic?.sell?.assets) ? th.topic.sell.assets : [];
     for (const id of ids) if (typeof id === "number" && !out.has(id)) out.set(id, `thread ${String(th.id)}${typeof th.with === "string" ? ` with ${th.with}` : ""}`);
   }
   return out;
 }
 
-/** Activos ocupados (hilos abiertos + ofertas abiertas). Si no se puede leer, `undefined`: no se ofrece ningún activo. */
-export async function busyAssets(api: LocksApi, selfId?: string | null): Promise<BusyAssets | undefined> {
+/**
+ * Activos ocupados (hilos abiertos + ofertas abiertas), sin contar `excludeThread` (el hilo propio al retomarlo o aceptar).
+ * Si no se puede leer, `undefined`: no se ofrece ningún activo.
+ */
+export async function busyAssets(api: LocksApi, selfId?: string | null, excludeThread?: number): Promise<BusyAssets | undefined> {
   try {
     const [threads, offers] = await Promise.all([api.myThreads("open"), api.myOffers()]);
-    return new Map([...assetsInOffers(offers, selfId), ...assetsInThreads(threads.threads)]);
+    return new Map([...assetsInThreads(threads.threads, excludeThread), ...assetsInOffers(offers, selfId, excludeThread)]);
   } catch {
     return undefined;
   }

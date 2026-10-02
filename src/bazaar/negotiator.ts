@@ -127,7 +127,8 @@ export type Rule =
   | "no-zone"
   | "one-message-per-tick"
   | "one-accept-per-tick"
-  | "structure-mismatch";
+  | "structure-mismatch"
+  | "asset-busy";
 
 export type Action =
   | { kind: "accept"; offerId: number; price: number }
