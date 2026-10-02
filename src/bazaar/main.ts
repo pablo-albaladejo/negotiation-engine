@@ -6,11 +6,16 @@ import { DEFAULT_NEGOTIATOR_PARAMS, type StepMode } from "./negotiator.js";
 import { parseOnly } from "./plan.js";
 import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
+import { SERIOUS_DEFAULTS } from "./serious.js";
+import { runSerious } from "./serious-run.js";
+import { join } from "node:path";
 
 /**
  * `pnpm bazaar [--dry-run] [--once] [--max-spend 120] [--max-deals N] [--max-threads N] [--dealer abuela] [--only buy:uncommon:SAL,...] [--safety 0.9]`:
  * un paso por tick hasta Ctrl-C o hasta llegar a `--max-deals` (o agotar `--max-threads` conversaciones).
  * `--dry-run` solo lee (GET), imprime el plan y registra lo que haría; ningún POST.
+ * `--serious`: modo continuo con todos los dealers desbloqueados y todos los tratos que crean valor (sin --only),
+ * safety 1,0, `--max-spend-hour 60 --max-spend 150`, caja nunca por debajo de 270 + `--cash-reserve` (10).
  */
 
 function cap(raw: string | undefined, name: string): number {
@@ -24,7 +29,12 @@ async function main() {
     options: {
       "dry-run": { type: "boolean", default: false },
       once: { type: "boolean", default: false },
-      "max-spend": { type: "string", default: "120" },
+      "max-spend": { type: "string" },
+      "max-spend-hour": { type: "string" },
+      serious: { type: "boolean", default: false },
+      "cash-floor": { type: "string", default: String(SERIOUS_DEFAULTS.venueReserve) },
+      "cash-reserve": { type: "string", default: String(SERIOUS_DEFAULTS.cashReserve) },
+      lessons: { type: "string", default: join("docs", "bazaar", "lessons.json") },
       "max-deals": { type: "string" },
       "max-threads": { type: "string" },
       dealer: { type: "string", default: "abuela" },
@@ -39,8 +49,14 @@ async function main() {
       only: { type: "string" },
     },
   });
-  const maxSpend = Number(values["max-spend"]);
+  const serious = values.serious;
+  const maxSpend = Number(values["max-spend"] ?? (serious ? SERIOUS_DEFAULTS.maxSpendTotal : 120));
   if (!Number.isFinite(maxSpend) || maxSpend < 0) throw new Error("--max-spend debe ser un número ≥ 0");
+  const maxSpendHour = Number(values["max-spend-hour"] ?? (serious ? SERIOUS_DEFAULTS.maxSpendPerHour : maxSpend));
+  if (!Number.isFinite(maxSpendHour) || maxSpendHour < 0) throw new Error("--max-spend-hour debe ser un número ≥ 0");
+  const cashFloor = Number(values["cash-floor"]) + Number(values["cash-reserve"]);
+  if (!Number.isFinite(cashFloor) || cashFloor < 0) throw new Error("--cash-floor y --cash-reserve deben ser números ≥ 0");
+  if (serious && values.only) throw new Error("--serious abre todos los tratos que crean valor: no admite --only");
   const buyAnchorFrac = Number(values["buy-anchor-frac"]);
   const sellAnchorMult = Number(values["sell-anchor-mult"]);
   const maxHolds = Number(values["max-holds"]);
@@ -66,6 +82,36 @@ async function main() {
     process.exit(2);
   }
   const client = new BazaarClient({ url: env.url, key: env.key });
+  const negotiator = { buyAnchorFrac, sellAnchorMult, maxHolds, sellFloorAnchorMult, patienceBudget, maxStep, stepMode };
+  if (serious) {
+    const trace = new FileTrace(liveTraceDir(process.cwd()));
+    const clock = await client.clock();
+    console.log(
+      `bazaar agent · SERIOUS · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · all unlocked dealers · safety ${safety ?? SERIOUS_DEFAULTS.safety} · max-spend-hour ${maxSpendHour} P · max-spend ${maxSpend} P · cash floor ${cashFloor} P (venue ${values["cash-floor"]} + reserve ${values["cash-reserve"]}) · limits ${JSON.stringify(clock.limits ?? {})} · trazas en ${trace.dir}`,
+    );
+    let stop = false;
+    process.on("SIGINT", () => {
+      stop = true;
+      console.log("parando tras este paso…");
+    });
+    const res = await runSerious(client, {
+      dryRun: values["dry-run"],
+      once: values.once,
+      maxSpendPerHour: maxSpendHour,
+      maxSpendTotal: maxSpend,
+      cashFloor,
+      safety: safety ?? SERIOUS_DEFAULTS.safety,
+      negotiator,
+      trace,
+      scoreTracker: new ScoreTracker(new FileScoreTrace(trace.dir)),
+      lessonsFile: join(process.cwd(), values.lessons),
+      log: (line) => console.log(line),
+      sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+      shouldStop: () => stop,
+    });
+    if (res.stoppedBy === "unknown-error") process.exit(3);
+    return;
+  }
   const dealerId = values.dealer;
   const dealers = await client.dealers().catch(() => ({ dealers: [] }));
   const info = dealers.dealers.find((d) => d.id === dealerId);
@@ -80,12 +126,12 @@ async function main() {
   const agent = new BazaarAgent(client, {
     dealer: { id: dealerId, aliases },
     dryRun: values["dry-run"],
-    maxSpendPerHour: maxSpend,
+    maxSpendPerHour: maxSpendHour,
     maxSpendTotal: maxSpend,
     maxDeals,
     maxThreads,
     ...(menu ? { menu } : {}),
-    negotiator: { buyAnchorFrac, sellAnchorMult, maxHolds, sellFloorAnchorMult, patienceBudget, maxStep, stepMode },
+    negotiator,
     ...(safety !== undefined ? { safety } : {}),
     ...(only ? { only } : {}),
     trace,
