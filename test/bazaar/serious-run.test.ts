@@ -86,12 +86,12 @@ describe("runSerious", () => {
     expect(status).toContain("cash 390 (floor 280) · spent 0/60 this hour, 0/150 run · abuela: idle no-target · chato: locked · deals 2 · neg -14.9 · rank 15");
   });
 
-  it("añade a El Chato cuando se desbloquea, con su perfil (paciencia 3) y su cuota", async () => {
+  it("añade a El Chato cuando se desbloquea, con su perfil (paciencia 8, medida en el feed) y su cuota", async () => {
     const { api } = fakeApi([clock(100), clock(101), clock(112)], [["abuela"], ["abuela"], ["abuela"], ["abuela"], ["abuela", "chato"]]);
     let n = 0;
     const { o, lines } = opts({ once: false, shouldStop: () => n++ >= 3, refreshDealersEvery: 10 });
     await runSerious(api, o);
-    expect(lines.some((l) => l.startsWith('dealer chato (El Chato): unlocked · quota 6 deals/hour · negotiator {"patienceBudget":3'))).toBe(true);
+    expect(lines.some((l) => l.startsWith('dealer chato (El Chato): unlocked · quota 6 deals/hour · negotiator {"patienceBudget":8'))).toBe(true);
   });
 
   it("errores de red pasajeros: espera creciente y sigue; error desconocido: para", async () => {

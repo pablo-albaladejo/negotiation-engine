@@ -39,6 +39,8 @@ export type Traits = DealerProfile["traits"];
 
 /** Ficha real guardada como fixture (respuesta de `GET /api/dealers/abuela`). */
 export const ABUELA_FIXTURE = "test/fixtures/bazaar/dealer-abuela.json";
+/** Ficha real guardada como fixture (respuesta de `GET /api/dealers/chato`). */
+export const CHATO_FIXTURE = "test/fixtures/bazaar/dealer-chato.json";
 
 export function loadDealerProfile(path: string = ABUELA_FIXTURE): DealerProfile {
   return DealerProfileSchema.parse(JSON.parse(readFileSync(path, "utf8")));
@@ -95,10 +97,26 @@ export interface SimParams {
    * mucho que concedamos (sin reciprocidad), su final es el mismo precio y el trato cuenta. Abuela: comunes a 13.
    */
   fixedBuyPrices: Record<string, number>;
+  /**
+   * MEASURED (feed público, El Chato: 16 tratos, 44 hilos, 9 equipos). Si repetimos el mismo precio sin
+   * mejorarlo, pierde paciencia más rápido que con un mensaje normal: rondas extra que se suman a la de
+   * por sí consumida por el mensaje. 0 (por defecto) lo desactiva.
+   */
+  repeatPenaltyRounds: number;
 }
 
 /** Lo aprendido en vivo por dealer (ver `fixedBuyPrices`). */
 export const LEARNED_FIXED_BUY_PRICES: Record<string, Record<string, number>> = { abuela: { common: 13 } };
+
+/**
+ * Ajustes por dealer que no salen de los rasgos genéricos, aprendidos en vivo o del feed público.
+ * El Chato (MEASURED, feed): puja de apertura al comprarnos = 0,5× lista (13 sobre 26 en uncommon, 39
+ * sobre 77 en rara); paciencia más alta de lo que dan sus rasgos solos (final visto entre los mensajes
+ * 5 y 9, media ≈ 8); y pierde paciencia más rápido si repetimos precio.
+ */
+export const LEARNED_SIM_OVERRIDES: Record<string, Partial<SimParams>> = {
+  chato: { buyOpenFrac: 0.5, patienceBase: 5, patienceScale: 8, patienceJitter: 2, repeatPenaltyRounds: 1 },
+};
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
@@ -133,6 +151,8 @@ export function deriveParams(profile: DealerProfile, overrides: Partial<SimParam
     ticksPerHour: 60,
     sentences: 1 + Math.round(t.chattiness * 3),
     fixedBuyPrices: { ...(LEARNED_FIXED_BUY_PRICES[profile.id] ?? {}) },
+    repeatPenaltyRounds: 0,
+    ...(LEARNED_SIM_OVERRIDES[profile.id] ?? {}),
     ...overrides,
   };
 }

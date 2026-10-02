@@ -86,7 +86,8 @@ describe("hilo real 56", () => {
       const d = decide(v, params);
       if (d.action.kind !== "counter") {
         expect(d.action).toEqual({ kind: "accept", offerId: 356, price: 13 });
-        expect(d.rule).toBe("stuck-accept-within-limit");
+        // Antes "stuck-accept-within-limit"; con la paciencia agotándose, se acepta antes por "opening-last-chance".
+        expect(["opening-last-chance", "stuck-accept-within-limit"]).toContain(d.rule);
         break;
       }
       expect(d.action.price).toBeLessThan(sent[sent.length - 1]!);
@@ -94,7 +95,8 @@ describe("hilo real 56", () => {
       sent.push(d.action.price);
       v = { ...v, ourPrices: [...sent] };
     }
-    expect(sent[sent.length - 1]).toBe(14);
+    // Con "opening-last-chance" aceptamos su apertura un mensaje antes de llegar a 14: el último pedido es 16.
+    expect(sent[sent.length - 1]).toBe(16);
   });
 
   it("acepta en cuanto ella supera su apertura y alcanza nuestra siguiente contraoferta", () => {

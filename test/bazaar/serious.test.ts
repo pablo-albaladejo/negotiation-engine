@@ -39,6 +39,19 @@ describe("perfil por dealer", () => {
     expect(negotiatorForDealer(traitsOf({ traits: { patience: 0.85, strictness: 0.1 } }))).toEqual({ patienceBudget: 6 });
     expect(negotiatorForDealer(traitsOf({}))).toEqual({});
   });
+  it("El Chato con su id aplica el ajuste medido del feed (paciencia 8, paso 1, sin aguantes); Abuela no cambia", () => {
+    expect(negotiatorForDealer(traitsOf(chato), "chato")).toEqual({
+      patienceBudget: 8,
+      buyAnchorFrac: 0.85,
+      sellAnchorMult: 1.7,
+      sellFloorAnchorMult: 1.15,
+      maxHolds: 0,
+      maxStep: 1,
+    });
+    const abuelaTraits = traitsOf({ traits: { patience: 0.85, strictness: 0.1 } });
+    expect(negotiatorForDealer(abuelaTraits, "abuela")).toEqual({ patienceBudget: 6 });
+    expect(negotiatorForDealer(abuelaTraits, "abuela")).toEqual(negotiatorForDealer(abuelaTraits));
+  });
   it("cuota por hora del menú, dealers desbloqueados y horas de juego", () => {
     expect(dealsPerHourOf(DealerInfoSchema.parse({ id: "chato", menu: { sells: [], buys: [], deals_per_team_per_hour: 6 } }))).toBe(6);
     const dealers = [{ id: "abuela", open_to_all: true }, { id: "chato", open_to_all: false }];

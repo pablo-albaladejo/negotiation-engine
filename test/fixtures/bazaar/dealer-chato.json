@@ -1,0 +1,17 @@
+{
+  "id": "chato",
+  "name": "El Chato",
+  "traits": { "patience": 0.35, "generosity": 0.25, "shrewdness": 0.85, "memory": 0.9, "strictness": 0.85, "chattiness": 0.30 },
+  "menu": {
+    "sells": [
+      { "pack": "sobre_plata", "list_price": 150, "opening_ask": 188 },
+      { "rarity": "uncommon", "list_price": 26 },
+      { "rarity": "rare", "list_price": 77 }
+    ],
+    "buys": [
+      { "rarity": "uncommon" },
+      { "rarity": "rare" }
+    ],
+    "deals_per_team_per_hour": 6
+  }
+}

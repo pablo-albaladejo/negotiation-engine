@@ -216,10 +216,12 @@ export class DealerSim {
 
     const s = t.item.side === "buy" ? 1 : -1;
     let kind = "same";
+    let repeated = false;
     if (q !== undefined) {
       this.ourOffer(t, q);
       const range = Math.abs(t.opening - t.limit);
       const step = t.ourBest === undefined ? undefined : s * (q - t.ourBest);
+      repeated = step !== undefined && step <= 0;
       if (t.ourBest === undefined || (step ?? 0) > 0) t.ourBest = q;
       const move = t.item.fixed ? 0 : step === undefined ? sround(range * p.firstMoveFrac, t.rng) : step > 0 ? sround(Math.min(step * this.reciprocity(t), range * p.maxStepFrac), t.rng) : 0;
       if (move > 0) {
@@ -230,7 +232,8 @@ export class DealerSim {
       const gap = Math.floor(range * p.acceptGapFrac);
       if (s * (q - t.herPrice) >= -gap && s * (q - t.limit) >= 0) return this.settle(t, q, "dealer");
     }
-    t.rounds += 1;
+    // MEASURED (feed, El Chato): repetir el mismo precio sin mejorarlo la impacienta más que un mensaje normal.
+    t.rounds += 1 + (repeated ? p.repeatPenaltyRounds : 0);
     if (t.rounds >= this.patience(t)) {
       t.final = true;
       t.herPrice -= s * Math.round(s * (t.herPrice - t.limit) * p.finalFrac);
