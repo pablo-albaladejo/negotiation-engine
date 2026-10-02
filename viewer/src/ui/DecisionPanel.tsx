@@ -45,7 +45,7 @@ function decisionRows(panel: RoundPanel): DataTableRow[] {
     { k: "Step vs previous round", v: explain ? dec1(explain.step) : "not logged", st: "" },
     {
       k: "AC_next",
-      v: "not logged",
+      v: explain && explain.acNext ? (explain.uRival !== null && explain.uOffer !== null ? `${dec1(explain.uRival)} − ${dec1(explain.uOffer)} = ${dec1(explain.uRival - explain.uOffer)}` : "—") : "—",
       st: explain ? <Flag kind={explain.acNext ? "decision" : "neutral"}>{explain.acNext ? "accept" : "no accept"}</Flag> : "not logged",
     },
     {

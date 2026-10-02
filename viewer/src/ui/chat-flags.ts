@@ -1,3 +1,4 @@
+import { formatNumber } from "@negotiation-ring/design-system";
 import type { ChatMessageFlag } from "@negotiation-ring/design-system";
 import type { RoundPanel } from "../model/index.js";
 import { offerValue } from "./offer.js";
@@ -20,7 +21,7 @@ export function chatFlags(from: "agent" | "rival", panel: RoundPanel | null): Ch
       return [{ kind: "decision", label }];
     }
     const flags: ChatMessageFlag[] = [];
-    if (panel.explain) flags.push({ kind: "neutral", label: `target ${panel.explain.target}` });
+    if (panel.explain) flags.push({ kind: "neutral", label: `target ${formatNumber(panel.explain.target, { locale: "en", decimals: 1 })}` });
     const estimate = panel.explain ? offerValue(panel.explain.rivalReserveEstimate) : null;
     if (estimate !== null) flags.push({ kind: "neutral", label: `est. reserve ${estimate}` });
     if (panel.decision?.rule) flags.push({ kind: "neutral", label: `rule: ${panel.decision.rule}` });

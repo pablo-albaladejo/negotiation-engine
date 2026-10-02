@@ -123,7 +123,7 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
   const issueName = firstIssueName(model.offers.ours) ?? firstIssueName(model.offers.rival) ?? "not logged";
   const sub = `${model.role ? roleLabel(model.role) : "not logged"} · ${issueName} · T=${model.roundLimit ?? "not logged"} · not logged`;
   // R4: full logged config params + " · tournament mode" (the trace header only logs `configVersion`; the rest comes from the run's `summary.json`, when available).
-  const cfg = `${configParamsLine(summary?.config.params)} · tournament mode`;
+  const cfg = `config v${summary?.config.version ?? "not logged"} · ${configParamsLine(summary?.config.params)} · tournament mode`;
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
