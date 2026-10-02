@@ -1,12 +1,23 @@
-import { Card, ChatMessage, DataTable, type DataTableColumn, type DataTableRow, KpiStrip, Legend, OfferChart, StatFigure, formatNumber } from "@negotiation-ring/design-system";
-import React, { useEffect, useState } from "react";
+import {
+  Card,
+  ChatMessage,
+  DataTable,
+  type DataTableColumn,
+  type DataTableRow,
+  KpiStrip,
+  Legend,
+  ModeBadge,
+  OfferChart,
+  StatFigure,
+  formatNumber,
+} from "@negotiation-ring/design-system";
+import { useEffect, useRef, useState } from "react";
 import type { TournamentReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { offerValue } from "../ui/offer.js";
 import { BackLink } from "../ui/buttons.js";
 import { DecisionPanel } from "../ui/DecisionPanel.js";
 import { ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
-import { ModeBadge } from "@negotiation-ring/design-system";
 
 const EST_COLUMNS: DataTableColumn[] = [
   { key: "r", label: "Round" },
@@ -29,7 +40,7 @@ export interface TournamentReplayScreenProps {
 export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreenProps) {
   const lastRound = model.rounds.length > 0 ? model.rounds[model.rounds.length - 1]!.round : 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
-  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!messagesContainerRef.current) return;

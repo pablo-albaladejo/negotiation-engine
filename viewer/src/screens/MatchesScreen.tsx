@@ -22,6 +22,8 @@ const PAGE_SIZE = 50;
 const PAGINATE_ABOVE = 200;
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
+/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
+const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
 
 function withFilter<K extends keyof MatchFilters>(filters: MatchFilters, key: K, value: MatchFilters[K] | undefined): MatchFilters {
   const next = { ...filters };
@@ -91,7 +93,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     rival: r.rival,
     rol: roleLabel(r.role),
     res: resultLabel(r.endReason, r.protocolViolationBy).label,
-    exc: pct(r.surplusShare),
+    exc: dec(r.surplusShare),
     rondas: r.roundLimit !== null ? `${r.rounds} / ${r.roundLimit}` : String(r.rounds),
     inc: incidents(r),
   }));
@@ -114,7 +116,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
         items={[
           { label: "Matches", value: formatNumber(model.kpis.games, { locale: "en" }) },
           { label: "Deal", value: pct(model.kpis.agreementRate), tone: model.kpis.agreementRate ? "deal" : "walk" },
-          { label: "Avg. surplus", value: pct(model.kpis.meanSurplus) },
+          { label: "Avg. surplus", value: dec(model.kpis.meanSurplus) },
           { label: "Violations", value: formatNumber(model.kpis.violations, { locale: "en" }), tone: model.kpis.violations > 0 ? "walk" : "deal" },
           { label: "Leaks", value: formatNumber(model.kpis.leaks, { locale: "en" }), tone: model.kpis.leaks > 0 ? "walk" : "deal" },
           { label: "Template fallbacks", value: formatNumber(model.kpis.templateFallbacks, { locale: "en" }) },

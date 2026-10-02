@@ -19,6 +19,8 @@ const COLUMNS: DataTableColumn[] = [
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
 const num = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en" }));
+/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
+const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
 
 export interface RunsScreenProps {
   rows: RunRow[];
@@ -44,7 +46,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
       date: r.createdAt ?? "not logged",
       cfg: r.config ? `${r.config.path} v${r.config.version}` : "not logged",
       n: num(r.games),
-      exc: pct(r.meanSurplus),
+      exc: dec(r.meanSurplus),
       acu: pct(r.agreementRate),
       vio: num(r.violations),
       fug: num(r.leaks),

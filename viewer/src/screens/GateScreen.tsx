@@ -29,6 +29,8 @@ const NL = "not logged";
 const pct = (v: number | null): string => (v === null ? NL : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
 const int = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en" }));
 const dec = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en", decimals: 1 }));
+/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
+const surplusDec = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en", decimals: 2 }));
 
 function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplusChangePp: number | null }): DataTableRow[] {
   const row = (k: string, f: (v: number | null) => string, pick: (p: PhaseMetrics) => number | null) => ({ k, a: f(pick(m.champion)), b: f(pick(m.candidate)), d: NL });
@@ -36,7 +38,7 @@ function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplu
   return [
     // gate.json never logs a direction for this change; showing a hard-coded better/worse tone from
     // the sign would be the UI inventing a judgement the engine never made, so it is plain text (L12).
-    { ...row("Avg. surplus / ZOPA", pct, (p) => p.meanSurplus), d: formatPp(change) },
+    { ...row("Avg. surplus / ZOPA", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
     row("Agreement", pct, (p) => p.agreementRate),
     row("Violations", int, (p) => p.violations),
     row("Leaks", int, (p) => p.leaks),
@@ -61,18 +63,26 @@ function Verdict({ model }: { model: GateModel }) {
 
 type CopyStatus = "idle" | "copied" | "failed";
 
-/** C1: label reflects the actual clipboard outcome ("Copied" / "Copy failed"), resets after 1.5 s; the timer is cleared on unmount. */
+/** C1: label reflects the actual clipboard outcome ("Copied" / "Copy failed"), resets after 1.5 s; the timer is cleared on unmount. A mounted ref (L16) guards every state update so a clipboard promise that settles after unmount is a no-op. */
 function CopyCommand({ command }: { command: string }) {
   const [status, setStatus] = useState<CopyStatus>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
   useEffect(() => () => {
+    mounted.current = false;
     if (timer.current !== null) clearTimeout(timer.current);
   }, []);
   const scheduleReset = () => {
     if (timer.current !== null) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setStatus("idle"), 1500);
+    timer.current = setTimeout(() => {
+      if (mounted.current) setStatus("idle");
+    }, 1500);
+  };
+  const setStatusIfMounted = (next: CopyStatus) => {
+    if (mounted.current) setStatus(next);
   };
   const label = status === "copied" ? "Copied" : status === "failed" ? "Copy failed" : "Copy";
+  const liveMessage = status === "copied" ? "Command copied" : status === "failed" ? "Copy failed, select the command manually" : "";
   return (
     <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "stretch", margin: "var(--space-3) 0 var(--space-2)" }}>
       <code className="nr-code-box" style={{ flex: 1, minWidth: 0 }}>
@@ -81,19 +91,22 @@ function CopyCommand({ command }: { command: string }) {
       <PrimaryButton
         onClick={() => {
           if (!navigator.clipboard) {
-            setStatus("failed");
+            setStatusIfMounted("failed");
             scheduleReset();
             return;
           }
           navigator.clipboard
             .writeText(command)
-            .then(() => setStatus("copied"))
-            .catch(() => setStatus("failed"))
+            .then(() => setStatusIfMounted("copied"))
+            .catch(() => setStatusIfMounted("failed"))
             .finally(scheduleReset);
         }}
       >
         {label}
       </PrimaryButton>
+      <span role="status" aria-live="polite" className="nr-sr-only">
+        {liveMessage}
+      </span>
     </div>
   );
 }
