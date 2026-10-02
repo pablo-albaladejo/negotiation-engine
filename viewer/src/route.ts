@@ -13,10 +13,20 @@ function splitQuery(path: string): [string, string] {
   return i === -1 ? [path, ""] : [path.slice(0, i), path.slice(i + 1)];
 }
 
+/** T1: a malformed `%` sequence (e.g. a run id typed/pasted with a stray `%`) must not throw and
+ * blank the whole app; fall back to the raw segment instead of crashing the router. */
+function safeDecode(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
 /** Router mínimo por hash: sin dependencias, suficiente para P1–P6 y P8 (P5 comparte ruta con P3). */
 export function parseRoute(hash: string): Route {
   const [pathPart, query] = splitQuery(hash.replace(/^#\/?/, ""));
-  const parts = pathPart.split("/").filter(Boolean).map(decodeURIComponent);
+  const parts = pathPart.split("/").filter(Boolean).map(safeDecode);
   const [head, a, mid, b] = parts;
   if (head === "states") return { screen: "states" };
   if (head === "live") return { screen: "live" };

@@ -68,3 +68,14 @@ describe("B3: round-trip per route — parse(format(x)) === x for every screen",
     expect(parseRoute(routeTo.live())).toEqual({ screen: "live" });
   });
 });
+
+describe("T1: malformed percent-encoding does not throw (falls back to the raw segment)", () => {
+  it("an invalid %-sequence in a run id is kept as-is instead of throwing URIError", () => {
+    expect(() => parseRoute("#/runs/%E0%A4%A")).not.toThrow();
+    expect(parseRoute("#/runs/%E0%A4%A")).toEqual({ screen: "matches", runId: "%E0%A4%A", query: "" });
+  });
+
+  it("a lone '%' in a game id is kept as-is", () => {
+    expect(parseRoute("#/runs/r-1/games/g-%")).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-%", query: "" });
+  });
+});
