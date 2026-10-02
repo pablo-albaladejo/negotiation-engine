@@ -32,7 +32,7 @@
     }
   },
   "dtsPropsFor": {
-    "Tabs": "items: { id: string; label: string }[]; selectedId: string; onSelect: (id: string) => void; \"aria-label\"?: string;",
+    "Tabs": "items: { id: string; label: string }[]; selectedId: string; onSelect: (id: string) => void; \"aria-label\"?: string; variant?: \"group\" | \"nav\";",
     "MatchSelector": "matches: { id: string; rival: string; result: \"deal\" | \"walk\"; label: string }[]; selectedId: string; onSelect: (id: string) => void;",
     "KpiStrip": "items: { label: string; value: string; tone?: \"deal\" | \"walk\" }[];",
     "ChatMessage": "side: \"us\" | \"them\"; round: number; offer?: number; flags?: { kind: \"neutral\" | \"injection\" | \"decision\" | \"walk\" | \"fallback\"; label: string }[]; text: string; highlighted?: boolean;",

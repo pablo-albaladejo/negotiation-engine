@@ -17,3 +17,8 @@ export function SecondTabActive() {
   const [selectedId, setSelectedId] = useState("compare");
   return <Tabs items={items} selectedId={selectedId} onSelect={setSelectedId} />;
 }
+
+export function Navigation() {
+  const [selectedId, setSelectedId] = useState("replay");
+  return <Tabs variant="nav" aria-label="Viewer" items={items} selectedId={selectedId} onSelect={setSelectedId} />;
+}

@@ -1,4 +1,4 @@
-import { ModeBadge, Root, WarningBanner } from "@negotiation-ring/design-system";
+import { ModeBadge, Root, Tabs, WarningBanner } from "@negotiation-ring/design-system";
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { SecondaryButton } from "./ui/buttons.js";
 import { initialTheme, storeTheme, watchSystemTheme, type Theme } from "./theme.js";
@@ -315,19 +315,13 @@ function AppContent() {
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
             <h1 className="nr-title">Arena viewer</h1>
-            <nav className="nr-tabs" aria-label="Viewer">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className="nr-tab"
-                  aria-current={tab.id === activeTab ? "page" : undefined}
-                  onClick={() => navigate(tab.id === "states" ? routeTo.states() : tab.id === "live" ? routeTo.live() : routeTo.runs())}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            <Tabs
+              variant="nav"
+              aria-label="Viewer"
+              items={TABS}
+              selectedId={activeTab}
+              onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())}
+            />
           </div>
           <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>Dark mode</SecondaryButton>
         </header>
