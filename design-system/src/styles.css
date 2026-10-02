@@ -164,3 +164,12 @@
 .nr-scatter .point-label.them{fill:var(--them)}
 .nr-scatter .deal-ring{fill:none;stroke:var(--ok);stroke-width:2.5}
 .nr-scatter .deal-label{font:600 11px var(--font-mono);fill:var(--ok)}
+
+/* Loading progress: determinate fill or an indeterminate 30% slider (P8) */
+.nr-progress-track{height:6px;background:var(--line);border-radius:var(--radius-pill);overflow:hidden;position:relative}
+.nr-progress-fill{height:100%;background:var(--ink);border-radius:var(--radius-pill)}
+.nr-progress-indeterminate{position:absolute;top:0;width:30%;animation:nr-progress-slide 1.2s ease-in-out infinite}
+@keyframes nr-progress-slide{0%{left:-30%}100%{left:100%}}
+@media (prefers-reduced-motion: reduce){
+  .nr-progress-indeterminate{animation:none;left:35%}
+}

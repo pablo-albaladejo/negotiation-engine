@@ -9,7 +9,9 @@ function BannerBody({ children }: { children: ReactNode }) {
 
 /**
  * P8: carga en curso. Sin un conteo real de líneas/partidas leídas (la API no lo reporta hoy),
- * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`.
+ * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`, una franja del 30% que se
+ * desliza (quieta si `prefers-reduced-motion`). Solo se ve un porcentaje real cuando se pasan
+ * `current`/`total`.
  */
 export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
   const isDeterminate = current !== undefined && total !== undefined && total > 0;
@@ -21,9 +23,9 @@ export function LoadingCard({ label, current, total }: { label: string; current?
         <div
           role="progressbar"
           {...(isDeterminate ? { "aria-valuenow": percentage, "aria-valuemin": 0, "aria-valuemax": 100 } : { "aria-busy": true })}
-          style={{ height: 6, background: "var(--line)", borderRadius: "var(--radius-pill)", overflow: "hidden" }}
+          className="nr-progress-track"
         >
-          <div style={{ width: `${isDeterminate ? percentage : 100}%`, height: "100%", background: "var(--ink)", borderRadius: "var(--radius-pill)" }} />
+          <div className={isDeterminate ? "nr-progress-fill" : "nr-progress-fill nr-progress-indeterminate"} {...(isDeterminate ? { style: { width: `${percentage}%` } } : {})} />
         </div>
       </div>
     </Card>
@@ -117,10 +119,14 @@ export function TemplateBanner({ templateCount, ourMessageCount, provider }: { t
   );
 }
 
-/** P8: ZOPA vacía con retirada (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. Always `tone="warn"` (walk). */
+/**
+ * P8: ZOPA vacía (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. El
+ * título lleva el detalle técnico ("Reserves 80 / 76"), no repite el título de la Card que lo
+ * envuelve. `tone="warn"` solo si además se retiró; si la partida sigue, es solo informativo.
+ */
 export function EmptyZopaBanner({ ours, rival, walked }: { ours: string; rival: string; walked: boolean }) {
   return (
-    <WarningBanner tone="warn" title={`Empty ZOPA${walked ? " → walk" : ""}`}>
+    <WarningBanner tone={walked ? "warn" : "info"} title={`Reserves ${ours} / ${rival}${walked ? " → walk" : ""}`}>
       <BannerBody>
         <Flag kind={walked ? "walk" : "neutral"}>{walked ? "walk" : "empty ZOPA"}</Flag>
         <span style={{ color: "var(--ink)" }}>

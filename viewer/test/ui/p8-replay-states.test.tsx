@@ -41,7 +41,7 @@ describe("P8 sobre datos reales: P4 (torneo) y P3 (arena)", () => {
   it("P3: ZOPA vacía con retirada ⇒ banner con ambas reservas registradas", () => {
     const line = fx.games.find((g) => g.metrics.zopaEmpty && g.endReason === "agent-walk")!;
     render(<ArenaReplayScreen runId={fx.runId} model={arenaReplayModel(line, fx.traces.get(line.gameId)!)} onBack={() => {}} />);
-    expect(screen.getByText("Empty ZOPA → walk")).toBeTruthy();
+    expect(screen.getByText(/^Reserves .* → walk$/)).toBeTruthy();
     expect(screen.getByText(/do not overlap: no deal is possible/)).toBeTruthy();
   });
 

@@ -18,9 +18,19 @@ describe("StatesScreen (P8)", () => {
     expect(screen.getByText("r-1005 has no matches")).toBeTruthy();
   });
 
-  it("carga en curso con progreso, ninguna pantalla en blanco", () => {
+  it("EmptyStateCard no anida dos Card (sin doble borde)", () => {
     const { container } = render(<StatesScreen />);
-    expect(screen.getByText(/1240 \/ 2646 matches/)).toBeTruthy();
+    const heading = screen.getByText("r-1005 has no matches");
+    const outerCard = heading.closest(".nr-card");
+    expect(outerCard).toBeTruthy();
+    expect(outerCard?.querySelectorAll(".nr-card")).toHaveLength(0);
+  });
+
+  it("carga en curso: indeterminada sin cifras falsas, ninguna pantalla en blanco", () => {
+    const { container } = render(<StatesScreen />);
+    expect(screen.queryByText(/1240/)).toBeNull();
+    expect(screen.getByText("Reading results/r-1001.jsonl")).toBeTruthy();
+    expect(container.querySelector(".nr-progress-indeterminate")).toBeTruthy();
     expect(container.textContent?.trim().length).toBeGreaterThan(0);
   });
 
@@ -30,7 +40,7 @@ describe("StatesScreen (P8)", () => {
     expect(screen.getByText("ring-session-7 · tournament · R3")).toBeTruthy();
     expect(screen.getByText("rivalOffer.pct (invalid_type)")).toBeTruthy();
     expect(screen.getByText(/ten percent of the cargo value/)).toBeTruthy();
-    expect(screen.getByText("Empty ZOPA → walk", { selector: ".nr-warning-banner *" })).toBeTruthy();
+    expect(screen.getByText("Reserves 80 / 76 → walk", { selector: ".nr-warning-banner *" })).toBeTruthy();
     expect(screen.getByText(/5 of 5 via template/)).toBeTruthy();
     expect(screen.getAllByText("template · LLM down")).toHaveLength(2);
   });
@@ -47,7 +57,7 @@ describe("StatesScreen (P8)", () => {
       // Warn banners will have a different background than info banners
       // We can check by text content or by the visual style
       const text = banner.textContent || "";
-      if (text.includes("Invalid log") || text.includes("Opponent breaks protocol") || text.includes("Empty ZOPA")) {
+      if (text.includes("Invalid log") || text.includes("Opponent breaks protocol") || text.includes("Reserves 80 / 76")) {
         warnCount++;
       }
       if (text.includes("LLM down")) {
