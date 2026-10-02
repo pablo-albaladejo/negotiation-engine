@@ -33,6 +33,7 @@ export {
 export {
   agentLines,
   bookMakerLabel,
+  curveRoundLines,
   historyGroups,
   liveItems,
   mentionsUs,

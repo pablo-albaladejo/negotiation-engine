@@ -300,3 +300,25 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
   const scale = niceScale(lo - pad, hi + pad);
   return { firstTick, rounds: lastRound + 1, yDomain: scale.domain, yTicks: scale.ticks, ours, theirs, limit, capped, reference, end };
 }
+
+/**
+ * Texto de la caja al pasar el cursor por una ronda de la curva: tick, nuestra cifra, la suya,
+ * nuestro límite (el último registrado hasta ese tick), nuestro valor y el cierre si cae ahí.
+ */
+export function curveRoundLines(curve: OfferCurve, them: string, round: number): string[] | null {
+  if (round < 1) return null;
+  const at = (pts: CurvePoint[]) => pts.find((p) => p.round === round)?.value;
+  const lastLimit = curve.limit.length > 0 && round <= curve.limit[curve.limit.length - 1]!.round ? [...curve.limit].reverse().find((p) => p.round <= round)?.value : undefined;
+  const closing = curve.end?.round === round ? curve.end : null;
+  const ours = at(curve.ours);
+  const theirs = at(curve.theirs);
+  const lines = [
+    `tick ${curve.firstTick + round - 1}`,
+    ours !== undefined ? `us ${ours}` : null,
+    theirs !== undefined ? `${them} ${theirs}` : null,
+    lastLimit !== undefined ? `our limit ${lastLimit}` : null,
+    curve.reference ? curve.reference.label : null,
+    closing ? closing.label : null,
+  ].filter((l): l is string => l !== null);
+  return lines.length > 1 ? lines : null;
+}

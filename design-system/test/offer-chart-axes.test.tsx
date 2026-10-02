@@ -20,3 +20,17 @@ describe("OfferChart · ejes configurables", () => {
     expect(html).toContain(">25</text>");
   });
 });
+
+describe("OfferChart · ronda bajo el cursor", () => {
+  it("offerChartRoundAt invierte offerChartXScale y acota a [0, rounds]", async () => {
+    const { offerChartRoundAt, offerChartXScale } = await import("../src/components/OfferChart");
+    expect(offerChartRoundAt(offerChartXScale(3, 5), 5)).toBe(3);
+    expect(offerChartRoundAt(offerChartXScale(3, 5) + 20, 5)).toBe(3);
+    expect(offerChartRoundAt(0, 5)).toBe(0);
+    expect(offerChartRoundAt(10_000, 5)).toBe(5);
+  });
+
+  it("sin cursor encima no hay caja", () => {
+    expect(renderToString(<OfferChart {...base} describeRound={() => ["x"]} />)).not.toContain("offer-chart-hover");
+  });
+});

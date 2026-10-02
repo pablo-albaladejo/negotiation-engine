@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentLines, boardModel, bookMakerLabel, niceScale, offerCurve, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
+import { agentLines, boardModel, bookMakerLabel, curveRoundLines, niceScale, offerCurve, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
 
 const EMPTY: Board = boardModel(null);
 
@@ -194,6 +194,16 @@ describe("cockpit · offerCurve", () => {
     const curve = offerCurve(row({ id: "t", kind: "dealer-buy", status: "deal", price: 10, tick_settled: 126, messages: [msg(125, true, 9), msg(125, false, 12), msg(126, false, 10)] }));
     expect(curve?.ours).toEqual([{ round: 1, value: 9 }, { round: 2, value: 10 }]);
     expect(curve?.theirs).toEqual([{ round: 1, value: 12 }, { round: 2, value: 10 }]);
+  });
+
+  it("caja del cursor: valores de ese tick, límite vigente y cierre", () => {
+    const curve = offerCurve(
+      row({ id: "t", kind: "dealer-buy", status: "deal", price: 10, our_value: 13, tick_settled: 126, messages: [msg(125, true, 9), msg(125, false, 12), msg(126, false, 10)], decisions: [dec(124, 13, "open"), dec(125, 11)] }),
+    )!;
+    expect(curveRoundLines(curve, "abuela", 0)).toBeNull();
+    expect(curveRoundLines(curve, "abuela", 1)).toEqual(["tick 124", "our limit 13", "our value 13"]);
+    expect(curveRoundLines(curve, "abuela", 2)).toEqual(["tick 125", "us 9", "abuela 12", "our limit 11", "our value 13"]);
+    expect(curveRoundLines(curve, "abuela", 3)).toEqual(["tick 126", "us 10", "abuela 10", "our value 13", "deal 10"]);
   });
 
   it("niceScale: pasos 1/2/5 que cubren el rango", () => {

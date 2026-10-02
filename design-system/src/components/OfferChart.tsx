@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 
 export interface OfferPoint {
   round: number;
@@ -32,6 +32,11 @@ export interface OfferChartProps {
   xTickLabel?: (round: number) => string;
   /** Valores del eje Y con línea de rejilla (por defecto, 5 repartidos en `yDomain`). */
   yTicks?: number[];
+  /**
+   * Al pasar el cursor: líneas de texto que describen esa ronda (o `null` si no hay nada). Con esta
+   * prop el gráfico muestra una guía vertical y una caja con los valores.
+   */
+  describeRound?: (round: number) => string[] | null;
 }
 
 const WIDTH = 640;
@@ -42,6 +47,11 @@ const INNER_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 export function offerChartXScale(round: number, rounds: number): number {
   return MARGIN.left + (round / rounds) * INNER_WIDTH;
+}
+
+/** Ronda más cercana a una x del viewBox (inversa de `offerChartXScale`, acotada a [0, rounds]). */
+export function offerChartRoundAt(x: number, rounds: number): number {
+  return Math.max(0, Math.min(rounds, Math.round(((x - MARGIN.left) / INNER_WIDTH) * rounds)));
 }
 
 export function offerChartYScale(value: number, yDomain: [number, number]): number {
@@ -137,7 +147,17 @@ export function OfferChart({
   xLabel = "round",
   xTickLabel = String,
   yTicks,
+  describeRound,
 }: OfferChartProps) {
+  const [hover, setHover] = useState<{ round: number; lines: string[] } | null>(null);
+  function handleMouseMove(e: MouseEvent<SVGSVGElement>) {
+    if (!describeRound) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    if (box.width === 0) return;
+    const round = offerChartRoundAt(((e.clientX - box.left) * WIDTH) / box.width, rounds);
+    const lines = describeRound(round);
+    setHover(lines && lines.length > 0 ? { round, lines } : null);
+  }
   const [yMin, yMax] = yDomain;
   const injectionSet = new Set(injectionRounds ?? []);
   const gridTicks = 4;
@@ -218,6 +238,7 @@ export function OfferChart({
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role={onPointClick ? "group" : "img"}
       aria-label={`Offers from both sides by ${xLabel}`}
+      {...(describeRound ? { onMouseMove: handleMouseMove, onMouseLeave: () => setHover(null) } : {})}
     >
       {showZopa ? <rect className="zopa" x={MARGIN.left} y={zopaTop} width={INNER_WIDTH} height={zopaHeight} /> : null}
 
@@ -356,6 +377,29 @@ export function OfferChart({
           </text>
         </>
       ) : null}
+
+      {hover ? <HoverBox x={offerChartXScale(hover.round, rounds)} lines={hover.lines} /> : null}
     </svg>
+  );
+}
+
+/** Guía vertical y caja con los valores de la ronda bajo el cursor; se gira al lado izquierdo cerca del borde. */
+function HoverBox({ x, lines }: { x: number; lines: string[] }) {
+  const lineHeight = 15;
+  const width = Math.max(...lines.map((l) => l.length)) * 6.4 + 16;
+  const height = lines.length * lineHeight + 10;
+  const left = x + 10 + width > WIDTH - MARGIN.right ? x - 10 - width : x + 10;
+  return (
+    <g className="hover" pointerEvents="none" data-testid="offer-chart-hover">
+      <line className="hover-guide" x1={x} x2={x} y1={MARGIN.top} y2={HEIGHT - MARGIN.bottom} />
+      <rect className="hover-box" x={left} y={MARGIN.top} width={width} height={height} rx={4} />
+      <text className="hover-text" x={left + 8} y={MARGIN.top + 4}>
+        {lines.map((l, i) => (
+          <tspan key={i} x={left + 8} dy={lineHeight} fontWeight={i === 0 ? 700 : 400}>
+            {l}
+          </tspan>
+        ))}
+      </text>
+    </g>
   );
 }

@@ -17,6 +17,7 @@ import {
   type BoardRowKind,
   agentLines,
   bookMakerLabel,
+  curveRoundLines,
   historyGroups,
   liveItems,
   mentionsUs,
@@ -206,6 +207,7 @@ function NegotiationCurve({ row }: { row: BoardRow }) {
         yTicks={curve.yTicks}
         xLabel="tick"
         xTickLabel={tickOf}
+        describeRound={(round) => curveRoundLines(curve, row.counterparty, round)}
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
         {...(curve.limit.length > 0 ? { target: curve.limit } : {})}

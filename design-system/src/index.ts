@@ -28,7 +28,7 @@ export type { DataTableProps, DataTableColumn, DataTableRow, DataTableCell } fro
 export { Heatmap, heatmapBand } from "./components/Heatmap";
 export type { HeatmapProps, HeatmapRow, HeatmapCell } from "./components/Heatmap";
 
-export { OfferChart, Legend, offerChartXScale, offerChartYScale, endLabelPlacement } from "./components/OfferChart";
+export { OfferChart, Legend, offerChartXScale, offerChartYScale, offerChartRoundAt, endLabelPlacement } from "./components/OfferChart";
 export type { LegendItem, LegendProps } from "./components/OfferChart";
 export type { OfferChartProps, OfferPoint, OfferChartEnd } from "./components/OfferChart";
 
