@@ -221,17 +221,37 @@ export interface CurvePoint {
 }
 
 export interface OfferCurve {
-  /** Primer tick de la conversación; el eje X cuenta ticks desde aquí (1 = `firstTick`). */
+  /** Primer tick de la conversación; la ronda 1 del gráfico es este tick. */
   firstTick: number;
   rounds: number;
   yDomain: [number, number];
+  /** Marcas del eje Y en números redondos. */
+  yTicks: number[];
   ours: CurvePoint[];
   theirs: CurvePoint[];
-  /** Nuestro límite por tick (reserva de `decisions.jsonl`), si cambió durante la conversación. */
+  /** Nuestro límite por tick (reserva de `decisions.jsonl`). */
   limit: CurvePoint[];
-  /** Límite fijo (duelos: `your_limit`; o la única reserva registrada). */
-  fixedLimit: number | null;
+  /**
+   * Si el límite de los turnos quedó por debajo del de apertura (compras): el agente lo recorta por
+   * caja o presupuesto, o lo revalúa al revelar la carta; la traza no dice cuál. `{ from, to }`, o `null`.
+   */
+  capped: { from: number; to: number } | null;
+  /** Línea horizontal de referencia: nuestro valor (dealers) o el límite del duelo. */
+  reference: { value: number; label: string } | null;
   end: { round: number; kind: "deal" | "walk"; label: string } | null;
+}
+
+/** Escala "bonita": paso 1, 2 o 5 × 10^k, unas 4–6 marcas que cubren [lo, hi]. */
+export function niceScale(lo: number, hi: number): { domain: [number, number]; ticks: number[] } {
+  const span = Math.max(hi - lo, 1);
+  const raw = span / 4;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((st) => st >= raw) ?? 10 * mag;
+  const min = Math.max(0, Math.floor(lo / step) * step);
+  const max = Math.ceil(hi / step) * step;
+  const ticks: number[] = [];
+  for (let v = min; v <= max + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { domain: [min, max], ticks };
 }
 
 /**
@@ -242,36 +262,32 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
   const priced = row.messages.filter((m): m is typeof m & { tick: number; price: number } => m.tick !== null && m.price !== null);
   if (priced.length < 2) return null;
   const limits = row.decisions.filter((d): d is typeof d & { tick: number; reservation: number } => d.tick !== null && d.reservation !== null);
-  const ticks = [...priced.map((m) => m.tick), ...limits.map((d) => d.tick)];
-  const firstTick = Math.min(...ticks);
+  const firstTick = Math.min(...priced.map((m) => m.tick), ...limits.map((d) => d.tick));
   const at = (tick: number) => tick - firstTick + 1;
-  const lastBySide = (us: boolean): CurvePoint[] => {
-    const byRound = new Map<number, number>();
-    for (const m of priced) if (m.us === us) byRound.set(at(m.tick), m.price);
-    return [...byRound].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
+  const byRound = (pts: { tick: number; value: number }[]): CurvePoint[] => {
+    const m = new Map<number, number>();
+    for (const p of pts) m.set(at(p.tick), p.value);
+    return [...m].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
   };
-  const ours = lastBySide(true);
-  const theirs = lastBySide(false);
-  const limitByRound = new Map<number, number>();
-  for (const d of limits) limitByRound.set(at(d.tick), d.reservation);
-  let limit = [...limitByRound].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
-  const distinct = new Set(limit.map((p) => p.value));
-  let fixedLimit: number | null = null;
-  if (distinct.size === 1) {
-    fixedLimit = limit[0]!.value;
-    limit = [];
-  } else if (distinct.size === 0 && row.kind.startsWith("duel") && row.our_value !== null) {
-    fixedLimit = row.our_value;
-  }
+  const ours = byRound(priced.filter((m) => m.us).map((m) => ({ tick: m.tick, value: m.price })));
+  const theirs = byRound(priced.filter((m) => !m.us).map((m) => ({ tick: m.tick, value: m.price })));
+  const limit = byRound(limits.map((d) => ({ tick: d.tick, value: d.reservation })));
+  const opening = limits.find((d) => d.action === "open")?.reservation;
+  const turns = limits.filter((d) => d.action !== "open").map((d) => d.reservation);
+  const lowestTurn = turns.length > 0 ? Math.min(...turns) : undefined;
+  const capped = row.kind === "dealer-buy" && opening !== undefined && lowestTurn !== undefined && lowestTurn < opening ? { from: opening, to: lowestTurn } : null;
+  const duel = row.kind.startsWith("duel");
+  const reference = row.our_value === null ? null : { value: row.our_value, label: duel ? `our limit ${row.our_value}` : `our value ${row.our_value}` };
   let lastRound = Math.max(...ours.map((p) => p.round), ...theirs.map((p) => p.round), ...limit.map((p) => p.round));
   const settledRound = row.tick_settled !== null && row.tick_settled >= firstTick ? at(row.tick_settled) : lastRound;
   let end: OfferCurve["end"] = null;
   if (row.price !== null && ["deal", "bought", "sold"].includes(row.status)) end = { round: settledRound, kind: "deal", label: `deal ${row.price}` };
   else if (row.status === "walked" || row.status === "closed") end = { round: settledRound, kind: "walk", label: row.closed_reason ?? row.status };
   if (end) lastRound = Math.max(lastRound, end.round);
-  const values = [...ours, ...theirs, ...limit].map((p) => p.value).concat(fixedLimit !== null ? [fixedLimit] : [], end?.kind === "deal" && row.price !== null ? [row.price] : []);
+  const values = [...ours, ...theirs, ...limit].map((p) => p.value).concat(reference ? [reference.value] : [], end?.kind === "deal" && row.price !== null ? [row.price] : []);
   const lo = Math.min(...values);
   const hi = Math.max(...values);
-  const pad = Math.max(1, (hi - lo) * 0.15);
-  return { firstTick, rounds: lastRound + 1, yDomain: [Math.max(0, Math.floor(lo - pad)), Math.ceil(hi + pad)], ours, theirs, limit, fixedLimit, end };
+  const pad = Math.max(1, (hi - lo) * 0.1);
+  const scale = niceScale(lo - pad, hi + pad);
+  return { firstTick, rounds: lastRound + 1, yDomain: scale.domain, yTicks: scale.ticks, ours, theirs, limit, capped, reference, end };
 }

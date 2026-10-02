@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentLines, boardModel, bookMakerLabel, offerCurve, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
+import { agentLines, boardModel, bookMakerLabel, niceScale, offerCurve, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
 
 const EMPTY: Board = boardModel(null);
 
@@ -156,7 +156,7 @@ describe("cockpit · quién es quién", () => {
 
 describe("cockpit · offerCurve", () => {
   const msg = (tick: number, us: boolean, price: number | null) => ({ sender: us ? "t02" : "abuela", us, tick, price, text: "" });
-  const dec = (tick: number, reservation: number | null) => ({ tick, action: "counter", rule: null, reservation, ourPrice: null, herPrice: null });
+  const dec = (tick: number, reservation: number | null, action = "counter") => ({ tick, action, rule: null, reservation, ourPrice: null, herPrice: null });
 
   it("ticks relativos, último precio de cada lado por tick, límite por tick y final del trato", () => {
     const curve = offerCurve(
@@ -165,9 +165,10 @@ describe("cockpit · offerCurve", () => {
         kind: "dealer-buy",
         status: "deal",
         price: 25,
+        our_value: 32.5,
         tick_settled: 121,
         messages: [msg(119, true, 22), msg(119, false, 29), msg(120, false, 26), msg(120, true, 25), msg(121, false, null)],
-        decisions: [dec(118, 32), dec(119, 28), dec(120, 28)],
+        decisions: [dec(118, 32, "open"), dec(119, 28), dec(120, 28)],
       }),
     );
     expect(curve).toMatchObject({
@@ -176,16 +177,22 @@ describe("cockpit · offerCurve", () => {
       ours: [{ round: 2, value: 22 }, { round: 3, value: 25 }],
       theirs: [{ round: 2, value: 29 }, { round: 3, value: 26 }],
       limit: [{ round: 1, value: 32 }, { round: 2, value: 28 }, { round: 3, value: 28 }],
-      fixedLimit: null,
+      capped: { from: 32, to: 28 },
+      reference: { value: 32.5, label: "our value 32.5" },
       end: { round: 4, kind: "deal", label: "deal 25" },
+      yDomain: [20, 35],
+      yTicks: [20, 25, 30, 35],
     });
-    expect(curve!.yDomain[0]).toBeLessThan(22);
-    expect(curve!.yDomain[1]).toBeGreaterThan(32);
   });
 
   it("duelo: el límite fijo es your_limit; sin final si sigue vivo", () => {
     const curve = offerCurve(row({ id: "duel:1", kind: "duel-buyer", status: "live", our_value: 116, messages: [msg(157, false, 119), msg(158, true, 90)] }));
-    expect(curve).toMatchObject({ fixedLimit: 116, limit: [], end: null, rounds: 3 });
+    expect(curve).toMatchObject({ reference: { value: 116, label: "our limit 116" }, capped: null, limit: [], end: null, rounds: 3 });
+  });
+
+  it("niceScale: pasos 1/2/5 que cubren el rango", () => {
+    expect(niceScale(20.4, 34.1)).toEqual({ domain: [20, 35], ticks: [20, 25, 30, 35] });
+    expect(niceScale(85, 125)).toEqual({ domain: [80, 130], ticks: [80, 90, 100, 110, 120, 130] });
   });
 
   it("menos de dos precios ⇒ sin curva", () => {

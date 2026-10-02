@@ -26,6 +26,12 @@ export interface OfferChartProps {
   onPointClick?: (point: { side: "us" | "them"; round: number; value: number }) => void;
   /** Roving tab stop starts on this round's point (and marks it aria-pressed) instead of the first one (A2). */
   selectedRound?: number;
+  /** Título del eje X (por defecto "round"). */
+  xLabel?: string;
+  /** Etiqueta de cada marca del eje X (por defecto el número de ronda); "" la oculta. */
+  xTickLabel?: (round: number) => string;
+  /** Valores del eje Y con línea de rejilla (por defecto, 5 repartidos en `yDomain`). */
+  yTicks?: number[];
 }
 
 const WIDTH = 640;
@@ -128,14 +134,15 @@ export function OfferChart({
   end,
   onPointClick,
   selectedRound,
+  xLabel = "round",
+  xTickLabel = String,
+  yTicks,
 }: OfferChartProps) {
   const [yMin, yMax] = yDomain;
   const injectionSet = new Set(injectionRounds ?? []);
   const gridTicks = 4;
-  const gridLines = Array.from({ length: gridTicks + 1 }, (_, index) => {
-    const value = yMax - ((yMax - yMin) * index) / gridTicks;
-    return { value, y: offerChartYScale(value, yDomain) };
-  });
+  const gridValues = yTicks ?? Array.from({ length: gridTicks + 1 }, (_, index) => yMax - ((yMax - yMin) * index) / gridTicks);
+  const gridLines = gridValues.map((value) => ({ value, y: offerChartYScale(value, yDomain) }));
   const xTicks = Array.from({ length: rounds + 1 }, (_, round) => round);
 
   const showZopa = zopa && ourReserve !== undefined && theirReserve !== undefined;
@@ -210,7 +217,7 @@ export function OfferChart({
       className="nr-chart"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role={onPointClick ? "group" : "img"}
-      aria-label="Offers from both sides by round"
+      aria-label={`Offers from both sides by ${xLabel}`}
     >
       {showZopa ? <rect className="zopa" x={MARGIN.left} y={zopaTop} width={INNER_WIDTH} height={zopaHeight} /> : null}
 
@@ -231,11 +238,11 @@ export function OfferChart({
       <g className="axis-label" textAnchor="middle">
         {xTicks.map((round) => (
           <text key={round} x={offerChartXScale(round, rounds)} y={HEIGHT - MARGIN.bottom + 16}>
-            {round}
+            {xTickLabel(round)}
           </text>
         ))}
         <text x={WIDTH / 2} y={HEIGHT - 4}>
-          round
+          {xLabel}
         </text>
       </g>
 

@@ -193,19 +193,23 @@ function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
   );
 }
 
-/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite y el final. */
+/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite por tick, nuestro valor y el final. */
 function NegotiationCurve({ row }: { row: BoardRow }) {
   const curve = offerCurve(row);
   if (!curve) return null;
+  const tickOf = (round: number) => (round === 0 ? "" : String(curve.firstTick + round - 1));
   return (
     <figure aria-label="Negotiation curve" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <OfferChart
         rounds={curve.rounds}
         yDomain={curve.yDomain}
+        yTicks={curve.yTicks}
+        xLabel="tick"
+        xTickLabel={tickOf}
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
         {...(curve.limit.length > 0 ? { target: curve.limit } : {})}
-        {...(curve.fixedLimit !== null ? { ourReserve: curve.fixedLimit } : {})}
+        {...(curve.reference ? { ourReserve: curve.reference.value } : {})}
         {...(curve.end ? { end: curve.end } : {})}
       />
       <Legend
@@ -213,12 +217,15 @@ function NegotiationCurve({ row }: { row: BoardRow }) {
           { kind: "us", label: "Team 2 (us)" },
           { kind: "them", label: row.counterparty },
           ...(curve.limit.length > 0 ? [{ kind: "target" as const, label: "our limit (reservation) by tick" }] : []),
-          ...(curve.fixedLimit !== null ? [{ kind: "reserve-us" as const, label: `our limit ${curve.fixedLimit}` }] : []),
+          ...(curve.reference ? [{ kind: "reserve-us" as const, label: curve.reference.label }] : []),
           ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
         ]}
-      >
-        <span className="nr-muted">X axis: ticks since tick {curve.firstTick} (1 = tick {curve.firstTick}).</span>
-      </Legend>
+      />
+      {curve.capped ? (
+        <span className="nr-muted">
+          Our limit dropped from {curve.capped.from} to {curve.capped.to} during the turns. The agent lowers it when our cash or the spending budget runs short, or reprices it when the dealer reveals which card it is; the log does not say which.
+        </span>
+      ) : null}
     </figure>
   );
 }

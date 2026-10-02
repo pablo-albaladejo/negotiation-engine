@@ -36,6 +36,7 @@ export {
   historyGroups,
   liveItems,
   mentionsUs,
+  niceScale,
   offerCurve,
   ourOfferIds,
   partyOf,
