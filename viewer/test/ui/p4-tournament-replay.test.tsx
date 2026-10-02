@@ -217,3 +217,33 @@ describe("TournamentReplayScreen (P4)", () => {
     expect(container.querySelector("line.reserve-them")).toBeNull();
   });
 });
+
+describe("TournamentReplayScreen with null/rejected outcome (T16)", () => {
+  it("renders with summary null (no binding agreement/walk recorded)", () => {
+    const base = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
+    expect(base.outcome).toBeNull();
+    const { container } = render(<TournamentReplayScreen model={base} onBack={() => {}} />);
+    expect(container).toBeTruthy();
+    expect(screen.getByText("TOURNAMENT")).toBeTruthy();
+  });
+
+  it("renders with rejected outcome (walk recorded)", () => {
+    const trace = tournamentTrace([{ round: 1, box: "binding", output: { kind: "walk" } }]);
+    const model = tournamentReplayModel(trace, null);
+    expect(model.outcome?.kind).toBe("walk");
+    render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(screen.getByText("Opponent walked")).toBeTruthy();
+  });
+
+  it("no ZOPA rectangle drawn when no scenario match", () => {
+    const model = tournamentReplayModel(fx.tournament.trace, null);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(container.querySelector("rect.zopa")).toBeNull();
+  });
+
+  it("no Their reserve line drawn when no scenario match", () => {
+    const model = tournamentReplayModel(fx.tournament.trace, null);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
+    expect(container.querySelector("line.reserve-them")).toBeNull();
+  });
+});
