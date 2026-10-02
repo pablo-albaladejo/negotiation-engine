@@ -48,6 +48,19 @@ describe("Legend items", () => {
     expect(html).toContain("nr-legend-swatch same-round");
     expect(html).toContain("nr-legend-swatch mandate");
   });
+
+  it("renders the injection and end swatch kinds (A5)", () => {
+    const html = renderToString(
+      <Legend
+        items={[
+          { kind: "injection", label: "Injection" },
+          { kind: "end", label: "Close" },
+        ]}
+      />,
+    );
+    expect(html).toContain("nr-legend-swatch injection");
+    expect(html).toContain("nr-legend-swatch end");
+  });
 });
 
 describe("Scoreboard with null round/attacksBlocked", () => {

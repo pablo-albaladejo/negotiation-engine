@@ -86,6 +86,9 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
     ? `${model.game.surplusShare === null ? "—" : dec(model.game.surplusShare)} · empty ZOPA`
     : dec(model.game.surplusShare);
   const ourReserveValue = model.reserves ? offerValue(model.reserves.ours) : null;
+  // A5: "Target curve ({persona/strategy})" only when a persona is actually logged.
+  const persona = summary?.config.params?.persona ?? null;
+  const targetCurveLabel = persona ? `Target curve (${persona})` : "Target curve";
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -141,11 +144,13 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
             items={[
               { kind: "us", label: "Our offers" },
               { kind: "them", label: "Opponent offers" },
-              { kind: "target", label: "Target curve" },
+              { kind: "target", label: targetCurveLabel },
               { kind: "estimate", label: "Estimate of their reserve" },
               { kind: "reserve-us", label: "Our reserve" },
               { kind: "reserve-them", label: "Their reserve" },
               { kind: "zopa", label: "ZOPA" },
+              { kind: "injection", label: "Injection" },
+              { kind: "end", label: "Close" },
             ]}
           />
         </Card>

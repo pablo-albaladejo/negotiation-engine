@@ -120,6 +120,8 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-legend-swatch.zopa{height:10px;border-top:none;background:var(--zopa)}
 .nr-legend-swatch.same-round{border-top:1px solid var(--muted)}
 .nr-legend-swatch.mandate{height:10px;border-top:none;border:1px dashed var(--us);background:var(--us-soft)}
+.nr-legend-swatch.injection{width:9px;height:9px;border-top:none;border-radius:50%;background:var(--warn)}
+.nr-legend-swatch.end{width:10px;height:10px;border-top:none;border-radius:50%;border:2px solid var(--ok);background:transparent}
 
 .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 

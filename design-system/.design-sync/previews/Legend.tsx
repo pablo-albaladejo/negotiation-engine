@@ -11,6 +11,8 @@ export function ArenaLegend() {
         { kind: "reserve-us", label: "our reserve" },
         { kind: "reserve-them", label: "their reserve" },
         { kind: "zopa", label: "ZOPA (arena only)" },
+        { kind: "injection", label: "injection" },
+        { kind: "end", label: "close" },
       ]}
     />
   );

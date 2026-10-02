@@ -85,7 +85,7 @@ function initialOfferChartIndex(points: OfferChartInteractivePoint[], selectedRo
 }
 
 export interface LegendItem {
-  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate";
+  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate" | "injection" | "end";
   label: string;
 }
 
