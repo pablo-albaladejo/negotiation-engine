@@ -22,6 +22,7 @@
     "agent": "tsx src/agent/index.ts",
     "bazaar": "tsx src/bazaar/main.ts",
     "bazaar:status": "tsx src/bazaar/status-main.ts",
+    "bazaar:sim": "tsx src/bazaar/sim/sim-main.ts",
     "box": "tsx src/dev/box-main.ts",
     "replay": "tsx src/dev/replay-main.ts",
     "golden:update": "tsx src/dev/golden-main.ts",
