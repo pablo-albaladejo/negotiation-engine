@@ -15,6 +15,8 @@ export interface ArenaReplayModel {
     roundLimit: number | null;
     agreement: Offer | null;
     agreedBy: "agent" | "rival" | null;
+    /** Side that broke the protocol (`endReason: "protocol-violation"`); `null` otherwise or if unknown. */
+    protocolViolationBy: "agent" | "rival" | null;
     surplusShare: number | null;
     zopaEmpty: boolean;
     /** Error registrado por la arena (p. ej. con `endReason: "rival-error"`). */
@@ -60,6 +62,7 @@ export function arenaReplayModel(line: TranscriptLine, trace: readonly TraceLine
       roundLimit: line.roundLimit ?? null,
       agreement: line.agreement ?? null,
       agreedBy: line.agreedBy ?? null,
+      protocolViolationBy: line.protocolViolation?.by ?? line.metrics.protocolViolation ?? null,
       surplusShare: line.metrics.surplusShare,
       zopaEmpty: line.metrics.zopaEmpty,
       error: line.error ?? null,

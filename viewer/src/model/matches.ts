@@ -20,6 +20,8 @@ export interface MatchRow {
   role: Role;
   seed: number;
   endReason: EndReason;
+  /** Side that broke the protocol (`endReason: "protocol-violation"`); `null` otherwise or if unknown. */
+  protocolViolationBy: "agent" | "rival" | null;
   surplusShare: number | null;
   rounds: number;
   /** `null` en transcripts v1 ("not logged"). */
@@ -65,6 +67,7 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
         role: line.role,
         seed: line.seed,
         endReason: line.endReason,
+        protocolViolationBy: line.protocolViolation?.by ?? line.metrics.protocolViolation ?? null,
         surplusShare: line.metrics.surplusShare,
         rounds: line.rounds,
         roundLimit: line.roundLimit ?? null,

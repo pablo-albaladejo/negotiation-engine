@@ -59,7 +59,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         ? { round: lastRound, kind: "walk" as const, label: "Walk" }
         : undefined;
 
-  const result = resultLabel(model.game.endReason);
+  const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
 

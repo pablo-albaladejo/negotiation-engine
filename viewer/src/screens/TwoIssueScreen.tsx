@@ -70,6 +70,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
       : model.game.endReason === "agent-walk" || model.game.endReason === "rival-walk"
         ? { round: lastRound, kind: "walk" as const, label: "Walk" }
         : undefined;
+  const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
   const rows: DataTableRow[] = (model.rows ?? []).map((r) => ({
     r: `R${r.round}`,
     us: fmtOffer(r.ours),
@@ -111,8 +112,8 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
         items={[
           {
             label: "Outcome",
-            value: resultLabel(model.game.endReason).label,
-            ...(resultLabel(model.game.endReason).tone ? { tone: resultLabel(model.game.endReason).tone! } : {}),
+            value: result.label,
+            ...(result.tone ? { tone: result.tone } : {}),
           },
           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
           { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },

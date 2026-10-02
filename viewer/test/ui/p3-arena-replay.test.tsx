@@ -161,4 +161,13 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(resultLabel("agent-walk").label).toBe("We walked");
     expect(resultLabel(undefined).label).toBe("not logged");
   });
+
+  it("protocol-violation: label depends on who broke it (line.protocolViolation?.by ?? metrics.protocolViolation)", () => {
+    expect(resultLabel("protocol-violation", "rival").label).toBe("Opponent protocol violation");
+    expect(resultLabel("protocol-violation", "agent").label).toBe("Our protocol violation");
+    expect(resultLabel("protocol-violation").label).toBe("Protocol violation");
+    expect(resultLabel("rival-error").label).toBe("Opponent error");
+    // Distinct raw ids never collide on the same label, so the Filters dropdown never shows two identical options.
+    expect(resultLabel("rival-error").label).not.toBe(resultLabel("protocol-violation").label);
+  });
 });

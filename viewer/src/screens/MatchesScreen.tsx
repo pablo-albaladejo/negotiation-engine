@@ -85,7 +85,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     esc: r.scenarioId,
     rival: r.rival,
     rol: roleLabel(r.role),
-    res: resultLabel(r.endReason).label,
+    res: resultLabel(r.endReason, r.protocolViolationBy).label,
     exc: pct(r.surplusShare),
     rondas: r.roundLimit !== null ? `${r.rounds} / ${r.roundLimit}` : String(r.rounds),
     inc: incidents(r),

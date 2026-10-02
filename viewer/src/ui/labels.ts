@@ -8,12 +8,20 @@ export interface ResultLabel {
   tone?: "deal" | "walk";
 }
 
+/** Side that broke the protocol, as logged either on the transcript line (`protocolViolation.by`) or on its metrics (`metrics.protocolViolation`). */
+export type ViolationBy = "agent" | "rival" | null | undefined;
+
 /**
  * Single label table for the engine's logged `endReason`, used everywhere in the viewer:
  * KpiStrip, the Matches Outcome column, the Filters options and the MatchSelector labels
  * (INBOX §0.3). Raw ids stay in the URL and in internal filter values.
+ *
+ * `violationBy` disambiguates `endReason: "protocol-violation"` (either side can break the
+ * protocol): pass `line.protocolViolation?.by ?? metrics.protocolViolation`. Omit it where only
+ * the raw `endReason` is known (e.g. the Filters dropdown options) -- the generic "Protocol
+ * violation" label never collides with "Opponent error" (`rival-error`).
  */
-export function resultLabel(endReason: EndReason | string | undefined): ResultLabel {
+export function resultLabel(endReason: EndReason | string | undefined, violationBy?: ViolationBy): ResultLabel {
   switch (endReason) {
     case "agreement":
       return { label: "Deal", tone: "deal" };
@@ -22,8 +30,11 @@ export function resultLabel(endReason: EndReason | string | undefined): ResultLa
     case "rival-walk":
       return { label: "Opponent walked", tone: "walk" };
     case "rival-error":
-    case "protocol-violation":
       return { label: "Opponent error", tone: "walk" };
+    case "protocol-violation":
+      if (violationBy === "rival") return { label: "Opponent protocol violation", tone: "walk" };
+      if (violationBy === "agent") return { label: "Our protocol violation", tone: "walk" };
+      return { label: "Protocol violation", tone: "walk" };
     case "limit":
       return { label: "Round limit" };
     case "agent-error":
@@ -35,8 +46,8 @@ export function resultLabel(endReason: EndReason | string | undefined): ResultLa
 }
 
 /** Binary deal/walk classification for components that need one, e.g. MatchSelector's swatch. */
-export function resultTone(endReason: EndReason | string | undefined): "deal" | "walk" {
-  return resultLabel(endReason).tone === "deal" ? "deal" : "walk";
+export function resultTone(endReason: EndReason | string | undefined, violationBy?: ViolationBy): "deal" | "walk" {
+  return resultLabel(endReason, violationBy).tone === "deal" ? "deal" : "walk";
 }
 
 /** ZOPA KPI label: the engine only logs whether it was empty. */

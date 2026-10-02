@@ -6,6 +6,8 @@ export interface MatchSelectorGame {
   gameId: string;
   rival?: string;
   endReason?: string;
+  /** `line.protocolViolation?.by`, when known: disambiguates `endReason: "protocol-violation"`. */
+  protocolViolation?: { by: "agent" | "rival" };
 }
 
 export interface MatchSelectorProps {
@@ -32,8 +34,8 @@ export function MatchSelector({ games, currentGameId, onSelectGame }: MatchSelec
   const matches = matchWindow(games, currentGameId).map((game) => ({
     id: game.gameId,
     rival: game.rival ?? "not logged",
-    result: resultTone(game.endReason),
-    label: resultLabel(game.endReason).label,
+    result: resultTone(game.endReason, game.protocolViolation?.by),
+    label: resultLabel(game.endReason, game.protocolViolation?.by).label,
   }));
   return <DsMatchSelector matches={matches} selectedId={currentGameId} onSelect={onSelectGame} />;
 }

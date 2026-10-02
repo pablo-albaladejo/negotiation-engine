@@ -78,6 +78,15 @@ describe("matchesModel (P2)", () => {
     expect(m.rows.length).toBe(noInjectionField.length);
   });
 
+  it("protocolViolationBy: line.protocolViolation?.by ?? metrics.protocolViolation, null si no hay violación", () => {
+    const withLineBy = { ...fx.games[0]!, protocolViolation: { by: "rival" as const, detail: "x" } };
+    const withMetricsOnly = { ...fx.games[0]!, protocolViolation: undefined, metrics: { ...fx.games[0]!.metrics, protocolViolation: "agent" as const } };
+    const withNeither = { ...fx.games[0]!, protocolViolation: undefined, metrics: { ...fx.games[0]!.metrics, protocolViolation: null } };
+    expect(matchesModel(fx.summary, [withLineBy]).rows[0]!.protocolViolationBy).toBe("rival");
+    expect(matchesModel(fx.summary, [withMetricsOnly]).rows[0]!.protocolViolationBy).toBe("agent");
+    expect(matchesModel(fx.summary, [withNeither]).rows[0]!.protocolViolationBy).toBeNull();
+  });
+
   it("run vacío: overall.games = 0 ⇒ empty", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     expect(matchesModel(summary, []).empty).toBe(true);
