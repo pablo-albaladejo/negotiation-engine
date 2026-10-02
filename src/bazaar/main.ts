@@ -6,7 +6,7 @@ import { DEFAULT_NEGOTIATOR_PARAMS, type StepMode } from "./negotiator.js";
 import { parseOnly } from "./plan.js";
 import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
-import { SERIOUS_DEFAULTS } from "./serious.js";
+import { cashFloorOf, SERIOUS_DEFAULTS } from "./serious.js";
 import { runSerious } from "./serious-run.js";
 import { join } from "node:path";
 
@@ -15,7 +15,8 @@ import { join } from "node:path";
  * un paso por tick hasta Ctrl-C o hasta llegar a `--max-deals` (o agotar `--max-threads` conversaciones).
  * `--dry-run` solo lee (GET), imprime el plan y registra lo que haría; ningún POST.
  * `--serious`: modo continuo con todos los dealers desbloqueados y todos los tratos que crean valor (sin --only),
- * safety 1,0, `--max-spend-hour 60 --max-spend 150`, caja nunca por debajo de 270 + `--cash-reserve` (10).
+ * safety 1,0, `--max-spend-hour 60 --max-spend 150`, caja nunca por debajo de 270 + `--cash-reserve` (10). Con el mercado
+ * ya pagado, `--cash-floor 20` fija el suelo total (sin reserva añadida salvo `--cash-reserve` explícito).
  */
 
 function cap(raw: string | undefined, name: string): number {
@@ -32,8 +33,8 @@ async function main() {
       "max-spend": { type: "string" },
       "max-spend-hour": { type: "string" },
       serious: { type: "boolean", default: false },
-      "cash-floor": { type: "string", default: String(SERIOUS_DEFAULTS.venueReserve) },
-      "cash-reserve": { type: "string", default: String(SERIOUS_DEFAULTS.cashReserve) },
+      "cash-floor": { type: "string" },
+      "cash-reserve": { type: "string" },
       lessons: { type: "string", default: join("docs", "bazaar", "lessons.json") },
       "max-deals": { type: "string" },
       "max-threads": { type: "string" },
@@ -54,7 +55,7 @@ async function main() {
   if (!Number.isFinite(maxSpend) || maxSpend < 0) throw new Error("--max-spend debe ser un número ≥ 0");
   const maxSpendHour = Number(values["max-spend-hour"] ?? (serious ? SERIOUS_DEFAULTS.maxSpendPerHour : maxSpend));
   if (!Number.isFinite(maxSpendHour) || maxSpendHour < 0) throw new Error("--max-spend-hour debe ser un número ≥ 0");
-  const cashFloor = Number(values["cash-floor"]) + Number(values["cash-reserve"]);
+  const { floor: cashFloor, venue: floorVenue, reserve: floorReserve } = cashFloorOf(values["cash-floor"], values["cash-reserve"]);
   if (!Number.isFinite(cashFloor) || cashFloor < 0) throw new Error("--cash-floor y --cash-reserve deben ser números ≥ 0");
   if (serious && values.only) throw new Error("--serious abre todos los tratos que crean valor: no admite --only");
   const buyAnchorFrac = Number(values["buy-anchor-frac"]);
@@ -87,7 +88,7 @@ async function main() {
     const trace = new FileTrace(liveTraceDir(process.cwd()));
     const clock = await client.clock();
     console.log(
-      `bazaar agent · SERIOUS · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · all unlocked dealers · safety ${safety ?? SERIOUS_DEFAULTS.safety} · max-spend-hour ${maxSpendHour} P · max-spend ${maxSpend} P · cash floor ${cashFloor} P (venue ${values["cash-floor"]} + reserve ${values["cash-reserve"]}) · limits ${JSON.stringify(clock.limits ?? {})} · trazas en ${trace.dir}`,
+      `bazaar agent · SERIOUS · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · all unlocked dealers · safety ${safety ?? SERIOUS_DEFAULTS.safety} · max-spend-hour ${maxSpendHour} P · max-spend ${maxSpend} P · cash floor ${cashFloor} P (${floorVenue} + reserve ${floorReserve}) · limits ${JSON.stringify(clock.limits ?? {})} · trazas en ${trace.dir}`,
     );
     let stop = false;
     process.on("SIGINT", () => {

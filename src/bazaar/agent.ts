@@ -3,7 +3,7 @@ import { closeText, counterText, holdText, textMatchesPrice } from "./messages.j
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
 import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
-import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
+import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "./schemas.js";
 import { formatPatience, PatienceLog } from "./patience.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
 import { gameHours } from "./dealer-profile.js";
@@ -72,6 +72,8 @@ interface Active {
   /** Rareza+set: carta que ella ofrece, ya revalorada a nuestro valor. */
   revealed?: string;
   lastRule?: string;
+  /** Compra que aceptamos nosotros: su precio ya se contó en el presupuesto (no se cuenta dos veces al cerrar). */
+  acceptedPrice?: number;
 }
 
 const HOUR_MS = 3_600_000;
@@ -87,6 +89,8 @@ export class BazaarAgent {
   private readonly dealHours: number[] = [];
   private hoursNow = 0;
   private lastCash: number | undefined;
+  /** Caja del paso anterior: si un trato cierra sin precio visible, la caída de caja es lo gastado. */
+  private prevCash: number | undefined;
   private readonly values = new Map<string, number>();
   private catalog: Catalog | undefined;
   /** Si el dealer rechaza `{buy: {card}}`, se compra por rareza y set. */
@@ -184,6 +188,7 @@ export class BazaarAgent {
     this.hoursNow = gameHours(clock);
     try {
       const me = await this.api.me();
+      this.prevCash = this.lastCash;
       this.lastCash = me.cash;
       if (!this.active) await this.adoptOpenThread(me, tick);
       if (this.active) {
@@ -434,6 +439,12 @@ export class BazaarAgent {
         case "accept":
           if (!this.o.dryRun) await this.api.accept(d.action.offerId);
           this.team.markAccept(tick);
+          if (!this.o.dryRun && target.side === "buy") {
+            // Se cuenta al aceptar, con el precio de su oferta: no depende de leer luego el hilo cerrado.
+            this.team.record(d.action.price);
+            this.spentRun += d.action.price;
+            active.acceptedPrice = d.action.price;
+          }
           emit({ ...base, action: "accept", ourPrice: d.action.price, patience: active.patience.summary(tick) });
           return;
         case "counter": {
@@ -509,14 +520,19 @@ export class BazaarAgent {
   }
 
   private finish(thread: Thread, tick: number, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void, me?: Me) {
-    const { target, patience } = this.active!;
-    const settled = settledPrice(thread, target, this.o.dealer);
+    const { target, patience, acceptedPrice } = this.active!;
+    let settled = settledPrice(thread, target, this.o.dealer) ?? acceptedPrice;
     if (thread.status === "deal") {
       this.dealsDone += 1;
       this.dealHours.push(this.hoursNow);
-      if (target.side === "buy" && settled !== undefined) {
+      if (target.side === "buy" && acceptedPrice === undefined) {
+        // Trato sin precio visible ("deal at ?"): caída de caja desde el paso anterior; si tampoco, el límite (conservador).
+        const drop = this.prevCash !== undefined && me ? this.prevCash - me.cash : undefined;
+        const source = settled !== undefined ? "thread offers" : drop !== undefined && drop > 0 ? "cash delta" : "our limit (price unknown)";
+        settled ??= drop !== undefined && drop > 0 ? drop : target.reservation;
         this.team.record(settled);
         this.spentRun += settled;
+        this.log(`  thread ${thread.id}: deal, ${settled} P counted against the budgets (${source})`);
       }
       this.values.clear();
     }
@@ -580,9 +596,10 @@ export function selfIdOf(thread: Thread, me: Me): string | undefined {
   return thread.team ?? me.id ?? (typeof score?.team === "string" ? score.team : undefined);
 }
 
-/** Precio al que cerró: la oferta aceptada si se ve; si no, la última oferta del dealer. */
+/** Precio al que cerró: la oferta aceptada (vigentes o de los mensajes) si se ve; si no, la última oferta del dealer. */
 export function settledPrice(thread: Thread, target: Target, dealer: DealerRef): number | undefined {
-  const accepted = thread.standing_offers.find((o) => /accept|settl|fill|deal|done/i.test(o.status ?? ""));
+  const all = [...thread.standing_offers, ...thread.messages.map((m) => StandingOfferSchema.safeParse(m.offer)).flatMap((r) => (r.success ? [r.data] : []))];
+  const accepted = all.find((o) => /accept|settl|fill|deal|done/i.test(o.status ?? ""));
   if (accepted) {
     const cash = target.side === "buy" ? (isDealer(dealer, accepted.maker) ? accepted.want?.cash : accepted.give?.cash) : isDealer(dealer, accepted.maker) ? accepted.give?.cash : accepted.want?.cash;
     if (typeof cash === "number") return cash;

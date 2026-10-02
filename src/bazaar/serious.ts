@@ -10,6 +10,13 @@ import type { TraceRecord } from "./trace.js";
 
 export const SERIOUS_DEFAULTS = { maxSpendPerHour: 60, maxSpendTotal: 150, safety: 1.0, venueReserve: 270, cashReserve: 10 } as const;
 
+/** Suelo de caja: por defecto mercado (270) + reserva (10); con `--cash-floor N`, N es el suelo (+ `--cash-reserve` solo si se da). */
+export function cashFloorOf(floorRaw: string | undefined, reserveRaw: string | undefined): { floor: number; venue: number; reserve: number } {
+  const venue = floorRaw === undefined ? SERIOUS_DEFAULTS.venueReserve : Number(floorRaw);
+  const reserve = reserveRaw !== undefined ? Number(reserveRaw) : floorRaw === undefined ? SERIOUS_DEFAULTS.cashReserve : 0;
+  return { floor: venue + reserve, venue, reserve };
+}
+
 export interface ClockGate {
   run: boolean;
   reason?: "paused" | "doors-closed";
@@ -103,7 +110,7 @@ export function statusLine(s: StatusInput): string {
   const doors = (s.clock as { doors?: unknown }).doors;
   const head = `[tick ${s.clock.tick} · ${gameHours(s.clock).toFixed(2)}h${typeof doors === "string" ? ` · ${doors}` : ""}${s.clock.paused ? " · paused" : ""}]`;
   const parts = [
-    `cash ${s.cash ?? "?"} (floor ${s.cashFloor})`,
+    `cash ${s.cash ?? "?"} (floor ${s.cashFloor}${s.cash !== undefined && s.cashFloor > s.cash ? ` > cash: WARNING no buys; lower it with --cash-floor` : ""})`,
     `spent ${s.spentHour}/${s.maxSpendHour} this hour, ${s.spentTotal}/${s.maxSpendTotal} run`,
     ...s.dealers.map((d) => `${d.id}: ${d.state}`),
     ...(s.deals !== undefined ? [`deals ${s.deals}`] : []),
