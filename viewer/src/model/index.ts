@@ -32,15 +32,23 @@ export {
 } from "./bazaarBoard.js";
 export {
   agentLines,
+  bookMakerLabel,
   historyGroups,
   liveItems,
+  mentionsUs,
+  ourOfferIds,
+  partyOf,
   scheduleLines,
   scoreMovers,
   scoreParts,
   standingOf,
+  teamLabel,
+  withTeamNames,
   type AgentHealth,
   type AgentLine,
   type LiveItem,
+  type Party,
+  type PartyKind,
   type ScheduleLine,
   type Standing,
 } from "./cockpit.js";

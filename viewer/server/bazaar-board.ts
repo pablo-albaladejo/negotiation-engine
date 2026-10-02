@@ -313,6 +313,7 @@ export class BazaarBoard {
     const album = albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues);
     const schedule = scheduleOf(await get("/api/schedule"));
     const myOffers = parseOffers(field(offersRaw, "offers")).filter((o) => o.maker === team);
+    const ourIds = new Set(myOffers.map((o) => o.id));
     const tradesTick = myOffers.reduce<number | null>((m, o) => (o.created_tick != null && (m === null || o.created_tick > m) ? o.created_tick : m), null);
     const agents: AgentStatus[] = [
       ...(await agentStatuses(this.bazaarDir)),
@@ -321,7 +322,7 @@ export class BazaarBoard {
 
     const refreshIn = Math.max(this.deps.minRefreshMs ?? 5_000, clock?.next_tick_in != null ? clock.next_tick_in * 1000 + 2_000 : 30_000);
     const venue: BoardVenueOut | null = venueId
-      ? { venue: venueId, name: me?.venue?.name ?? null, status: me?.venue?.status ?? null, trades: me?.venue?.trades ?? null, volume: me?.venue?.volume ?? null, book: bookLines(field(venueRaw, "offers")) }
+      ? { venue: venueId, name: me?.venue?.name ?? null, status: me?.venue?.status ?? null, trades: me?.venue?.trades ?? null, volume: me?.venue?.volume ?? null, book: bookLines(field(venueRaw, "offers"), 40, ourIds) }
       : null;
     const data: BoardOut = {
       team,
@@ -334,7 +335,7 @@ export class BazaarBoard {
         : null,
       header: headerOf(me, team),
       rows,
-      market: { leaderboard: leaderLines(leaderRaw, team), feed: events.slice(-20).reverse().map(feedLine), rastro: bookLines(field(rastroRaw, "offers")), venue },
+      market: { leaderboard: leaderLines(leaderRaw, team), feed: events.slice(-20).reverse().map(feedLine), rastro: bookLines(field(rastroRaw, "offers"), 40, ourIds), venue },
       album,
       holdings,
       schedule,

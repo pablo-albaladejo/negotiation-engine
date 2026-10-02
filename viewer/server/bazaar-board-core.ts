@@ -778,9 +778,15 @@ export function feedLine(e: FeedEvent): FeedLine {
   return { id: e.id, tick: e.tick ?? null, type, text };
 }
 
-export function bookLines(raw: unknown, max = 40): BookLine[] {
-  return parseOffers(raw)
-    .slice(0, max)
+/**
+ * Libro de un venue: las `max` ofertas más recientes, y siempre las nuestras (`keep`), aunque
+ * sean más antiguas; el Bazaar anonimiza al autor, así que solo las reconocemos por id.
+ */
+export function bookLines(raw: unknown, max = 40, keep: ReadonlySet<number> = new Set()): BookLine[] {
+  const offers = parseOffers(raw).sort((a, b) => b.id - a.id);
+  const ours = offers.filter((o) => keep.has(o.id));
+  const rest = offers.filter((o) => !keep.has(o.id)).slice(0, Math.max(0, max - ours.length));
+  return [...ours, ...rest]
     .map((o) => ({ id: o.id, maker: o.maker ?? "?", give: sideLabel(o.give), want: sideLabel(o.want), expires_tick: o.expires_tick ?? null }));
 }
 

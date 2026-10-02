@@ -2,7 +2,7 @@ import { Card, ChatMessage, DataTable, Flag } from "@negotiation-ring/design-sys
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
-import { TableLink } from "../ui/buttons.js";
+import { SecondaryButton, TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import {
   ALL,
@@ -16,12 +16,18 @@ import {
   type BoardRow,
   type BoardRowKind,
   agentLines,
+  bookMakerLabel,
   historyGroups,
   liveItems,
+  mentionsUs,
+  ourOfferIds,
+  partyOf,
   scheduleLines,
   scoreMovers,
   scoreParts,
   standingOf,
+  teamLabel,
+  withTeamNames,
   type BoardAlbumPage,
 } from "../model/index.js";
 
@@ -83,12 +89,13 @@ function FiltersBar({ rows, filters, onChange }: { rows: BoardRow[]; filters: Bo
   );
 }
 
-function ConversationList({ rows, selectedId, onSelect }: { rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void }) {
+function ConversationList({ board, rows, selectedId, onSelect }: { board: Board; rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void }) {
   const selectedIndex = rows.findIndex((r) => r.id === selectedId);
   return (
     <DataTable
       columns={[
-        { key: "counterparty", label: "Counterparty" },
+        { key: "counterparty", label: "With" },
+        { key: "party", label: "Who they are" },
         { key: "kind", label: "Kind" },
         { key: "item", label: "Item" },
         { key: "status", label: "Status" },
@@ -101,9 +108,10 @@ function ConversationList({ rows, selectedId, onSelect }: { rows: BoardRow[]; se
       rows={rows.map((r) => ({
         counterparty: (
           <TableLink aria-pressed={r.id === selectedId} aria-label={`Open conversation with ${r.counterparty} (${r.id})`} onClick={() => onSelect(r.id)}>
-            {r.counterparty}
+            {partyOf(board, r).label}
           </TableLink>
         ),
+        party: partyOf(board, r).kind,
         kind: KIND_LABEL[r.kind] ?? r.kind,
         item: r.item,
         status: r.closed_reason ? `${r.status} · ${r.closed_reason}` : r.status,
@@ -124,10 +132,12 @@ function ConversationList({ rows, selectedId, onSelect }: { rows: BoardRow[]; se
 
 /** Conversación completa: mensajes literales (nunca interpretados) alineados por tick con nuestras
  * decisiones (`decisions.jsonl`), y la línea de tiempo de ofertas. */
-function ConversationDetail({ row }: { row: BoardRow }) {
+function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
   const steps = boardTimeline(row);
+  const party = partyOf(board, row);
+  const maker = (m: string) => (m === board.team ? { value: teamLabel(board, m), tone: "better" as const } : withTeamNames(board, m));
   return (
-    <Card title={`Conversation · ${row.counterparty} · ${KIND_LABEL[row.kind] ?? row.kind}`}>
+    <Card title={`Conversation · ${party.label} (${party.kind}) · ${KIND_LABEL[row.kind] ?? row.kind}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
           {row.d_score !== null && row.d_score !== 0 ? <Flag kind={row.d_score < 0 ? "walk" : "decision"}>{`Δ score ${row.d_score > 0 ? "+" : ""}${row.d_score}`}</Flag> : null}
@@ -145,7 +155,7 @@ function ConversationDetail({ row }: { row: BoardRow }) {
               <div key={`${s.tick ?? "?"}-${i}`} className="nr-grid" style={gridCols("minmax(0, 2fr) minmax(0, 1fr)")}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                   {s.messages.map((m, j) => (
-                    <ChatMessage key={j} side={m.us ? "us" : "them"} round={m.tick ?? 0} {...(m.price !== null ? { offer: m.price } : {})} flags={[{ kind: "neutral", label: m.sender }]} text={m.text} />
+                    <ChatMessage key={j} side={m.us ? "us" : "them"} round={m.tick ?? 0} {...(m.price !== null ? { offer: m.price } : {})} flags={[{ kind: m.us ? "decision" : "neutral", label: m.us ? teamLabel(board, board.team || m.sender) : withTeamNames(board, m.sender) }]} text={m.text} />
                   ))}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
@@ -173,7 +183,7 @@ function ConversationDetail({ row }: { row: BoardRow }) {
               { key: "final", label: "Final" },
               { key: "status", label: "Status" },
             ]}
-            rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: o.maker, give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
+            rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: maker(o.maker), give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
           />
         ) : null}
       </div>
@@ -183,6 +193,11 @@ function ConversationDetail({ row }: { row: BoardRow }) {
 
 function MarketPanel({ board }: { board: Board }) {
   const { clock, market } = board;
+  const ours = ourOfferIds(board);
+  const bookMaker = (o: { id: number; maker: string }) => {
+    const who = bookMakerLabel(board, o, ours);
+    return who.us ? { value: who.label, tone: "better" as const } : who.label;
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <Card title="Clock">
@@ -222,7 +237,7 @@ function MarketPanel({ board }: { board: Board }) {
                 <span className="nr-muted">
                   {show(e.tick, "?")} · {e.type}
                 </span>{" "}
-                <span>{e.text}</span>
+                {mentionsUs(board, e.text) ? <strong>{withTeamNames(board, e.text)}</strong> : <span>{withTeamNames(board, e.text)}</span>}
               </li>
             ))}
           </ul>
@@ -239,7 +254,7 @@ function MarketPanel({ board }: { board: Board }) {
               { key: "want", label: "Wants" },
               { key: "exp", label: "Expires", numeric: true },
             ]}
-            rows={market.rastro.map((o) => ({ maker: o.maker === board.team ? { value: `${o.maker} (us)`, tone: "better" as const } : o.maker, give: o.give, want: o.want, exp: show(o.expires_tick, "—") }))}
+            rows={market.rastro.map((o) => ({ maker: bookMaker(o), give: o.give, want: o.want, exp: show(o.expires_tick, "—") }))}
           />
         ) : (
           <span className="nr-muted">{NOT_LOGGED}</span>
@@ -259,7 +274,7 @@ function MarketPanel({ board }: { board: Board }) {
                   { key: "give", label: "Gives" },
                   { key: "want", label: "Wants" },
                 ]}
-                rows={market.venue.book.map((o) => ({ maker: o.maker, give: o.give, want: o.want }))}
+                rows={market.venue.book.map((o) => ({ maker: bookMaker(o), give: o.give, want: o.want }))}
               />
             ) : (
               <span className="nr-muted">No offers on our venue.</span>
@@ -299,6 +314,11 @@ function Scoreboard({ board }: { board: Board }) {
   return (
     <Card title="Score">
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        {board.team ? (
+          <span>
+            We are <strong style={{ color: "var(--us)" }}>{teamLabel(board, board.team)}</strong> <span className="nr-muted">· id {board.team} · ours are marked “(us)” everywhere</span>
+          </span>
+        ) : null}
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <span style={{ font: "800 44px/1 var(--font-display)" }}>{fmt(st.score)}</span>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{st.rank !== null ? `#${st.rank}${st.teams ? ` of ${st.teams}` : ""}` : "rank ?"}</span>
@@ -369,7 +389,7 @@ function RightNow({ board, onOpen }: { board: Board; onOpen: (id: string) => voi
                 {it.title}
               </TableLink>
             ),
-            who: it.counterparty,
+            who: `${it.counterparty} · ${it.party}`,
             state: it.warning ? { value: `⚠ ${it.warning}${it.state ? ` · ${it.state}` : ""}`, tone: "worse" as const } : it.state || "—",
           }))}
         />
@@ -439,7 +459,7 @@ function ScoreMovers({ board, onOpen }: { board: Board; onOpen: (id: string) => 
             tick: show(r.tick_settled, "?"),
             deal: (
               <TableLink aria-label={`Open ${r.id}`} onClick={() => onOpen(r.id)}>
-                {`${KIND_LABEL[r.kind] ?? r.kind} · ${r.item} · ${r.counterparty}`}
+                {`${KIND_LABEL[r.kind] ?? r.kind} · ${r.item} · ${partyOf(board, r).label}`}
               </TableLink>
             ),
             price: show(r.price, "—"),
@@ -482,14 +502,60 @@ function Agents({ board }: { board: Board }) {
   );
 }
 
-function History({ rows, title, filters, onFiltersChange }: { rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void }) {
+function History({ board, rows, title, filters, onFiltersChange }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void }) {
   const shown = filterBoardRows(rows, filters);
   const select = (id: string) => onFiltersChange({ ...filters, row: id });
   return (
     <Fold title={`${title} (${rows.length})`}>
       <FiltersBar rows={rows} filters={filters} onChange={onFiltersChange} />
-      {shown.length > 0 ? <ConversationList rows={shown} selectedId={filters.row} onSelect={select} /> : <span className="nr-muted">Nothing matches these filters.</span>}
+      {shown.length > 0 ? <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} /> : <span className="nr-muted">Nothing matches these filters.</span>}
     </Fold>
+  );
+}
+
+/**
+ * Panel lateral fijo para la conversación abierta: se lee sin perder el sitio en la página.
+ * Se cierra con el botón, con Escape o pulsando fuera.
+ */
+function Drawer({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0, 0, 0, 0.25)", zIndex: 40 }} />
+      <aside
+        role="dialog"
+        aria-label={label}
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: "min(860px, 100vw)",
+          overflowY: "auto",
+          background: "var(--bg)",
+          borderLeft: "1px solid var(--line)",
+          boxShadow: "-8px 0 24px rgba(0, 0, 0, 0.15)",
+          padding: "var(--space-4)",
+          zIndex: 41,
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-3)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <SecondaryButton onClick={onClose} aria-label="Close conversation">
+            Close ✕
+          </SecondaryButton>
+        </div>
+        {children}
+      </aside>
+    </>
   );
 }
 
@@ -512,7 +578,6 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <Upcoming board={board} />
       </div>
       <RightNow board={board} onOpen={open} />
-      {selected ? <ConversationDetail row={selected} /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>
         <Album board={board} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
@@ -520,11 +585,16 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <Agents board={board} />
         </div>
       </div>
-      <History rows={trades} title="History · dealers and El Rastro" filters={filters} onFiltersChange={onFiltersChange} />
-      <History rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} />
+      <History board={board} rows={trades} title="History · dealers and El Rastro" filters={filters} onFiltersChange={onFiltersChange} />
+      <History board={board} rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} />
       <Fold title="Market · leaderboard, feed, El Rastro, our venue">
         <MarketPanel board={board} />
       </Fold>
+      {selected ? (
+        <Drawer label={`Conversation ${selected.id}`} onClose={() => onFiltersChange({ ...filters, row: "" })}>
+          <ConversationDetail board={board} row={selected} />
+        </Drawer>
+      ) : null}
     </section>
   );
 }

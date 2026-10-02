@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentLines, boardModel, historyGroups, liveItems, scheduleLines, scoreMovers, standingOf, type Board, type BoardRow } from "../../src/model/index.js";
+import { agentLines, boardModel, bookMakerLabel, ourOfferIds, historyGroups, liveItems, mentionsUs, partyOf, scheduleLines, scoreMovers, standingOf, teamLabel, withTeamNames, type Board, type BoardRow } from "../../src/model/index.js";
 
 const EMPTY: Board = boardModel(null);
 
@@ -114,5 +114,42 @@ describe("cockpit · agentLines y scheduleLines", () => {
       { at_hours: 3, when: "in 0.35 h", action: "Market Test", note: "n" },
       { at_hours: 6.5, when: "in 3.9 h", action: "other", note: "" },
     ]);
+  });
+});
+
+describe("cockpit · quién es quién", () => {
+  const board: Board = {
+    ...EMPTY,
+    team: "t02",
+    market: { ...EMPTY.market, leaderboard: [team("Team 2", 16, 7, true), team("Los Gatos", 3, 20)].map((t, i) => ({ ...t, team: i === 0 ? "t02" : "t05" })) },
+  };
+
+  it("teamLabel: nosotros con (us), el resto por nombre e id, desconocidos tal cual", () => {
+    expect(teamLabel(board, "t02")).toBe("Team 2 (us)");
+    expect(teamLabel(board, "t05")).toBe("Los Gatos (t05)");
+    expect(teamLabel(board, "t99")).toBe("t99");
+    const named = { ...board, market: { ...board.market, leaderboard: [{ ...team("Team 13", 1, 30), team: "t13" }] } };
+    expect(teamLabel(named, "t13")).toBe("Team 13");
+  });
+
+  it("withTeamNames y mentionsUs sobre el texto del feed", () => {
+    expect(withTeamNames(board, "t05 sold to t02; t99 watched")).toBe("Los Gatos (t05) sold to Team 2 (us); t99 watched");
+    expect(mentionsUs(board, "t05 sold to t02")).toBe(true);
+    expect(mentionsUs(board, "t05 sold to t12")).toBe(false);
+  });
+
+  it("partyOf: dealer, rival de duelo, oferta pública o equipo con nombre", () => {
+    expect(partyOf(board, row({ id: "a", kind: "dealer-buy", status: "deal", counterparty: "abuela" }))).toEqual({ label: "abuela", kind: "dealer" });
+    expect(partyOf(board, row({ id: "b", kind: "duel-seller", status: "deal", counterparty: "Rival Rojo" }))).toEqual({ label: "Rival Rojo", kind: "duel rival" });
+    expect(partyOf(board, row({ id: "c", kind: "team-offer", status: "open" })).kind).toBe("public");
+    expect(partyOf(board, row({ id: "d", kind: "team-trade", status: "sold", counterparty: "t05 @ rastro" }))).toEqual({ label: "Los Gatos (t05) @ rastro", kind: "team" });
+  });
+
+  it("libros anónimos: las nuestras por id de oferta, el resto anónimo", () => {
+    const withOffer = { ...board, rows: [row({ id: "offer:7", kind: "team-offer", status: "open", offers: [{ id: 7, tick: 1, maker: "t02", give: "SAL-07", want: "9 P", final: false, status: "open" }] })] };
+    const ours = ourOfferIds(withOffer);
+    expect(bookMakerLabel(withOffer, { id: 7, maker: "m3950d43b" }, ours)).toEqual({ label: "Team 2 (us)", us: true });
+    expect(bookMakerLabel(withOffer, { id: 8, maker: "m3950d43b" }, ours)).toEqual({ label: "another team (anonymous m3950)", us: false });
+    expect(bookMakerLabel(withOffer, { id: 9, maker: "t05" }, ours)).toEqual({ label: "Los Gatos (t05)", us: false });
   });
 });

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildRows, emptyCache, feedLine, ourSettlements, pendingValueRequests, verdictOf, type BoardInput } from "../../server/bazaar-board-core.js";
+import { bookLines, buildRows, emptyCache, feedLine, ourSettlements, pendingValueRequests, verdictOf, type BoardInput } from "../../server/bazaar-board-core.js";
 import { BazaarBoard, type BoardOut } from "../../server/bazaar-board.js";
 import { startViewerServer } from "../../server/http.js";
 import { get } from "./helpers.js";
@@ -239,5 +239,13 @@ describe("/api/bazaar/board (server)", () => {
     expect(data.source).toBe("snapshot");
     expect(data.clock?.tick).toBe(85);
     expect(data.market.leaderboard[0]?.team).toBe("t01");
+  });
+});
+
+describe("bookLines: las más recientes y siempre las nuestras", () => {
+  const offer = (id: number) => ({ id, maker: `m${id}`, give: { points: 1 }, want: { points: 2 }, expires_tick: null });
+  it("ordena de más nueva a más antigua, recorta a max y conserva las nuestras aunque sean antiguas", () => {
+    const lines = bookLines([offer(1), offer(5), offer(3), offer(4), offer(2)], 3, new Set([1]));
+    expect(lines.map((l) => l.id)).toEqual([1, 5, 4]);
   });
 });

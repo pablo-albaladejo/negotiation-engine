@@ -47,6 +47,7 @@ export interface LiveItem {
   kind: "duel" | "dealer" | "offer";
   title: string;
   counterparty: string;
+  party: PartyKind;
   /** Qué está en juego, en una línea (p. ej. "limit 116 · we bid 90 · they ask 119"). */
   state: string;
   /** Aviso que merece atención, o `null`. */
@@ -69,12 +70,13 @@ export function liveItems(board: Board): LiveItem[] {
   const out: LiveItem[] = [];
   for (const r of board.rows) {
     if (r.status !== "open" && r.status !== "live") continue;
+    const who = partyOf(board, r);
     if (r.kind === "duel-buyer" || r.kind === "duel-seller") {
       const buyer = r.kind === "duel-buyer";
       const ours = lastPrice(r, true);
       const theirs = lastPrice(r, false);
       const parts = [r.our_value !== null ? `limit ${r.our_value}` : null, ours !== null ? `we ${buyer ? "bid" : "ask"} ${ours}` : null, theirs !== null ? `they ${buyer ? "ask" : "bid"} ${theirs}` : "no rival offer yet"];
-      out.push({ id: r.id, kind: "duel", title: `${buyer ? "Buy" : "Sell"} ${r.item}`, counterparty: r.counterparty, state: parts.filter(Boolean).join(" · "), warning: null });
+      out.push({ id: r.id, kind: "duel", title: `${buyer ? "Buy" : "Sell"} ${r.item}`, counterparty: who.label, party: who.kind, state: parts.filter(Boolean).join(" · "), warning: null });
     } else if (r.kind === "team-offer") {
       const o = r.offers[r.offers.length - 1];
       const give = o?.give ?? "?";
@@ -83,12 +85,12 @@ export function liveItems(board: Board): LiveItem[] {
       const copies = selling ? (board.holdings[selling] ?? 0) : null;
       const warning = selling && copies !== null && copies <= 1 ? `selling our only ${selling}` : null;
       const tag = selling && copies !== null && copies > 1 ? ` (spare, we hold ${copies})` : "";
-      out.push({ id: r.id, kind: "offer", title: selling ? `Sell ${give}${tag} for ${want}` : `Buy ${want} for ${give}`, counterparty: r.counterparty, state: r.our_value !== null ? `our value ${r.our_value}` : "", warning });
+      out.push({ id: r.id, kind: "offer", title: selling ? `Sell ${give}${tag} for ${want}` : `Buy ${want} for ${give}`, counterparty: who.label, party: who.kind, state: r.our_value !== null ? `our value ${r.our_value}` : "", warning });
     } else {
       const ours = lastPrice(r, true);
       const theirs = lastPrice(r, false);
       const parts = [r.our_value !== null ? `our value ${r.our_value}` : null, ours !== null ? `we say ${ours}` : null, theirs !== null ? `they say ${theirs}` : null];
-      out.push({ id: r.id, kind: "dealer", title: `${r.kind === "dealer-sell" ? "Sell" : "Buy"} ${r.item}`, counterparty: r.counterparty, state: parts.filter(Boolean).join(" · "), warning: null });
+      out.push({ id: r.id, kind: "dealer", title: `${r.kind === "dealer-sell" ? "Sell" : "Buy"} ${r.item}`, counterparty: who.label, party: who.kind, state: parts.filter(Boolean).join(" · "), warning: null });
     }
   }
   const order = { duel: 0, dealer: 1, offer: 2 };
@@ -159,4 +161,56 @@ export function scheduleLines(board: Board, max = 8): ScheduleLine[] {
 export function historyGroups(rows: readonly BoardRow[]): { trades: BoardRow[]; duels: BoardRow[] } {
   const closed = rows.filter((r) => r.status !== "open" && r.status !== "live");
   return { trades: closed.filter((r) => !r.kind.startsWith("duel")), duels: closed.filter((r) => r.kind.startsWith("duel")) };
+}
+
+export type PartyKind = "us" | "team" | "dealer" | "duel rival" | "public";
+
+export interface Party {
+  /** Nombre legible: "Team 2 (us)", "Los Gatos (t18)", "chato"… */
+  label: string;
+  kind: PartyKind;
+}
+
+const TEAM_ID = /\bt\d{2}\b/g;
+
+/** Nombre de un equipo por su id (`t02`), con "(us)" si somos nosotros; el id tal cual si no lo conocemos. */
+export function teamLabel(board: Board, id: string): string {
+  const t = board.market.leaderboard.find((x) => x.team === id);
+  if (id === board.team || t?.us) return `${t?.name ?? "Team"} (us)`;
+  if (!t || t.name === id) return id;
+  // "Team 13" ya dice quién es "t13"; otros nombres llevan el id al lado.
+  return t.name === `Team ${Number(id.slice(1))}` ? t.name : `${t.name} (${id})`;
+}
+
+/** Ids de nuestras ofertas (de `/api/me/offers`), para reconocerlas en libros anónimos. */
+export function ourOfferIds(board: Board): Set<number> {
+  return new Set(board.rows.filter((r) => r.kind === "team-offer" || r.kind === "team-trade").flatMap((r) => r.offers.flatMap((o) => (o.maker === board.team && o.id !== null ? [o.id] : []))));
+}
+
+/**
+ * Quién puso una oferta de un libro (El Rastro, nuestro venue). El Bazaar anonimiza al autor
+ * (`m3950d43b`), así que las nuestras se reconocen por id; el resto es "otro equipo (anónimo)".
+ */
+export function bookMakerLabel(board: Board, line: { id: number; maker: string }, ours: ReadonlySet<number>): { label: string; us: boolean } {
+  if (ours.has(line.id) || line.maker === board.team) return { label: teamLabel(board, board.team), us: true };
+  if (/^t\d{2}$/.test(line.maker)) return { label: teamLabel(board, line.maker), us: false };
+  return { label: `another team (anonymous ${line.maker.slice(0, 5)})`, us: false };
+}
+
+/** Sustituye los ids de equipo (`t18`) de un texto por su nombre; el texto se sigue mostrando como texto. */
+export function withTeamNames(board: Board, text: string): string {
+  return text.replace(TEAM_ID, (id) => (id === board.team || board.market.leaderboard.some((t) => t.team === id) ? teamLabel(board, id) : id));
+}
+
+/** ¿Este texto u oferta nos menciona? */
+export function mentionsUs(board: Board, text: string): boolean {
+  return board.team !== "" && (text.match(TEAM_ID) ?? ([] as string[])).includes(board.team);
+}
+
+/** Con quién es cada conversación y qué tipo de parte es. */
+export function partyOf(board: Board, row: BoardRow): Party {
+  if (row.kind.startsWith("dealer")) return { label: row.counterparty, kind: "dealer" };
+  if (row.kind.startsWith("duel")) return { label: row.counterparty, kind: "duel rival" };
+  if (row.kind === "team-offer") return { label: "anyone (public offer)", kind: "public" };
+  return { label: withTeamNames(board, row.counterparty), kind: "team" };
 }
