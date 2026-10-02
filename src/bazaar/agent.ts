@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "./client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
-import { formatPlan, rankCandidates, selectCandidates } from "./plan.js";
+import { applyOnly, formatPlan, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
 import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
@@ -30,6 +30,8 @@ export interface AgentOptions {
   maxDeals?: number;
   maxThreads?: number;
   maxSpendTotal?: number;
+  /** `--only`: solo estos objetivos del planificador por menú, en este orden (aunque no dejen margen sobre su lista). */
+  only?: readonly OnlyFilter[];
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
@@ -102,10 +104,13 @@ export class BazaarAgent {
     if (!this.o.menu) return ["(no dealer menu: the legacy planner is used; no plan to show)"];
     const me = await this.api.me();
     this.catalog ??= await this.api.catalog();
-    const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, this.budgetLeft()), maxThreads: this.o.maxThreads ?? Infinity };
-    const cands = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget: caps.maxSpend });
-    const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend });
-    return formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams);
+    const safety = this.o.safety ?? 0.9;
+    const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, this.budgetLeft()), maxThreads: this.o.maxThreads ?? Infinity, safety };
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend });
+    const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
+    const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend, only: !!this.o.only });
+    const lines = formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams);
+    return this.o.only ? [`--only ${this.o.only.map((f) => f.raw).join(",")}: ${cands.length} matching candidate(s), opened in that order`, ...lines] : lines;
   }
 
   async step(clock: Clock): Promise<TraceRecord[]> {
@@ -226,8 +231,9 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, this.budgetLeft());
       this.catalog ??= await this.api.catalog();
-      const cands = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget });
-      return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget })[0]?.candidate;
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget });
+      const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
+      return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
     }
     const sell = spareTargets(me).find(free);
     if (sell) return sell;

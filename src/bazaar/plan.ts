@@ -1,5 +1,5 @@
 import { counterText } from "./messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, type NegotiatorParams, type Rule } from "./negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, plannedSchedule, type NegotiatorParams, type Rule, type Side } from "./negotiator.js";
 import { rarityOf, type Target } from "./planner.js";
 import type { Catalog, DealerInfo, Me } from "./schemas.js";
 
@@ -205,14 +205,61 @@ export interface Selection {
   reason: string;
 }
 
+/** Filtro de `--only`: lado y palabras (rareza, set, carta o id de activo), p. ej. `buy:uncommon:SAL`. */
+export interface OnlyFilter {
+  raw: string;
+  side: Side;
+  tokens: string[];
+}
+
+/** `"buy:uncommon:SAL,buy:common:SAL"` → filtros en ese orden. Lanza si un elemento no empieza por buy/sell. */
+export function parseOnly(spec: string): OnlyFilter[] {
+  return spec
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((raw) => {
+      const [side, ...tokens] = raw.split(":").map((t) => t.trim());
+      if (side !== "buy" && side !== "sell") throw new Error(`--only: "${raw}" debe empezar por buy: o sell:`);
+      if (!tokens.length || tokens.some((t) => !t)) throw new Error(`--only: "${raw}" necesita rareza, set, carta o id`);
+      return { raw, side, tokens: tokens.map((t) => t.toLowerCase()) };
+    });
+}
+
+/** Candidatos que casan con los filtros, en el orden de los filtros (y por ranking dentro de cada uno), sin repetir. */
+export function applyOnly(cands: readonly Candidate[], filters: readonly OnlyFilter[]): Candidate[] {
+  const out: Candidate[] = [];
+  for (const f of filters) {
+    for (const c of cands) {
+      if (c.side !== f.side || out.includes(c)) continue;
+      const words = [c.rarity, c.set, c.card, c.key.split(":").pop()].filter((w): w is string => !!w).map((w) => w.toLowerCase());
+      if (f.tokens.every((t) => words.includes(t))) out.push(c);
+    }
+  }
+  return out;
+}
+
 /**
  * Hasta `maxThreads` conversaciones: compras con margen (una común y una infrecuente si ambas lo
  * tienen), recortadas por el gasto que queda; si faltan, ventas con margen (repetidas primero, luego
  * menor impacto en el álbum).
  */
-export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: number; maxSpend: number }): Selection[] {
+export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: number; maxSpend: number; only?: boolean }): Selection[] {
   const out: Selection[] = [];
   let committed = 0;
+  if (o.only) {
+    // `--only`: en el orden pedido y sin exigir margen sobre su lista; el negociador sigue sin pasar de nuestro límite.
+    for (const c of cands) {
+      if (out.length >= o.maxThreads) break;
+      const reservation = c.side === "buy" ? Math.min(c.reservation, Math.floor(o.maxSpend - committed)) : c.reservation;
+      if (reservation < 1) continue;
+      if (c.side === "buy") committed += reservation;
+      const list = c.herList ?? c.herOpening;
+      const note = c.side === "buy" && reservation <= list ? `; no room over her list ${list}: a deal needs her below list, else we close without buying` : "";
+      out.push({ candidate: { ...c, reservation }, reason: `requested with --only${note}` });
+    }
+    return out;
+  }
   const tryBuy = (c: Candidate, reason: string) => {
     if (out.length >= o.maxThreads || out.some((s) => s.candidate.key === c.key)) return;
     const reservation = Math.min(c.reservation, Math.floor(o.maxSpend - committed));
@@ -284,6 +331,8 @@ export interface PlanCaps {
   maxDeals: number;
   maxSpend: number;
   maxThreads: number;
+  /** Fracción del valor usada como límite (solo para mostrarla). */
+  safety?: number;
 }
 
 /** Texto del plan del dry-run: estado, candidatos ordenados, los elegidos y el primer mensaje de cada uno. */
@@ -314,9 +363,14 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
   chosen.forEach((s, i) => {
     const c = s.candidate;
     const path = previewPath(c, params);
-    L.push(`  #${i + 1} ${c.label} · topic ${JSON.stringify(c.topic)} · reservation ${c.reservation}`);
+    const planned = plannedSchedule({ side: c.side, reservation: c.reservation, herOpening: c.herOpening }, params);
+    const limitWhy = c.side === "buy" ? `value × ${caps.safety ?? "safety"}, capped by spend/cash` : `value ÷ ${caps.safety ?? "safety"}`;
+    L.push(`  #${i + 1} ${c.label} · topic ${JSON.stringify(c.topic)}`);
     L.push(`      why chosen: ${s.reason}`);
-    L.push(`      expected: she opens at ${c.herOpening}; our anchor ${path.prices[0] ?? "-"}; step path if she does not move: ${path.prices.join(" → ") || "-"} → ${path.outcome}`);
+    const her = c.side === "buy" ? `her list ${c.herList ?? "?"} · her opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ${c.herOpening} (${c.herOpeningSource})`;
+    L.push(`      our value ${round1(c.value)} · our limit ${c.reservation} (${limitWhy}) · ${her}`);
+    L.push(`      anchor ${planned[0] ?? "-"} · planned path within ${params.patienceBudget} exchanges (step mode ${params.stepMode}, max step ${params.maxStep}): ${planned.join(" → ") || "-"}`);
+    L.push(`      if she does not move from ${c.herOpening}: ${path.prices.join(" → ") || "-"} → ${path.outcome}`);
     L.push(`      first message (price ${path.prices[0] ?? "-"}): "${path.firstText ?? "(none)"}"`);
   });
   return L;

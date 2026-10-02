@@ -2,12 +2,13 @@ import { parseArgs } from "node:util";
 import { BazaarAgent } from "./agent.js";
 import { BazaarClient } from "./client.js";
 import { loadBazaarEnv } from "./env.js";
-import { DEFAULT_NEGOTIATOR_PARAMS } from "./negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, type StepMode } from "./negotiator.js";
+import { parseOnly } from "./plan.js";
 import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
 
 /**
- * `pnpm bazaar [--dry-run] [--once] [--max-spend 120] [--max-deals N] [--max-threads N] [--dealer abuela]`:
+ * `pnpm bazaar [--dry-run] [--once] [--max-spend 120] [--max-deals N] [--max-threads N] [--dealer abuela] [--only buy:uncommon:SAL,...] [--safety 0.9]`:
  * un paso por tick hasta Ctrl-C o hasta llegar a `--max-deals` (o agotar `--max-threads` conversaciones).
  * `--dry-run` solo lee (GET), imprime el plan y registra lo que haría; ningún POST.
  */
@@ -30,6 +31,12 @@ async function main() {
       "buy-anchor-frac": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.buyAnchorFrac) },
       "sell-anchor-mult": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.sellAnchorMult) },
       "max-holds": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.maxHolds) },
+      "sell-floor-anchor-mult": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.sellFloorAnchorMult) },
+      "patience-budget": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.patienceBudget) },
+      "max-step": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.maxStep) },
+      "step-mode": { type: "string", default: DEFAULT_NEGOTIATOR_PARAMS.stepMode },
+      safety: { type: "string" },
+      only: { type: "string" },
     },
   });
   const maxSpend = Number(values["max-spend"]);
@@ -40,6 +47,17 @@ async function main() {
   if (!Number.isFinite(buyAnchorFrac) || buyAnchorFrac <= 0) throw new Error("--buy-anchor-frac debe ser un número > 0");
   if (!Number.isFinite(sellAnchorMult) || sellAnchorMult <= 0) throw new Error("--sell-anchor-mult debe ser un número > 0");
   if (!Number.isInteger(maxHolds) || maxHolds < 0) throw new Error("--max-holds debe ser un entero ≥ 0");
+  const sellFloorAnchorMult = Number(values["sell-floor-anchor-mult"]);
+  const patienceBudget = Number(values["patience-budget"]);
+  const maxStep = Number(values["max-step"]);
+  const stepMode = values["step-mode"] as StepMode;
+  if (!Number.isFinite(sellFloorAnchorMult) || sellFloorAnchorMult < 1) throw new Error("--sell-floor-anchor-mult debe ser un número ≥ 1");
+  if (!Number.isInteger(patienceBudget) || patienceBudget < 1) throw new Error("--patience-budget debe ser un entero ≥ 1");
+  if (!Number.isInteger(maxStep) || maxStep < 1) throw new Error("--max-step debe ser un entero ≥ 1");
+  if (stepMode !== "adaptive" && stepMode !== "boulware") throw new Error("--step-mode debe ser adaptive o boulware");
+  const safety = values.safety === undefined ? undefined : Number(values.safety);
+  if (safety !== undefined && (!Number.isFinite(safety) || safety <= 0 || safety > 1)) throw new Error("--safety debe ser un número en (0, 1]");
+  const only = values.only ? parseOnly(values.only) : undefined;
   const maxDeals = cap(values["max-deals"], "--max-deals");
   const maxThreads = cap(values["max-threads"], "--max-threads");
   const env = loadBazaarEnv();
@@ -67,13 +85,15 @@ async function main() {
     maxDeals,
     maxThreads,
     ...(menu ? { menu } : {}),
-    negotiator: { buyAnchorFrac, sellAnchorMult, maxHolds },
+    negotiator: { buyAnchorFrac, sellAnchorMult, maxHolds, sellFloorAnchorMult, patienceBudget, maxStep, stepMode },
+    ...(safety !== undefined ? { safety } : {}),
+    ...(only ? { only } : {}),
     trace,
     log: (line) => console.log(line),
   });
   const fmt = (n: number) => (Number.isFinite(n) ? String(n) : "∞");
   console.log(
-    `bazaar agent · dealer ${dealerId} · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · max-spend ${maxSpend} P (run and per hour) · max-deals ${fmt(maxDeals)} · max-threads ${fmt(maxThreads)} · trazas en ${trace.dir}`,
+    `bazaar agent · dealer ${dealerId} · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · max-spend ${maxSpend} P (run and per hour) · max-deals ${fmt(maxDeals)} · max-threads ${fmt(maxThreads)}${safety !== undefined ? ` · safety ${safety}` : ""}${only ? ` · only ${values.only}` : ""} · trazas en ${trace.dir}`,
   );
   if (values["dry-run"]) for (const line of await agent.plan()) console.log(line);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPlan, previewPath, rankCandidates, selectCandidates } from "../../src/bazaar/plan.js";
+import { applyOnly, formatPlan, parseOnly, previewPath, rankCandidates, selectCandidates } from "../../src/bazaar/plan.js";
 import { DealerInfoSchema, type Catalog, type Me } from "../../src/bazaar/schemas.js";
 
 const ABUELA = DealerInfoSchema.parse({
@@ -106,5 +106,46 @@ describe("plan: candidatos por menú", () => {
     expect(text).toContain("[ROOM] SELL AAA-01 (common, ONLY copy)");
     expect(text).toContain('first message (price 26): "');
     expect(text).not.toMatch(/sobre_barrio/);
+  });
+
+  it("--only: solo esos objetivos, en ese orden, con límite = valor (safety 1) aunque no dejen margen sobre su lista", async () => {
+    const values: Record<string, number> = { "AAA-01": 9, "AAA-02": 9.4, "AAA-06": 24, "AAA-07": 24.8, "BBB-01": 30, "BBB-02": 30, "BBB-06": 60 };
+    const only = parseOnly("buy:uncommon:AAA, buy:common:AAA");
+    expect(only).toEqual([
+      { raw: "buy:uncommon:AAA", side: "buy", tokens: ["uncommon", "aaa"] },
+      { raw: "buy:common:AAA", side: "buy", tokens: ["common", "aaa"] },
+    ]);
+    expect(() => parseOnly("swap:common:AAA")).toThrow(/buy: o sell:/);
+    expect(() => parseOnly("buy")).toThrow();
+    const ranked = await rankCandidates({ me: me([]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40 });
+    const cands = applyOnly(ranked, only);
+    expect(cands.map((c) => [c.key, c.reservation, c.room])).toEqual([
+      ["buy:AAA:uncommon", 24, false],
+      ["buy:AAA:common", 9, false],
+    ]);
+    // Sin --only no abriría nada de AAA (sin margen) y elegiría las de BBB.
+    expect(selectCandidates(ranked, { maxThreads: 2, maxSpend: 40 }).some((s) => s.candidate.set === "AAA")).toBe(false);
+    const chosen = selectCandidates(cands, { maxThreads: 2, maxSpend: 40, only: true });
+    expect(chosen.map((s) => [s.candidate.key, s.candidate.reservation])).toEqual([
+      ["buy:AAA:uncommon", 24],
+      ["buy:AAA:common", 9],
+    ]);
+    expect(chosen[0]!.reason).toContain("needs her below list");
+    expect(selectCandidates(cands, { maxThreads: 2, maxSpend: 30, only: true }).map((s) => s.candidate.reservation)).toEqual([24, 6]);
+    expect(applyOnly(ranked, parseOnly("sell:common:AAA"))).toEqual([]);
+  });
+
+  it("formatPlan con --only: valor, límite, lista/apertura, ancla, camino en la paciencia y primer mensaje", async () => {
+    const values: Record<string, number> = { "AAA-01": 9, "AAA-02": 9.4, "AAA-06": 24, "AAA-07": 24.8, "BBB-01": 3, "BBB-02": 3, "BBB-06": 3 };
+    const m = me([]);
+    const ranked = await rankCandidates({ me: m, catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40 });
+    const cands = applyOnly(ranked, parseOnly("buy:uncommon:AAA,buy:common:AAA"));
+    const chosen = selectCandidates(cands, { maxThreads: 2, maxSpend: 40, only: true });
+    const text = formatPlan(m, ABUELA, cands, chosen, { maxDeals: 2, maxSpend: 40, maxThreads: 2, safety: 1 }).join("\n");
+    expect(text).toContain("our value 24.4 · our limit 24 (value × 1, capped by spend/cash) · her list 25 · her opening 29");
+    expect(text).toContain("anchor 22 · planned path within 6 exchanges (step mode adaptive, max step 3): 22 → 23 → 24");
+    expect(text).toContain("our value 9.2 · our limit 9");
+    expect(text).toContain("anchor 8 · planned path within 6 exchanges (step mode adaptive, max step 3): 8 → 9");
+    expect(text).toMatch(/first message \(price 22\): "[^"]*22 P/);
   });
 });
