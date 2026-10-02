@@ -93,7 +93,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         <EmptyZopaBanner ours={offerLabel(model.reserves.ours)} rival={offerLabel(model.reserves.rival)} walked={model.game.endReason === "agent-walk"} />
       ) : null}
       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)", gap: "var(--space-4)", alignItems: "start" }}>
+      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)" }}>
         <Card title="Offers by round" style={{ position: "sticky", top: "var(--space-4)" }}>
           <OfferChart
             rounds={model.game.roundLimit ?? model.game.rounds}

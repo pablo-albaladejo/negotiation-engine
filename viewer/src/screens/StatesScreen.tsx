@@ -15,7 +15,7 @@ export function StatesScreen() {
         <h2 className="nr-heading">States and edge cases</h2>
         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "var(--space-4)", alignItems: "start" }}>
+      <div className="nr-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
         <Card title="Invalid log">
           <InvalidLogBanner
             errors={[{ file: "results/r-1003.jsonl", line: 1834, path: "offer.value", message: "expected number, got string \"one hundred four\"" }]}

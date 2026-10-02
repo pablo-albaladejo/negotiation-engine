@@ -101,6 +101,11 @@ describe("GateScreen (P6)", () => {
     await screen.findByRole("button", { name: "Copy failed" });
   });
 
+  it("layout grids use the DS nr-grid class so they collapse to one column below 900px (B2)", () => {
+    const { container } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    expect(container.querySelectorAll(".nr-grid").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("parameter diff uses the 22px sign-column DS classes (B3)", () => {
     const { container } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
     const rows = container.querySelectorAll(".nr-diff-row");

@@ -120,7 +120,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
           { label: "Role", value: model.game.role },
         ]}
       />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: "var(--space-4)", alignItems: "start" }}>
+      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)" }}>
         <Card title={`Offers on the ${y.name} × ${x.name} plane`}>
           <Scatter2D
             xDomain={xDomain}
