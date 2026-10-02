@@ -415,6 +415,18 @@ describe("App header + tabs (spec item 1/2)", () => {
 
   afterEach(() => window.sessionStorage.clear());
 
+  it("header and main share the design's 1400px max-width and main's padding (F8)", async () => {
+    mockRuns([]);
+    window.location.hash = "#/runs";
+    const { container } = render(<App />);
+    await screen.findByText("No runs yet");
+    const main = container.querySelector("main")!;
+    expect(main.getAttribute("style")).toContain("max-width: 1400px");
+    expect(main.getAttribute("style")).toContain("padding: var(--space-5) var(--gutter) 48px");
+    const headerInner = container.querySelector("header > div")!;
+    expect(headerInner.getAttribute("style")).toContain("max-width: 1400px");
+  });
+
   it("renders the 8 tabs in order, Runs marked current on #/runs", async () => {
     mockRuns([]);
     window.location.hash = "#/runs";
