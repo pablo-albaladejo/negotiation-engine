@@ -54,17 +54,16 @@ describe("MatchesScreen (P2)", () => {
     if (other) expect(screen.queryByText(other.gameId)).toBeNull();
   });
 
-  it("h2 \'{run} \u00b7 matches\' con Pill champion si corresponde", () => {
+  it("h2 '{run} · matches' con Pill champion si corresponde", () => {
     const { container } = render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} isChampion />);
-    expect(screen.getByText(`${fx.runId} \u00b7 matches`)).toBeTruthy();
+    expect(screen.getByText(`${fx.runId} · matches`)).toBeTruthy();
     expect(screen.getByText("champion")).toBeTruthy();
-    // F11: title row wraps on narrow screens, champion Pill looks like verdict (same ok-soft/ok colors).
-    const titleRow = screen.getByText(`${fx.runId} \u00b7 matches`).closest("div")!;
+    const titleRow = screen.getByText(`${fx.runId} · matches`).closest("div")!;
     expect(titleRow.getAttribute("style")).toContain("flex-wrap: wrap");
     expect(container.querySelector(".nr-pill.champion")).toBeTruthy();
   });
 
-  it("opciones de rol en ingl\u00e9s (Buyer/Seller) y \'All opponents\' para el rival", () => {
+  it("opciones de rol en inglés (Buyer/Seller) y 'All opponents' para el rival", () => {
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
     expect(screen.getByDisplayValue("All opponents")).toBeTruthy();
     expect(screen.getAllByRole("button").map((el) => el.textContent)).toContain("Buyer");
@@ -90,7 +89,7 @@ describe("MatchesScreen (P2)", () => {
     expect(lastFilters).toEqual({});
   });
 
-  it("sin resultados para los filtros: estado vac\u00edo con \'Clear filters\'", () => {
+  it("sin resultados para los filtros: estado vacío con 'Clear filters'", () => {
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} initialFilters={{ rival: "no-such-rival" }} />);
     expect(screen.getAllByText("No matches for these filters").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Clear filters"));
@@ -116,5 +115,64 @@ describe("MatchesScreen (P2)", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     render(<MatchesScreen runId={fx.runId} summary={summary} games={[]} onOpenGame={() => {}} onBack={() => {}} />);
     expect(screen.getByText(`${fx.runId} has no matches`)).toBeTruthy();
+  });
+});
+
+describe("MatchesScreen Price, Outcome, Incidents, KPIs, cfg (T11)", () => {
+  it("Price shows em-dash (—) on a walk, never the last offer", () => {
+    const walks = fx.games.filter((g) => g.endReason !== "agreement");
+    if (walks.length > 0) {
+      render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={[walks[0]!]} onOpenGame={() => {}} onBack={() => {}} />);
+      expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("Outcome column shows 'Deal' Flag with decision tone for agreements", () => {
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
+    const dealGames = fx.games.filter((g) => g.endReason === "agreement");
+    if (dealGames.length > 0) {
+      expect(screen.getAllByText("Deal").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("Incidents column shows no flags when no incidents apply", () => {
+    const clean = fx.games.filter(
+      (g) =>
+        g.violations === 0 &&
+        (g.metrics?.injectionSuspected ?? 0) === 0 &&
+        (g.metrics?.templateFallbacks ?? 0) === 0 &&
+        (g.metrics?.leaks ?? 0) === 0 &&
+        !g.metrics?.zopaEmpty
+    );
+    if (clean.length > 0) {
+      render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={[clean[0]!]} onOpenGame={() => {}} onBack={() => {}} />);
+      // When no flags, IncidentFlags returns null, so there's no "clean" text
+      expect(screen.queryByText("clean")).toBeNull();
+    }
+  });
+
+  it("KPI 'Empty ZOPA detected' shows percentage or 'not logged'", () => {
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
+    const emptyZopaKpi = screen.getByText("Empty ZOPA detected").closest(".nr-kpi");
+    expect(emptyZopaKpi).toBeTruthy();
+    const value = emptyZopaKpi!.querySelector(".nr-kpi-value");
+    expect(value!.textContent).toMatch(/not logged|%/);
+  });
+
+  it("KPI 'Duration' shows formatted duration in seconds", () => {
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
+    const durationKpi = screen.getByText("Duration").closest(".nr-kpi");
+    expect(durationKpi).toBeTruthy();
+    const value = durationKpi!.querySelector(".nr-kpi-value");
+    expect(value!.textContent).toMatch(/\d+\.\d+ s/);
+  });
+
+  it("cfg line includes run info, match count, and duration", () => {
+    const { container } = render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
+    const cfgLine = container.querySelector(".nr-cfg");
+    expect(cfgLine).toBeTruthy();
+    expect(cfgLine!.textContent).toContain(fx.runId);
+    expect(cfgLine!.textContent).toContain("matches");
+    expect(cfgLine!.textContent).toMatch(/\d+\.\d+ s/);
   });
 });
