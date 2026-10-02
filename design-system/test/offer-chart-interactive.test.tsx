@@ -47,4 +47,16 @@ describe("OfferChart roving tabindex (D4)", () => {
     const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} />);
     expect(html).toMatch(/class="hit"[^>]*r="12"/);
   });
+
+  it("A2: selectedRound starts the tab stop on that round and marks it aria-pressed", () => {
+    const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} selectedRound={2} />);
+    expect(html).toContain('tabindex="0" aria-label="Our offer, round 2" aria-pressed="true"');
+    expect(html).toContain('aria-label="Opponent offer, round 2" aria-pressed="true"');
+    expect(html).toContain('tabindex="-1" aria-label="Our offer, round 1" aria-pressed="false"');
+  });
+
+  it("omits aria-pressed entirely when selectedRound is not given", () => {
+    const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} />);
+    expect(html).not.toContain("aria-pressed");
+  });
 });

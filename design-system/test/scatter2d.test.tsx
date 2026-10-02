@@ -150,4 +150,27 @@ describe("Scatter2D roving tabindex (D4)", () => {
     );
     expect(html).toMatch(/class="hit"[^>]*r="12"/);
   });
+
+  it("A2: selectedRound starts the tab stop on that round and marks it aria-pressed", () => {
+    const html = renderToString(
+      <Scatter2D
+        xDomain={[0, 10]}
+        yDomain={[0, 10]}
+        xLabel="x"
+        yLabel="y"
+        ourOffers={[
+          { round: 1, x: 1, y: 1 },
+          { round: 2, x: 2, y: 2 },
+        ]}
+        theirOffers={[
+          { round: 1, x: 3, y: 3 },
+          { round: 2, x: 4, y: 4 },
+        ]}
+        onPointClick={() => {}}
+        selectedRound={2}
+      />,
+    );
+    expect(html).toContain('tabindex="0" aria-label="Our offer, round 2" aria-pressed="true"');
+    expect(html).toContain('tabindex="-1" aria-label="Our offer, round 1" aria-pressed="false"');
+  });
 });

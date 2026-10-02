@@ -109,6 +109,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
             zopa={model.reserves !== null}
             injectionRounds={injectionRounds}
             {...(end ? { end } : {})}
+            selectedRound={selectedRound}
             onPointClick={(point) => setSelectedRound(point.round)}
           />
           <Legend

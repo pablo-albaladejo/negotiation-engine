@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { arenaReplayModel, type ArenaReplayModel } from "../../src/model/index.js";
 import { ArenaReplayScreen } from "../../src/screens/ArenaReplayScreen.js";
@@ -135,10 +135,12 @@ describe("ArenaReplayScreen (P3)", () => {
     );
     // MatchSelector del design system: botones con aria-pressed, no un <select> propio.
     expect(screen.queryByRole("combobox")).toBeNull();
-    const pressed = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true");
+    // A2: OfferChart points also carry aria-pressed now, so scope to the MatchSelector container.
+    const selector = within(document.querySelector(".nr-matches") as HTMLElement);
+    const pressed = selector.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true");
     expect(pressed).toHaveLength(1);
     expect(pressed[0]!.textContent).toContain(model.game.gameId);
-    const other = screen.getAllByRole("button").find((b) => b.getAttribute("aria-pressed") === "false");
+    const other = selector.getAllByRole("button").find((b) => b.getAttribute("aria-pressed") === "false");
     other!.click();
     expect(mockSelectGame).toHaveBeenCalledTimes(1);
     expect(mockSelectGame.mock.calls[0]![0]).not.toBe(model.game.gameId);

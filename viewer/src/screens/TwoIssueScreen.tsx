@@ -133,6 +133,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             theirOffers={model.offers.rival}
             {...(mandate ? { mandate } : {})}
             {...(deal ? { deal } : {})}
+            selectedRound={selectedRound}
             onPointClick={selectPoint}
           />
           <Legend
@@ -153,6 +154,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
                 ourOffers={model.utilities.map((u) => ({ round: u.round, value: u.uOffer * 100 }))}
                 theirOffers={model.utilities.flatMap((u) => (u.uRival === null ? [] : [{ round: u.round, value: u.uRival * 100 }]))}
                 {...(end ? { end } : {})}
+                selectedRound={selectedRound}
                 onPointClick={selectPoint}
               />
             ) : (

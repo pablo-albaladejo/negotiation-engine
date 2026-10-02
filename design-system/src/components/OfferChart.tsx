@@ -24,6 +24,8 @@ export interface OfferChartProps {
   injectionRounds?: number[];
   end?: OfferChartEnd;
   onPointClick?: (point: { side: "us" | "them"; round: number; value: number }) => void;
+  /** Roving tab stop starts on this round's point (and marks it aria-pressed) instead of the first one (A2). */
+  selectedRound?: number;
 }
 
 const WIDTH = 640;
@@ -72,6 +74,16 @@ export function clampOfferChartIndex(index: number, delta: number, length: numbe
   return Math.max(0, Math.min(index + delta, length - 1));
 }
 
+/** Initial roving tab stop: the selected round's point if present, else the first one (A2). */
+function initialOfferChartIndex(points: OfferChartInteractivePoint[], selectedRound?: number): number {
+  if (points.length === 0) return 0;
+  if (selectedRound !== undefined) {
+    const index = points.findIndex((p) => p.round === selectedRound);
+    if (index >= 0) return index;
+  }
+  return 0;
+}
+
 export interface LegendItem {
   kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate";
   label: string;
@@ -115,6 +127,7 @@ export function OfferChart({
   injectionRounds,
   end,
   onPointClick,
+  selectedRound,
 }: OfferChartProps) {
   const [yMin, yMax] = yDomain;
   const injectionSet = new Set(injectionRounds ?? []);
@@ -130,7 +143,9 @@ export function OfferChart({
   const zopaHeight = showZopa ? Math.abs(offerChartYScale(theirReserve!, yDomain) - offerChartYScale(ourReserve!, yDomain)) : 0;
 
   const interactivePoints = onPointClick ? buildOfferInteractivePoints(ourOffers, theirOffers) : [];
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(() => initialOfferChartIndex(interactivePoints, selectedRound));
+  // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.
+  const safeActiveIndex = interactivePoints.length === 0 ? 0 : Math.max(0, Math.min(activeIndex, interactivePoints.length - 1));
   const hitRefs = useRef<(SVGCircleElement | null)[]>([]);
 
   function indexOf(side: "us" | "them", round: number): number {
@@ -250,8 +265,9 @@ export function OfferChart({
                   cy={offerChartYScale(point.value, yDomain)}
                   r={12}
                   role="button"
-                  tabIndex={index === activeIndex ? 0 : -1}
+                  tabIndex={index === safeActiveIndex ? 0 : -1}
                   aria-label={`Our offer, round ${point.round}`}
+                  aria-pressed={selectedRound !== undefined ? point.round === selectedRound : undefined}
                   onFocus={() => setActiveIndex(index)}
                   onClick={() => onPointClick({ side: "us", round: point.round, value: point.value })}
                   onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
@@ -282,8 +298,9 @@ export function OfferChart({
                   cy={offerChartYScale(point.value, yDomain)}
                   r={12}
                   role="button"
-                  tabIndex={index === activeIndex ? 0 : -1}
+                  tabIndex={index === safeActiveIndex ? 0 : -1}
                   aria-label={`Opponent offer, round ${point.round}`}
+                  aria-pressed={selectedRound !== undefined ? point.round === selectedRound : undefined}
                   onFocus={() => setActiveIndex(index)}
                   onClick={() => onPointClick({ side: "them", round: point.round, value: point.value })}
                   onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}

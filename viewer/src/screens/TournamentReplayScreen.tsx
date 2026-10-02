@@ -130,6 +130,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
               target={target}
               estimate={estimate}
               {...(ourReserve !== undefined ? { ourReserve } : {})}
+              selectedRound={selectedRound}
               onPointClick={(point) => setSelectedRound(point.round)}
             />
             <Legend

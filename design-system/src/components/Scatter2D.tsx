@@ -34,6 +34,8 @@ export interface Scatter2DProps {
   deal?: Scatter2DDeal;
   /** Selects the round of the clicked (or keyboard-activated) point; points become focusable buttons. */
   onPointClick?: (point: { side: "us" | "them"; round: number }) => void;
+  /** Roving tab stop starts on this round's point (and marks it aria-pressed) instead of the first one (A2). */
+  selectedRound?: number;
 }
 
 const WIDTH = 640;
@@ -80,19 +82,31 @@ export function clampScatterIndex(index: number, delta: number, length: number):
   return Math.max(0, Math.min(index + delta, length - 1));
 }
 
+/** Initial roving tab stop: the selected round's point if present, else the first one (A2). */
+function initialScatterIndex(points: Scatter2DInteractivePoint[], selectedRound?: number): number {
+  if (points.length === 0) return 0;
+  if (selectedRound !== undefined) {
+    const index = points.findIndex((p) => p.round === selectedRound);
+    if (index >= 0) return index;
+  }
+  return 0;
+}
+
 function ticksFor(domain: [number, number]): number[] {
   const [min, max] = domain;
   return Array.from({ length: TICK_COUNT + 1 }, (_, index) => min + ((max - min) * index) / TICK_COUNT);
 }
 
-export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal, onPointClick }: Scatter2DProps) {
+export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal, onPointClick, selectedRound }: Scatter2DProps) {
   const sortedOurs = [...ourOffers].sort(byRound);
   const sortedTheirs = [...theirOffers].sort(byRound);
   const rounds = Array.from(new Set([...ourOffers, ...theirOffers].map((point) => point.round)));
   const xTicks = ticksFor(xDomain);
   const yTicks = ticksFor(yDomain);
   const interactivePoints = onPointClick ? buildInteractivePoints(sortedOurs, sortedTheirs) : [];
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(() => initialScatterIndex(interactivePoints, selectedRound));
+  // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.
+  const safeActiveIndex = interactivePoints.length === 0 ? 0 : Math.max(0, Math.min(activeIndex, interactivePoints.length - 1));
   const hitRefs = useRef<(SVGCircleElement | null)[]>([]);
 
   function indexOf(side: "us" | "them", round: number): number {
@@ -230,8 +244,9 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
                 cy={scatter2DYScale(point.y, yDomain)}
                 r={12}
                 role="button"
-                tabIndex={index === activeIndex ? 0 : -1}
+                tabIndex={index === safeActiveIndex ? 0 : -1}
                 aria-label={`Our offer, round ${point.round}`}
+                aria-pressed={selectedRound !== undefined ? point.round === selectedRound : undefined}
                 onFocus={() => setActiveIndex(index)}
                 onClick={() => onPointClick({ side: "us" as const, round: point.round })}
                 onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
@@ -258,8 +273,9 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
                 cy={scatter2DYScale(point.y, yDomain)}
                 r={12}
                 role="button"
-                tabIndex={index === activeIndex ? 0 : -1}
+                tabIndex={index === safeActiveIndex ? 0 : -1}
                 aria-label={`Opponent offer, round ${point.round}`}
+                aria-pressed={selectedRound !== undefined ? point.round === selectedRound : undefined}
                 onFocus={() => setActiveIndex(index)}
                 onClick={() => onPointClick({ side: "them" as const, round: point.round })}
                 onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
