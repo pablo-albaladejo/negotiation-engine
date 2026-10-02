@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closeText, counterText, holdText, textMatchesPrice } from "../../src/bazaar/dealers/messages.js";
+import { closeText, counterText, holdText, textMatchesPrice } from "../../src/dealers/messages.js";
 
 describe("plantillas de mensajes", () => {
   it("no nombran a ningún dealer (hilo 257: llamamos «Abuela Carmen» a El Chato)", () => {

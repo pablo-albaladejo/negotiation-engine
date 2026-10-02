@@ -1,8 +1,8 @@
-import type { Issue } from "../../engine/config.js";
-import { decideAcceptance, type AcceptanceRule, type TimeInfo } from "../../engine/acceptance.js";
-import { enforceGuardrails, type Role } from "../../engine/guardrails.js";
-import { utility } from "../../engine/issues.js";
-import { concession } from "../../engine/offer.js";
+import type { Issue } from "../engine/config.js";
+import { decideAcceptance, type AcceptanceRule, type TimeInfo } from "../engine/acceptance.js";
+import { enforceGuardrails, type Role } from "../engine/guardrails.js";
+import { utility } from "../engine/issues.js";
+import { concession } from "../engine/offer.js";
 import type { Duel, StructuredOffer } from "./schemas.js";
 import { numbersIn } from "../dealers/messages.js";
 

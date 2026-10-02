@@ -1,8 +1,8 @@
 import { mkdir, open, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { TokenBucket } from "../../src/bazaar/shared/client.js";
-import { loadBazaarEnv } from "../../src/bazaar/shared/env.js";
+import { TokenBucket } from "../../src/shared/client.js";
+import { loadBazaarEnv } from "../../src/shared/env.js";
 import type { ApiResponse } from "./api.js";
 import {
   BoardClockSchema,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { runVenueCli, type VenueApi } from "../../src/bazaar/venue/main.js";
-import { planVenue, VENUE_COST } from "../../src/bazaar/venue/venue.js";
-import type { Me } from "../../src/bazaar/shared/schemas.js";
+import { runVenueCli, type VenueApi } from "../../src/venue/main.js";
+import { planVenue, VENUE_COST } from "../../src/venue/venue.js";
+import type { Me } from "../../src/shared/schemas.js";
 
 const me = (level: number, cash: number, venue: string | null = null) => ({ id: "t02", cash, level, assets: [], venue }) as unknown as Me;
 const RASTRO = [{ venue: "rastro", name: "El Rastro", owner: "world" }];

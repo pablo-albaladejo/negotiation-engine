@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
-import { BazaarClient, BazaarError } from "../../src/bazaar/shared/client.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, type ThreadView } from "../../src/bazaar/dealers/negotiator.js";
-import { ThreadSchema, type Thread } from "../../src/bazaar/shared/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
-import { threadPrices } from "../../src/bazaar/dealers/view.js";
+import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
+import { BazaarClient, BazaarError } from "../../src/shared/client.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, type ThreadView } from "../../src/dealers/negotiator.js";
+import { ThreadSchema, type Thread } from "../../src/shared/schemas.js";
+import type { TraceRecord } from "../../src/shared/trace.js";
+import { threadPrices } from "../../src/dealers/view.js";
 
 /** Hilo real 56 (vendemos MAL-02, your_value 2.2, a la abuela): ella ofrece 13 en su oferta vigente, nosotros pedimos 21. */
 const RAW = JSON.parse(readFileSync(new URL("../fixtures/bazaar/thread-56.json", import.meta.url), "utf8")) as Record<string, unknown>;

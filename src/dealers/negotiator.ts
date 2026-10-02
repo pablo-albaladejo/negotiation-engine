@@ -1,5 +1,5 @@
-import { enforceGuardrails, type Mandate } from "../../engine/guardrails.js";
-import { concession } from "../../engine/offer.js";
+import { enforceGuardrails, type Mandate } from "../engine/guardrails.js";
+import { concession } from "../engine/offer.js";
 
 /**
  * Negociador con un dealer (un hilo, una cifra): decide aceptar, contraofertar, esperar o cerrar.
@@ -74,7 +74,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   lowballFrac: 0.7,
 };
 
-/** Negociador anterior a la evidencia de los hilos 56 y 125 (ancla lejana + Boulware), para comparar en el simulador. */
+/** Negociador anterior a la evidencia de los hilos 56 y 125 (ancla lejana + Boulware), para comparar. */
 export const LEGACY_NEGOTIATOR_PARAMS: NegotiatorParams = {
   ...DEFAULT_NEGOTIATOR_PARAMS,
   stepMode: "boulware",

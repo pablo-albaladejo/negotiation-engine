@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPatience, PatienceLog } from "../../src/bazaar/dealers/patience.js";
+import { formatPatience, PatienceLog } from "../../src/dealers/patience.js";
 
 describe("registro de paciencia por conversación", () => {
   it("hilo 125 reconstruido: 6 mensajes nuestros, 7 tics hasta su final, su respuesta a cada paso", () => {

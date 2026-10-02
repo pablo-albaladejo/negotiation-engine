@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
-import { DealerInfoSchema, ThreadSchema, type Thread } from "../../src/bazaar/shared/schemas.js";
-import { cashFloorOf, statusLine } from "../../src/bazaar/dealers/serious.js";
-import { TeamBudget } from "../../src/bazaar/dealers/team.js";
-import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
+import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
+import { DealerInfoSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
+import { cashFloorOf, statusLine } from "../../src/dealers/serious.js";
+import { TeamBudget } from "../../src/dealers/team.js";
+import type { TraceRecord } from "../../src/shared/trace.js";
 
 const MENU = DealerInfoSchema.parse({ id: "abuela", menu: { sells: [{ card: "SAL-05", rarity: "uncommon", list_price: 10 }], buys: [] } });
 const NOW = 1_700_000_000_000;

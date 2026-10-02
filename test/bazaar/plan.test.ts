@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyOnly, formatPlan, parseOnly, previewPath, rankCandidates, selectCandidates } from "../../src/bazaar/dealers/plan.js";
-import { DealerInfoSchema, type Catalog, type Me } from "../../src/bazaar/shared/schemas.js";
+import { applyOnly, formatPlan, parseOnly, previewPath, rankCandidates, selectCandidates } from "../../src/dealers/plan.js";
+import { DealerInfoSchema, type Catalog, type Me } from "../../src/shared/schemas.js";
 
 const ABUELA = DealerInfoSchema.parse({
   id: "abuela",

@@ -21,8 +21,8 @@ import {
   type TradeOffer,
   type TradeParams,
   type TradeState,
-} from "../../src/bazaar/trades/trades.js";
-import type { Catalog } from "../../src/bazaar/shared/schemas.js";
+} from "../../src/trades/trades.js";
+import type { Catalog } from "../../src/shared/schemas.js";
 
 const RARITY: [string, number][] = [
   ["common", 10], ["common", 10], ["common", 10], ["common", 10], ["common", 10],

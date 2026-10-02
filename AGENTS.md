@@ -6,27 +6,25 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 
 ## Reglas no negociables
 
-- **La cifra sale siempre del código** (`src/engine/` + planificadores de `src/bazaar/`). Los mensajes son plantillas cuya única cifra es la decidida (`textMatchesPrice`, `textMatchesOffer`).
+- **La cifra sale siempre del código** (`src/engine/` + planificadores de `src/dealers/`, `src/duels/`…). Los mensajes son plantillas cuya única cifra es la decidida (`textMatchesPrice`, `textMatchesOffer`).
 - **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto.
 - **Nunca se revela la valoración privada** ni el límite (`your_limit`).
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
-- **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/bazaar/shared/asset-locks.ts`).
+- **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/shared/asset-locks.ts`).
 - **Nada en vivo sin aprobación**: los POST reales exigen quitar `--dry-run` y, donde aplica, `--confirm`.
 
 ## Arquitectura
 
 ```
 src/
-├─ bazaar/   agente del Bazaar, una carpeta por concepto:
-│  ├─ shared/   cliente de la API, esquemas, claves, trazas, la cifra
-│  ├─ dealers/  negociar con Abuela y El Chato     (pnpm bazaar)
-│  ├─ duels/    duelos 1 contra 1                  (pnpm bazaar:duels)
-│  ├─ trades/   El Rastro con otros equipos        (pnpm bazaar:trades)
-│  ├─ broker/   casar ofertas en nuestro venue     (pnpm bazaar:broker)
-│  ├─ venue/    abrir nuestro mercado              (pnpm bazaar:venue)
-│  ├─ status/   resumen de solo lectura            (pnpm bazaar:status)
-│  └─ sim/      Abuela simulada, offline           (pnpm bazaar:sim)
-└─ engine/   núcleo numérico: utilidad, concesión, aceptación, guardarraíles, RNG
+├─ engine/    matemáticas puras: concesión, aceptación, guardarraíles, RNG
+├─ shared/    cliente de la API, esquemas, claves, trazas, la cifra
+├─ dealers/   negociar con Abuela y El Chato     (pnpm bazaar)
+├─ duels/     duelos 1 contra 1                  (pnpm bazaar:duels)
+├─ trades/    El Rastro con otros equipos        (pnpm bazaar:trades)
+├─ broker/    casar ofertas en nuestro venue     (pnpm bazaar:broker)
+├─ venue/     abrir nuestro mercado              (pnpm bazaar:venue)
+└─ status/    resumen de solo lectura            (pnpm bazaar:status)
 test/        tests unitarios y de propiedades (fast-check)
 scripts/     escaneo de la API y comprobación de docs
 docs/        lecciones de los dealers y kit oficial del Bazaar
@@ -53,12 +51,11 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |
 | `pnpm bazaar:record` | Graba el stream en vivo (`/api/events/stream`, team y public) en `results/` para reconstruir el día. |
 | `pnpm bazaar:dump` | Volcado del estado y del día (cartas, hilos, duelos, feed) en `results/` (solo lectura). |
-| `pnpm bazaar:sim` | Nuestro negociador contra Abuela simulada (offline). |
 | `pnpm viewer` | Visor en http://127.0.0.1:5199/#bazaar |
 | `pnpm viewer:test` | Tests del visor. |
 | `pnpm ds:test` | Tests del sistema de diseño (lo usa el visor). |
 
-Detalle de cada pieza: [`src/bazaar/AGENTS.md`](src/bazaar/AGENTS.md).
+Detalle de cada pieza: [`src/AGENTS.md`](src/AGENTS.md).
 
 ## Variables de entorno
 
@@ -70,8 +67,7 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 
 ## Links a subcarpetas
 
-- [`src/`](src/AGENTS.md) — código
-- [`src/bazaar/`](src/bazaar/AGENTS.md) — agente del Bazaar
+- [`src/`](src/AGENTS.md) — agente del Bazaar, una carpeta por concepto
 - [`src/engine/`](src/engine/AGENTS.md) — núcleo numérico
 - [`test/`](test/AGENTS.md) — tests
 - [`scripts/`](scripts/AGENTS.md) — utilidades

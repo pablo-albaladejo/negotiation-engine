@@ -30,4 +30,4 @@ pnpm viewer:typecheck
 ## Links
 
 - ↑ [`AGENTS.md`](../AGENTS.md)
-- → [`src/bazaar/`](../src/bazaar/AGENTS.md) — de donde salen las trazas
+- → [`src/`](../src/AGENTS.md) — de donde salen las trazas

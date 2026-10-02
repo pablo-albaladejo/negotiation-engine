@@ -81,7 +81,7 @@ El visor está unificado en la pestaña `#bazaar` con `/api/bazaar/board`.
 
 - **Planes y trazas:** `results/bazaar-live/2026-10-02/` (decisions.jsonl, thread-*.jsonl, score.jsonl, duels-state.json).
 - **Traspaso del día 1:** `handoff/2026-10-02/HANDOFF.md` (sesiones y scratchpad solo en la máquina de Pablo, fuera de git).
-- **Código:** `src/bazaar/` (agentes, dealers, duelos, trades, broker).
+- **Código:** `src/` (dealers, duels, trades, broker, venue…).
 - **Lecciones:** `docs/bazaar/lessons.json`, actualizado tras cada hilo.
 - **Original del Bazaar:** `docs/bazaar/kit/`.
 
@@ -95,7 +95,7 @@ El visor está unificado en la pestaña `#bazaar` con `/api/bazaar/board`.
 
 **Próximo paso:** `pnpm test && pnpm docs:check` para verificar que el árbol está limpio. Luego seguir con duelos, traders y el agente serio.
 
-Para contexto completo de la arquitectura, leer [`AGENTS.md`](AGENTS.md) y [`src/bazaar/AGENTS.md`](src/bazaar/AGENTS.md).
+Para contexto completo de la arquitectura, leer [`AGENTS.md`](AGENTS.md) y [`src/AGENTS.md`](src/AGENTS.md).
 
 ## Escaneo de la API (sábado 00:11, partida en pausa, tick 159)
 

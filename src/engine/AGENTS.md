@@ -1,6 +1,6 @@
 # src/engine/ — Núcleo numérico
 
-Funciones puras que usa el Bazaar (`../bazaar/dealers/negotiator.ts`, `../bazaar/duels/duels.ts` y el simulador). Sin LLM ni red.
+Funciones puras que usa el Bazaar (`../dealers/negotiator.ts` y `../duels/duels.ts`). Sin LLM ni red.
 
 ## Archivos
 
@@ -9,10 +9,10 @@ Funciones puras que usa el Bazaar (`../bazaar/dealers/negotiator.ts`, `../bazaar
 - **`offer.ts`** — `concession`: curva Boulware (β) entre apertura y reserva.
 - **`acceptance.ts`** — `decideAcceptance`: AC_next, AC_time y AC_combi.
 - **`guardrails.ts`** — `enforceGuardrails`: la oferta no cruza el mandato y concede de forma monótona.
-- **`rng.ts`** — `createRng`: aleatoriedad con semilla reproducible (simulador).
+- **`rng.ts`** — `createRng`: aleatoriedad con semilla reproducible.
 
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- → [`bazaar/`](../bazaar/AGENTS.md) — quien lo usa
+- → [`dealers/` y `duels/`](../AGENTS.md) — quien lo usa
 - → [`test/engine/`](../../test/engine/) — tests y propiedades (fast-check)

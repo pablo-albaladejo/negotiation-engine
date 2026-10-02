@@ -10,7 +10,7 @@ import {
   plannedSchedule,
   stepResponses,
   type ThreadView,
-} from "../../src/bazaar/dealers/negotiator.js";
+} from "../../src/dealers/negotiator.js";
 
 function view(partial: Partial<ThreadView> & Pick<ThreadView, "side" | "reservation">): ThreadView {
   return { herPrices: [], ourPrices: [], canMessage: true, canAccept: true, ...partial };

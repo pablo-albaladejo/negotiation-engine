@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
-import { numbersIn } from "../../src/bazaar/dealers/messages.js";
-import { ThreadSchema, type Thread } from "../../src/bazaar/shared/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
+import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
+import { numbersIn } from "../../src/dealers/messages.js";
+import { ThreadSchema, type Thread } from "../../src/shared/schemas.js";
+import type { TraceRecord } from "../../src/shared/trace.js";
 
 const ME = {
   name: "Team 2",

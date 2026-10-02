@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
-import { assetsInOffers, assetsInThreads, busyAssets, sellBlocked } from "../../src/bazaar/shared/asset-locks.js";
-import { DealerInfoSchema, ThreadSchema } from "../../src/bazaar/shared/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
+import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
+import { assetsInOffers, assetsInThreads, busyAssets, sellBlocked } from "../../src/shared/asset-locks.js";
+import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
+import type { TraceRecord } from "../../src/shared/trace.js";
 
 const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncommon", set: "SAL", print_run: 90 };
 /** `/api/me/offers` real del 2 oct (tick 132): 438 listado en El Rastro a 37 y en el hilo 260 con Abuela. */

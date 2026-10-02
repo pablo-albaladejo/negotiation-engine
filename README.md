@@ -19,4 +19,4 @@ Necesita `.env` con `BAZAAR_URL` y `BAZAAR_KEY` (ver `.env.example`).
 
 - [`AGENTS.md`](AGENTS.md) — reglas, arquitectura y comandos.
 - [`DAY1.md`](DAY1.md) — estado del torneo y prioridades.
-- [`src/bazaar/AGENTS.md`](src/bazaar/AGENTS.md) — cada pieza del agente.
+- [`src/AGENTS.md`](src/AGENTS.md) — cada pieza del agente.
