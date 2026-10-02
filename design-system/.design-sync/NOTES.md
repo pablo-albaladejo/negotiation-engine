@@ -122,3 +122,10 @@
   pass (expected one-time re-grade, documented above under "Re-sync
   risks"). No other component's source changed, so their grades carried
   forward unchanged.
+
+## Re-sync recipe (2026-10-02)
+
+- The converter resolves `<node-modules>/@negotiation-ring/design-system/package.json`, but this repo IS the package, so `--node-modules ./node_modules` fails with ENOENT. Build a throwaway node_modules dir outside the repo: `mkdir -p <tmp>/nm/@negotiation-ring && ln -sfn "$PWD" <tmp>/nm/@negotiation-ring/design-system`, plus symlinks for `.pnpm`, `@types`, `react`, `react-dom`, `typescript`, `esbuild` from `./node_modules`; then pass `--node-modules <tmp>/nm`.
+- The render check needs Playwright: `(cd .ds-sync && npm i playwright && npx playwright install chromium)`. Without it validate fails with `[RENDER_SKIPPED]`.
+- Run `pnpm build` first, then `node .ds-sync/resync.mjs --config .design-sync/config.json --node-modules <tmp>/nm --out ./ds-bundle --remote <saved _ds_sync.json>`.
+- Last re-sync: 22 components (added BackLink, PrimaryButton, SecondaryButton, TableLink, StatFigure), all authored previews graded good; render check 22/22 clean; only warn is the known `[FONT_REMOTE]`.
