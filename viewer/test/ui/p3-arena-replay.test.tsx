@@ -73,6 +73,18 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(container.querySelector(".nr-msg.is-highlighted")).toBeTruthy();
   });
 
+  // F6: clicking a point highlights only the message of that round AND that side, not both sides.
+  it("clicking a point highlights the round AND side of that point, not the other side (F6)", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const usDot = container.querySelector("circle.dot-us")!;
+    fireEvent.click(usDot);
+    const highlighted = container.querySelectorAll(".nr-msg.is-highlighted");
+    expect(highlighted.length).toBeGreaterThan(0);
+    highlighted.forEach((msg) => expect(msg.classList.contains("us")).toBe(true));
+  });
+
   it("el texto del rival con HTML se muestra como texto, nunca como markup", () => {
     const line = fx.games[0]!;
     const base = arenaReplayModel(line, null);

@@ -29,6 +29,13 @@ export interface ArenaReplayScreenProps {
 export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSelectGame }: ArenaReplayScreenProps) {
   const lastRound = model.game.rounds || 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
+  // F6/d:618: a clicked chart point selects a round AND a side; `null` (round picked some other way,
+  // e.g. the DecisionPanel stepper) highlights every message in that round, on either side.
+  const [selectedSide, setSelectedSide] = useState<"us" | "them" | null>(null);
+  const selectRound = (round: number) => {
+    setSelectedRound(round);
+    setSelectedSide(null);
+  };
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -139,7 +146,10 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
             injectionRounds={injectionRounds}
             {...(end ? { end } : {})}
             selectedRound={selectedRound}
-            onPointClick={(point) => setSelectedRound(point.round)}
+            onPointClick={(point) => {
+              setSelectedRound(point.round);
+              setSelectedSide(point.side);
+            }}
           />
           <Legend
             items={[
@@ -171,14 +181,14 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
                   {...(offerValue(c.offer) !== null ? { offer: offerValue(c.offer)! } : {})}
                   text={c.text}
                   {...(flags.length > 0 ? { flags } : {})}
-                  highlighted={c.round === selectedRound}
+                  highlighted={c.round === selectedRound && (selectedSide === null || (c.from === "agent" ? "us" : "them") === selectedSide)}
                 />
               );
             })}
           </div>
         </Card>
       </div>
-      <DecisionPanel hasTrace={model.hasTrace} panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
+      <DecisionPanel hasTrace={model.hasTrace} panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={selectRound} />
     </section>
   );
 }

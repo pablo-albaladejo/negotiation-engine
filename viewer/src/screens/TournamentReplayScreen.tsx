@@ -48,6 +48,13 @@ export interface TournamentReplayScreenProps {
 export function TournamentReplayScreen({ model, summary }: TournamentReplayScreenProps) {
   const lastRound = model.rounds.length > 0 ? model.rounds[model.rounds.length - 1]!.round : 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
+  // F6/d:618: a clicked chart point selects a round AND a side; `null` (round picked some other way,
+  // e.g. the DecisionPanel stepper) highlights every message in that round, on either side.
+  const [selectedSide, setSelectedSide] = useState<"us" | "them" | null>(null);
+  const selectRound = (round: number) => {
+    setSelectedRound(round);
+    setSelectedSide(null);
+  };
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -157,7 +164,10 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
               injectionRounds={injectionRounds}
               {...(end ? { end } : {})}
               selectedRound={selectedRound}
-              onPointClick={(point) => setSelectedRound(point.round)}
+              onPointClick={(point) => {
+                setSelectedRound(point.round);
+                setSelectedSide(point.side);
+              }}
             />
             <Legend
               items={[
@@ -195,14 +205,14 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
                   {...(c.offer !== undefined ? { offer: c.offer } : {})}
                   text={c.text}
                   {...(flags.length > 0 ? { flags } : {})}
-                  highlighted={c.round === selectedRound}
+                  highlighted={c.round === selectedRound && (selectedSide === null || c.side === selectedSide)}
                 />
               );
             })}
           </div>
         </Card>
       </div>
-      <DecisionPanel hasTrace panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
+      <DecisionPanel hasTrace panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={selectRound} />
     </section>
   );
 }
