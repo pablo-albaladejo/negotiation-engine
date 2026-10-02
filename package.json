@@ -23,6 +23,7 @@
     "bazaar:broker": "tsx src/bazaar/broker-main.ts",
     "bazaar:scan": "node scripts/bazaar-api-scan.mjs",
     "bazaar:feed": "node scripts/bazaar-convo-feed.mjs",
+    "bazaar:dump": "node scripts/bazaar-dump.mjs",
     "ds:test": "pnpm --dir design-system test",
     "docs:check": "node scripts/check-agents-links.mjs; links=$?; node scripts/check-identifiers.mjs; ids=$?; [ $links -eq 0 ] && [ $ids -eq 0 ]"
   },
