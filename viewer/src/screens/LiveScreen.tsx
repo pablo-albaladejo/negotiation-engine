@@ -51,7 +51,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   const rounds = model.status === "waiting" ? HORIZON : (model.roundLimit ?? model.round);
   const playing = model.status === "live" || model.status === "finished";
   const rival = model.status === "waiting" ? "next opponent" : (model.sessionId ?? "—");
-  const flags = (b: LiveModel["last3"][number]): ChatMessageFlag[] => [
+  const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
   ];
@@ -97,7 +97,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                   <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
-                  <OfferChart rounds={Math.max(rounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
+                  <OfferChart rounds={Math.max(rounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} zopa={false} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 32, minHeight: 0 }}>
@@ -107,7 +107,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                   ))}
                 </div>
                 <div className="nr-chat" style={{ zoom: 1.6, gap: 10, overflow: "hidden" }}>
-                  {model.last3.map((b, i) => (
+                  {model.lastMessages.map((b, i) => (
                     <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
                   ))}
                 </div>

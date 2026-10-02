@@ -55,7 +55,7 @@ export interface LiveModel {
   last: LiveOutcome | null;
   templateCount: number;
   ourMessageCount: number;
-  last3: LiveBubble[];
+  lastMessages: LiveBubble[];
 }
 
 
@@ -104,6 +104,6 @@ export function liveModel(feed: LiveFeed): LiveModel {
     last: status === "waiting" ? (outcome ?? previous) : previous,
     templateCount: panels.filter((p) => p.template).length,
     ourMessageCount: panels.filter((p) => p.ourText !== null).length,
-    last3: bubbles.slice(-3),
+    lastMessages: bubbles.slice(-4),
   };
 }

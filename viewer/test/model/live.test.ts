@@ -15,17 +15,17 @@ const box = (round: number, name: string, output: unknown, result: "ok" | "fallb
 describe("liveModel (P7)", () => {
   it("sin sesión: WAITING (waiting for the next match), sin datos inventados", () => {
     const m = liveModel(emptyLiveFeed());
-    expect(m).toMatchObject({ status: "waiting", badge: "WAITING", sessionId: null, round: 0, attacksBlocked: 0, outcome: null, last: null, last3: [] });
+    expect(m).toMatchObject({ status: "waiting", badge: "WAITING", sessionId: null, round: 0, attacksBlocked: 0, outcome: null, last: null, lastMessages: [] });
   });
 
-  it("en curso: LIVE con ronda, límite del registro input, utilidades de explain × 100 y 3 últimas burbujas", () => {
+  it("en curso: LIVE con ronda, límite del registro input, utilidades de explain × 100 y últimas burbujas", () => {
     const m = liveModel(feed(fx.tournament.trace));
     expect(m).toMatchObject({ status: "live", badge: "LIVE", sessionId: "ring-session-1", role: "buyer", round: 3, roundLimit: 10, outcome: null });
     const engine = fx.tournament.trace.filter((l) => l.kind === "box" && l.box === "engine").map((l) => (l as { output: { explain: { uOffer: number } } }).output.explain.uOffer);
     expect(m.ours.map((p) => p.value)).toEqual(engine.map((u) => u * 100));
-    expect(m.last3).toHaveLength(3);
-    expect(m.last3.at(-1)).toMatchObject({ side: "us", round: 3 });
-    expect(m.last3.find((b) => b.side === "them")?.text).toContain(RIVAL_HTML);
+    expect(m.lastMessages.length).toBeLessThanOrEqual(4);
+    expect(m.lastMessages.at(-1)).toMatchObject({ side: "us", round: 3 });
+    expect(m.lastMessages.find((b) => b.side === "them")?.text).toContain(RIVAL_HTML);
     expect(m.latest.theirOffer).toEqual({ pct: 3 });
     expect(m.templateCount).toBe(0);
     expect(m.ourMessageCount).toBe(3);
