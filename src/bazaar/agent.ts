@@ -4,6 +4,7 @@ import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams
 import { applyOnly, formatPlan, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
 import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
+import { formatPatience, PatienceLog } from "./patience.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
 
@@ -45,6 +46,8 @@ interface Active {
   sent: number[];
   /** Aguantes (mismo precio, sin oferta nueva) ya gastados en este hilo. */
   holdsUsed: number;
+  /** Mensajes, respuestas, tics hasta su final y su respuesta a cada paso nuestro. */
+  patience: PatienceLog;
 }
 
 const HOUR_MS = 3_600_000;
@@ -125,7 +128,7 @@ export class BazaarAgent {
     };
     try {
       const me = await this.api.me();
-      if (!this.active) await this.adoptOpenThread(me);
+      if (!this.active) await this.adoptOpenThread(me, tick);
       if (this.active) {
         const thread = await this.api.thread(this.active.id);
         if (thread.status === "open") {
@@ -153,7 +156,7 @@ export class BazaarAgent {
       }
       try {
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0 };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick) };
         this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
@@ -180,14 +183,14 @@ export class BazaarAgent {
   }
 
   /** Tras un reinicio: retoma el hilo abierto con el dealer, reconstruyendo el objetivo desde su topic. */
-  private async adoptOpenThread(me: Me): Promise<void> {
+  private async adoptOpenThread(me: Me, tick: number): Promise<void> {
     const list = await this.api.myThreads("open");
     const summary = list.threads.find((t) => isDealer(this.o.dealer, t.with) && (t.status ?? "open") === "open");
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
     if (target) {
-      this.active = { id: thread.id, target, sent: [], holdsUsed: 0 };
+      this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick) };
       this.threadsOpened += 1;
     } else if (!this.o.dryRun) await this.api.closeThread(thread.id);
   }
@@ -251,11 +254,14 @@ export class BazaarAgent {
   private async negotiate(thread: Thread, tick: number, me: Me, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
     const active = this.active!;
     const { target } = active;
-    const p = threadPrices(thread, target.side, this.o.dealer, selfIdOf(thread, me));
+    const selfId = selfIdOf(thread, me);
+    const p = threadPrices(thread, target.side, this.o.dealer, selfId);
+    active.patience.observe(tick, p.herCurrent?.price, !!p.herCurrent?.final, herReplies(thread, this.o.dealer, selfId));
     // Nuestro último intento cuenta aunque el hilo no lo muestre (p. ej. el POST falló a medias): nunca se repite.
     const lastTried = active.sent[active.sent.length - 1];
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.budgetLeft())) : target.reservation;
+    const herAt = active.patience.herAtCounters();
     const view: ThreadView = {
       side: target.side,
       reservation,
@@ -267,6 +273,7 @@ export class BazaarAgent {
       canAccept: this.lastAcceptTick !== tick,
       holdsUsed: active.holdsUsed,
       ...(target.value !== undefined ? { privateValue: target.value } : {}),
+      ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
     };
     const d: Decision = decide(view, this.negotiatorParams);
     const base = {
@@ -284,7 +291,7 @@ export class BazaarAgent {
         case "accept":
           if (!this.o.dryRun) await this.api.accept(d.action.offerId);
           this.lastAcceptTick = tick;
-          emit({ ...base, action: "accept", ourPrice: d.action.price });
+          emit({ ...base, action: "accept", ourPrice: d.action.price, patience: active.patience.summary(tick) });
           return;
         case "counter": {
           const text = counterText(target.side, p.ourPrices.length, d.action.price);
@@ -293,6 +300,7 @@ export class BazaarAgent {
           // Se apunta antes del POST: si falla (o el servidor lo aceptó y la respuesta no valida), no se reenvía.
           active.lastSentTick = tick;
           active.sent.push(d.action.price);
+          active.patience.sent(tick, "counter", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
           emit({ ...base, action: "counter", ourPrice: d.action.price, text });
           return;
@@ -302,6 +310,7 @@ export class BazaarAgent {
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
           active.lastSentTick = tick;
           active.holdsUsed += 1;
+          active.patience.sent(tick, "hold", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text);
           emit({ ...base, action: "hold", ourPrice: d.action.price, text });
           return;
@@ -313,7 +322,7 @@ export class BazaarAgent {
             this.skip.set(target.key, tick + ticksPerHour);
             this.active = undefined;
           }
-          emit({ ...base, action: "close" });
+          emit({ ...base, action: "close", patience: active.patience.summary(tick) });
           return;
         case "wait":
           emit({ ...base, action: "wait" });
@@ -324,7 +333,7 @@ export class BazaarAgent {
   }
 
   private finish(thread: Thread, tick: number, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
-    const target = this.active!.target;
+    const { target, patience } = this.active!;
     const settled = settledPrice(thread, target, this.o.dealer);
     if (thread.status === "deal") {
       this.dealsDone += 1;
@@ -345,6 +354,7 @@ export class BazaarAgent {
       status: thread.status,
       ...(thread.closed_reason ? { closedReason: thread.closed_reason } : {}),
       ...(settled !== undefined ? { settledPrice: settled } : {}),
+      patience: patience.summary(tick),
     });
     this.active = undefined;
   }
@@ -395,7 +405,20 @@ function describe(r: TraceRecord): string {
   if (r.closedReason) parts.push(`reason ${r.closedReason}`);
   if (r.settledPrice !== undefined) parts.push(`settled ${r.settledPrice}`);
   if (r.error) parts.push(`error ${r.error}`);
-  return parts.join(" · ");
+  const line = parts.join(" · ");
+  return r.patience ? `${line}\n  ${formatPatience(r.patience)}` : line;
+}
+
+/** Mensajes del dealer posteriores a nuestro primer mensaje en el hilo (sus respuestas, sin su apertura). */
+export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): number {
+  const isUs = (who: string | null | undefined) => (selfId ? !!who && who.toLowerCase() === selfId.toLowerCase() : !isDealer(dealer, who));
+  let started = false;
+  let n = 0;
+  for (const m of thread.messages) {
+    if (isUs(m.sender)) started = true;
+    else if (started && isDealer(dealer, m.sender)) n += 1;
+  }
+  return n;
 }
 
 const NOT_A_TOPIC_PROBLEM = new Set(["insufficient_cash", "persona_quota", "cooloff", "sold_out", "wait_for_tick", "rate_limited", "locked", "bad_key"]);

@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import type { PatienceSummary } from "./patience.js";
 
 /** Una línea JSONL por decisión: lo que el visor necesita para reconstruir cada hilo. Sin clave. */
 export interface TraceRecord {
@@ -24,6 +25,8 @@ export interface TraceRecord {
   closedReason?: string;
   settledPrice?: number;
   error?: string;
+  /** Al cerrar/aceptar/terminar: mensajes nuestros, respuestas suyas, tics hasta su final y respuesta a cada paso. */
+  patience?: PatienceSummary;
 }
 
 export interface TraceSink {
