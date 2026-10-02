@@ -243,4 +243,29 @@ describe("ArenaReplayScreen (P3)", () => {
     // Distinct raw ids never collide on the same label, so the Filters dropdown never shows two identical options.
     expect(resultLabel("rival-error").label).not.toBe(resultLabel("protocol-violation").label);
   });
+
+  // F5: the Legend only lists what the chart actually draws (reserves/ZOPA/injections/end marker).
+  it("Legend drops reserve/ZOPA/injection/end items the chart doesn't draw (F5)", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide" && g.endReason === "agreement")!;
+    const base = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const bare: ArenaReplayModel = { ...base, reserves: null, explain: [], rounds: [], game: { ...base.game, endReason: "rival-error" } };
+    render(<ArenaReplayScreen runId={fx.runId} model={bare} onBack={() => {}} />);
+    expect(screen.getByText("Our offers")).toBeTruthy();
+    expect(screen.getByText("Opponent offers")).toBeTruthy();
+    expect(screen.queryByText("Our reserve")).toBeNull();
+    expect(screen.queryByText("Their reserve")).toBeNull();
+    expect(screen.queryByText("ZOPA")).toBeNull();
+    expect(screen.queryByText("Injection")).toBeNull();
+    expect(screen.queryByText("Close")).toBeNull();
+  });
+
+  it("Legend lists reserve/ZOPA/injection/end items when the chart draws them", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide" && g.endReason === "agreement")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(screen.getByText("Our reserve")).toBeTruthy();
+    expect(screen.getByText("Their reserve")).toBeTruthy();
+    expect(screen.getByText("ZOPA")).toBeTruthy();
+    expect(screen.getByText("Close")).toBeTruthy();
+  });
 });

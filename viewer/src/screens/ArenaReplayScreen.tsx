@@ -145,13 +145,13 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
             items={[
               { kind: "us", label: "Our offers" },
               { kind: "them", label: "Opponent offers" },
-              { kind: "target", label: targetCurveLabel },
-              { kind: "estimate", label: "Estimate of their reserve" },
-              { kind: "reserve-us", label: "Our reserve" },
-              { kind: "reserve-them", label: "Their reserve" },
-              { kind: "zopa", label: "ZOPA" },
-              { kind: "injection", label: "Injection" },
-              { kind: "end", label: "Close" },
+              ...(target.length > 0 ? [{ kind: "target" as const, label: targetCurveLabel }] : []),
+              ...(estimate.length > 0 ? [{ kind: "estimate" as const, label: "Estimate of their reserve" }] : []),
+              ...(ourReserve !== undefined ? [{ kind: "reserve-us" as const, label: "Our reserve" }] : []),
+              ...(theirReserve !== undefined ? [{ kind: "reserve-them" as const, label: "Their reserve" }] : []),
+              ...(model.reserves !== null ? [{ kind: "zopa" as const, label: "ZOPA" }] : []),
+              ...(injectionRounds.length > 0 ? [{ kind: "injection" as const, label: "Injection" }] : []),
+              ...(end ? [{ kind: "end" as const, label: "Close" }] : []),
             ]}
           />
         </Card>
