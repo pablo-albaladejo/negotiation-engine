@@ -123,4 +123,11 @@ describe("GateScreen (P6)", () => {
     expect(agreementRow.textContent).toContain("not logged");
     void table;
   });
+
+  it("names both units on the surplus/ZOPA row instead of mixing a decimal share and a pp change unlabelled (C8)", () => {
+    const model = gateModel("promote-x", gx.passed.gate);
+    render(<GateScreen model={model} onBack={() => {}} />);
+    expect(screen.getByText("Avg. surplus / ZOPA (share; change in pp)")).toBeTruthy();
+    expect(screen.queryByText("Avg. surplus / ZOPA")).toBeNull();
+  });
 });

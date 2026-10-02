@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { TraceLine } from "../../../src/pipeline/trace.js";
 import { applyLiveEvent } from "../../src/live.js";
-import { emptyLiveFeed, liveModel, type LiveFeed } from "../../src/model/index.js";
+import { emptyLiveFeed, liveModel, type LiveFeed, type LiveModel } from "../../src/model/index.js";
 import { parseRoute, routeTo } from "../../src/route.js";
 import { LiveScreen } from "../../src/screens/LiveScreen.js";
 import { generateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
@@ -110,5 +110,56 @@ describe("LiveScreen (P7)", () => {
     expect(corner).toBeTruthy();
     fireEvent.click(corner);
     expect(window.location.hash).toBe(routeTo.runs());
+  });
+});
+
+const BASE_LIVE_MODEL: LiveModel = {
+  status: "live",
+  badge: "LIVE",
+  sessionId: "ring-session-1",
+  rival: "bob",
+  role: "buyer",
+  round: 3,
+  roundLimit: 10,
+  attacksBlocked: 0,
+  ours: [],
+  theirs: [],
+  injectionRounds: [],
+  latest: { ourOffer: null, theirOffer: null, uRival: null, uOffer: null },
+  outcome: null,
+  last: null,
+  templateCount: 0,
+  ourMessageCount: 0,
+  lastMessages: [],
+};
+
+describe("LiveScreen headline/round-limit never invent a unit for a missing value (C9)", () => {
+  it("shows just the round, not 'N/not logged', when no roundLimit is logged (FINISHED)", () => {
+    const model: LiveModel = {
+      ...BASE_LIVE_MODEL,
+      status: "finished",
+      badge: "FINISHED",
+      roundLimit: null,
+      outcome: { sessionId: "ring-session-1", round: 3, action: "accept", offer: { pct: 3 } },
+    };
+    const { container } = render(<LiveScreen model={model} />);
+    const roundsLabel = screen.getByText("rounds");
+    const roundsValue = roundsLabel.previousElementSibling;
+    expect(roundsValue?.textContent).toBe("3");
+    void container;
+  });
+
+  it("drops the 'Session' label when sessionId isn't logged, instead of 'Session not logged'", () => {
+    const model: LiveModel = { ...BASE_LIVE_MODEL, sessionId: null, role: null };
+    const { container } = render(<LiveScreen model={model} />);
+    const headline = container.querySelector(".nr-live-headline");
+    expect(headline?.textContent).toBe("not logged");
+  });
+
+  it("shows the role alone (no 'Session' label) when sessionId is missing but the role is logged", () => {
+    const model: LiveModel = { ...BASE_LIVE_MODEL, sessionId: null, role: "seller" };
+    const { container } = render(<LiveScreen model={model} />);
+    const headline = container.querySelector(".nr-live-headline");
+    expect(headline?.textContent).toBe("seller");
   });
 });

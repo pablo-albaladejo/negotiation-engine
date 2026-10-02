@@ -69,7 +69,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     model.status === "finished" && model.outcome
       ? [
           { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
-          { value: `${model.round}/${model.roundLimit ?? "not logged"}`, label: "rounds", color: "var(--ink)" },
+          { value: model.roundLimit !== null ? `${model.round}/${model.roundLimit}` : String(model.round), label: "rounds", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
           { value: num(model.attacksBlocked), label: "attacks blocked", color: model.attacksBlocked > 0 ? "var(--warn)" : "var(--muted)" },
         ]
@@ -79,7 +79,14 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           { value: model.latest.uRival === null ? "not logged" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
         ];
-  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "not logged"}${model.role ? ` · ${model.role}` : ""}`;
+  /** C9: `sessionId` missing shouldn't read as a literal "Session not logged" -- drop the "Session"
+   * label entirely rather than pairing it with a placeholder it doesn't apply to. */
+  const headline =
+    model.status === "finished" && model.outcome
+      ? outcomeLabel(model.outcome)
+      : model.sessionId !== null
+        ? `Session ${model.sessionId}${model.role ? ` · ${model.role}` : ""}`
+        : (model.role ?? "not logged");
   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
   return (

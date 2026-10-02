@@ -40,7 +40,10 @@ function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplu
   return [
     // gate.json never logs a direction for this change; showing a hard-coded better/worse tone from
     // the sign would be the UI inventing a judgement the engine never made, so it is plain text (L12).
-    { ...row("Avg. surplus / ZOPA", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
+    // C8: champion/candidate are a decimal share (surplusDec), the change a percentage-point delta
+    // (formatPp) -- naming both units in the label instead of converting either value (L12's "no
+    // invented judgement" extends to not inventing a shared unit either).
+    { ...row("Avg. surplus / ZOPA (share; change in pp)", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
     row("Agreement", pct, (p) => p.agreementRate),
     row("Violations", int, (p) => p.violations),
     row("Leaks", int, (p) => p.leaks),
