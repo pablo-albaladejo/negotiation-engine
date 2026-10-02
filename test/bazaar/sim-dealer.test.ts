@@ -6,7 +6,7 @@ import { numbersIn } from "../../src/bazaar/messages.js";
 import type { TraceRecord } from "../../src/bazaar/trace.js";
 import { SimApi } from "../../src/bazaar/sim/api.js";
 import { DealerSim, type DealerSimOptions } from "../../src/bazaar/sim/dealer.js";
-import { deriveParams, loadDealerProfile, type DealerProfile } from "../../src/bazaar/sim/model.js";
+import { deriveParams, limitFor, loadDealerProfile, menuItems, type DealerProfile } from "../../src/bazaar/sim/model.js";
 import { classifyTone } from "../../src/bazaar/sim/mood.js";
 
 const ABUELA = loadDealerProfile();
@@ -44,12 +44,24 @@ function play(s: DealerSim, id: number, prices: readonly number[], text: (i: num
 describe("modelo de Abuela desde la ficha real", () => {
   it("deriva parámetros en los rangos documentados", () => {
     const p = deriveParams(ABUELA);
-    expect(p.reciprocity).toBeGreaterThanOrEqual(0.6);
-    expect(p.reciprocity).toBeLessThanOrEqual(0.9);
+    // Calibrado con los hilos 56 y 125: reciprocidad baja y ~6–7 mensajes nuestros de paciencia.
+    expect(p.reciprocity).toBeGreaterThanOrEqual(0.15);
+    expect(p.reciprocity).toBeLessThanOrEqual(0.3);
     const rounds = Math.round(p.patienceBase + ABUELA.traits.patience * p.patienceScale);
-    expect(rounds).toBeGreaterThanOrEqual(8);
-    expect(rounds).toBeLessThanOrEqual(11);
+    expect(rounds).toBeGreaterThanOrEqual(6);
+    expect(rounds).toBeLessThanOrEqual(7);
     expect(p.dealsPerHour).toBe(8);
+  });
+
+  it("al comprarnos su techo es bajo (hilo 125: común de lista 10 a 5 → 6); las comunes siguen a 13 fijos (hilo 56)", () => {
+    const p = deriveParams(ABUELA);
+    const items = menuItems(ABUELA, p);
+    const unc = items.find((i) => i.side === "sell" && i.key === "rarity:uncommon")!;
+    expect(unc.opening).toBe(12);
+    expect(limitFor(unc, 0.25, p)).toBe(14);
+    const common = { side: "sell" as const, key: "rarity:common", list: 10, opening: Math.round(10 * p.buyOpenFrac) };
+    expect([common.opening, limitFor(common, 0.25, p)]).toEqual([5, 6]);
+    expect(items.find((i) => i.side === "sell" && i.key === "rarity:common")).toMatchObject({ opening: 13, fixed: true });
   });
 
   it("abre el sobre a su opening_ask real y una común a list × 1,15", () => {

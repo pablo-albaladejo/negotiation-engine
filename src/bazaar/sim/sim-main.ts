@@ -1,13 +1,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { DEFAULT_NEGOTIATOR_PARAMS, type NegotiatorParams } from "../negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, LEGACY_NEGOTIATOR_PARAMS, type NegotiatorParams } from "../negotiator.js";
 import { ABUELA_SCENARIOS, formatTable, runGrid, summarize } from "./harness.js";
 import { ABUELA_FIXTURE, deriveParams, loadDealerProfile, type SimParams } from "./model.js";
 import { naivePolicy, oursPolicy } from "./policies.js";
 
 /**
- * `pnpm bazaar:sim`: nuestro negociador y el starter ingenuo contra la Abuela simulada.
+ * `pnpm bazaar:sim`: nuestro negociador (nuevo, adaptativo), el anterior (`legacy`, ancla lejana + Boulware) y el
+ * starter ingenuo contra la Abuela simulada (SIMULATED: modelo calibrado con los hilos 56 y 125).
  * Imprime tablas por artículo y por hipótesis de suelo y escribe
  * `results/bazaar-sim/<timestamp>/summary.json`. Sin red: nunca toca el servidor.
  */
@@ -46,11 +47,12 @@ export async function runSimCli(argv: string[], log: (line: string) => void = co
   const ours: NegotiatorParams = { ...DEFAULT_NEGOTIATOR_PARAMS, ...overrides(values.ours, DEFAULT_NEGOTIATOR_PARAMS, "--ours") };
   const wanted = values.scenarios?.split(",");
   const scenarios = wanted ? ABUELA_SCENARIOS.filter((s) => wanted.includes(s.name)) : ABUELA_SCENARIOS;
-  const episodes = await runGrid({ profile, policies: [oursPolicy(ours), naivePolicy()], scenarios, floors, seeds, simParams, maxTicks: Number(values["max-ticks"]) });
+  const episodes = await runGrid({ profile, policies: [oursPolicy(ours), oursPolicy(LEGACY_NEGOTIATOR_PARAMS, "legacy"), naivePolicy()], scenarios, floors, seeds, simParams, maxTicks: Number(values["max-ticks"]) });
 
   const byScenario = summarize(episodes, "scenario");
   const byFloor = summarize(episodes, "floorFrac");
   const all = summarize(episodes, "all");
+  log(`SIMULATED (offline model, not live data) · policies: ours = adaptive negotiator, legacy = previous (far anchor + Boulware), naive = starter`);
   log(`Abuela sim · ${seeds} seeds × floors [${floors.join(", ")}] × ${scenarios.length} items · ${episodes.length} episodes`);
   log("");
   log(formatTable(byScenario, "item"));
@@ -69,6 +71,7 @@ export async function runSimCli(argv: string[], log: (line: string) => void = co
     scenarios,
     simParams: deriveParams(profile, simParams),
     oursParams: ours,
+    legacyParams: LEGACY_NEGOTIATOR_PARAMS,
     byScenario,
     byFloor,
     all,

@@ -1,6 +1,6 @@
 # src/bazaar/sim/ — Abuela Carmen simulada (offline)
 
-Simulador de dealers del Bazaar guiado por sus rasgos, y un arnés que enfrenta nuestro negociador (`decide`, sin cambios) y el "starter_agent.py" del kit contra él. Sirve para ajustar el agente antes de jugar en vivo. **Nunca habla con el servidor**: todo es local y determinista por semilla.
+Simulador de dealers del Bazaar guiado por sus rasgos, y un arnés que enfrenta nuestro negociador (`decide`, sin cambios; `ours` = modo adaptativo por defecto, `legacy` = `LEGACY_NEGOTIATOR_PARAMS`, ancla lejana + Boulware) y el "starter_agent.py" del kit contra él. Todo lo que imprime es SIMULATED. Sirve para ajustar el agente antes de jugar en vivo. **Nunca habla con el servidor**: todo es local y determinista por semilla.
 
 ## Archivos
 
@@ -8,14 +8,14 @@ Simulador de dealers del Bazaar guiado por sus rasgos, y un arnés que enfrenta 
 - **`mood.ts`** — `classifyTone`: palabras clave → amable, rudo, inyección. Nunca lee cifras.
 - **`dealer.ts`** — `DealerSim`: hilos con la misma forma que la API (mensajes con `price`, `standing_offers` con `final`, estado `open`/`deal`/`walked`/"cooloff"/"closed" y `closed_reason`), un mensaje por hilo y tick, una aceptación por tick, cuotas por hora y libro de tratos (`deals`, con `atOpening`, `counts` y `share`). `secret` expone el límite y la paciencia solo para tests y métricas.
 - **`api.ts`** — `SimApi`: el simulador detrás de `BazaarApi` (la interfaz que usa `BazaarAgent`); cada respuesta pasa por los esquemas Zod reales.
-- **`policies.ts`** — `oursPolicy` (mismas llamadas que el bucle del agente: `threadPrices` → `decide` → plantillas) y `naivePolicy` (pasos de +2 P del starter).
+- **`policies.ts`** — `oursPolicy` (con `LEGACY_NEGOTIATOR_PARAMS` y nombre `legacy` da el negociador anterior; mismas llamadas que el bucle del agente: `threadPrices` → `decide` → plantillas) y `naivePolicy` (pasos de +2 P del starter).
 - **`harness.ts`** — `runEpisode`, `runGrid`, `stats`, `summarize`, `formatTable`; escenarios en `ABUELA_SCENARIOS`.
 - **`sim-main.ts`** — CLI `pnpm bazaar:sim`.
 
 ## Uso
 
 ```bash
-pnpm bazaar:sim                                   # 200 semillas × 5 suelos × 5 artículos × 2 políticas
+pnpm bazaar:sim                                   # 200 semillas × 5 suelos × 5 artículos × 3 políticas (ours, legacy, naive)
 pnpm bazaar:sim --seeds 50 --floors 0.2,0.3       # más rápido
 pnpm bazaar:sim --ours sellAnchorMult=2.5         # probar parámetros del negociador
 pnpm bazaar:sim --sim reciprocity=0.6,patienceScale=6 --no-write
@@ -50,10 +50,10 @@ Escala de la escalera: `share = (O − precio) / (O − L)` al comprar, `(precio
 | Solo se mueve si nos movemos; repetir no gana nada; pasos pequeños → pasos pequeños; final y luego se va; un límite secreto por hilo; cooloff con `until_tick`; trato a la apertura no cuenta | REAL (RULES.md), forma exacta ASSUMPTION | — |
 | Apertura sin `opening_ask` = list × `openingMarkup` | ASSUMPTION (30/26) | 1,15 → común 12, infrecuente 29 |
 | Suelo = list × (1 − f), f = `floorFrac` × (1 ± `floorJitter`) | ASSUMPTION; f barrido 0,15–0,35 | 0,26 ± 20 % |
-| Al comprar: puja inicial list × `buyOpenFrac`, techo list × (1 − f) × `buyMargin` (list de su venta de la misma rareza) | ASSUMPTION (`buys` no trae precio) | 0,40 y 0,8 |
-| `reciprocity` = 0,5 + 0,4 × generosity − 0,3 × shrewdness | ASSUMPTION | 0,76 |
+| Al comprarnos (fuera de las comunes fijas): puja inicial list × `buyOpenFrac`, techo bajo max(apertura + 1, round(apertura × `buyCeilingMult`)) (list de su venta de la misma rareza) | CALIBRATED (hilo 125: MAL-02, común de lista 10, 5 → 6 en 6 mensajes) | 0,48 y 1,2 → común 5/6, infrecuente 12/14 |
+| `reciprocity` = 0,1 + 0,2 × generosity − 0,1 × shrewdness, en [0,1, 0,5] | CALIBRATED (hilo 125: concedimos 5 P en pasos de 1, ella 1 P) | 0,24 |
 | `firstMoveFrac`, `maxStepFrac`, `acceptGapFrac` | ASSUMPTION | 0,09; 0,25; 0,08 |
-| Rondas = 2 + 9 × patience (± 1) | ASSUMPTION | ≈ 10 (8–11) |
+| Rondas = 2 + 5 × patience (± 1), contadas por mensaje nuestro (intercambio), no por tic | CALIBRATED (hilos 56 y 125: ~6–7 mensajes nuestros hasta su final; 3 tics sin mensajes en el 56 no la gastaron) | ≈ 6 (5–7, más el efecto del tono) |
 | `finalFrac` = 0,5 × generosity | ASSUMPTION | 0,4 |
 | Tono: amable +0,5 rondas (tope 2) y +0,03 r (tope 0,1); rudo −1,2 rondas y −0,06 r; inyección cooloff 0,5 × strictness, 8 ticks | ASSUMPTION ("Abuela likes kindness" es REAL) | — |
 | Cuota excedida al abrir → error "persona_quota" | ASSUMPTION (el código es REAL; si llega como error o como hilo cerrado, no) | — |

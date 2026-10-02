@@ -51,11 +51,11 @@ export interface SimParams {
   floorJitter: number;
   /** ASSUMPTION. Apertura sin opening_ask = list_price × openingMarkup (30/26 ≈ 1,15 en el sobre). */
   openingMarkup: number;
-  /** ASSUMPTION. Al comprarnos: primera puja = list_price × buyOpenFrac (0,32 + 0,1 × generosity). */
+  /** CALIBRATED (hilo 125: común de lista 10, abrió a 5). Al comprarnos: primera puja = list_price × buyOpenFrac (0,4 + 0,1 × generosity). */
   buyOpenFrac: number;
-  /** ASSUMPTION. Al comprarnos: techo = list_price × (1 − floorFrac) × buyMargin (siempre por debajo de su precio de lista). */
-  buyMargin: number;
-  /** ASSUMPTION. Reciprocidad: su paso = nuestro paso × reciprocity (0,5 + 0,4 × generosity − 0,3 × shrewdness, en [0,3, 0,95]). */
+  /** CALIBRATED (hilo 125: 5 → 6 en 6 mensajes). Al comprarnos su techo es bajo: max(apertura + 1, round(apertura × buyCeilingMult)). */
+  buyCeilingMult: number;
+  /** CALIBRATED (hilo 125: concedimos 5 P en pasos de 1, ella 1 P). Su paso = nuestro paso × reciprocity (0,1 + 0,2 × generosity − 0,1 × shrewdness, en [0,1, 0,5]). */
   reciprocity: number;
   /** ASSUMPTION. Con nuestro primer precio concede firstMoveFrac del tramo (no hay paso previo con que comparar). */
   firstMoveFrac: number;
@@ -63,7 +63,7 @@ export interface SimParams {
   maxStepFrac: number;
   /** ASSUMPTION. Acepta nuestro precio si queda a menos de acceptGapFrac × tramo de su nuevo precio (0,1 × (1 − shrewdness)). */
   acceptGapFrac: number;
-  /** ASSUMPTION. Rondas antes de la oferta final ≈ patienceBase + patience × patienceScale (8–11 para Abuela). */
+  /** CALIBRATED (hilos 56 y 125: ~6–7 mensajes nuestros, contados por intercambio, no por tic). Rondas antes de la oferta final ≈ patienceBase + patience × patienceScale (6 para Abuela, ± jitter). */
   patienceBase: number;
   patienceScale: number;
   /** ASSUMPTION. ± rondas aleatorias por hilo. */
@@ -110,14 +110,14 @@ export function deriveParams(profile: DealerProfile, overrides: Partial<SimParam
     floorFrac: 0.1 + 0.2 * t.generosity,
     floorJitter: 0.2,
     openingMarkup: 1.15,
-    buyOpenFrac: 0.32 + 0.1 * t.generosity,
-    buyMargin: 0.8,
-    reciprocity: clamp(0.5 + 0.4 * t.generosity - 0.3 * t.shrewdness, 0.3, 0.95),
+    buyOpenFrac: 0.4 + 0.1 * t.generosity,
+    buyCeilingMult: 1.2,
+    reciprocity: clamp(0.1 + 0.2 * t.generosity - 0.1 * t.shrewdness, 0.1, 0.5),
     firstMoveFrac: 0.05 + 0.05 * t.generosity,
     maxStepFrac: 0.25,
     acceptGapFrac: 0.1 * (1 - t.shrewdness),
     patienceBase: 2,
-    patienceScale: 9,
+    patienceScale: 5,
     patienceJitter: 1,
     finalFrac: 0.5 * t.generosity,
     politeRounds: 0.5,
@@ -177,9 +177,9 @@ export function menuItems(profile: DealerProfile, p: Pick<SimParams, "openingMar
   return out;
 }
 
-/** Límite secreto de un hilo para un `floorFrac` dado: suelo al vender, techo al comprar; al menos 1 P mejor que la apertura. */
-export function limitFor(item: MenuItem, floorFrac: number, p: Pick<SimParams, "buyMargin">): number {
+/** Límite secreto de un hilo: suelo al vender (según `floorFrac`), techo bajo al comprarnos (hilo 125); al menos 1 P mejor que la apertura. */
+export function limitFor(item: MenuItem, floorFrac: number, p: Pick<SimParams, "buyCeilingMult">): number {
   if (item.fixed) return item.opening;
   if (item.side === "buy") return Math.min(item.opening - 1, Math.ceil(item.list * (1 - floorFrac)));
-  return Math.max(item.opening + 1, Math.floor(item.list * (1 - floorFrac) * p.buyMargin));
+  return Math.max(item.opening + 1, Math.round(item.opening * p.buyCeilingMult));
 }

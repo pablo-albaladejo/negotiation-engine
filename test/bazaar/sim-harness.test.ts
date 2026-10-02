@@ -44,13 +44,14 @@ describe("arnés bazaar:sim", () => {
     expect(formatTable(summarize([base], "scenario"), "item")).toContain("share/deal");
   });
 
-  it("la CLI devuelve filas por artículo, suelo y total para ambas políticas", async () => {
+  it("la CLI devuelve filas por artículo, suelo y total para las tres políticas (SIMULATED)", async () => {
     const lines: string[] = [];
     const summary = await runSimCli(["--seeds", "3", "--floors", "0.2,0.3", "--no-write"], (l) => lines.push(l));
-    expect(summary.byScenario).toHaveLength(2 * ABUELA_SCENARIOS.length);
-    expect(summary.byFloor).toHaveLength(4);
-    expect(summary.all.map((r) => r.policy)).toEqual(["ours", "naive"]);
+    expect(summary.byScenario).toHaveLength(3 * ABUELA_SCENARIOS.length);
+    expect(summary.byFloor).toHaveLength(6);
+    expect(summary.all.map((r) => r.policy)).toEqual(["ours", "legacy", "naive"]);
     expect(lines.join("\n")).toContain("buy-pack");
+    expect(lines[0]).toContain("SIMULATED");
   });
 
   it("la CLI rechaza overrides desconocidos", async () => {
