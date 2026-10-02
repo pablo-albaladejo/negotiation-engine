@@ -1,5 +1,5 @@
 import { ModeBadge, Root, Tabs, WarningBanner } from "@negotiation-ring/design-system";
-import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useLayoutEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { SecondaryButton } from "./ui/buttons.js";
 import { initialTheme, storeTheme, watchSystemTheme, type Theme } from "./theme.js";
 import { requestPageFocus } from "./focus.js";
@@ -275,7 +275,6 @@ function LiveContainer() {
 function AppContent() {
   const { route, replaceRoute, navKey } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
-  const isFirstNav = useRef(true);
   /** L27: document title per screen; kept on `route.screen` alone (not `navKey`/`hash`) so a
    * filter/page change (which only touches the query via `replaceRoute`) never re-triggers it.
    * Runs before the `live` early return so this hook is called on every render (rules of hooks). */
@@ -287,11 +286,8 @@ function AppContent() {
    * rendered — it may still be behind a `LoadingCard` right after this fires. Not on the very
    * first paint (no screen to leave), and never on a filter/page change (L24's own focus move on
    * "Clear filters" must not be fought over). */
-  useEffect(() => {
-    if (isFirstNav.current) {
-      isFirstNav.current = false;
-      return;
-    }
+  useLayoutEffect(() => {
+    if (navKey === 0) return;
     requestPageFocus();
   }, [navKey]);
   /** D2: keep <html data-theme> (set pre-paint by the inline script in index.html) in sync with

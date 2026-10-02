@@ -1,5 +1,6 @@
 import { ChatMessage, type ChatMessageFlag, ModeBadge, OfferChart, Root, Scoreboard, formatNumber } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
+import { consumePageFocus } from "../focus.js";
 import type { LiveModel, LiveOutcome } from "../model/index.js";
 import { offerLabel } from "../ui/offer.js";
 import { BackLink, SecondaryButton } from "../ui/buttons.js";
@@ -45,6 +46,13 @@ function useProjectorScale(): number {
 /** P7: proyector, siempre oscuro. Privacidad de torneo: sin ZOPA ni reserva del rival. */
 export function LiveScreen({ model }: { model: LiveModel }) {
   const scale = useProjectorScale();
+  useEffect(() => {
+    consumePageFocus();
+  }, []);
+
+  useEffect(() => {
+    consumePageFocus();
+  }, []);
   const [projectorMode, setProjectorMode] = useState(false);
 
   useEffect(() => {

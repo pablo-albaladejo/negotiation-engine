@@ -29,6 +29,62 @@ export function offerDomain(values: readonly (number | null | undefined)[]): [nu
   const min = Math.min(...nums);
   const max = Math.max(...nums);
   if (min === max) return [min - 1, max + 1];
+  
+  // Calculate padding
   const pad = (max - min) * 0.1;
-  return [Math.floor(min - pad), Math.ceil(max + pad)];
+  let domainMin = min - pad;
+  let domainMax = max + pad;
+  
+  // Round to nice steps (1, 2, 5 × 10ⁿ)
+  const range = domainMax - domainMin;
+  
+  // Generate candidate nice steps: 1, 2, 5, 10, 20, 50, 100, etc.
+  const candidates: number[] = [];
+  for (let exp = -2; exp <= 3; exp++) {
+    const base = 10 ** exp;
+    candidates.push(base * 1);
+    candidates.push(base * 2);
+    candidates.push(base * 5);
+  }
+  
+  // Find the nice step that gives us 4-6 ticks (or closest to it)
+  let bestStep = candidates[0]!;
+  let bestTicks = range / bestStep;
+  let bestDist = Math.abs(bestTicks - 5);
+  
+  for (const step of candidates) {
+    const ticks = range / step;
+    // Prefer 4-6 ticks, but accept 3-7 as fallback
+    if (ticks >= 4 && ticks <= 6) {
+      const dist = Math.abs(ticks - 5);
+      if (dist < bestDist) {
+        bestStep = step;
+        bestTicks = ticks;
+        bestDist = dist;
+      }
+    }
+  }
+  
+  // If no step gives 4-6 ticks, use the best from all
+  if (bestTicks < 4 || bestTicks > 6) {
+    bestStep = candidates[0]!;
+    bestDist = Math.abs(range / bestStep - 5);
+    for (const step of candidates) {
+      const ticks = range / step;
+      const dist = Math.abs(ticks - 5);
+      if (dist < bestDist) {
+        bestStep = step;
+        bestDist = dist;
+      }
+    }
+  }
+  
+  // Round down min and up max to nearest niceStep
+  domainMin = Math.floor(domainMin / bestStep) * bestStep;
+  domainMax = Math.ceil(domainMax / bestStep) * bestStep;
+  
+  // Never go below 0 when all values are >= 0
+  if (min >= 0 && domainMin < 0) domainMin = 0;
+  
+  return [domainMin, domainMax];
 }

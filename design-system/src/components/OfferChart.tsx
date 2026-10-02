@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface OfferPoint {
   round: number;
@@ -148,6 +148,11 @@ export function OfferChart({
    * tapping a point directly. */
   const interactivePoints = onPointClick ? buildOfferInteractivePoints(ourOffers, theirOffers) : [];
   const [activeIndex, setActiveIndex] = useState(() => initialOfferChartIndex(interactivePoints, selectedRound));
+  useEffect(() => {
+    const newIndex = initialOfferChartIndex(interactivePoints, selectedRound);
+    setActiveIndex(newIndex);
+    hitRefs.current[newIndex]?.focus();
+  }, [selectedRound]);
   // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.
   const safeActiveIndex = interactivePoints.length === 0 ? 0 : Math.max(0, Math.min(activeIndex, interactivePoints.length - 1));
   const hitRefs = useRef<(SVGCircleElement | null)[]>([]);

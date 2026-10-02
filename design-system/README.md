@@ -45,7 +45,7 @@ del sistema operativo (`prefers-color-scheme`).
 | --- | --- | --- |
 | `Root` | `RootProps` | Contenedor raíz de la app (`div.nr-root`), fija fondo, tipografía y tema. |
 | `Card` | `CardProps` | El único contenedor: superficie con borde, título y pie opcionales. |
-| `Tabs` | `TabsProps` | Navegación entre vistas (`role="tab"`, `aria-selected`). |
+| `Tabs` | `TabsProps` | Grupo de botones/pestañas: `role="group"` + `aria-pressed`; `variant="nav"` → `<nav>` + `aria-current="page"`. |
 | `MatchSelector` | `MatchSelectorProps` | Fila de partidas para elegir cuál repetir (`aria-pressed`). |
 | `KpiStrip` | `KpiStripProps` | Tira de cifras clave por encima del gráfico. |
 | `ChatMessage` | `ChatMessageProps` | Un turno de la negociación como burbuja (`us` / `them`). |

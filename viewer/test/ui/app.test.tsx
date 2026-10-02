@@ -230,7 +230,6 @@ describe("App routing: switching games in a replay caches the run payload (T9)",
     expect(runCallsAfterFirst).toBe(1);
 
     window.location.hash = `#/runs/${fx.runId}/games/${encodeURIComponent(secondGame!.gameId)}`;
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
     await waitFor(() => expect(calls.some((u) => u.includes(`/games/${encodeURIComponent(secondGame!.gameId)}`))).toBe(true));
 
     const runCallsAfterSecond = calls.filter((u) => u.includes("/api/runs/") && !u.includes("/games/")).length;
