@@ -257,3 +257,12 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 @media (prefers-reduced-motion: reduce){
   .nr-progress-indeterminate{animation:none;left:35%}
 }
+
+/* Loading skeleton: KPI-strip placeholders + one wide block (S2, d:378-390), a soft pulse that
+   stops under prefers-reduced-motion (keeps the a11y rule from earlier rounds). */
+.nr-skeleton-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
+.nr-skeleton-block{background:var(--bg);border-radius:var(--radius-md);animation:nr-skeleton-pulse 1.4s ease-in-out infinite}
+@keyframes nr-skeleton-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+@media (prefers-reduced-motion: reduce){
+  .nr-skeleton-block{animation:none}
+}

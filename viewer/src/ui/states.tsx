@@ -29,13 +29,20 @@ export function LoadingCard({ label, current, total }: { label: string; current?
         >
           <div className={isDeterminate ? "nr-progress-fill" : "nr-progress-fill nr-progress-indeterminate"} {...(isDeterminate ? { style: { width: `${percentage}%` } } : {})} />
         </div>
+        <div className="nr-skeleton-grid" aria-hidden="true">
+          <div className="nr-skeleton-block" style={{ height: 44 }} />
+          <div className="nr-skeleton-block" style={{ height: 44 }} />
+          <div className="nr-skeleton-block" style={{ height: 44 }} />
+          <div className="nr-skeleton-block" style={{ height: 44 }} />
+        </div>
+        <div className="nr-skeleton-block" style={{ height: 120 }} aria-hidden="true" />
       </div>
     </Card>
   );
 }
 
 /** P8: log inválido. Muestra fichero, línea y campo del primer error, y cuántas líneas válidas se cargaron. */
-export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiError[]; validCount: number }) {
+export function InvalidLogBanner({ errors, validCount, skippedMatchId }: { errors: readonly ApiError[]; validCount: number; skippedMatchId?: string }) {
   const first = errors[0];
   if (!first) return null;
   return (
@@ -45,7 +52,7 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
         <span className="nr-banner-detail">
           field <b>{first.path || "(root)"}</b>: {first.message}
         </span>
-        <span className="nr-muted">{validCount} valid lines loaded.</span>
+        <span className="nr-muted">{validCount} valid lines loaded.{skippedMatchId ? ` Match ${skippedMatchId} is skipped until the log is fixed.` : ""}</span>
       </BannerBody>
     </WarningBanner>
   );
