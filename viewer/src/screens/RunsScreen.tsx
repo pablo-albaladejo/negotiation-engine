@@ -64,7 +64,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
           <PageTitle>Runs</PageTitle>
           <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
@@ -73,7 +73,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
       </div>
       {errors.length > 0 ? <InvalidLogBanner errors={errors} validCount={rows.length} /> : null}
       {rows.length === 0 ? (
-        <EmptyStateCard title="No runs yet" body="Run" command="pnpm arena" />
+        <EmptyStateCard title="No runs yet" body="Run" command="pnpm arena" after="and the viewer will pick up the JSONL logs automatically." />
       ) : (
         <Card>
           <DataTable columns={COLUMNS} rows={tableRows} onRowClick={(i) => onOpenRun(rows[i]!.runId)} />

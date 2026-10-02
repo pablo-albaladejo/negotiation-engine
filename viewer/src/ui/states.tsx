@@ -56,14 +56,27 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
  * `body`/`command` son opcionales (p. ej. "sin resultados para estos filtros" solo necesita un
  * título y una acción); `action` añade un control debajo (botón "Clear filters", etc.).
  */
-export function EmptyStateCard({ title, body, command, action }: { title: string; body?: string; command?: string; action?: ReactNode }) {
+export function EmptyStateCard({
+  title,
+  body,
+  command,
+  after,
+  action,
+}: {
+  title: string;
+  body?: string;
+  command?: string;
+  /** Text after `command` on the same line (e.g. "and the viewer will pick up the JSONL logs automatically."). */
+  after?: string;
+  action?: ReactNode;
+}) {
   return (
     <Card>
       <div className="nr-empty">
         <h3 className="nr-heading-sm">{title}</h3>
         {body ? (
           <span className="nr-muted">
-            {body} {command ? <code className="nr-code-inline">{command}</code> : null}
+            {body} {command ? <code className="nr-code-inline">{command}</code> : null} {after}
           </span>
         ) : null}
         {action}

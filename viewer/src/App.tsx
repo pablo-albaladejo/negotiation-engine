@@ -380,37 +380,37 @@ function AppContent() {
   };
   return (
     <Root theme={theme}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 5, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "var(--space-4) var(--gutter) 0", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
               <h1 className="nr-title">Arena Viewer</h1>
               {resultsFolder ? <span className="nr-cfg">{`pnpm viewer · results/${resultsFolder}`}</span> : null}
             </div>
-            <Tabs
-              variant="nav"
-              aria-label="Viewer"
-              items={TABS}
-              selectedId={activeTab}
-              onSelect={(id) =>
-                navigate(
-                  id === "runs" ? routeTo.runs() : id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.find(id as FindTab),
-                )
-              }
-            />
+            <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>{theme === "dark" ? "Theme: dark" : "Theme: light"}</SecondaryButton>
           </div>
-          <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>{theme === "dark" ? "Theme: dark" : "Theme: light"}</SecondaryButton>
-        </header>
-        <main>
-          {route.screen === "runs" ? <RunsContainer /> : null}
-          {route.screen === "matches" ? <MatchesContainer key={`${route.runId}-${navKey}`} runId={route.runId} query={route.query} replaceRoute={replaceRoute} /> : null}
-          {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
-          {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
-          {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
-          {route.screen === "find" ? <FindContainer tab={route.tab} replaceRoute={replaceRoute} /> : null}
-          {route.screen === "states" ? <StatesScreen /> : null}
-        </main>
-      </div>
+          <Tabs
+            variant="nav"
+            aria-label="Viewer"
+            items={TABS}
+            selectedId={activeTab}
+            onSelect={(id) =>
+              navigate(
+                id === "runs" ? routeTo.runs() : id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.find(id as FindTab),
+              )
+            }
+          />
+        </div>
+      </header>
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+        {route.screen === "runs" ? <RunsContainer /> : null}
+        {route.screen === "matches" ? <MatchesContainer key={`${route.runId}-${navKey}`} runId={route.runId} query={route.query} replaceRoute={replaceRoute} /> : null}
+        {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
+        {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
+        {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
+        {route.screen === "find" ? <FindContainer tab={route.tab} replaceRoute={replaceRoute} /> : null}
+        {route.screen === "states" ? <StatesScreen /> : null}
+      </main>
     </Root>
   );
 }

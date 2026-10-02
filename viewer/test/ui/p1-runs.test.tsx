@@ -24,6 +24,11 @@ describe("RunsScreen (P1)", () => {
     expect(screen.getByText("No runs yet")).toBeTruthy();
   });
 
+  it("H4: el texto vacío menciona el pickup automático de logs JSONL", () => {
+    const { container } = render(<RunsScreen rows={[]} errors={[]} onOpenRun={() => {}} />);
+    expect(container.textContent).toContain("Run pnpm arena and the viewer will pick up the JSONL logs automatically.");
+  });
+
   it("marca la fila del champion con un Pill en la columna Status", () => {
     const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
     render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} championVersion={fx.summary.config.version} />);
