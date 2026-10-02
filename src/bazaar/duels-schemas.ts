@@ -17,7 +17,7 @@ export const RivalOfferSchema = z.union([num, z.looseObject({ price: num.nullish
 export const DaysWeightSchema = z.union([num, z.array(num), z.record(z.string(), num), z.null()]).optional();
 
 export const DuelSchema = z.looseObject({
-  id: num,
+  id: z.union([z.number(), z.string()]),
   role: z.enum(["seller", "buyer"]),
   your_limit: num,
   rival_offer: RivalOfferSchema,
@@ -67,8 +67,8 @@ export interface DuelsApi {
   clock(): Promise<Clock>;
   duels(done?: boolean): Promise<Duels>;
   schedule(): Promise<Schedule>;
-  say(duelId: number, text: string, offer: StructuredOffer): Promise<unknown>;
-  accept(duelId: number): Promise<unknown>;
+  say(duelId: number | string, text: string, offer: StructuredOffer): Promise<unknown>;
+  accept(duelId: number | string): Promise<unknown>;
 }
 
 /** Adaptador sobre `BazaarClient` (sin tocarlo): mismas cabeceras, límite de ritmo y errores tipados. */
@@ -77,7 +77,7 @@ export function duelsApi(client: BazaarClient): DuelsApi {
     clock: () => client.request("GET", "/api/clock", ClockSchema),
     duels: (done = false) => client.request("GET", `/api/duels${done ? "?done=true" : ""}`, DuelsSchema),
     schedule: () => client.request("GET", "/api/schedule", ScheduleSchema),
-    say: (duelId, text, offer) => client.raw("POST", `/api/duels/${Math.trunc(duelId)}/messages`, duelMessageBody(text, offer)),
-    accept: (duelId) => client.raw("POST", `/api/duels/${Math.trunc(duelId)}/accept`, {}),
+    say: (duelId, text, offer) => client.raw("POST", `/api/duels/${encodeURIComponent(String(duelId))}/messages`, duelMessageBody(text, offer)),
+    accept: (duelId) => client.raw("POST", `/api/duels/${encodeURIComponent(String(duelId))}/accept`, {}),
   };
 }

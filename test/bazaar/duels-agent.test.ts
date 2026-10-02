@@ -5,7 +5,7 @@ import { DuelsAgent, formatDuelEntry, formatNextDuels, ticksLeft } from "../../s
 import { DuelsSchema, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
 
 interface FakeDuel {
-  id: number;
+  id: number | string;
   role: "seller" | "buyer";
   limit: number;
   /** Límite privado del rival (bot): comprador paga hasta aquí, vendedor no baja de aquí. */
@@ -20,7 +20,7 @@ interface FakeDuel {
 /** Servidor de mentira con rivales que parten la diferencia y aceptan si nuestra oferta cubre su límite a medias. */
 function fakeServer(duels: FakeDuel[], opts: { failSay?: string } = {}) {
   let tick = 100;
-  const posts: { tick: number; kind: "say" | "accept"; id: number; text?: string; offer?: StructuredOffer }[] = [];
+  const posts: { tick: number; kind: "say" | "accept"; id: number | string; text?: string; offer?: StructuredOffer }[] = [];
   const api: DuelsApi = {
     clock: async () => ({ tick, tick_seconds: 30, next_tick_in: 10 }),
     duels: async () =>

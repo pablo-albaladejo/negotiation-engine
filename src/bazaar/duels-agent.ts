@@ -19,7 +19,7 @@ interface Memory {
 }
 
 export interface DuelStepEntry {
-  duelId: number;
+  duelId: number | string;
   role: Duel["role"];
   issues: string[];
   limit: number;
@@ -62,7 +62,7 @@ const FINISHED = new Set(["done", "settled", "closed", "expired", "deal", "no_de
 const sameOffer = (a: StructuredOffer | undefined, b: StructuredOffer | undefined) => !!a && !!b && a.price === b.price && a.days === b.days;
 
 export class DuelsAgent {
-  private readonly memory = new Map<number, Memory>();
+  private readonly memory = new Map<number | string, Memory>();
   private readonly params: DuelParams;
   private readonly now: () => number;
 
@@ -107,7 +107,7 @@ export class DuelsAgent {
     const live = duels.filter((d) => !d.status || !FINISHED.has(d.status));
     const planned = live
       .slice()
-      .sort((a, b) => a.id - b.id)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }))
       .map((duel) => {
         const { state, rival, assumption } = this.stateOf(duel, clock);
         const mem = this.memory.get(duel.id);
@@ -147,7 +147,7 @@ export class DuelsAgent {
     return { tick: clock.tick, entries };
   }
 
-  private async act(duelId: number, decision: DuelDecision, state: DuelState, tick: number): Promise<DuelStepEntry["outcome"]> {
+  private async act(duelId: number | string, decision: DuelDecision, state: DuelState, tick: number): Promise<DuelStepEntry["outcome"]> {
     const mem: Memory = this.memory.get(duelId) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
     mem.rivalOffers = [...state.rivalOffers];
     try {
