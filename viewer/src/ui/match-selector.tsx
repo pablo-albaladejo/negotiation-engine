@@ -8,6 +8,9 @@ export interface MatchSelectorGame {
   endReason?: string;
   /** `line.protocolViolation?.by`, when known: disambiguates `endReason: "protocol-violation"`. */
   protocolViolation?: { by: "agent" | "rival" };
+  /** C7: same disambiguation when only logged on `metrics.protocolViolation` -- the fallback the
+   * Matches table/KpiStrip already use (`model/matches.ts`, `model/arenaReplay.ts`). */
+  metrics?: { protocolViolation?: "agent" | "rival" | null };
 }
 
 export interface MatchSelectorProps {
@@ -31,11 +34,14 @@ export function matchWindow(games: MatchSelectorGame[], currentGameId: string, s
  * con una ventana de partidas vecinas para no pintar miles de botones.
  */
 export function MatchSelector({ games, currentGameId, onSelectGame }: MatchSelectorProps) {
-  const matches = matchWindow(games, currentGameId).map((game) => ({
-    id: game.gameId,
-    rival: game.rival ?? "not logged",
-    result: resultTone(game.endReason, game.protocolViolation?.by),
-    label: resultLabel(game.endReason, game.protocolViolation?.by).label,
-  }));
+  const matches = matchWindow(games, currentGameId).map((game) => {
+    const violationBy = game.protocolViolation?.by ?? game.metrics?.protocolViolation ?? null;
+    return {
+      id: game.gameId,
+      rival: game.rival ?? "not logged",
+      result: resultTone(game.endReason, violationBy),
+      label: resultLabel(game.endReason, violationBy).label,
+    };
+  });
   return <DsMatchSelector matches={matches} selectedId={currentGameId} onSelect={onSelectGame} />;
 }

@@ -38,9 +38,12 @@ export interface DecisionPanelProps {
 
 /** Shared "Engine decision this round" card, reused by the arena and tournament replay screens. */
 export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelectRound }: DecisionPanelProps) {
-  const index = rounds.indexOf(selectedRound);
-  const prevRound = index > 0 ? rounds[index - 1]! : null;
-  const nextRound = index >= 0 && index < rounds.length - 1 ? rounds[index + 1]! : null;
+  /** C6: a `selectedRound` not present in `rounds` (can't happen from the UI, but the prop isn't
+   * typed to rule it out) used to disable both buttons via `indexOf` returning -1; finding the
+   * nearest logged round on either side instead means Previous/Next still work (and are generally
+   * more robust than an index walk if `rounds` were ever non-contiguous around the selection). */
+  const prevRound = [...rounds].reverse().find((r) => r < selectedRound) ?? null;
+  const nextRound = rounds.find((r) => r > selectedRound) ?? null;
   const lastRound = rounds.length > 0 ? rounds[rounds.length - 1]! : selectedRound;
   const decisionRows: DataTableRow[] = panel
     ? [

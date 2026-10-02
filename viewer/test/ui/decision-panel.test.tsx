@@ -59,4 +59,27 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
     render(<DecisionPanel hasTrace panel={panel(1)} rounds={[1]} selectedRound={1} onSelectRound={() => {}} />);
     expect(screen.getByText(/Select a point on the chart, or use Previous \/ Next round, to switch rounds\./)).toBeTruthy();
   });
+
+  it("C6: a selectedRound not present in rounds still enables Previous/Next towards the nearest logged round", () => {
+    const onSelectRound = vi.fn();
+    render(<DecisionPanel hasTrace panel={null} rounds={[3, 5, 7]} selectedRound={6} onSelectRound={onSelectRound} />);
+    const prev = screen.getByText("← Previous round") as HTMLButtonElement;
+    const next = screen.getByText("Next round →") as HTMLButtonElement;
+    expect(prev.disabled).toBe(false);
+    expect(next.disabled).toBe(false);
+    prev.click();
+    expect(onSelectRound).toHaveBeenCalledWith(5);
+    next.click();
+    expect(onSelectRound).toHaveBeenCalledWith(7);
+  });
+
+  it("C6: a selectedRound before the first logged round disables Previous, enables Next towards the first", () => {
+    const onSelectRound = vi.fn();
+    render(<DecisionPanel hasTrace panel={null} rounds={[3, 5, 7]} selectedRound={1} onSelectRound={onSelectRound} />);
+    expect((screen.getByText("← Previous round") as HTMLButtonElement).disabled).toBe(true);
+    const next = screen.getByText("Next round →") as HTMLButtonElement;
+    expect(next.disabled).toBe(false);
+    next.click();
+    expect(onSelectRound).toHaveBeenCalledWith(3);
+  });
 });
