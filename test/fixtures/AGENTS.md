@@ -8,6 +8,7 @@ Reutilizables en tests: JSON tipado, escenarios conocidos, sin tener que generar
 
 ## Subdirectorios
 
+- **`bazaar/`** — Ficha real de Abuela Carmen (`GET /api/dealers/abuela`) que alimenta el simulador.
 - **`box/`** — Input/output para caja de pruebas del motor.
 - **`engine/`** — Casos de utilidad, oferta, aceptación, monotonicidad.
 - **`llm/`** — Entrada/salida del parser.

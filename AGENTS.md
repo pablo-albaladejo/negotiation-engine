@@ -118,6 +118,7 @@ Ver `.env.example`.
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
 | `pnpm bazaar` | Agente del Bazaar: un paso por tick contra Abuela Carmen (`--dry-run`, `--once`, `--max-spend`). Ver [`src/bazaar/`](src/bazaar/AGENTS.md). |
 | `pnpm bazaar:status` | Resumen de solo lectura del Bazaar (equipo, reloj, dealers, hilos). |
+| `pnpm bazaar:sim` | Nuestro negociador y el starter contra Abuela simulada (offline). Ver [`src/bazaar/sim/`](src/bazaar/sim/AGENTS.md). |
 | `pnpm redteam` | Harness de red team. |
 | `pnpm bot:serve` | Servidor de un bot como agente HTTP para sparring. |
 | `pnpm dummy:serve` | Servidor del dummy-agent (estrategia fija). |

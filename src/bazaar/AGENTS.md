@@ -14,6 +14,7 @@ Negocia con los dealers del Bazaar (hoy, Abuela Carmen) por su API HTTP: vende r
 - **`agent.ts`** — `BazaarAgent.step`: un paso por tick (un hilo por dealer, un mensaje por hilo y tick, una aceptación por tick). Gestiona persona_quota (hasta la hora siguiente), cooloff (until_tick), sold_out y walked (objetivo fuera durante una hora).
 - **`trace.ts`** — `FileTrace`: JSONL en `results/bazaar-live/<fecha>/decisions.jsonl` y `thread-<id>.jsonl` (tick, precios, reserva usada, acción, regla, resultado).
 - **`main.ts`** / **`status-main.ts`** — CLI.
+- **[`sim/`](sim/AGENTS.md)** — Abuela simulada desde su ficha real y arnés `pnpm bazaar:sim` (offline, sin POST).
 
 ## Uso
 
@@ -28,5 +29,6 @@ Flags: `--dry-run`, `--once`, `--max-spend` (P por hora en compras, 120 por defe
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
+- ↓ [`sim/`](sim/AGENTS.md) — simulador de dealers y arnés
 - → [`engine/`](../engine/AGENTS.md) — `concession` y `enforceGuardrails`
 - → [`test/bazaar/`](../../test/bazaar/) — tests de cliente, negociador, planificador y bucle
