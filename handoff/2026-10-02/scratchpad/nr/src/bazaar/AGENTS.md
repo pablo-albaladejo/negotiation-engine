@@ -25,8 +25,6 @@ pnpm bazaar --max-spend 120        # en vivo, un paso por tick hasta Ctrl-C
 
 Flags: `--dry-run`, `--once`, `--max-spend` (P por hora en compras, 120 por defecto), `--dealer` (abuela por defecto).
 
-## Links
+## Notes
 
-- ↑ [`src/`](../AGENTS.md)
-- → [`engine/`](../engine/AGENTS.md) — `concession` y `enforceGuardrails`
-- → [`test/bazaar/`](../../test/bazaar/) — tests de cliente, negociador, planificador y bucle
+Esta es una copia del snapshot del día 1. Ver la rama principal para los links actualizados.

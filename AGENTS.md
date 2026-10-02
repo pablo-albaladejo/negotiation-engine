@@ -2,6 +2,11 @@
 
 Agente negociador para un torneo (Negotiation Ring, hackathon Causa Prima). El LLM interpreta y redacta la respuesta; el código decide la cifra de la oferta y si aceptamos o nos retiramos.
 
+## El Bazaar (hackathon actual)
+
+**Entrada rápida para el día 2:** [`DAY1.md`](DAY1.md) — resumen de estado, cómo jugar, schedule, comandos, prioridades y datos medidos.
+**Contexto completo:** [`handoff/2026-10-02/HANDOFF.md`](handoff/2026-10-02/HANDOFF.md) — estado exacto del día 1, setup detallado, todos los cambios, handovers de otras sesiones.
+
 ## Reglas no negociables
 
 - **La cifra sale siempre del motor (`src/engine/`).** El narrador pone palabras a una decisión ya tomada; el validador descarta textos cuyo número no coincida.
@@ -215,6 +220,7 @@ Ver `openspec/changes/<id>/` para tareas y propuesta. Validar con `openspec vali
 - [`viewer/`](viewer/AGENTS.md) — visor de resultados (paquete React)
 - [`design-system/`](design-system/AGENTS.md) — componentes React
 - [`redteam/`](redteam/AGENTS.md) — escenarios red team (confidencial)
+- [`handoff/2026-10-02/`](handoff/2026-10-02/HANDOFF.md) — estado y materiales del día 1 (Bazaar)
 
 ---
 
