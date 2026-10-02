@@ -157,6 +157,37 @@
         "Holding at the same price (6 holds) did NOT draw a final offer: she walked with reason no_progress.",
         "With Abuela: accept if within limit, otherwise close politely; do not hold."
       ]
+    },
+    {
+      "thread": 222,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "SAL-06 (specific uncommon, missing for SAL page)",
+      "our_value": 32.5,
+      "our_limit": 32,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        24
+      ],
+      "her_prices": [
+        29,
+        26,
+        25
+      ],
+      "messages_until_close": 2,
+      "ticks_until_close": 4,
+      "outcome": "deal",
+      "price": 25,
+      "value_created": 7.5,
+      "ladder_points_after": 0.035,
+      "lessons": [
+        "Buying a SPECIFIC card works ({buy:{card}}) and avoids the duplicate lottery.",
+        "She came down 29 → 25 (her list) in 2 messages; AC_next accepted when her offer met our next counter.",
+        "Deals count reached 3 but level stayed 1: the first deal (at her opening price) likely does not count as a good negotiated deal."
+      ]
     }
   ],
   "global_lessons": [
@@ -169,7 +200,9 @@
     "Each deal is scored at OUR private values (neg_points can go negative): a duplicate bought at near-list price costs points. Avoid random rarity buys with high duplicate risk.",
     "The visible negotiating score seems relative to other teams (moved 4.38 → 4.35 with no deal of ours).",
     "El Rastro (2 Oct, ~tick 100): settled uncommons 18–21 (n=2); open asks commons 8–12 (median 9, n=28), uncommons 24–25, a rare 88. Abuela bid 6 for a common, below those asks: selling commons on El Rastro may pay more.",
-    "Holding at the same price makes Abuela walk (closed_reason no_progress) instead of sending a final offer."
+    "Holding at the same price makes Abuela walk (closed_reason no_progress) instead of sending a final offer.",
+    "Abuela accepts specific-card purchases; uncommon list 25 reached quickly from 29.",
+    "Level-2 unlock needs good NEGOTIATED deals; a deal at her opening price probably does not count toward it."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
