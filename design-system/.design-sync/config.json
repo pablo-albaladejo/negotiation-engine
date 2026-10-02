@@ -32,21 +32,21 @@
     }
   },
   "dtsPropsFor": {
-    "Tabs": "items: { id: string; label: string }[]; selectedId: string; onSelect: (id: string) => void;",
+    "Tabs": "items: { id: string; label: string }[]; selectedId: string; onSelect: (id: string) => void; \"aria-label\"?: string;",
     "MatchSelector": "matches: { id: string; rival: string; result: \"deal\" | \"walk\"; label: string }[]; selectedId: string; onSelect: (id: string) => void;",
     "KpiStrip": "items: { label: string; value: string; tone?: \"deal\" | \"walk\" }[];",
     "ChatMessage": "side: \"us\" | \"them\"; round: number; offer?: number; flags?: { kind: \"neutral\" | \"injection\" | \"decision\" | \"walk\" | \"fallback\"; label: string }[]; text: string; highlighted?: boolean;",
-    "OfferChart": "rounds: number; yDomain: [number, number]; ourOffers: { round: number; value: number }[]; theirOffers: { round: number; value: number }[]; target?: { round: number; value: number }[]; estimate?: { round: number; value: number }[]; ourReserve?: number; theirReserve?: number; zopa?: boolean; injectionRounds?: number[]; end?: { round: number; kind: \"deal\" | \"walk\"; label: string }; onPointClick?: (point: { side: \"us\" | \"them\"; round: number; value: number }) => void;",
+    "OfferChart": "rounds: number; yDomain: [number, number]; ourOffers: { round: number; value: number }[]; theirOffers: { round: number; value: number }[]; target?: { round: number; value: number }[]; estimate?: { round: number; value: number }[]; ourReserve?: number; theirReserve?: number; zopa?: boolean; injectionRounds?: number[]; end?: { round: number; kind: \"deal\" | \"walk\"; label: string }; onPointClick?: (point: { side: \"us\" | \"them\"; round: number; value: number }) => void; selectedRound?: number;",
     "DataTable": "columns: { key: string; label: string; numeric?: boolean }[]; rows: Record<string, React.ReactNode | { value: React.ReactNode; tone?: \"better\" | \"worse\" }>[]; onRowClick?: (rowIndex: number) => void; selectedRowIndex?: number;",
-    "Heatmap": "rows: { rival: string; cells: { label: string; value: number }[] }[]; columns: string[]; rowHeader?: string;",
+    "Heatmap": "rows: { label?: string; /** @deprecated use label */ rival?: string; cells: { label: string; value: number }[] }[]; columns: string[]; rowHeader?: string;",
     "Filters": "rivalOptions: { value: string; label: string }[]; rival: string; onRivalChange: (value: string) => void; roleOptions: { value: string; label: string }[]; role: string; onRoleChange: (value: string) => void; resultOptions: { value: string; label: string }[]; result: string; onResultChange: (value: string) => void; checkboxes: { key: string; label: string; checked: boolean }[]; onCheckboxChange: (key: string, checked: boolean) => void;",
-    "Scatter2D": "xDomain: [number, number]; yDomain: [number, number]; xLabel: string; yLabel: string; ourOffers: { round: number; x: number; y: number }[]; theirOffers: { round: number; x: number; y: number }[]; isoLines?: { points: { x: number; y: number }[]; label?: string }[]; mandate?: { points: { x: number; y: number }[]; label?: string }; deal?: { x: number; y: number; label?: string }; onPointClick?: (point: { side: \"us\" | \"them\"; round: number }) => void;",
+    "Scatter2D": "xDomain: [number, number]; yDomain: [number, number]; xLabel: string; yLabel: string; ourOffers: { round: number; x: number; y: number }[]; theirOffers: { round: number; x: number; y: number }[]; isoLines?: { points: { x: number; y: number }[]; label?: string }[]; mandate?: { points: { x: number; y: number }[]; label?: string }; deal?: { x: number; y: number; label?: string }; onPointClick?: (point: { side: \"us\" | \"them\"; round: number }) => void; selectedRound?: number;",
     "Scoreboard": "badge: string; us: string; rival: string; round: number; rounds: number; attacksBlocked: number; rivalPending?: boolean;",
     "StatFigure": "value: string; tone?: \"us\" | \"them\"; caption?: string;",
-    "PrimaryButton": "children?: React.ReactNode; onClick?: () => void; disabled?: boolean;",
-    "SecondaryButton": "children?: React.ReactNode; onClick?: () => void; disabled?: boolean;",
-    "BackLink": "children?: React.ReactNode; onClick?: () => void;",
-    "TableLink": "children?: React.ReactNode; onClick?: () => void;"
+    "PrimaryButton": "children?: React.ReactNode; onClick?: () => void; disabled?: boolean; className?: string; style?: React.CSSProperties; type?: \"button\" | \"submit\";",
+    "SecondaryButton": "children?: React.ReactNode; onClick?: () => void; disabled?: boolean; className?: string; style?: React.CSSProperties; type?: \"button\" | \"submit\";",
+    "BackLink": "children?: React.ReactNode; onClick?: () => void; className?: string; style?: React.CSSProperties; type?: \"button\" | \"submit\";",
+    "TableLink": "children?: React.ReactNode; onClick?: () => void; className?: string; style?: React.CSSProperties; type?: \"button\" | \"submit\";"
   },
   "readmeHeader": ".design-sync/conventions.md"
 }

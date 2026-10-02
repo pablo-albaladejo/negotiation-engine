@@ -26,3 +26,18 @@ export function TournamentLegend() {
     />
   );
 }
+
+/** S3: the two-issue plane (Scatter2D) uses its own kinds -- same-round links and the mandate polygon
+ * -- neither of which appear in the offer-chart legends above. */
+export function TwoIssueLegend() {
+  return (
+    <Legend
+      items={[
+        { kind: "us", label: "our offers" },
+        { kind: "them", label: "opponent offers" },
+        { kind: "same-round", label: "same round" },
+        { kind: "mandate", label: "mandate" },
+      ]}
+    />
+  );
+}
