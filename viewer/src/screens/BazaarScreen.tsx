@@ -22,6 +22,8 @@ import {
   liveItems,
   mentionsUs,
   offerCurve,
+  PARTY_LABEL,
+  RARITY_COLOR,
   ourOfferIds,
   partyOf,
   scheduleLines,
@@ -113,7 +115,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
             {partyOf(board, r).label}
           </TableLink>
         ),
-        party: partyOf(board, r).kind,
+        party: PARTY_LABEL[partyOf(board, r).kind],
         kind: KIND_LABEL[r.kind] ?? r.kind,
         item: r.item,
         status: r.closed_reason ? `${r.status} · ${r.closed_reason}` : r.status,
@@ -262,8 +264,22 @@ function MarketPanel({ board }: { board: Board }) {
               { key: "rank", label: "Rank", numeric: true },
               { key: "team", label: "Team" },
               { key: "score", label: "Score", numeric: true },
+              { key: "neg", label: "Negotiation", numeric: true },
+              { key: "market", label: "Market", numeric: true },
+              { key: "level", label: "Level", numeric: true },
+              { key: "album", label: "Album" },
+              { key: "deals", label: "Deals", numeric: true },
             ]}
-            rows={market.leaderboard.map((t) => ({ rank: show(t.rank, "?"), team: t.us ? { value: `${t.name} (us)`, tone: "better" as const } : t.name, score: show(t.score, "?") }))}
+            rows={market.leaderboard.map((t) => ({
+              rank: show(t.rank, "?"),
+              team: t.us ? { value: `${t.name} (us)`, tone: "better" as const } : t.name,
+              score: show(t.score, "?"),
+              neg: show(t.negotiating, "—"),
+              market: show(t.market, "—"),
+              level: show(t.level, "—"),
+              album: t.album_filled != null ? `${t.album_filled}/${show(t.album_slots, "?")}${t.pages_complete ? ` ★ ${t.pages_complete}` : ""}` : "—",
+              deals: show(t.deals, "—"),
+            }))}
             {...(market.leaderboard.findIndex((t) => t.us) >= 0 ? { selectedRowIndex: market.leaderboard.findIndex((t) => t.us) } : {})}
           />
         ) : (
@@ -430,7 +446,7 @@ function RightNow({ board, onOpen }: { board: Board; onOpen: (id: string) => voi
                 {it.title}
               </TableLink>
             ),
-            who: `${it.counterparty} · ${it.party}`,
+            who: `${it.counterparty} · ${PARTY_LABEL[it.party]}`,
             state: it.warning ? { value: `⚠ ${it.warning}${it.state ? ` · ${it.state}` : ""}`, tone: "worse" as const } : it.state || "—",
           }))}
         />
@@ -455,12 +471,14 @@ function AlbumPageRow({ page }: { page: BoardAlbumPage }) {
       </div>
       <Bar have={page.have} of={page.of} complete={page.complete} />
       {page.missing.length > 0 ? (
-        <span className="nr-muted">
-          Missing:{" "}
-          {page.missing
-            .map((m) => `${m.ref} ${m.name}${m.rarity && m.rarity !== "common" ? ` [${m.rarity}]` : ""} — ${m.value !== null ? `value ${fmt(m.value, 1)}` : "value ?"}${m.book !== null ? ` · book ${m.book}` : ""}`)
-            .join(" · ")}
-        </span>
+        <ul aria-label={`Missing from ${page.name}`} style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: "var(--space-1) var(--space-3)" }}>
+          {page.missing.map((m) => (
+            <li key={m.ref} className="nr-muted" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: "50%", background: RARITY_COLOR[m.rarity ?? "common"] ?? "var(--muted)", flex: "none" }} />
+              <span>{`${m.ref} ${m.name}${m.rarity && m.rarity !== "common" ? ` [${m.rarity}]` : ""} — ${m.value !== null ? `value ${fmt(m.value, 1)}` : "value ?"}${m.book !== null ? ` · book ${m.book}` : ""}`}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );
@@ -469,7 +487,7 @@ function AlbumPageRow({ page }: { page: BoardAlbumPage }) {
 function Album({ board }: { board: Board }) {
   const album = board.album;
   return (
-    <Card title={album ? `Album ${album.filled ?? "?"}/${album.slots ?? "?"}` : "Album"}>
+    <Card title={album ? `Album ${album.filled ?? "?"}/${album.slots ?? "?"} · ★ ${album.pages.filter((p) => p.complete).length} pages complete` : "Album"}>
       {album && album.pages.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
           {album.pages.map((p) => (

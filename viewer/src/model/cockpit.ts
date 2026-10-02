@@ -165,6 +165,24 @@ export function historyGroups(rows: readonly BoardRow[]): { trades: BoardRow[]; 
 
 export type PartyKind = "us" | "team" | "dealer" | "duel rival" | "public";
 
+/** Cómo se lee cada tipo de parte en la UI. Los duelos enfrentan equipos, pero las reglas ocultan cuál bajo un alias. */
+export const PARTY_LABEL: Record<PartyKind, string> = {
+  us: "us",
+  team: "team",
+  dealer: "dealer",
+  "duel rival": "team under an alias (hidden by the rules)",
+  public: "public offer",
+};
+
+/** Colores oficiales de rareza (`/api/catalog`). */
+export const RARITY_COLOR: Record<string, string> = {
+  common: "#9AA4B8",
+  uncommon: "#3DDC97",
+  rare: "#4C8DFF",
+  epic: "#B061FF",
+  legendary: "#FFC44D",
+};
+
 export interface Party {
   /** Nombre legible: "Team 2 (us)", "Los Gatos (t18)", "chato"… */
   label: string;

@@ -88,8 +88,24 @@ export interface BoardBookLine {
   expires_tick: number | null;
 }
 
+export interface BoardTeam {
+  rank: number | null;
+  team: string;
+  name: string;
+  score: number | null;
+  us: boolean;
+  negotiating?: number | null;
+  market?: number | null;
+  level?: number | null;
+  album_filled?: number | null;
+  album_slots?: number | null;
+  /** Páginas completas del álbum: las ★ del leaderboard oficial. */
+  pages_complete?: number | null;
+  deals?: number | null;
+}
+
 export interface BoardMarket {
-  leaderboard: { rank: number | null; team: string; name: string; score: number | null; us: boolean }[];
+  leaderboard: BoardTeam[];
   feed: { id: number; tick: number | null; type: string; text: string }[];
   rastro: BoardBookLine[];
   venue: { venue: string; name: string | null; status: string | null; trades: number | null; volume: number | null; book: BoardBookLine[] } | null;

@@ -101,7 +101,25 @@ export type BoardMe = z.infer<typeof BoardMeSchema>;
 export const BoardClockSchema = z.looseObject({ tick: num, next_tick_in: num.nullish(), tick_seconds: num.nullish(), round: num.nullish(), round_name: str.nullish(), doors: str.nullish(), today_name: str.nullish() });
 export type BoardClock = z.infer<typeof BoardClockSchema>;
 
-export const LeaderboardSchema = z.looseObject({ teams: z.array(z.looseObject({ team: str, name: str.nullish(), score: num.nullish(), rank: num.nullish() })).nullish() });
+export const LeaderboardSchema = z.looseObject({
+  teams: z
+    .array(
+      z.looseObject({
+        team: str,
+        name: str.nullish(),
+        score: num.nullish(),
+        rank: num.nullish(),
+        negotiating: num.nullish(),
+        market: num.nullish(),
+        level: num.nullish(),
+        album_filled: num.nullish(),
+        album_slots: num.nullish(),
+        pages_complete: num.nullish(),
+        deals: num.nullish(),
+      }),
+    )
+    .nullish(),
+});
 
 /** Una línea de `decisions.jsonl` / `thread-<id>.jsonl` (nuestra traza; tolerante). */
 export const DecisionSchema = z.looseObject({
@@ -742,6 +760,15 @@ export interface LeaderLine {
   name: string;
   score: number | null;
   us: boolean;
+  /** Partes públicas de la cifra y del álbum (`/api/leaderboard`, refresco cada 5 ticks). */
+  negotiating: number | null;
+  market: number | null;
+  level: number | null;
+  album_filled: number | null;
+  album_slots: number | null;
+  /** Páginas completas: las ★ del leaderboard oficial. */
+  pages_complete: number | null;
+  deals: number | null;
 }
 
 const s = (v: unknown, dflt = "?"): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : dflt);
@@ -793,5 +820,18 @@ export function bookLines(raw: unknown, max = 40, keep: ReadonlySet<number> = ne
 export function leaderLines(raw: unknown, team: string): LeaderLine[] {
   const p = LeaderboardSchema.safeParse(raw);
   if (!p.success) return [];
-  return (p.data.teams ?? []).map((t) => ({ rank: t.rank ?? null, team: t.team, name: t.name ?? t.team, score: t.score ?? null, us: t.team === team }));
+  return (p.data.teams ?? []).map((t) => ({
+    rank: t.rank ?? null,
+    team: t.team,
+    name: t.name ?? t.team,
+    score: t.score ?? null,
+    us: t.team === team,
+    negotiating: t.negotiating ?? null,
+    market: t.market ?? null,
+    level: t.level ?? null,
+    album_filled: t.album_filled ?? null,
+    album_slots: t.album_slots ?? null,
+    pages_complete: t.pages_complete ?? null,
+    deals: t.deals ?? null,
+  }));
 }

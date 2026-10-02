@@ -79,7 +79,7 @@ const BOARD: Board = boardModel({
   rows: ROWS,
   market: {
     leaderboard: [
-      { rank: 1, team: "t13", name: "Team 13", score: 30, us: false },
+      { rank: 1, team: "t13", name: "Team 13", score: 30, us: false, negotiating: 30, market: 0, level: 2, album_filled: 25, album_slots: 40, pages_complete: 1, deals: 24 },
       { rank: 16, team: "t02", name: "Team 2", score: 7.16, us: true },
       { rank: 17, team: "t05", name: "Los Gatos", score: 5, us: false },
     ],
@@ -139,7 +139,7 @@ describe("BazaarScreen · cockpit", () => {
 
   it("album: pages with progress and the missing cards with our value", () => {
     renderScreen();
-    expect(screen.getByText("Album 19/40")).toBeTruthy();
+    expect(screen.getByText("Album 19/40 · ★ 0 pages complete")).toBeTruthy();
     expect(screen.getByText(/SAL-09 El Retiro Norte \[rare\] — value 177.1 · book 90/)).toBeTruthy();
     expect(screen.getByRole("meter", { name: "9 of 10" })).toBeTruthy();
   });
@@ -213,14 +213,15 @@ describe("BazaarScreen · cockpit", () => {
     expect(score.getByText("Team 2 (us)")).toBeTruthy();
     expect(score.getByText(/id t02/)).toBeTruthy();
     const now = within(screen.getByText(/Right now/).closest(".nr-card") as HTMLElement);
-    expect(now.getAllByText("anyone (public offer) · public").length).toBe(2);
-    expect(now.getByText("Rival Noche · duel rival")).toBeTruthy();
+    expect(now.getAllByText("anyone (public offer) · public offer").length).toBe(2);
+    expect(now.getByText("Rival Noche · team under an alias (hidden by the rules)")).toBeTruthy();
   });
 
   it("market stays available (folded): leaderboard with us marked, feed and El Rastro with team names, our venue", () => {
     renderScreen();
     const lb = within(screen.getByRole("heading", { name: "Leaderboard" }).closest(".nr-card") as HTMLElement);
     expect(lb.getByText("Team 2 (us)")).toBeTruthy();
+    expect(lb.getByText("25/40 ★ 1")).toBeTruthy();
     expect(screen.getByText("chato → t18: You move, I move. 32 P.")).toBeTruthy();
     expect(screen.getByText("Los Gatos (t05) sold MAL-04 to Team 2 (us) for 9 P").tagName).toBe("STRONG");
     const rastro = within(screen.getByRole("heading", { name: "El Rastro book" }).closest(".nr-card") as HTMLElement);
