@@ -126,13 +126,15 @@
     "Only the structured offer binds; dealer text is flavour (and gifts don't score).",
     "El Chato (level 2) is the opposite of Abuela: patience 0.35, generosity 0.25, shrewdness 0.85, memory 0.9, strictness 0.85 — short, careful negotiations, no tricks.",
     "Each deal is scored at OUR private values (neg_points can go negative): a duplicate bought at near-list price costs points. Avoid random rarity buys with high duplicate risk.",
-    "The visible negotiating score seems relative to other teams (moved 4.38 → 4.35 with no deal of ours)."
+    "The visible negotiating score seems relative to other teams (moved 4.38 → 4.35 with no deal of ours).",
+    "El Rastro (2 Oct, ~tick 100): settled uncommons 18–21 (n=2); open asks commons 8–12 (median 9, n=28), uncommons 24–25, a rare 88. Abuela bid 6 for a common, below those asks: selling commons on El Rastro may pay more."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
     "Whether kindness extends patience.",
     "Whether a repeated price spends extra patience.",
     "Whether bigger concession steps earn proportionally bigger replies.",
-    "Whether she accepts requests for a specific card ({buy:{card}}) instead of rarity+set."
+    "Whether she accepts requests for a specific card ({buy:{card}}) instead of rarity+set.",
+    "neg_points: scored at our private values (−14.9 = 8.1 − 23 exactly) vs against a market reference (peer hypothesis). The exact match favours private values."
   ]
 }
