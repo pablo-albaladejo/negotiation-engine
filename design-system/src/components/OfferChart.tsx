@@ -182,10 +182,15 @@ export function OfferChart({
 
   const endPoint = end ? findOfferAt(end.round, ourOffers, theirOffers) : undefined;
   // For walks, if there's no offer at the end round, use the last available offer
-  const effectiveEndPoint = end && !endPoint 
+  const effectiveEndPoint = end && !endPoint
     ? (() => {
-        const allOffers = [...ourOffers, ...theirOffers].sort((a, b) => b.round - a.round);
-        return allOffers.length > 0 ? { side: (allOffers[0]!.round <= ourOffers[ourOffers.length - 1]?.round || !theirOffers.length) ? "us" : "them", value: allOffers[0]!.value } : undefined;
+        const lastOurRound = ourOffers.length > 0 ? ourOffers[ourOffers.length - 1]!.round : -1;
+        const lastTheirRound = theirOffers.length > 0 ? theirOffers[theirOffers.length - 1]!.round : -1;
+        const lastRound = Math.max(lastOurRound, lastTheirRound);
+        if (lastRound < 0) return undefined;
+        const side = lastOurRound >= lastTheirRound ? ("us" as const) : ("them" as const);
+        const value = side === "us" ? ourOffers[ourOffers.length - 1]!.value : theirOffers[theirOffers.length - 1]!.value;
+        return { side, value };
       })()
     : endPoint;
   const endPlacement = end && effectiveEndPoint

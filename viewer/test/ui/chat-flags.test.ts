@@ -37,7 +37,7 @@ describe("chatFlags (A6)", () => {
       } as RoundPanel["explain"],
     });
     expect(chatFlags("agent", panel)).toEqual([
-      { kind: "neutral", label: "target 0.42" },
+      { kind: "neutral", label: "target 0.4" },
       { kind: "neutral", label: "est. reserve 90" },
       { kind: "neutral", label: "rule: default-horizon" },
     ]);

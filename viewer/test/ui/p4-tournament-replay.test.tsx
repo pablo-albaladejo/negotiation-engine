@@ -166,7 +166,7 @@ describe("TournamentReplayScreen KPIs/injections/end marker (R1, R2, R6)", () =>
   it("config line: full logged params + 'tournament mode', falling back to 'not logged' without a summary (R4)", () => {
     const model = tournamentReplayModel(fx.tournament.trace, fx.tournament.ref);
     const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
-    expect(container.querySelector(".nr-cfg")!.textContent).toBe("not logged · tournament mode");
+    expect(container.querySelector(".nr-cfg")!.textContent).toBe("config v1 · not logged · tournament mode");
   });
 });
 

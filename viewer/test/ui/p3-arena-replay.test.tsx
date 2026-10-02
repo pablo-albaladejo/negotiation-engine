@@ -173,7 +173,7 @@ describe("ArenaReplayScreen (P3)", () => {
       const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
       render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
       const priceKpi = screen.getByText("Price").closest(".nr-kpi")!;
-      expect(within(priceKpi).getByText(String(Object.values(line.agreement!)[0]))).toBeTruthy();
+      expect(within(priceKpi as HTMLElement).getByText(String(Object.values(line.agreement!)[0]))).toBeTruthy();
     });
 
     it("Price is em-dash on a walk, never our last offer", () => {
@@ -182,7 +182,7 @@ describe("ArenaReplayScreen (P3)", () => {
       const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
       render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
       const priceKpi = screen.getByText("Price").closest(".nr-kpi")!;
-      expect(within(priceKpi).getByText("\u2014")).toBeTruthy();
+      expect(within(priceKpi as HTMLElement).getByText("\u2014")).toBeTruthy();
     });
 
     it("Role · reserve shows our role label and reserve value", () => {
@@ -199,7 +199,7 @@ describe("ArenaReplayScreen (P3)", () => {
       render(<ArenaReplayScreen runId={fx.runId} model={cleanModel} onBack={() => {}} />);
       const cleanKpi = screen.getByText("Injections").closest(".nr-kpi")!;
       const injected = cleanModel.rounds?.filter((p) => p.parser?.injectionSuspected).length ?? 0;
-      expect(within(cleanKpi).getByText(String(injected))).toBeTruthy();
+      expect(within(cleanKpi as HTMLElement).getByText(String(injected))).toBeTruthy();
       if (injected === 0) expect(cleanKpi.querySelector(".nr-kpi-value")!.className).not.toContain("walk");
     });
   });

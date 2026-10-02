@@ -373,7 +373,7 @@ describe("App routing: failed fetches never leave a screen loading forever (X6)"
     window.location.hash = "#/tournament/agent-1/ring-session-1";
     render(<App />);
     await screen.findByText("Outcome");
-    expect(screen.getByText("not logged · tournament mode")).toBeTruthy();
+    expect(screen.getByText("config v1 · not logged · tournament mode")).toBeTruthy();
   });
 });
 
