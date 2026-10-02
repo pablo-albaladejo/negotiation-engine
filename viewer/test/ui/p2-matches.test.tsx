@@ -26,6 +26,24 @@ describe("MatchesScreen (P2)", () => {
     expect(screen.queryByText("With injection")).toBeNull();
   });
 
+  it("T8: injection=true is dropped from filters/URL once the run has no injection data", () => {
+    const withoutField = fx.games.map((g) => ({ ...g, metrics: { ...g.metrics, injectionSuspected: undefined } }));
+    const onFiltersChange: unknown[] = [];
+    render(
+      <MatchesScreen
+        runId={fx.runId}
+        summary={fx.summary}
+        games={withoutField}
+        onOpenGame={() => {}}
+        onBack={() => {}}
+        initialFilters={{ injection: true }}
+        onFiltersChange={(f) => onFiltersChange.push(f)}
+      />,
+    );
+    expect(onFiltersChange).toEqual([{}]);
+    expect(screen.queryByText("With injection")).toBeNull();
+  });
+
   it("filtrar por rival deja solo sus partidas", () => {
     const rival = fx.games[0]!.rival;
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);

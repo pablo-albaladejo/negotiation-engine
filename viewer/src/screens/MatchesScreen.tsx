@@ -76,6 +76,11 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     setPage(0);
   };
   const model = matchesModel(summary, games, filters);
+  /** T8: `injection` is meaningless (and its checkbox hidden) once the run has no injection data at
+   * all; drop it from the filters/URL instead of silently filtering by a column nobody can see. */
+  useEffect(() => {
+    if (!model.hasInjectionData && filters.injection) setFilters((f) => withFilter(f, "injection", undefined));
+  }, [model.hasInjectionData]);
 
   if (model.empty) {
     return (
