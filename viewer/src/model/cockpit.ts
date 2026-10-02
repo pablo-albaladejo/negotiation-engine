@@ -284,6 +284,15 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
   if (row.price !== null && ["deal", "bought", "sold"].includes(row.status)) end = { round: settledRound, kind: "deal", label: `deal ${row.price}` };
   else if (row.status === "walked" || row.status === "closed") end = { round: settledRound, kind: "walk", label: row.closed_reason ?? row.status };
   if (end) lastRound = Math.max(lastRound, end.round);
+  // Un trato cierra las dos curvas en el precio pactado: quien aceptó llega a la cifra del otro.
+  if (end?.kind === "deal" && row.price !== null) {
+    const price = row.price;
+    for (const side of [ours, theirs]) {
+      const last = side[side.length - 1];
+      if (last && last.round === end.round) last.value = price;
+      else side.push({ round: end.round, value: price });
+    }
+  }
   const values = [...ours, ...theirs, ...limit].map((p) => p.value).concat(reference ? [reference.value] : [], end?.kind === "deal" && row.price !== null ? [row.price] : []);
   const lo = Math.min(...values);
   const hi = Math.max(...values);

@@ -174,8 +174,8 @@ describe("cockpit · offerCurve", () => {
     expect(curve).toMatchObject({
       firstTick: 118,
       rounds: 5,
-      ours: [{ round: 2, value: 22 }, { round: 3, value: 25 }],
-      theirs: [{ round: 2, value: 29 }, { round: 3, value: 26 }],
+      ours: [{ round: 2, value: 22 }, { round: 3, value: 25 }, { round: 4, value: 25 }],
+      theirs: [{ round: 2, value: 29 }, { round: 3, value: 26 }, { round: 4, value: 25 }],
       limit: [{ round: 1, value: 32 }, { round: 2, value: 28 }, { round: 3, value: 28 }],
       capped: { from: 32, to: 28 },
       reference: { value: 32.5, label: "our value 32.5" },
@@ -188,6 +188,12 @@ describe("cockpit · offerCurve", () => {
   it("duelo: el límite fijo es your_limit; sin final si sigue vivo", () => {
     const curve = offerCurve(row({ id: "duel:1", kind: "duel-buyer", status: "live", our_value: 116, messages: [msg(157, false, 119), msg(158, true, 90)] }));
     expect(curve).toMatchObject({ reference: { value: 116, label: "our limit 116" }, capped: null, limit: [], end: null, rounds: 3 });
+  });
+
+  it("aceptamos su cifra: nuestra curva también llega al precio del trato en el tick del cierre", () => {
+    const curve = offerCurve(row({ id: "t", kind: "dealer-buy", status: "deal", price: 10, tick_settled: 126, messages: [msg(125, true, 9), msg(125, false, 12), msg(126, false, 10)] }));
+    expect(curve?.ours).toEqual([{ round: 1, value: 9 }, { round: 2, value: 10 }]);
+    expect(curve?.theirs).toEqual([{ round: 1, value: 12 }, { round: 2, value: 10 }]);
   });
 
   it("niceScale: pasos 1/2/5 que cubren el rango", () => {
