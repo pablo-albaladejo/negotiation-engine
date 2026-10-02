@@ -5,8 +5,8 @@ Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del h
 - **`App.tsx`** — cabecera (tema claro/oscuro) y `BazaarScreen`; captura errores de render.
 - **`route.ts`** — `parseRoute` / `routeTo.bazaar`.
 - **`bazaarBoardLive.ts`** — `useBazaarBoard`: lee `/api/bazaar/board` y `/api/bazaar/score` una vez por tick.
-- **`model/`** — `model/bazaarBoard.ts` (lista unificada, filtros, línea temporal), `model/bazaar.ts` (historia de la cifra), `model/bazaarConversations.ts`.
-- **`screens/BazaarScreen.tsx`** — la vista.
+- **`model/`** — `model/bazaarBoard.ts` (lista unificada, filtros, línea temporal), `model/bazaar.ts` (historia de la cifra), `model/bazaarConversations.ts`, `model/cockpit.ts` (puesto, lo abierto ahora, tratos que movieron la cifra, agentes, calendario, historial).
+- **`screens/BazaarScreen.tsx`** — la cabina (cifra, próximas citas, ahora, álbum, Δ de la cifra, agentes, historial y mercado plegados).
 - **`ui/`** — piezas pequeñas (títulos, estados vacíos, botones, rejilla).
 
 ## Links

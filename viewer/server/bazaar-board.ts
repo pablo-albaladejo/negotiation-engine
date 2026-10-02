@@ -34,6 +34,8 @@ import {
   type ScoreLine,
   type VerdictCache,
 } from "./bazaar-board-core.js";
+import { agentStatuses, type AgentStatus } from "./bazaar-agents.js";
+import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, type AlbumOut, type ScheduleOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "./paths.js";
 import { readJsonl } from "./read.js";
 
@@ -77,6 +79,12 @@ export interface BoardOut {
   header: ReturnType<typeof headerOf>;
   rows: BoardRow[];
   market: { leaderboard: LeaderLine[]; feed: FeedLine[]; rastro: BookLine[]; venue: BoardVenueOut | null };
+  /** Páginas del álbum con las cartas que faltan (cabina). */
+  album: AlbumOut | null;
+  /** Copias que tenemos de cada carta (para saber si una oferta vende una repetida o la única). */
+  holdings: Record<string, number>;
+  schedule: ScheduleOut | null;
+  agents: AgentStatus[];
 }
 
 export interface BazaarBoardDeps {
@@ -95,6 +103,10 @@ export interface BazaarBoardDeps {
 
 const PRIVATE = /^\/api\/(me|duels|threads)(\/|\?|$)/;
 const MAX_VALUE_LOOKUPS = 4;
+/** Valores privados de cartas que faltan consultados por ciclo (el resto, en ciclos siguientes). */
+const MAX_MISSING_LOOKUPS = 3;
+/** El catálogo apenas cambia: se relee como mucho una vez por hora. */
+const CATALOG_TTL_MS = 3_600_000;
 
 async function datesOf(dir: string): Promise<string[]> {
   try {
@@ -164,6 +176,10 @@ export class BazaarBoard {
   private inflight: Promise<BoardOut> | null = null;
   private bucket: TokenBucket;
   private last = new Map<string, unknown>();
+  private catalog: { at: number; raw: unknown } | null = null;
+  /** Valor privado de cartas que nos faltan; se invalida cuando cambia lo que tenemos (`filled`). */
+  private missingValues = new Map<string, number>();
+  private missingValuesKey: string | null = null;
 
   constructor(
     private readonly bazaarDir: string,
@@ -280,6 +296,29 @@ export class BazaarBoard {
     }
     if (dirty) await this.writeCache(cache);
 
+    if (!this.catalog || now() - this.catalog.at > CATALOG_TTL_MS) {
+      const raw = await get("/api/catalog");
+      if (raw) this.catalog = { at: now(), raw };
+    }
+    const holdings = holdingsOf(meRaw);
+    const holdingsKey = JSON.stringify(holdings);
+    if (holdingsKey !== this.missingValuesKey) {
+      this.missingValues.clear();
+      this.missingValuesKey = holdingsKey;
+    }
+    for (const ref of missingWithoutValue(albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues), MAX_MISSING_LOOKUPS)) {
+      const v = field(await get(`/api/me/value?card=${encodeURIComponent(ref)}`), "your_value");
+      if (typeof v === "number") this.missingValues.set(ref, v);
+    }
+    const album = albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues);
+    const schedule = scheduleOf(await get("/api/schedule"));
+    const myOffers = parseOffers(field(offersRaw, "offers")).filter((o) => o.maker === team);
+    const tradesTick = myOffers.reduce<number | null>((m, o) => (o.created_tick != null && (m === null || o.created_tick > m) ? o.created_tick : m), null);
+    const agents: AgentStatus[] = [
+      ...(await agentStatuses(this.bazaarDir)),
+      { agent: "trades", last_at: null, last_tick: tradesTick, detail: `${myOffers.length} open offers` },
+    ];
+
     const refreshIn = Math.max(this.deps.minRefreshMs ?? 5_000, clock?.next_tick_in != null ? clock.next_tick_in * 1000 + 2_000 : 30_000);
     const venue: BoardVenueOut | null = venueId
       ? { venue: venueId, name: me?.venue?.name ?? null, status: me?.venue?.status ?? null, trades: me?.venue?.trades ?? null, volume: me?.venue?.volume ?? null, book: bookLines(field(venueRaw, "offers")) }
@@ -296,6 +335,10 @@ export class BazaarBoard {
       header: headerOf(me, team),
       rows,
       market: { leaderboard: leaderLines(leaderRaw, team), feed: events.slice(-20).reverse().map(feedLine), rastro: bookLines(field(rastroRaw, "offers")), venue },
+      album,
+      holdings,
+      schedule,
+      agents,
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;

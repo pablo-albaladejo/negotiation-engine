@@ -95,6 +95,41 @@ export interface BoardMarket {
   venue: { venue: string; name: string | null; status: string | null; trades: number | null; volume: number | null; book: BoardBookLine[] } | null;
 }
 
+export interface BoardMissingCard {
+  ref: string;
+  name: string;
+  rarity: string | null;
+  book: number | null;
+  value: number | null;
+}
+
+export interface BoardAlbumPage {
+  set: string;
+  name: string;
+  have: number;
+  of: number;
+  complete: boolean;
+  missing: BoardMissingCard[];
+}
+
+export interface BoardAlbum {
+  filled: number | null;
+  slots: number | null;
+  pages: BoardAlbumPage[];
+}
+
+export interface BoardSchedule {
+  now_hours: number | null;
+  upcoming: { at_hours: number; action: string; note: string; wall: string | null }[];
+}
+
+export interface BoardAgent {
+  agent: "dealers" | "duels" | "broker" | "trades";
+  last_at: string | null;
+  last_tick: number | null;
+  detail: string | null;
+}
+
 export interface Board {
   team: string;
   live: boolean;
@@ -105,6 +140,10 @@ export interface Board {
   header: BoardHeader | null;
   rows: BoardRow[];
   market: BoardMarket;
+  album: BoardAlbum | null;
+  holdings: Record<string, number>;
+  schedule: BoardSchedule | null;
+  agents: BoardAgent[];
 }
 
 export const EMPTY_BOARD: Board = {
@@ -117,6 +156,10 @@ export const EMPTY_BOARD: Board = {
   header: null,
   rows: [],
   market: { leaderboard: [], feed: [], rastro: [], venue: null },
+  album: null,
+  holdings: {},
+  schedule: null,
+  agents: [],
 };
 
 export const KIND_LABEL: Record<BoardRowKind, string> = {
@@ -212,5 +255,5 @@ export function boardTimeline(row: BoardRow): TimelineStep[] {
 }
 
 export function boardModel(raw: Board | null | undefined): Board {
-  return raw ? { ...EMPTY_BOARD, ...raw, market: { ...EMPTY_BOARD.market, ...(raw.market ?? {}) }, rows: raw.rows ?? [] } : EMPTY_BOARD;
+  return raw ? { ...EMPTY_BOARD, ...raw, market: { ...EMPTY_BOARD.market, ...(raw.market ?? {}) }, rows: raw.rows ?? [], holdings: raw.holdings ?? {}, agents: raw.agents ?? [] } : EMPTY_BOARD;
 }

@@ -1,6 +1,6 @@
 # viewer/ — Visor del Bazaar
 
-Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: una lista de todas nuestras conversaciones (dealers, duelos, tratos y ofertas entre equipos) con valor, excedente, veredicto y Δ de la cifra, detalle con mensajes literales y nuestras decisiones por tick, y panel de mercado (reloj, clasificación, feed, El Rastro y nuestro venue). Solo 127.0.0.1.
+Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: una cabina: cifra y puesto (con distancia al de delante y al líder), próximas citas del calendario, lo abierto ahora (duelos con límite y pujas, hilos, nuestras ofertas avisando si vendemos nuestra única copia), álbum con las cartas que faltan y su valor, tratos que movieron la cifra (Δ real del juego), estado de nuestros agentes, historial plegado (duelos aparte, sin veredicto) y mercado plegado (clasificación, feed, El Rastro y nuestro venue). Solo 127.0.0.1.
 
 ## Estructura
 
