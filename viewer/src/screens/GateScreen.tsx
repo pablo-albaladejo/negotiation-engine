@@ -159,7 +159,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         </Card>
       </div>
       <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
-        <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption={`${model.candidateVersion !== null ? `Candidate v${model.candidateVersion}` : "Candidate"} · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor`}>
+        <Card title="Surplus / ZOPA by opponent and role" caption={`${model.candidateVersion !== null ? `Candidate v${model.candidateVersion}` : "Candidate"} · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor`}>
           {heat ? (
             <Heatmap
               rowHeader="Opponent"

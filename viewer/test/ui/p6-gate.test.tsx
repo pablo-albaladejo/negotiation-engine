@@ -61,6 +61,15 @@ describe("GateScreen (P6)", () => {
     expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
   });
 
+  // F9: the heatmap title stays the same when switching phase -- no "· {phase}" suffix.
+  it("heatmap title has no '· {phase}' suffix, even after switching phase (F9)", () => {
+    render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    expect(screen.getByText("Surplus / ZOPA by opponent and role")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Held-out opponents" }));
+    expect(screen.getByText("Surplus / ZOPA by opponent and role")).toBeTruthy();
+    expect(screen.queryByText(/Surplus \/ ZOPA by opponent and role ·/)).toBeNull();
+  });
+
   it("Copy label resets to 'Copy' after 1.5s, and the timer is cleared on unmount (B2)", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
