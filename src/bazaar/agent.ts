@@ -152,7 +152,7 @@ export class BazaarAgent {
       const id = topic?.sell?.assets?.[0];
       const asset = me.assets.find((a) => a.id === id);
       if (id === undefined || typeof asset?.your_value !== "number") return undefined;
-      return { key: `sell:${id}`, side, topic: { sell: { assets: [id] } }, reservation: Math.max(1, Math.ceil(asset.your_value)), label: `sell ${asset.ref}` };
+      return { key: `sell:${id}`, side, topic: { sell: { assets: [id] } }, reservation: Math.max(1, Math.ceil(asset.your_value)), label: `sell ${asset.ref}`, value: asset.your_value };
     }
     const rs = (thread.topic as { buy?: { rarity?: string; set?: string } } | undefined)?.buy;
     if (side === "buy" && rs?.rarity && rs.set) {
@@ -161,12 +161,12 @@ export class BazaarAgent {
       if (!cards.length) return undefined;
       const vals = await Promise.all(cards.map((c) => this.valueOf(c.id)));
       const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
-      return { key: `buy:${rs.set}:${rs.rarity}`, side, topic: { buy: { rarity: rs.rarity, set: rs.set } }, reservation: Math.floor(mean * this.safety), label: `buy ${rs.rarity} ${rs.set}` };
+      return { key: `buy:${rs.set}:${rs.rarity}`, side, topic: { buy: { rarity: rs.rarity, set: rs.set } }, reservation: Math.floor(mean * this.safety), label: `buy ${rs.rarity} ${rs.set}`, value: mean };
     }
     const card = topic?.buy?.card;
     if (side === "buy" && card) {
       const value = await this.valueOf(card);
-      return { key: `buy:${card}`, side, topic: { buy: { card } }, reservation: Math.floor(value * this.safety), label: `buy ${card}` };
+      return { key: `buy:${card}`, side, topic: { buy: { card } }, reservation: Math.floor(value * this.safety), label: `buy ${card}`, value };
     }
     return undefined;
   }
@@ -212,6 +212,7 @@ export class BazaarAgent {
       canMessage: active.lastSentTick !== tick,
       canAccept: this.lastAcceptTick !== tick,
       holdsUsed: active.holdsUsed,
+      ...(target.value !== undefined ? { privateValue: target.value } : {}),
     };
     const d: Decision = decide(view, this.negotiatorParams);
     const base = {

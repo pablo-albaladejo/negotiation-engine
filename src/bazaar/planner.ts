@@ -15,6 +15,8 @@ export interface Target {
   /** Reserva privada (compra: máximo; venta: mínimo). Solo para el motor y la traza local. */
   reservation: number;
   label: string;
+  /** Nuestro valor privado de lo que se compra o vende (esperado si es por rareza y set): un trato crea valor si el precio lo mejora. */
+  value?: number;
 }
 
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
@@ -44,6 +46,7 @@ export function spareTargets(me: Me): Target[] {
         topic: { sell: { assets: [spare.id] } },
         reservation: Math.max(1, Math.ceil(spare.your_value)),
         label: `sell spare ${ref}`,
+        value: spare.your_value,
       });
     }
   }

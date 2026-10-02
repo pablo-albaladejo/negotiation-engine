@@ -13,9 +13,10 @@ describe("arnés bazaar:sim", () => {
     expect(await run()).toEqual(await run());
   });
 
-  it("nuestro negociador nunca cierra a su precio de apertura ni provoca errores de protocolo", async () => {
+  it("nuestro negociador nunca compra a su precio de apertura ni provoca errores de protocolo", async () => {
     const rs = await runGrid({ profile, policies: [oursPolicy()], floors: [0.15, 0.35], seeds: 15 });
-    expect(rs.filter((r) => r.atOpening)).toEqual([]);
+    // Al venderle, si no se mueve tras 2 concesiones la regla de precio fijo acepta su puja (hilo 56): cuenta como trato.
+    expect(rs.filter((r) => r.atOpening && r.scenario.startsWith("buy"))).toEqual([]);
     expect(rs.flatMap((r) => r.errors)).toEqual([]);
     expect(stats(rs).dealRate).toBeGreaterThan(0.5);
   });

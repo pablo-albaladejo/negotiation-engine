@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/bazaar/agent.js";
 import { BazaarClient, BazaarError } from "../../src/bazaar/client.js";
-import { decide, type ThreadView } from "../../src/bazaar/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, type ThreadView } from "../../src/bazaar/negotiator.js";
 import { ThreadSchema, type Thread } from "../../src/bazaar/schemas.js";
 import type { TraceRecord } from "../../src/bazaar/trace.js";
 import { threadPrices } from "../../src/bazaar/view.js";
@@ -59,15 +59,31 @@ describe("hilo real 56", () => {
     expect(p).toEqual({ herPrices: [13], herOpening: 13, herCurrent: { offerId: 356, price: 13, final: false }, ourPrices: [21] });
   });
 
-  it("siguiente acción: concede por debajo de 21, nunca repite precio, nunca baja a su apertura (13) y aguanta en 14", () => {
+  it("aprendido en vivo: ella no se mueve de 13; tras 2 concesiones nuestras lo trata como precio fijo y acepta 13", () => {
     const thread = ThreadSchema.parse(RAW);
+    let v = sellView(thread, { privateValue: 2.2 });
+    const sent: number[] = [...v.ourPrices];
+    for (let i = 0; i < 2; i++) {
+      const d = decide(v);
+      expect(d.action.kind).toBe("counter");
+      if (d.action.kind === "counter") sent.push(d.action.price);
+      v = { ...v, ourPrices: [...sent] };
+    }
+    const d = decide(v);
+    expect(d.rule).toBe("fixed-price");
+    expect(d.action).toEqual({ kind: "accept", offerId: 356, price: 13 });
+  });
+
+  it("sin la regla de precio fijo: concede por debajo de 21, nunca repite precio, nunca baja a su apertura (13) y aguanta en 14", () => {
+    const thread = ThreadSchema.parse(RAW);
+    const params = { ...DEFAULT_NEGOTIATOR_PARAMS, fixedAfterConcessions: 0 };
     let v = sellView(thread);
-    const first = decide(v);
+    const first = decide(v, params);
     expect(first.effectiveReservation).toBe(14);
     expect(first.action.kind).toBe("counter");
     const sent: number[] = [...v.ourPrices];
     for (let i = 0; i < 30; i++) {
-      const d = decide(v);
+      const d = decide(v, params);
       if (d.action.kind !== "counter") {
         expect(d.action).toEqual({ kind: "hold", price: 14 });
         break;

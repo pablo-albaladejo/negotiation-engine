@@ -28,12 +28,19 @@ function simulate(side: Side, reservation: number, herOpen: number, herLimit: nu
 }
 
 describe("negotiator: compra", () => {
-  it("abre lejos de su precio (ancla) y nunca acepta su precio de apertura", () => {
+  it("abre lejos de su precio (ancla); su apertura sin final no se acepta", () => {
     const d = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false } }));
     expect(d.action).toEqual({ kind: "counter", price: 27 });
     expect(d.rule).toBe("anchor");
-    const fin = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true }, ourPrices: [33] }));
-    expect(fin.action.kind).not.toBe("accept");
+    const next = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false }, ourPrices: [27] }));
+    expect(next.action.kind).toBe("counter");
+  });
+
+  it("una final a su apertura se acepta si cabe en la reserva y crea valor (cuenta como trato); si no, cierra", () => {
+    const fin = view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true }, ourPrices: [33] });
+    expect(decide(fin).action).toEqual({ kind: "accept", offerId: 1, price: 60 });
+    expect(decide({ ...fin, privateValue: 60 }).action.kind).toBe("close");
+    expect(decide({ ...fin, reservation: 59 }).action.kind).toBe("close");
   });
 
   it("acepta su oferta cuando AC_next: no peor que nuestra siguiente y dentro de la reserva", () => {
@@ -76,13 +83,35 @@ describe("negotiator: compra", () => {
     expect(last.rule).toBe("holds-exhausted");
   });
 
+  it("precio fijo: tras 2 concesiones sin que se mueva, acepta si cabe en la reserva y crea valor", () => {
+    const base = view({ side: "sell", reservation: 6, privateValue: 5, herOpening: 13, herPrices: [13, 13, 13], herCurrent: { offerId: 7, price: 13, final: false } });
+    expect(decide({ ...base, ourPrices: [26, 25] }).action.kind).toBe("counter");
+    const d = decide({ ...base, ourPrices: [26, 25, 24] });
+    expect(d.action).toEqual({ kind: "accept", offerId: 7, price: 13 });
+    expect(d.rule).toBe("fixed-price");
+    expect(decide({ ...base, ourPrices: [26, 25, 24], canAccept: false }).action.kind).toBe("wait");
+    // Fuera de reserva o sin crear valor: cierra (educadamente, el agente manda closeText).
+    const out = decide({ ...base, reservation: 15, ourPrices: [26, 25, 24] });
+    expect(out.action.kind).toBe("close");
+    expect(out.rule).toBe("fixed-price-out-of-range");
+    expect(decide({ ...base, privateValue: 13, ourPrices: [26, 25, 24] }).rule).toBe("fixed-price-out-of-range");
+    // Si se movió, no es fijo; con el parámetro a 0, la regla se desactiva.
+    expect(decide({ ...base, herPrices: [12, 13], ourPrices: [26, 25, 24] }).rule).not.toBe("fixed-price");
+    expect(decide({ ...base, ourPrices: [26, 25, 24] }, { ...DEFAULT_NEGOTIATOR_PARAMS, fixedAfterConcessions: 0 }).action.kind).toBe("counter");
+  });
+
+  it("precio fijo al comprar: acepta su precio inmóvil dentro de la reserva", () => {
+    const d = decide(view({ side: "buy", reservation: 22, privateValue: 24, herOpening: 20, herPrices: [20, 20], herCurrent: { offerId: 3, price: 20, final: false }, ourPrices: [9, 10, 11] }));
+    expect(d.action).toEqual({ kind: "accept", offerId: 3, price: 20 });
+  });
+
   it("acepta su oferta final dentro del límite tras aguantar, y nunca su precio de apertura", () => {
     const held = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40], holdsUsed: 1 });
     expect(decide(held).action.kind).toBe("hold");
     const final = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55, 38], herCurrent: { offerId: 4, price: 38, final: true }, ourPrices: [22, 40], holdsUsed: 2 });
     const d = decide(final);
     expect(d.action).toEqual({ kind: "accept", offerId: 4, price: 38 });
-    const atOpening = view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true } });
+    const atOpening = view({ side: "buy", reservation: 50, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: true } });
     expect(decide(atOpening).action.kind).not.toBe("accept");
   });
 
@@ -106,7 +135,8 @@ describe("negotiator: compra", () => {
         const last = decisions[decisions.length - 1]!;
         if (last.action.kind === "accept") {
           expect(last.action.price).toBeLessThanOrEqual(res);
-          expect(last.action.price).not.toBe(open);
+          // A su apertura solo por la regla de precio fijo (no se movió tras nuestras concesiones).
+          if (last.action.price === open) expect(last.rule).toBe("fixed-price");
         }
       }),
       { numRuns: 300 },
@@ -196,7 +226,7 @@ describe("planner", () => {
   };
 
   it("vende solo copias repetidas, con reserva = su your_value", () => {
-    expect(spareTargets(me)).toEqual([{ key: "sell:2", side: "sell", topic: { sell: { assets: [2] } }, reservation: 4, label: "sell spare LAV-01" }]);
+    expect(spareTargets(me)).toEqual([{ key: "sell:2", side: "sell", topic: { sell: { assets: [2] } }, reservation: 4, label: "sell spare LAV-01", value: expect.any(Number) }]);
   });
 
   it("compra cartas de página que faltan, con reserva conservadora y tope de presupuesto", async () => {

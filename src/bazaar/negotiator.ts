@@ -25,6 +25,11 @@ export interface NegotiatorParams {
   reciprocity: number;
   /** Tics que aguantamos sin movernos (mensaje educado, mismo precio) antes de cerrar si estamos atascados. */
   maxHolds: number;
+  /**
+   * Precio fijo: si tras este número de concesiones nuestras su precio no se ha movido, se trata como fijo
+   * (aceptar si cabe en la reserva y crea valor, aunque sea su apertura; si no, cerrar). 0 lo desactiva.
+   */
+  fixedAfterConcessions: number;
 }
 
 export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
@@ -35,6 +40,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   maxStepFrac: 0.08,
   reciprocity: 0.6,
   maxHolds: 3,
+  fixedAfterConcessions: 2,
 };
 
 export interface HerOffer {
@@ -61,6 +67,8 @@ export interface ThreadView {
   canAccept: boolean;
   /** Mensajes de espera ya gastados en este hilo (mismo precio, sin nueva oferta) esperando su final. */
   holdsUsed?: number;
+  /** Nuestro valor privado de lo que se compra o se vende: un trato solo crea valor si el precio lo mejora. */
+  privateValue?: number;
 }
 
 export type Rule =
@@ -70,6 +78,8 @@ export type Rule =
   | "ac-next"
   | "final-above-reservation"
   | "final-below-reservation"
+  | "fixed-price"
+  | "fixed-price-out-of-range"
   | "stuck-at-reservation"
   | "hold"
   | "holds-exhausted"
@@ -119,6 +129,27 @@ export function herLastConcession(side: Side, herPrices: readonly number[]): num
   return Math.max(0, side === "buy" ? prev - cur : cur - prev);
 }
 
+/** Concesiones nuestras: veces que nuestro precio se acercó al suyo respecto al anterior. */
+export function ourConcessions(side: Side, ourPrices: readonly number[]): number {
+  let n = 0;
+  for (let i = 1; i < ourPrices.length; i++) if (better(side, ourPrices[i - 1]!, ourPrices[i]!)) n += 1;
+  return n;
+}
+
+/** Su precio no se ha movido tras `fixedAfterConcessions` concesiones nuestras (Abuela comprando comunes, hilo 56). */
+export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "ourPrices" | "herCurrent">, p: Pick<NegotiatorParams, "fixedAfterConcessions">): boolean {
+  if (p.fixedAfterConcessions <= 0 || !view.herCurrent || view.herPrices.length === 0) return false;
+  const first = view.herPrices[0]!;
+  if (view.herCurrent.price !== first || view.herPrices.some((x) => x !== first)) return false;
+  return ourConcessions(view.side, view.ourPrices) >= p.fixedAfterConcessions;
+}
+
+/** Su precio cabe en nuestra reserva privada (sin el recorte de la apertura) y crea valor a nuestro valor privado. */
+export function valuePositive(view: Pick<ThreadView, "side" | "reservation" | "privateValue">, price: number): boolean {
+  if (!atLeastAsGood(view.side, price, view.reservation)) return false;
+  return view.privateValue === undefined || better(view.side, price, view.privateValue);
+}
+
 /** Siguiente contraoferta: Boulware hacia la reserva efectiva, pasos pequeños, recíprocos y estrictamente monótonos. */
 export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): { price: number; rule: Rule } | undefined {
   const effRes = effectiveReservation(view);
@@ -148,12 +179,19 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
   const next = nextPrice(view, p);
   const her = view.herCurrent;
 
+  if (her && herPriceIsFixed(view, p)) {
+    if (!valuePositive(view, her.price)) return { action: { kind: "close" }, rule: "fixed-price-out-of-range", effectiveReservation: effRes };
+    if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
+    return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule: "fixed-price", effectiveReservation: effRes };
+  }
+
   if (her) {
     const isOpening = view.herOpening !== undefined && her.price === view.herOpening;
     const withinRes = !isOpening && atLeastAsGood(view.side, her.price, effRes);
     // AC_next: su oferta es al menos tan buena como la que le mandaríamos; o ya no podemos movernos.
     const acNext = withinRes && (next === undefined || atLeastAsGood(view.side, her.price, next.price));
-    const take = acNext || (her.final && withinRes);
+    // Una oferta final se acepta si cabe en la reserva privada y crea valor, aunque sea su apertura (cuenta como trato).
+    const take = acNext || (her.final && valuePositive(view, her.price));
     if (take) {
       const rule: Rule = acNext ? "ac-next" : "final-above-reservation";
       if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
