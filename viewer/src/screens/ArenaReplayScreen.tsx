@@ -15,7 +15,7 @@ import React, { useEffect, useState } from "react";
 import type { ArenaReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { nameLatencySteps } from "../ui/decision.js";
-import { resultKpi, zopaKpi } from "../ui/labels.js";
+import { resultLabel, zopaKpi } from "../ui/labels.js";
 import { offerLabel, offerValue } from "../ui/offer.js";
 import { MatchSelector } from "../ui/match-selector.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
@@ -94,7 +94,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         ? { round: lastRound, kind: "walk" as const, label: "Walk" }
         : undefined;
 
-  const result = resultKpi(model.game.endReason);
+  const result = resultLabel(model.game.endReason);
   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
   const decisionRows: DataTableRow[] = panel

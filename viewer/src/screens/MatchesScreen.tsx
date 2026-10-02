@@ -4,6 +4,7 @@ import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { BackLink, TableLink } from "../ui/buttons.js";
+import { resultLabel } from "../ui/labels.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Match" },
@@ -60,7 +61,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
     esc: r.scenarioId,
     rival: r.rival,
     rol: r.role,
-    res: r.endReason,
+    res: resultLabel(r.endReason).label,
     exc: pct(r.surplusShare),
     rondas: r.roundLimit !== null ? `${r.rounds} / ${r.roundLimit}` : String(r.rounds),
     inc: incidents(r),
@@ -89,7 +90,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
         roleOptions={[{ value: "", label: "All" }, ...model.options.roles.map((v) => ({ value: v, label: v }))]}
         role={filters.role ?? ""}
         onRoleChange={(v) => setFilters((f) => withFilter(f, "role", v === "" ? undefined : (v as MatchFilters["role"])))}
-        resultOptions={[{ value: "", label: "All" }, ...model.options.results.map((v) => ({ value: v, label: v }))]}
+        resultOptions={[{ value: "", label: "All" }, ...model.options.results.map((v) => ({ value: v, label: resultLabel(v).label }))]}
         result={filters.result ?? ""}
         onResultChange={(v) => setFilters((f) => withFilter(f, "result", v === "" ? undefined : (v as MatchFilters["result"])))}
         checkboxes={[{ key: "template", label: "template", checked: filters.template ?? false }]}

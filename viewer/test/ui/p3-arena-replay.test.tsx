@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { arenaReplayModel, type ArenaReplayModel } from "../../src/model/index.js";
 import { ArenaReplayScreen } from "../../src/screens/ArenaReplayScreen.js";
-import { endReasonLabel, matchWindow } from "../../src/ui/match-selector.js";
+import { matchWindow } from "../../src/ui/match-selector.js";
+import { resultLabel, resultTone } from "../../src/ui/labels.js";
 import { generateFixtures, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -123,7 +124,8 @@ describe("ArenaReplayScreen (P3)", () => {
     const games = Array.from({ length: 50 }, (_, i) => ({ gameId: `g-${i}`, rival: "boulware", endReason: "agreement" }));
     expect(matchWindow(games, "g-25").map((g) => g.gameId)).toEqual(["g-22", "g-23", "g-24", "g-25", "g-26", "g-27", "g-28"]);
     expect(matchWindow(games, "g-0")).toHaveLength(4);
-    expect(endReasonLabel("agent-walk")).toEqual({ result: "walk", label: "Walk" });
-    expect(endReasonLabel(undefined).label).toBe("not logged");
+    expect(resultTone("agent-walk")).toBe("walk");
+    expect(resultLabel("agent-walk").label).toBe("We walked");
+    expect(resultLabel(undefined).label).toBe("not logged");
   });
 });

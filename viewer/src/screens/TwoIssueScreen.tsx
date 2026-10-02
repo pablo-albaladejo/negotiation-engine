@@ -14,6 +14,7 @@ import {
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
 import { MatchSelector } from "../ui/match-selector.js";
+import { resultLabel } from "../ui/labels.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "r", label: "Round" },
@@ -111,7 +112,11 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
       </div>
       <KpiStrip
         items={[
-          { label: "Outcome", value: model.game.endReason, ...(model.game.endReason === "agreement" ? { tone: "deal" as const } : {}) },
+          {
+            label: "Outcome",
+            value: resultLabel(model.game.endReason).label,
+            ...(resultLabel(model.game.endReason).tone ? { tone: resultLabel(model.game.endReason).tone! } : {}),
+          },
           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
           { label: "Surplus", value: pct(model.game.surplusShare) },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds} / ${model.game.roundLimit}` : String(model.game.rounds) },
