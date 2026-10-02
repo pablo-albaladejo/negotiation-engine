@@ -260,6 +260,7 @@ Nadie tiene aún puntos de mercado: ese componente lo da *The Market Test*.
 5. **Flags:** `POST /api/flags` con el id de un mensaje de mala fe; acierto puntúa y fallo resta.
 6. **Cartas secretas y shinies:** el catálogo web cuenta *Secret cards found* (0 de momento) y *Shinies found* (épicas y legendarias aparecidas).
 7. ***The Market Test* se repite cada 2 h** sobre todos los venues con el mismo libro sintético. Es lo que puntúa el componente de mercado (peso 30); nuestro `v04` en modo `auto` es lo que se evalúa.
+8. **Las estrellas del leaderboard (`★ N`) son páginas completas del álbum.** `BigScreen-*.js` pinta `★ pages_complete` junto a `album_filled/album_slots` cuando es > 0 (al pasar el ratón: *"1 complete page"*). Una página = las 10 cartas de común a rara de un set; suma bonus de página (0,25).
 
 ## 7. Easter eggs (investigación a fondo)
 
