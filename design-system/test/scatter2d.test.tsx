@@ -49,3 +49,37 @@ describe("Scatter2D onPointClick (keyboard accessibility)", () => {
     expect(withoutHandler).not.toContain('role="button"');
   });
 });
+
+describe("Scatter2D role and aria-labels", () => {
+  it("uses role=group with onPointClick and labels each interactive point", () => {
+    const withHandler = renderToString(
+      <Scatter2D
+        xDomain={[0, 10]}
+        yDomain={[0, 10]}
+        xLabel="x"
+        yLabel="y"
+        ourOffers={[{ round: 3, x: 2, y: 3 }]}
+        theirOffers={[{ round: 3, x: 4, y: 5 }]}
+        onPointClick={() => {}}
+      />,
+    );
+    expect(withHandler).toContain('role="group"');
+    expect(withHandler).not.toMatch(/<svg[^>]*role="img"/);
+    expect(withHandler).toContain('aria-label="Our offer, round 3"');
+    expect(withHandler).toContain('aria-label="Opponent offer, round 3"');
+  });
+
+  it("keeps role=img on the svg when onPointClick is not given", () => {
+    const withoutHandler = renderToString(
+      <Scatter2D
+        xDomain={[0, 10]}
+        yDomain={[0, 10]}
+        xLabel="x"
+        yLabel="y"
+        ourOffers={[{ round: 1, x: 2, y: 3 }]}
+        theirOffers={[{ round: 1, x: 4, y: 5 }]}
+      />,
+    );
+    expect(withoutHandler).toMatch(/<svg[^>]*role="img"/);
+  });
+});

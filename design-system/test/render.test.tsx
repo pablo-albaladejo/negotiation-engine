@@ -115,7 +115,9 @@ describe("component rendering", () => {
     );
     const bodyRows = html.split("<tbody>")[1]!.split("<tr").slice(1);
     expect(bodyRows[0]).not.toContain("is-selected");
+    expect(bodyRows[0]).not.toContain("aria-selected");
     expect(bodyRows[1]).toContain("is-selected");
+    expect(bodyRows[1]).toContain('aria-selected="true"');
   });
 
   it("renders DataTable without throwing", () => {

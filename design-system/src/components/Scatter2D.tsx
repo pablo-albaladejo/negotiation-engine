@@ -74,7 +74,12 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
   const yTicks = ticksFor(yDomain);
 
   return (
-    <svg className="nr-scatter" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Offers by round on two issues">
+    <svg
+      className="nr-scatter"
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      role={onPointClick ? "group" : "img"}
+      aria-label="Offers by round on two issues"
+    >
       {mandate ? (
         <polygon
           className="mandate"
@@ -175,9 +180,13 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
               ? {
                   role: "button" as const,
                   tabIndex: 0,
+                  "aria-label": `Our offer, round ${point.round}`,
                   onClick: () => onPointClick({ side: "us" as const, round: point.round }),
                   onKeyDown: (e: KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") onPointClick({ side: "us" as const, round: point.round });
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onPointClick({ side: "us" as const, round: point.round });
+                    }
                   },
                 }
               : {})}
@@ -198,9 +207,13 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
               ? {
                   role: "button" as const,
                   tabIndex: 0,
+                  "aria-label": `Opponent offer, round ${point.round}`,
                   onClick: () => onPointClick({ side: "them" as const, round: point.round }),
                   onKeyDown: (e: KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") onPointClick({ side: "them" as const, round: point.round });
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onPointClick({ side: "them" as const, round: point.round });
+                    }
                   },
                 }
               : {})}
