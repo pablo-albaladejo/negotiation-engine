@@ -370,6 +370,7 @@ function AppContent() {
   /** D9: once the user picks a theme explicitly, OS changes stop overriding it (watchSystemTheme
    * checks for a stored choice on every change event). */
   useEffect(() => watchSystemTheme(setTheme), []);
+  const resultsFolder = useResultsFolder();
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "find" ? route.tab : route.screen;
   const toggleTheme = () => {
@@ -377,7 +378,6 @@ function AppContent() {
     setTheme(next);
     storeTheme(next);
   };
-  const resultsFolder = useResultsFolder();
   return (
     <Root theme={theme}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>

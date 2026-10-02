@@ -49,10 +49,6 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   useEffect(() => {
     consumePageFocus();
   }, []);
-
-  useEffect(() => {
-    consumePageFocus();
-  }, []);
   const [projectorMode, setProjectorMode] = useState(false);
 
   useEffect(() => {

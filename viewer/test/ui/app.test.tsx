@@ -432,3 +432,79 @@ describe("App header + tabs (spec item 1/2)", () => {
     await screen.findByText("No tournament log in results/");
   });
 });
+
+
+describe("App Live screen navigation (rules of hooks regression)", () => {
+  class FakeEventSource {
+    static instances: FakeEventSource[] = [];
+    private listeners: Record<string, ((e: MessageEvent<string>) => void)[]> = {};
+    constructor(public url: string) {
+      FakeEventSource.instances.push(this);
+    }
+    addEventListener(type: string, cb: (e: MessageEvent<string>) => void) {
+      (this.listeners[type] ??= []).push(cb);
+    }
+    removeEventListener() {}
+    close() {}
+    emit(type: string, data: unknown) {
+      const event = { data: JSON.stringify(data) } as MessageEvent<string>;
+      for (const cb of this.listeners[type] ?? []) cb(event);
+    }
+  }
+
+  function mockRuns(entries: unknown[]) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: entries, errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    mockRuns([{ runId: "r-1", kind: "arena", summary: null }]);
+    FakeEventSource.instances = [];
+    vi.stubGlobal("EventSource", FakeEventSource as unknown as typeof EventSource);
+  });
+
+  it("navigates Runs -> Live via the nav tab and back without tripping the error boundary", async () => {
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("r-1");
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    await screen.findByText("Waiting for the next match");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "← Runs" }));
+    await screen.findByText("r-1");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it('navigates Runs -> Live via "Open live view" and back without tripping the error boundary', async () => {
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("r-1");
+    fireEvent.click(screen.getByRole("button", { name: "Open live view" }));
+    await screen.findByText("Waiting for the next match");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "← Runs" }));
+    await screen.findByText("r-1");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the same hook count across the live log's loading -> loaded transition", async () => {
+    window.location.hash = "#/live";
+    render(<App />);
+    await screen.findByText("Waiting for the next match");
+    const source = FakeEventSource.instances.at(-1);
+    if (!source) throw new Error("expected useLiveFeed to open an EventSource");
+    source.emit("session", { runId: "r-live", session: "s-1" });
+    source.emit("record", {
+      session: "s-1",
+      record: { kind: "box", sessionId: "s-1", round: 1, box: "input", input: {}, output: { roundLimit: 10 }, result: "ok", latencyMs: 1 },
+    });
+    await waitFor(() => expect(screen.queryByText("Waiting for the next match")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
