@@ -52,3 +52,5 @@ export type { StatFigureProps } from "./components/StatFigure";
 
 export { formatEsNumber, formatNumber } from "./format";
 export type { FormatNumberOptions } from "./format";
+
+export { PrimaryButton, SecondaryButton, BackLink, TableLink } from "./components/Button";
