@@ -29,8 +29,14 @@ export interface TournamentReplayModel {
   /** Registros `protocol`: el rival rompió el protocolo (rutas y códigos de Zod). */
   protocol: { round: number; issues: { path: string; code: string }[] }[];
   provider: string | null;
-  /** Fin de sesión tal como lo registró el `binding` más reciente (`agreement` | `walk`); `null` si no se registró (p. ej. sesión en curso o límite de rondas). */
-  outcome: { kind: "agreement" | "walk"; offer: Offer | null } | null;
+  /**
+   * Fin de sesión (C2). `binding` solo registra el movimiento del RIVAL, así que cuando es nuestro
+   * motor el que acepta o se retira (sin que el rival lo haya ofrecido/pedido en su turno) no hay
+   * `binding` que lo capture: se recurre a `decision.action` de la última ronda registrada.
+   * `by: "rival"` -> binding del rival (fuente primaria); `by: "agent"` -> inferido de nuestra última
+   * decisión. `null` si ninguna de las dos fuentes lo registró (sesión en curso o límite de rondas).
+   */
+  outcome: { kind: "agreement" | "walk"; by: "agent" | "rival"; offer: Offer | null } | null;
 }
 
 export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: ScenarioRef | null): TournamentReplayModel {
@@ -55,6 +61,15 @@ export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: 
     ourMessageCount: rounds.filter((p) => p.ourText !== null).length,
     protocol: protocolBreaks(records),
     provider: loggedProvider(records),
-    outcome: [...rounds].reverse().find((p) => p.outcome !== null)?.outcome ?? null,
+    outcome: sessionOutcome(rounds),
   };
+}
+
+function sessionOutcome(rounds: readonly RoundPanel[]): TournamentReplayModel["outcome"] {
+  const bound = [...rounds].reverse().find((p) => p.outcome !== null)?.outcome ?? null;
+  if (bound) return { kind: bound.kind, by: "rival", offer: bound.offer };
+  const last = rounds[rounds.length - 1];
+  if (last?.decision?.action === "accept") return { kind: "agreement", by: "agent", offer: last.rivalOffer };
+  if (last?.decision?.action === "walk") return { kind: "walk", by: "agent", offer: null };
+  return null;
 }

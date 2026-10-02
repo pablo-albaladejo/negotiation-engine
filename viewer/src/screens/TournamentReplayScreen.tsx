@@ -69,7 +69,13 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
       : offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
   const lastEstimate = model.explain[model.explain.length - 1] ?? null;
   const finalEstimate = lastEstimate ? offerValue(lastEstimate.rivalReserveEstimate) : null;
-  const result = model.outcome ? (model.outcome.kind === "agreement" ? "Deal" : "Opponent walked") : "not logged";
+  const result = model.outcome
+    ? model.outcome.kind === "agreement"
+      ? "Deal"
+      : model.outcome.by === "agent"
+        ? "We walked"
+        : "Opponent walked"
+    : "not logged";
   const resultTone = model.outcome ? (model.outcome.kind === "agreement" ? ("deal" as const) : ("walk" as const)) : undefined;
 
   const estRows: DataTableRow[] = model.rounds.map((p) => {
@@ -78,7 +84,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
       r: `R${p.round}`,
       th: offerValue(p.rivalOffer) ?? "not logged",
       e: estimateForRound ? (offerValue(estimateForRound.rivalReserveEstimate) ?? "not logged") : "not logged",
-      us: offerValue(p.ourOffer) ?? "accept",
+      us: offerValue(p.ourOffer) ?? (p.decision?.action === "accept" ? "accept" : p.decision?.action === "walk" ? "walk" : "not logged"),
     };
   });
 
