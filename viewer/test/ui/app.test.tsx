@@ -65,6 +65,21 @@ describe("App routing (C2, C3)", () => {
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
   });
 
+  it("T2: filtering via the UI updates the address bar immediately (replaceRoute keeps route state in sync)", async () => {
+    window.location.hash = `#/runs/${fx.runId}`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
+    fireEvent.click(screen.getByRole("tab", { name: "Buyer" }));
+    expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`);
+    const firstGameId = fx.games[0]!.gameId;
+    fireEvent.click(screen.getByText(firstGameId));
+    await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
+    expect(window.location.hash).toContain("role=buyer");
+    const backLink = await screen.findByText("← Matches");
+    fireEvent.click(backLink);
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
+  });
+
   it("C3: switching to another run id resets Matches filters instead of keeping the previous run's (keyed container)", async () => {
     const otherRunId = `${fx.runId}-other`;
     window.location.hash = `#/runs/${fx.runId}?role=buyer`;

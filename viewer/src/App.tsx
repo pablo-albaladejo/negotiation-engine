@@ -24,14 +24,28 @@ const TABS = [
   { id: "live", label: "Live" },
 ];
 
-function useHashRoute(): { route: Route; hash: string } {
+function useHashRoute(): { route: Route; hash: string; replaceRoute: (hash: string) => void; navKey: number } {
   const [hash, setHash] = useState(() => window.location.hash);
+  /** Bumped only by a real `hashchange` (actual navigation), never by `replaceRoute`: Matches uses
+   * it, not `route.query`, to key its container, so filtering (which calls `replaceRoute`) never
+   * remounts it (L7) while a genuine navigation to a new query for the same run still does. */
+  const [navKey, setNavKey] = useState(0);
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash);
+    const onChange = () => {
+      setHash(window.location.hash);
+      setNavKey((n) => n + 1);
+    };
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  return { route: parseRoute(hash), hash };
+  /** T2: `history.replaceState` (filters persisted without a new history entry) does not fire
+   * `hashchange`, so `route` would go stale after it. Update the local `hash` state in the same
+   * call so `route` always matches the address bar (`navKey` is deliberately left untouched). */
+  const replaceRoute = (next: string) => {
+    window.history.replaceState(null, "", next);
+    setHash(next);
+  };
+  return { route: parseRoute(hash), hash, replaceRoute, navKey };
 }
 
 /** L27: document title per screen, English, suffixed with the app name. */
@@ -94,7 +108,7 @@ function RunsContainer() {
   );
 }
 
-function MatchesContainer({ runId, query }: { runId: string; query: string }) {
+function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query: string; replaceRoute: (hash: string) => void }) {
   const [state, setState] = useState<{ summary: Summary | null; games: TranscriptLine[] } | null>(null);
   const championVersion = useChampionVersion().version;
   const [initialFilters] = useState<MatchFilters>(() => queryToFilters(query));
@@ -124,7 +138,7 @@ function MatchesContainer({ runId, query }: { runId: string; query: string }) {
       initialFilters={initialFilters}
       onFiltersChange={(filters) => {
         currentQuery.current = filtersToQuery(filters);
-        window.history.replaceState(null, "", routeTo.matches(runId, currentQuery.current));
+        replaceRoute(routeTo.matches(runId, currentQuery.current));
       }}
       isChampion={isChampion}
     />
@@ -218,7 +232,7 @@ function LiveContainer() {
 }
 
 export function App() {
-  const { route, hash } = useHashRoute();
+  const { route, hash, replaceRoute, navKey } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const mainRef = useRef<HTMLElement | null>(null);
   const skipFocus = useRef(true);
@@ -256,7 +270,7 @@ export function App() {
         </header>
         <main ref={mainRef}>
           {route.screen === "runs" ? <RunsContainer /> : null}
-          {route.screen === "matches" ? <MatchesContainer key={`${route.runId}?${route.query}`} runId={route.runId} query={route.query} /> : null}
+          {route.screen === "matches" ? <MatchesContainer key={`${route.runId}-${navKey}`} runId={route.runId} query={route.query} replaceRoute={replaceRoute} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
           {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
