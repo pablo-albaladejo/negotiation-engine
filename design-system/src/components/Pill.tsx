@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export interface PillProps {
-  kind: "verdict" | "rejected" | "sample";
+  kind: "verdict" | "rejected" | "sample" | "champion";
   children?: ReactNode;
 }
 

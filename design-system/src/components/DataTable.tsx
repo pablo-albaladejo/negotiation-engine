@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 export interface DataTableColumn {
   key: string;
@@ -16,13 +16,15 @@ export type DataTableRow = Record<string, ReactNode | DataTableCell>;
 export interface DataTableProps {
   columns: DataTableColumn[];
   rows: DataTableRow[];
+  /** Makes the whole row clickable (mouse and keyboard, Enter/Space), in addition to any link inside a cell. */
+  onRowClick?: (rowIndex: number) => void;
 }
 
 function isCell(value: ReactNode | DataTableCell): value is DataTableCell {
   return typeof value === "object" && value !== null && "value" in (value as object);
 }
 
-export function DataTable({ columns, rows }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
   return (
     <div className="nr-table-wrap">
       <table className="nr-table">
@@ -37,7 +39,22 @@ export function DataTable({ columns, rows }: DataTableProps) {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr
+              key={rowIndex}
+              className={onRowClick ? "nr-table-row-clickable" : undefined}
+              {...(onRowClick
+                ? {
+                    tabIndex: 0,
+                    onClick: () => onRowClick(rowIndex),
+                    onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick(rowIndex);
+                      }
+                    },
+                  }
+                : {})}
+            >
               {columns.map((column) => {
                 const raw = row[column.key];
                 const cell = isCell(raw) ? raw : { value: raw };

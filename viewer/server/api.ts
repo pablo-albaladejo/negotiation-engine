@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { ScenarioSchema as MandateFileSchema } from "../../src/agent/agent.js";
 import { GateFileSchema, SummarySchema, TranscriptLineSchema } from "../../src/arena/results-schema.js";
 import { scenarioHash } from "../../src/arena/scenario.js";
@@ -27,6 +28,9 @@ const ok = (data: unknown, errors: ReadError[] = []): ApiResponse => ({ status: 
 const fail = (status: 400 | 404, message: string): ApiResponse => ({ status, body: { data: null, errors: [{ file: null, line: null, path: "", message }] } });
 const badRequest = () => fail(400, "invalid identifier");
 const notFound = () => fail(404, "not found");
+
+/** Solo expone la versión de `config/champion.json`, de solo lectura (ajuste 2): ni el resto de campos ni el mandato. */
+const ChampionVersionSchema = z.looseObject({ version: z.number() }).transform(({ version }) => ({ version }));
 
 function kindOf(name: string, files: ReadonlySet<string>): RunKind {
   if (files.has("gate.json")) return "promotion";
@@ -100,7 +104,14 @@ async function tournamentSessions(roots: Roots, runId: string): Promise<ApiRespo
   return ok(files.map((f) => f.slice(0, -".jsonl".length)));
 }
 
-/** Nuestro mandato local solo si el fichero de `config/` coincide en nombre y hash; si no, 404. */
+/** `config/champion.json`: solo expone `version`, de solo lectura (ajuste 2, §1 Runs). `null` si no existe. */
+async function championVersion(roots: Roots): Promise<ApiResponse> {
+  const path = await resolveInside(roots.config, "champion.json");
+  if (!path) return ok(null);
+  const read = await readJson(path, "config/champion.json", ChampionVersionSchema);
+  return ok(read.data, read.errors);
+}
+
 async function scenarioRef(roots: Roots, query: URLSearchParams): Promise<ApiResponse> {
   const id = query.get("id");
   const hash = query.get("hash");
@@ -134,6 +145,7 @@ async function scenarioRef(roots: Roots, query: URLSearchParams): Promise<ApiRes
 export async function handleApi(roots: Roots, segments: readonly string[], query: URLSearchParams): Promise<ApiResponse> {
   const [head, ...ids] = segments;
   if (head === "scenario-ref" && ids.length === 0) return scenarioRef(roots, query);
+  if (head === "champion" && ids.length === 0) return championVersion(roots);
   if (!ids.every(isSafeId)) return badRequest();
   if (head === "runs") {
     const [runId, games, gameId] = ids;
