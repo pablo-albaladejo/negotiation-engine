@@ -227,6 +227,6 @@ describe("LiveScreen headline/round-limit never invent a unit for a missing valu
     const model: LiveModel = { ...BASE_LIVE_MODEL, sessionId: null, role: "seller" };
     const { container } = render(<LiveScreen model={model} />);
     const headline = container.querySelector(".nr-live-headline");
-    expect(headline?.textContent).toBe("seller");
+    expect(headline?.textContent).toBe("Seller");
   });
 });
