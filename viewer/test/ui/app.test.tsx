@@ -20,6 +20,7 @@ function mockFetch(summary: Summary, games: TranscriptLine[]) {
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/champion")) return new Response(JSON.stringify({ data: null, errors: [] }));
+      if (url.includes("/api/info")) return new Response(JSON.stringify({ data: { resultsFolder: "results" }, errors: [] }));
       if (url.includes("/api/runs/") && url.includes("/games/")) return new Response(JSON.stringify({ data: [], errors: [] }));
       if (url.includes("/api/runs/")) return new Response(JSON.stringify({ data: { runId: summary.runId, summary, games }, errors: [] }));
       if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: [], errors: [] }));
@@ -38,7 +39,7 @@ describe("App theme toggle (B1)", () => {
     window.location.hash = "#/runs";
     const { container } = render(<App />);
     const root = container.querySelector(".nr-root")!;
-    const button = screen.getByText(/mode$/i);
+    const button = screen.getByText(/^Theme:/i);
     const before = root.getAttribute("data-theme");
     fireEvent.click(button);
     const after = root.getAttribute("data-theme");
@@ -49,7 +50,7 @@ describe("App theme toggle (B1)", () => {
   it("keeps document.documentElement's data-theme in sync with the toggle (D2)", async () => {
     window.location.hash = "#/runs";
     render(<App />);
-    const button = screen.getByText(/mode$/i);
+    const button = screen.getByText(/^Theme:/i);
     const before = document.documentElement.dataset.theme;
     fireEvent.click(button);
     expect(document.documentElement.dataset.theme).not.toBe(before);

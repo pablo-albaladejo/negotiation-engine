@@ -87,6 +87,26 @@ function useChampionVersion(): { version: number | null; errors: ApiError[] } {
   return state;
 }
 
+/** `/api/info#resultsFolder`: solo el nombre de la carpeta de `results/`, de solo lectura, para la
+ * cabecera ("pnpm viewer · results/<folder>", ajuste 2). `null` mientras carga o si falla. */
+function useResultsFolder(): string | null {
+  const [folder, setFolder] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchApi<{ resultsFolder: string } | null>("info")
+      .then((res) => {
+        if (!cancelled) setFolder(res.data?.resultsFolder ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setFolder(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return folder;
+}
+
 function RunsContainer() {
   const [state, setState] = useState<{ entries: RunEntry[]; errors: ApiError[] } | null>(null);
   const champion = useChampionVersion();
@@ -305,12 +325,16 @@ function AppContent() {
     setTheme(next);
     storeTheme(next);
   };
+  const resultsFolder = useResultsFolder();
   return (
     <Root theme={theme}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            <h1 className="nr-title">Arena viewer</h1>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
+              <h1 className="nr-title">Arena Viewer</h1>
+              {resultsFolder ? <span className="nr-cfg">{`pnpm viewer · results/${resultsFolder}`}</span> : null}
+            </div>
             <Tabs
               variant="nav"
               aria-label="Viewer"
@@ -319,7 +343,7 @@ function AppContent() {
               onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())}
             />
           </div>
-          <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>Dark mode</SecondaryButton>
+          <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>{theme === "dark" ? "Theme: dark" : "Theme: light"}</SecondaryButton>
         </header>
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
