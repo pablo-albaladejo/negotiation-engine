@@ -3,7 +3,7 @@ export interface ScoreboardProps {
   us: string;
   rival: string;
   round: number | null;
-  rounds: number;
+  rounds: number | null;
   attacksBlocked: number | null;
 }
 
@@ -22,7 +22,7 @@ export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: 
       <div className="nr-scoreboard-stats">
         <div className="nr-scoreboard-stat">
           <span className="nr-scoreboard-value">
-            {round === null ? "—" : round}/{rounds}
+            {round === null ? "—" : round}/{rounds === null ? "—" : rounds}
           </span>
           <span className="nr-scoreboard-label">round</span>
         </div>

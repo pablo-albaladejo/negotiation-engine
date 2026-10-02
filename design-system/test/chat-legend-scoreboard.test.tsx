@@ -50,4 +50,10 @@ describe("Scoreboard with null round/attacksBlocked", () => {
     const some = renderToString(<Scoreboard badge="LIVE" us="us" rival="them" round={3} rounds={10} attacksBlocked={2} />);
     expect(some).toContain("nr-scoreboard-attacks\"");
   });
+
+  it("renders an em dash for a null rounds limit (no logged horizon yet)", () => {
+    const html = renderToString(<Scoreboard badge="WAITING" us="us" rival="next opponent" round={null} rounds={null} attacksBlocked={null} />);
+    const stat = /<span class="nr-scoreboard-value">(.*?)<\/span>/.exec(html)?.[1];
+    expect(stat).toBe("—<!-- -->/<!-- -->—");
+  });
 });

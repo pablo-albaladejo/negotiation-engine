@@ -47,8 +47,8 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
-  const HORIZON = 10; // Default horizon from config
-  const rounds = model.status === "waiting" ? HORIZON : (model.roundLimit ?? model.round);
+  const chartRounds = model.roundLimit ?? model.round;
+  const rounds = model.status === "waiting" ? model.roundLimit : chartRounds;
   const playing = model.status === "live" || model.status === "finished";
   const rival = model.status === "waiting" ? "next opponent" : (model.sessionId ?? "—");
   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
@@ -97,7 +97,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                   <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
-                  <OfferChart rounds={Math.max(rounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} zopa={false} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
+                  <OfferChart rounds={Math.max(chartRounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} zopa={false} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 32, minHeight: 0 }}>

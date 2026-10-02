@@ -70,4 +70,10 @@ describe("LiveScreen (P7)", () => {
     expect(screen.getByText("Waiting for the next match")).toBeTruthy();
     expect(container.textContent?.trim().length).toBeGreaterThan(0);
   });
+
+  it("WAITING sin límite de rondas registrado: el marcador muestra — en vez de inventar un horizonte", () => {
+    const { container } = render(<LiveScreen model={liveModel(emptyLiveFeed())} />);
+    const stat = container.querySelector(".nr-scoreboard-value");
+    expect(stat?.textContent).toBe("—/—");
+  });
 });

@@ -59,3 +59,11 @@ export function NoAttacksBlockedYet() {
     </ProjectorFrame>
   );
 }
+
+export function NoRoundLimitLogged() {
+  return (
+    <ProjectorFrame>
+      <Scoreboard badge="WAITING" us="Team 2" rival="next opponent" round={null} rounds={null} attacksBlocked={null} />
+    </ProjectorFrame>
+  );
+}
