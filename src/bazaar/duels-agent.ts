@@ -75,6 +75,8 @@ export interface DuelStepEntry {
   /** Lo que se hizo: enviado, simulado (dry-run), aplazado (otra aceptación en este tick) o error. */
   outcome: "sent" | "dry-run" | "deferred" | "skipped" | `error:${string}`;
   assumption?: string;
+  /** Si la aceptación falló con no_offer: resultado de la contraoferta que iguala la oferta del rival. */
+  fallback?: string;
 }
 
 export interface DuelStepReport {
@@ -215,6 +217,21 @@ export class DuelsAgent {
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
       if (entry.outcome === "sent") acceptDone = true;
+      // no_offer: nuestra contraoferta posterior anuló la oferta del rival (rival_offer queda obsoleta).
+      // No se puede aceptar, pero sí igualarla: proponemos exactamente su precio/días y el rival la cierra.
+      else if (entry.outcome === "error:no_offer" && p.rival) {
+        const offer: StructuredOffer = { ...p.rival };
+        const terms = p.state.withDays && offer.days !== undefined ? `${offer.price} P with ${offer.days} days` : `${offer.price} P`;
+        const match: DuelDecision = {
+          action: "counter",
+          offer,
+          text: `You have a deal at your number: ${terms}. Happy to close it now.`,
+          rule: "match-stale",
+          surplus: p.decision.surplus,
+          round: p.state.ourOffers.length,
+        };
+        entry.fallback = `match ${terms}: ${await this.act(p.duel.id, match, p.state, clock.tick)}`;
+      }
     }
     if (!this.options.dryRun && this.options.stateFile) saveDuelsMemory(this.options.stateFile, this.memory);
     return { tick: clock.tick, entries };
@@ -255,7 +272,7 @@ export function formatDuelEntry(e: DuelStepEntry, withDays = e.issues.includes("
         ? `WAIT (${d.rule})`
         : `COUNTER ${fmt(d.offer)} (surplus ${d.surplus.toFixed(1)}, round ${d.round}, ${d.rule}) "${d.text}"`;
   const head = `duel ${e.duelId} · ${e.role} · ${e.issues.join("+")} · limit ${e.limit} · rival ${fmt(e.rival)} · ticks left ${e.ticksLeft ?? "?"}`;
-  return `${head}\n  → ${what} [${e.outcome}]${e.assumption ? `\n  assumption: ${e.assumption}` : ""}`;
+  return `${head}\n  → ${what} [${e.outcome}]${e.fallback ? ` → ${e.fallback}` : ""}${e.assumption ? `\n  assumption: ${e.assumption}` : ""}`;
 }
 
 /** "no duels scheduled now" y la próxima sesión de duelos de `/api/schedule` (tics y minutos aproximados al ritmo actual). */

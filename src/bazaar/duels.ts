@@ -93,7 +93,7 @@ export interface DuelDecision {
   action: DuelAction;
   offer?: StructuredOffer;
   text?: string;
-  rule: AcceptanceRule | "opening" | "concede" | "endgame" | "waiting-for-rival";
+  rule: AcceptanceRule | "opening" | "concede" | "endgame" | "waiting-for-rival" | "match-stale";
   /** Excedente objetivo de la oferta (o el de la oferta del rival que se acepta). */
   surplus: number;
   round: number;

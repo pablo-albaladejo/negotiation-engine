@@ -130,9 +130,15 @@ describe("DuelsAgent (bucle con API de mentira)", () => {
       return realAccept(id);
     };
     const r = await new DuelsAgent(s.api, { dryRun: false }).step();
-    expect(r.entries.find((e) => e.duelId === 2)!.outcome).toBe("error:no_offer");
+    const d2 = r.entries.find((e) => e.duelId === 2)!;
+    expect(d2.outcome).toBe("error:no_offer");
+    // La oferta obsoleta del rival se iguala con una contraoferta a su mismo precio.
+    expect(d2.fallback).toBe("match 150 P: sent");
     expect(r.entries.find((e) => e.duelId === 1)!.outcome).toBe("sent");
-    expect(s.posts).toEqual([{ tick: 100, kind: "accept", id: 1 }]);
+    expect(s.posts.map((x) => ({ kind: x.kind, id: x.id, price: x.offer?.price }))).toEqual([
+      { kind: "say", id: 2, price: 150 },
+      { kind: "accept", id: 1, price: undefined },
+    ]);
   });
 
   it("un error del servidor (wait_for_tick) no rompe el bucle ni cuenta como oferta enviada", async () => {
