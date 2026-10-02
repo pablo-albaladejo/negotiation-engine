@@ -129,7 +129,7 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
   if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
   if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
   const onBack = () => navigate(routeTo.matches(runId, query));
-  const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId));
+  const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId, query));
   if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
   return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
 }
@@ -203,7 +203,7 @@ export function App() {
         </header>
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
-          {route.screen === "matches" ? <MatchesContainer runId={route.runId} query={route.query} /> : null}
+          {route.screen === "matches" ? <MatchesContainer key={route.runId} runId={route.runId} query={route.query} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
           {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}

@@ -36,7 +36,7 @@ describe("TwoIssueScreen (P5)", () => {
     const line = pctDay();
     const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
     const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    const plane = screen.getByRole("img", { name: /two issues/i });
+    const plane = screen.getByRole("group", { name: /two issues/i });
     expect(plane.querySelectorAll("circle.dot-us")).toHaveLength(model.offers.ours.length);
     expect(plane.querySelectorAll("circle.dot-them")).toHaveLength(model.offers.rival.length);
     expect(plane.querySelector("polygon.mandate")).toBeTruthy();

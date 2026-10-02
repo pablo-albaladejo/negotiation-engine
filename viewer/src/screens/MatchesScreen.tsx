@@ -1,5 +1,5 @@
 import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
@@ -56,14 +56,6 @@ export interface MatchesScreenProps {
 export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, onFiltersChange, isChampion }: MatchesScreenProps) {
   const [filters, setFiltersState] = useState<MatchFilters>(initialFilters ?? {});
   const [page, setPage] = useState(0);
-  // If the container re-renders this screen for another run without remounting it (e.g. no `key`
-  // on the route), re-initialise the filters from that run's URL query instead of keeping stale
-  // ones from the previous run (INBOX A4).
-  useEffect(() => {
-    setFiltersState(initialFilters ?? {});
-    setPage(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId]);
   const setFilters = (updater: MatchFilters | ((f: MatchFilters) => MatchFilters)) => {
     setFiltersState((f) => {
       const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(f) : updater;

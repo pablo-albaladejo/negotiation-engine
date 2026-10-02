@@ -58,14 +58,15 @@ describe("MatchesScreen pagination (INBOX A3)", () => {
   });
 });
 
-describe("MatchesScreen re-initialises filters per run without remounting (INBOX A4)", () => {
-  it("rendering with a new runId + initialFilters clears a stale filter from the previous run", () => {
+describe("MatchesScreen filters reset is the App container's job via key={runId} (C3)", () => {
+  it("uses initialFilters only on mount; switching runs without remounting is no longer this component's responsibility", () => {
     const rival = fx.games[0]!.rival;
-    const { rerender } = render(
+    const { unmount } = render(
       <MatchesScreen runId="run-a" summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} initialFilters={{ rival }} />,
     );
     expect(screen.getByDisplayValue(rival)).toBeTruthy();
-    rerender(<MatchesScreen runId="run-b" summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} initialFilters={{}} />);
+    unmount();
+    render(<MatchesScreen runId="run-b" summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} initialFilters={{}} />);
     expect(screen.getByDisplayValue("All opponents")).toBeTruthy();
   });
 });
