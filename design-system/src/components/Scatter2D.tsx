@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 
 export interface Scatter2DPoint {
   round: number;
@@ -61,6 +61,25 @@ function byRound(a: Scatter2DPoint, b: Scatter2DPoint): number {
   return a.round - b.round;
 }
 
+interface Scatter2DInteractivePoint {
+  side: "us" | "them";
+  round: number;
+  x: number;
+  y: number;
+}
+
+function buildInteractivePoints(ours: Scatter2DPoint[], theirs: Scatter2DPoint[]): Scatter2DInteractivePoint[] {
+  return [...ours.map((p) => ({ ...p, side: "us" as const })), ...theirs.map((p) => ({ ...p, side: "them" as const }))].sort(
+    (a, b) => a.round - b.round || (a.side === b.side ? 0 : a.side === "us" ? -1 : 1),
+  );
+}
+
+/** Roving tabindex navigation: clamps delta moves to the point list bounds (no wraparound). */
+export function clampScatterIndex(index: number, delta: number, length: number): number {
+  if (length === 0) return 0;
+  return Math.max(0, Math.min(index + delta, length - 1));
+}
+
 function ticksFor(domain: [number, number]): number[] {
   const [min, max] = domain;
   return Array.from({ length: TICK_COUNT + 1 }, (_, index) => min + ((max - min) * index) / TICK_COUNT);
@@ -72,6 +91,33 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
   const rounds = Array.from(new Set([...ourOffers, ...theirOffers].map((point) => point.round)));
   const xTicks = ticksFor(xDomain);
   const yTicks = ticksFor(yDomain);
+  const interactivePoints = onPointClick ? buildInteractivePoints(sortedOurs, sortedTheirs) : [];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hitRefs = useRef<(SVGCircleElement | null)[]>([]);
+
+  function indexOf(side: "us" | "them", round: number): number {
+    return interactivePoints.findIndex((p) => p.side === side && p.round === round);
+  }
+
+  function focusIndex(index: number) {
+    const clamped = Math.max(0, Math.min(index, interactivePoints.length - 1));
+    setActiveIndex(clamped);
+    hitRefs.current[clamped]?.focus();
+  }
+
+  function handlePointKeyDown(e: KeyboardEvent<SVGCircleElement>, index: number) {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      focusIndex(clampScatterIndex(index, 1, interactivePoints.length));
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      focusIndex(clampScatterIndex(index, -1, interactivePoints.length));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const point = interactivePoints[index];
+      if (point) onPointClick?.({ side: point.side, round: point.round });
+    }
+  }
 
   return (
     <svg
@@ -169,60 +215,62 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
       <polyline className="us-line" points={toPolylinePoints(sortedOurs, xDomain, yDomain)} />
       <polyline className="them-line" points={toPolylinePoints(sortedTheirs, xDomain, yDomain)} />
 
-      {sortedOurs.map((point) => (
-        <g key={`us-${point.round}`}>
-          <circle
-            className="dot-us"
-            cx={scatter2DXScale(point.x, xDomain)}
-            cy={scatter2DYScale(point.y, yDomain)}
-            r={4.5}
-            {...(onPointClick
-              ? {
-                  role: "button" as const,
-                  tabIndex: 0,
-                  "aria-label": `Our offer, round ${point.round}`,
-                  onClick: () => onPointClick({ side: "us" as const, round: point.round }),
-                  onKeyDown: (e: KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onPointClick({ side: "us" as const, round: point.round });
-                    }
-                  },
-                }
-              : {})}
-          />
-          <text className="point-label us" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
-            R{point.round}
-          </text>
-        </g>
-      ))}
-      {sortedTheirs.map((point) => (
-        <g key={`them-${point.round}`}>
-          <circle
-            className="dot-them"
-            cx={scatter2DXScale(point.x, xDomain)}
-            cy={scatter2DYScale(point.y, yDomain)}
-            r={4.5}
-            {...(onPointClick
-              ? {
-                  role: "button" as const,
-                  tabIndex: 0,
-                  "aria-label": `Opponent offer, round ${point.round}`,
-                  onClick: () => onPointClick({ side: "them" as const, round: point.round }),
-                  onKeyDown: (e: KeyboardEvent) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onPointClick({ side: "them" as const, round: point.round });
-                    }
-                  },
-                }
-              : {})}
-          />
-          <text className="point-label them" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
-            R{point.round}
-          </text>
-        </g>
-      ))}
+      {sortedOurs.map((point) => {
+        const index = indexOf("us", point.round);
+        return (
+          <g key={`us-${point.round}`}>
+            <circle className="dot-us" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
+            {onPointClick ? (
+              <circle
+                ref={(el) => {
+                  hitRefs.current[index] = el;
+                }}
+                className="hit"
+                cx={scatter2DXScale(point.x, xDomain)}
+                cy={scatter2DYScale(point.y, yDomain)}
+                r={12}
+                role="button"
+                tabIndex={index === activeIndex ? 0 : -1}
+                aria-label={`Our offer, round ${point.round}`}
+                onFocus={() => setActiveIndex(index)}
+                onClick={() => onPointClick({ side: "us" as const, round: point.round })}
+                onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
+              />
+            ) : null}
+            <text className="point-label us" aria-hidden="true" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
+              R{point.round}
+            </text>
+          </g>
+        );
+      })}
+      {sortedTheirs.map((point) => {
+        const index = indexOf("them", point.round);
+        return (
+          <g key={`them-${point.round}`}>
+            <circle className="dot-them" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
+            {onPointClick ? (
+              <circle
+                ref={(el) => {
+                  hitRefs.current[index] = el;
+                }}
+                className="hit"
+                cx={scatter2DXScale(point.x, xDomain)}
+                cy={scatter2DYScale(point.y, yDomain)}
+                r={12}
+                role="button"
+                tabIndex={index === activeIndex ? 0 : -1}
+                aria-label={`Opponent offer, round ${point.round}`}
+                onFocus={() => setActiveIndex(index)}
+                onClick={() => onPointClick({ side: "them" as const, round: point.round })}
+                onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
+              />
+            ) : null}
+            <text className="point-label them" aria-hidden="true" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
+              R{point.round}
+            </text>
+          </g>
+        );
+      })}
 
       {deal
         ? (() => {

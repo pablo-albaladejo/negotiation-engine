@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface OfferPoint {
   round: number;
@@ -51,6 +51,25 @@ function findOfferAt(round: number, ourOffers: OfferPoint[], theirOffers: OfferP
   const their = theirOffers.find((point) => point.round === round);
   if (their) return { side: "them", value: their.value };
   return undefined;
+}
+
+interface OfferChartInteractivePoint {
+  side: "us" | "them";
+  round: number;
+  value: number;
+}
+
+function buildOfferInteractivePoints(ours: OfferPoint[], theirs: OfferPoint[]): OfferChartInteractivePoint[] {
+  return [
+    ...ours.map((p) => ({ side: "us" as const, round: p.round, value: p.value })),
+    ...theirs.map((p) => ({ side: "them" as const, round: p.round, value: p.value })),
+  ].sort((a, b) => a.round - b.round || (a.side === b.side ? 0 : a.side === "us" ? -1 : 1));
+}
+
+/** Roving tabindex navigation: clamps delta moves to the point list bounds (no wraparound). */
+export function clampOfferChartIndex(index: number, delta: number, length: number): number {
+  if (length === 0) return 0;
+  return Math.max(0, Math.min(index + delta, length - 1));
 }
 
 export interface LegendItem {
@@ -110,6 +129,34 @@ export function OfferChart({
   const zopaTop = showZopa ? offerChartYScale(Math.max(ourReserve!, theirReserve!), yDomain) : 0;
   const zopaHeight = showZopa ? Math.abs(offerChartYScale(theirReserve!, yDomain) - offerChartYScale(ourReserve!, yDomain)) : 0;
 
+  const interactivePoints = onPointClick ? buildOfferInteractivePoints(ourOffers, theirOffers) : [];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hitRefs = useRef<(SVGCircleElement | null)[]>([]);
+
+  function indexOf(side: "us" | "them", round: number): number {
+    return interactivePoints.findIndex((p) => p.side === side && p.round === round);
+  }
+
+  function focusIndex(index: number) {
+    const clamped = Math.max(0, Math.min(index, interactivePoints.length - 1));
+    setActiveIndex(clamped);
+    hitRefs.current[clamped]?.focus();
+  }
+
+  function handlePointKeyDown(e: KeyboardEvent<SVGCircleElement>, index: number) {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      focusIndex(clampOfferChartIndex(index, 1, interactivePoints.length));
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      focusIndex(clampOfferChartIndex(index, -1, interactivePoints.length));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const point = interactivePoints[index];
+      if (point) onPointClick?.({ side: point.side, round: point.round, value: point.value });
+    }
+  }
+
   const endPoint = end ? findOfferAt(end.round, ourOffers, theirOffers) : undefined;
   const endPlacement = end && endPoint
     ? endLabelPlacement(
@@ -127,7 +174,7 @@ export function OfferChart({
     <svg
       className="nr-chart"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      role="img"
+      role={onPointClick ? "group" : "img"}
       aria-label="Offers from both sides by round"
     >
       {showZopa ? <rect className="zopa" x={MARGIN.left} y={zopaTop} width={INNER_WIDTH} height={zopaHeight} /> : null}
@@ -183,28 +230,68 @@ export function OfferChart({
       <polyline className="them-line" points={toPolylinePoints(theirOffers, rounds, yDomain)} />
 
       <g>
-        {ourOffers.map((point) => (
-          <circle
-            key={`us-${point.round}`}
-            className="dot-us"
-            cx={offerChartXScale(point.round, rounds)}
-            cy={offerChartYScale(point.value, yDomain)}
-            r={4.5}
-            onClick={() => onPointClick?.({ side: "us", round: point.round, value: point.value })}
-          />
-        ))}
+        {ourOffers.map((point) => {
+          const index = indexOf("us", point.round);
+          return (
+            <g key={`us-${point.round}`}>
+              <circle
+                className="dot-us"
+                cx={offerChartXScale(point.round, rounds)}
+                cy={offerChartYScale(point.value, yDomain)}
+                r={4.5}
+              />
+              {onPointClick ? (
+                <circle
+                  ref={(el) => {
+                    hitRefs.current[index] = el;
+                  }}
+                  className="hit"
+                  cx={offerChartXScale(point.round, rounds)}
+                  cy={offerChartYScale(point.value, yDomain)}
+                  r={12}
+                  role="button"
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  aria-label={`Our offer, round ${point.round}`}
+                  onFocus={() => setActiveIndex(index)}
+                  onClick={() => onPointClick({ side: "us", round: point.round, value: point.value })}
+                  onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
+                />
+              ) : null}
+            </g>
+          );
+        })}
       </g>
       <g>
-        {theirOffers.map((point) => (
-          <circle
-            key={`them-${point.round}`}
-            className={injectionSet.has(point.round) ? "dot-injection" : "dot-them"}
-            cx={offerChartXScale(point.round, rounds)}
-            cy={offerChartYScale(point.value, yDomain)}
-            r={injectionSet.has(point.round) ? 6 : 4.5}
-            onClick={() => onPointClick?.({ side: "them", round: point.round, value: point.value })}
-          />
-        ))}
+        {theirOffers.map((point) => {
+          const index = indexOf("them", point.round);
+          return (
+            <g key={`them-${point.round}`}>
+              <circle
+                className={injectionSet.has(point.round) ? "dot-injection" : "dot-them"}
+                cx={offerChartXScale(point.round, rounds)}
+                cy={offerChartYScale(point.value, yDomain)}
+                r={injectionSet.has(point.round) ? 6 : 4.5}
+              />
+              {onPointClick ? (
+                <circle
+                  ref={(el) => {
+                    hitRefs.current[index] = el;
+                  }}
+                  className="hit"
+                  cx={offerChartXScale(point.round, rounds)}
+                  cy={offerChartYScale(point.value, yDomain)}
+                  r={12}
+                  role="button"
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  aria-label={`Opponent offer, round ${point.round}`}
+                  onFocus={() => setActiveIndex(index)}
+                  onClick={() => onPointClick({ side: "them", round: point.round, value: point.value })}
+                  onKeyDown={(e: KeyboardEvent<SVGCircleElement>) => handlePointKeyDown(e, index)}
+                />
+              ) : null}
+            </g>
+          );
+        })}
       </g>
 
       {end && endPoint ? (

@@ -99,6 +99,8 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-chart .dot-us{fill:var(--us);stroke:var(--surface);stroke-width:1.5}
 .nr-chart .dot-them{fill:var(--them);stroke:var(--surface);stroke-width:1.5}
 .nr-chart .dot-injection{fill:var(--warn);stroke:var(--surface);stroke-width:1.5}
+.nr-chart .hit{fill:transparent;cursor:pointer}
+.nr-chart .hit:focus-visible{outline:none;stroke:var(--ink);stroke-width:2.5}
 .nr-chart .deal-ring{fill:none;stroke:var(--ok);stroke-width:2.5}
 .nr-chart .deal-label{font-family:var(--font-mono);font-size:11px;fill:var(--ok);font-weight:600}
 .nr-chart .walk-ring{fill:none;stroke:var(--warn);stroke-width:2.5}
@@ -187,8 +189,8 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-scatter .point-label.them{fill:var(--them)}
 .nr-scatter .deal-ring{fill:none;stroke:var(--ok);stroke-width:2.5}
 .nr-scatter .deal-label{font:600 11px var(--font-mono);fill:var(--ok)}
-.nr-scatter circle[role="button"]{cursor:pointer}
-.nr-scatter circle[role="button"]:focus-visible{outline:2px solid var(--us);outline-offset:1px}
+.nr-scatter .hit{fill:transparent;cursor:pointer}
+.nr-scatter .hit:focus-visible{outline:none;stroke:var(--ink);stroke-width:2.5}
 
 /* Code box: copy-command and similar literal snippets (B2) */
 .nr-code-box{font:13px var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px 10px;overflow-x:auto;white-space:nowrap;color:var(--ink);user-select:all}

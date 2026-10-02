@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { renderToString } from "react-dom/server";
+import { OfferChart, clampOfferChartIndex } from "../src/components/OfferChart";
+
+describe("clampOfferChartIndex", () => {
+  it("clamps within bounds without wraparound", () => {
+    expect(clampOfferChartIndex(0, -1, 4)).toBe(0);
+    expect(clampOfferChartIndex(3, 1, 4)).toBe(3);
+    expect(clampOfferChartIndex(1, 1, 4)).toBe(2);
+  });
+
+  it("returns 0 for an empty point list", () => {
+    expect(clampOfferChartIndex(0, 1, 0)).toBe(0);
+  });
+});
+
+describe("OfferChart roving tabindex (D4)", () => {
+  const baseProps = {
+    rounds: 3,
+    yDomain: [0, 100] as [number, number],
+    ourOffers: [
+      { round: 1, value: 20 },
+      { round: 2, value: 40 },
+    ],
+    theirOffers: [
+      { round: 1, value: 80 },
+      { round: 2, value: 60 },
+    ],
+  };
+
+  it("keeps role=img on the svg when onPointClick is not given", () => {
+    const html = renderToString(<OfferChart {...baseProps} />);
+    expect(html).toMatch(/<svg[^>]*role="img"/);
+    expect(html).not.toContain('role="button"');
+  });
+
+  it("uses role=group and makes only one point the tab stop when onPointClick is given", () => {
+    const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} />);
+    expect(html).toMatch(/<svg[^>]*role="group"/);
+    const tabStops = html.match(/tabindex="0"/g) ?? [];
+    expect(tabStops).toHaveLength(1);
+    expect(html).toContain('aria-label="Our offer, round 1"');
+    expect(html).toContain('aria-label="Opponent offer, round 1"');
+  });
+
+  it("uses a larger transparent hit circle for the interactive target", () => {
+    const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} />);
+    expect(html).toMatch(/class="hit"[^>]*r="12"/);
+  });
+});
