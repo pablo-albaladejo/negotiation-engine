@@ -42,7 +42,7 @@ describe("ArenaReplayScreen (P3)", () => {
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
     render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
     expect(screen.getByText("Engine decision this round")).toBeTruthy();
-    expect(screen.getByRole("img", { name: /offers from both sides/i })).toBeTruthy();
+    expect(screen.getByRole("group", { name: /offers from both sides/i })).toBeTruthy();
   });
 
   it("la línea de estimación de la reserva del rival se dibuja: serie no vacía y polyline con puntos", () => {

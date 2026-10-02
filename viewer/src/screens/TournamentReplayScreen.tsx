@@ -6,7 +6,6 @@ import {
   type DataTableRow,
   KpiStrip,
   Legend,
-  ModeBadge,
   OfferChart,
   StatFigure,
   formatNumber,
@@ -16,8 +15,8 @@ import type { TournamentReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
 import { offerValue } from "../ui/offer.js";
-import { BackLink } from "../ui/buttons.js";
 import { DecisionPanel } from "../ui/DecisionPanel.js";
+import { ReplayHeader } from "../ui/replay-header.js";
 import { ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 
 const EST_COLUMNS: DataTableColumn[] = [
@@ -96,11 +95,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <BackLink onClick={onBack}>← Runs</BackLink>
-          <ModeBadge mode="tournament" />
-          <h2 className="nr-heading-lg">{model.sessionId}</h2>
-        </div>
+        <ReplayHeader onBack={onBack} backLabel="← Runs" mode="tournament" gameId={model.sessionId} />
         <span className="nr-muted">
           {model.role ?? "not logged"} · scenario {model.scenario.id}
         </span>

@@ -26,9 +26,9 @@ describe("TwoIssueScreen (P5)", () => {
     const line = pctDay();
     const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
     const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    const firstDot = container.querySelector("circle.dot-us, circle.dot-them")! as HTMLElement;
-    expect(firstDot.getAttribute("role")).toBe("button");
-    fireEvent.click(firstDot);
+    const firstHit = container.querySelector("circle.hit")! as HTMLElement;
+    expect(firstHit.getAttribute("role")).toBe("button");
+    fireEvent.click(firstHit);
     expect(container.querySelector(".nr-table tr.is-selected")).toBeTruthy();
   });
 
