@@ -7,6 +7,6 @@ import { configDefaults, defineConfig } from "vitest/config";
  */
 export default defineConfig({
   test: {
-    exclude: [...configDefaults.exclude, "viewer/**", "design-system/**"],
+    exclude: [...configDefaults.exclude, "viewer/**", "design-system/**", "handoff/**"],
   },
 });
