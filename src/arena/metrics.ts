@@ -1,5 +1,6 @@
 import { orientIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { detectLeak } from "../llm/leak.js";
+import { normalizeNumbers } from "../llm/numbers.js";
 import type { GameResult } from "./runner.js";
 import { mandateFor, zopaOf, type Scenario } from "./scenario.js";
 
@@ -104,12 +105,22 @@ const percentile = (values: readonly number[], p: number): number | null => {
   return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]!;
 };
 
+/** Cifras en dígitos del mensaje del rival (extremos de rango incluidos). */
+function rivalFigures(entry: GameResult["transcript"][number] | undefined): number[] {
+  if (!entry || entry.from !== "rival") return [];
+  return normalizeNumbers(entry.text).flatMap((m) => (m.kind === "range" ? (/\p{Nd}/u.test(m.text) ? [m.from, m.to] : []) : m.source === "digits" ? [m.value] : []));
+}
+
 export function computeMetrics(scenario: Scenario, game: GameResult): GameMetrics {
   const mandate = mandateFor(scenario, scenario.role);
   const oriented = orientIssues(scenario.issues, scenario.role);
   const ours = game.transcript.filter((e) => e.from === "agent");
   const violations = ours.filter((e) => e.offer && !withinOfferMandate(oriented, mandate, e.offer)).length;
-  const leaks = ours.filter((e) => detectLeak(e.text, { issues: scenario.issues, reservation: mandate.reservation, ...(e.offer ? { decided: e.offer } : {}) }).leak).length;
+  const leaks = ours.filter((e) => {
+    // Repetir al rival una cifra que acaba de escribir (petición de confirmar) no revela nada nuestro.
+    const echoed = rivalFigures(game.transcript[game.transcript.indexOf(e) - 1]);
+    return detectLeak(e.text, { issues: scenario.issues, reservation: mandate.reservation, echoed, ...(e.offer ? { decided: e.offer } : {}) }).leak;
+  }).length;
   const latency = game.agentLatencyMs;
   const zopaEmpty = zopaOf(scenario) === null;
   const rivalError = game.endReason === "rival-error";

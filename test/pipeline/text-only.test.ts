@@ -46,7 +46,7 @@ describe("modo solo texto con LLM_PROVIDER=none", () => {
     expect(store.get("s1")!.rivalOffers).toEqual([{ pct: 2 }]);
     expect(reconcileOutputs(trace.records).at(-1)).toMatchObject({ offer: { pct: 2 }, confidence: "range", ranges: { pct: [2, 4] } });
     expect(out.action).toBe("counter");
-    // Petición concreta con las cifras del RIVAL (no cercanas a nuestra reserva) y nuestras cifras.
+    // Petición concreta con las cifras del RIVAL (siempre, sin mirar la reserva) y nuestras cifras.
     expect(out.text).toMatch(/^¿Es un 2 o un 4 %\? Para seguir necesito una cifra concreta/);
   });
 

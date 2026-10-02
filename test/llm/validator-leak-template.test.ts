@@ -128,10 +128,13 @@ describe("plantilla determinista", () => {
         }),
       );
     });
-    it("una petición que repetiría una cifra del rival cercana a nuestra reserva la bloquea el detector", () => {
+    it("el detector exime exactamente las cifras repetidas del rival, aunque toquen la reserva", () => {
       const text = renderTemplate({ action: "counter", offer: { pct: 2 }, ask: "confirm-figures", echo: { kind: "range", issue: "pct", bounds: [3, 3.5] } }, "es");
       expect(text).toMatch(/^¿Es un 3 o un 3,5 %\?/);
       expect(detectLeak(text, { issues: [pct], reservation: { pct: 3 }, decided: { pct: 2 } })).toMatchObject({ leak: true });
+      expect(detectLeak(text, { issues: [pct], reservation: { pct: 3 }, decided: { pct: 2 }, echoed: [3, 3.5] })).toEqual({ leak: false });
+      // Otra cifra cercana a la reserva que no es la repetida sigue bloqueándose.
+      expect(detectLeak(`${text} Mi límite real es 3,01 %.`, { issues: [pct], reservation: { pct: 3 }, decided: { pct: 2 }, echoed: [3.5] })).toMatchObject({ leak: true });
     });
   });
 

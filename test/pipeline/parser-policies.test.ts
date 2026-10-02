@@ -141,13 +141,15 @@ describe("pipeline con llm-primary-verified (valor por defecto en hybrid)", () =
     const runtime = resolveRuntimeConfig({ parser: { acceptWordNumbers: "llm-only" } });
     const llmOnly = makeBrain({ config: twoIssues, mandate: mandate2, parser: llmSaying(output), runtime });
     await llmOnly.brain.turn(t(1, { rivalAction: "message", text: "Hola" }));
-    // Oferta muy buena para nosotros en la última ronda: el motor aceptaría, pero la cifra es llm-only.
-    const last = await llmOnly.brain.turn(t(10, { rivalAction: "message", text }));
+    // Oferta muy buena para nosotros en la penúltima ronda: la cifra es llm-only y el motor no puede aceptarla.
+    const last = await llmOnly.brain.turn(t(9, { rivalAction: "message", text }));
     expect(llmOnly.store.get("s1")!.rivalOffers.at(-1)).toEqual({ pct: 9, day: 50 });
     expect(last.action).toBe("counter");
     expect(last.text).toMatch(/^Please restate your figures in digits\./);
     expect(llmOnly.store.get("s1")!.agreement).toBeUndefined();
-    expect(llmOnly.trace.records.some((r) => r.box === "llm-only-accept-blocked")).toBe(true);
+    // La oferta no firme no llega al motor como oferta actual: ni la acepta ni hay que bloquearla.
+    const engineState = llmOnly.trace.records.filter((r) => r.box === "engine").at(-1)!.input as { state: { currentOfferUnconfirmed?: boolean } };
+    expect(engineState.state.currentOfferUnconfirmed).toBe(true);
   });
 
   it("discrepancia con el determinista: sin oferta, el motor no acepta y pide confirmar", async () => {

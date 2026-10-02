@@ -19,6 +19,8 @@ export interface LeakContext {
   reservation: Offer;
   /** Cifras decididas en este turno: no son fuga aunque coincidan con la reserva. */
   decided?: Offer;
+  /** Cifras DEL RIVAL que la petición de confirmar repite (leídas en su texto): no son fuga. */
+  echoed?: readonly number[];
   tolerance?: number;
   /** Plazo propio u otras cifras privadas. */
   privateNumbers?: readonly number[];
@@ -38,7 +40,7 @@ export type LeakResult = { leak: false } | { leak: true; reasons: string[] };
 export function detectLeak(text: string, ctx: LeakContext): LeakResult {
   const reasons: string[] = [];
   const tolerance = ctx.tolerance ?? DEFAULT_LEAK_TOLERANCE;
-  const decided = ctx.decided ? Object.values(ctx.decided) : [];
+  const decided = [...(ctx.decided ? Object.values(ctx.decided) : []), ...(ctx.echoed ?? [])];
   const isDecided = (r: number) => decided.some((d) => Math.abs(r - d) <= 1e-6);
 
   for (const mention of normalizeNumbers(text)) {

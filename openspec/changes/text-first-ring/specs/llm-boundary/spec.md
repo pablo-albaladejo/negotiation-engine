@@ -48,7 +48,7 @@ La verificación de cifras SHALL entender las unidades de puntos básicos `bps`,
 - **THEN** la cifra no se verifica (`value-mismatch`)
 
 ### Requirement: Rangos del rival
-Un rango en el texto del rival ("entre 2 y 2,5 %", "2-2,5%", "between 2 and 2.5 %") SHALL tratarse según `parser.ranges`: con `conservative` (por defecto) el modelo del rival y el motor SHALL ver el extremo PEOR para nosotros (para un comprador de descuento, el pct menor), la oferta SHALL registrarse con confianza `range`, la traza SHALL registrar ambos extremos y la respuesta SHALL pedir al rival una cifra concreta; con `confirm` el turno SHALL ir sin oferta y pedir confirmación. Un rango no es una oferta firme: el motor MUST NOT aceptar sobre ella y una aceptación por texto que cita un rango MUST NOT verificarse. Con la política del LLM, el valor devuelto MUST caer dentro del rango citado.
+Un rango en el texto del rival ("entre 2 y 2,5 %", "2-2,5%", "between 2 and 2.5 %") SHALL tratarse según `parser.ranges`: con `conservative` (por defecto) el modelo del rival y el motor SHALL ver el extremo PEOR para nosotros (para un comprador de descuento, el pct menor), la oferta SHALL registrarse con confianza `range`, la traza SHALL registrar ambos extremos y la respuesta SHALL pedir al rival una cifra concreta; con `confirm` el turno SHALL ir sin oferta y pedir confirmación. Un rango no es una oferta firme: el motor MUST NOT aceptar sobre ella (la recibe como oferta no actual, de modo que la respuesta no dice si nos valdría), en ese turno SHALL repetirse nuestra última oferta sin conceder ni retirarse, y una aceptación por texto que cita un rango MUST NOT verificarse. Con la política del LLM, el valor devuelto MUST caer dentro del rango citado.
 
 #### Scenario: Rango conservador
 - **WHEN** con `parser.ranges = conservative` un comprador de descuento lee "entre 2 y 2,5 %"
@@ -59,7 +59,7 @@ Un rango en el texto del rival ("entre 2 y 2,5 %", "2-2,5%", "between 2 and 2.5 
 - **THEN** el turno va sin oferta y la respuesta pide confirmar las cifras
 
 ### Requirement: Variedad de la plantilla
-Cada idioma cubierto por la plantilla SHALL tener al menos 4 formulaciones por intención (contraoferta, petición de confirmar cifras, petición de confirmar la aceptación, aceptación y retirada), elegidas de forma determinista por sesión y ronda, de modo que una partida sembrada se reproduce y dos rondas consecutivas nunca repiten formulación. La petición de confirmar SHALL pedir lo concreto cuando se conoce ("¿Es un 2 o un 2,5 %?" para un rango, "¿Te refieres a 1,33 %?" para una cifra solo LLM), repitiendo solo cifras DEL RIVAL y nunca otras nuestras que las decididas; el validador SHALL admitir esas cifras repetidas, y si el detector de fugas bloquea el texto con ellas (por su cercanía a la reserva) SHALL usarse la petición genérica. Toda formulación SHALL pasar el validador y el detector de fugas.
+Cada idioma cubierto por la plantilla SHALL tener al menos 4 formulaciones por intención (contraoferta, petición de confirmar cifras, petición de confirmar la aceptación, aceptación y retirada), elegidas de forma determinista por sesión y ronda, de modo que una partida sembrada se reproduce y dos rondas consecutivas nunca repiten formulación. La petición de confirmar SHALL pedir lo concreto cuando se conoce ("¿Es un 2 o un 2,5 %?" para un rango, "¿Te refieres a 1,33 %?" para una cifra solo LLM), repitiendo solo cifras DEL RIVAL que el normalizador lee en dígitos en su propio texto (extremos de un rango o la cifra) y nunca otras nuestras que las decididas. La decisión de repetir MUST NOT depender de la reserva ni de la cercanía de esas cifras a ella: si dependiera, que haya eco o no sería un oráculo con el que el rival acota la reserva en pocas sondas. Repetir al rival sus propias cifras no revela nada nuestro, así que el validador SHALL admitir esas cifras y el detector de fugas SHALL eximir exactamente esas cifras (además de las decididas); la plantilla de último recurso SHALL llevar el mismo eco. El narrador LLM no recibe cifras del rival (frontera de entrada) y pide la confirmación sin repetirlas; su elección frente a la plantilla tampoco depende de la reserva. Toda formulación SHALL pasar el validador y el detector de fugas.
 
 #### Scenario: Rotación sin repetición
 - **WHEN** la plantilla responde en dos rondas consecutivas de la misma sesión
@@ -67,18 +67,22 @@ Cada idioma cubierto por la plantilla SHALL tener al menos 4 formulaciones por i
 
 #### Scenario: Rango cercano a la reserva
 - **WHEN** el rival escribe "entre 1 y 1,5 %" y nuestra reserva es 1 %
-- **THEN** la respuesta no repite el rango y usa la petición genérica de confirmar
+- **THEN** la respuesta repite el rango igual que con cualquier otro ("¿Es un 1 o un 1,5 %?") y el detector de fugas no la bloquea
+
+#### Scenario: Barrido sin oráculo
+- **WHEN** con la reserva en 1 % el rival escribe "entre X y 4 %" para X de 0,1 a 3,9
+- **THEN** la acción, la oferta, la plantilla y la formulación son idénticas para toda X y solo cambia la cifra repetida
 
 ### Requirement: Números en palabras no verificables
-Cuando la evidencia de una cifra solo contiene palabras de un idioma que el normalizador no cubre, `parser.acceptWordNumbers = llm-only` SHALL aceptar la cifra con confianza `llm-only` y `confirm` SHALL tratar el turno como sin oferta con motivo `words-unverifiable`. Una cifra `llm-only` MUST NOT bastar para que el motor acepte en el mismo turno: el motor SHALL tratarla como oferta del rival para su modelo y su contraoferta, pero la decisión `accept` sobre una oferta con alguna cifra `llm-only` SHALL convertirse en contraoferta que repite nuestras cifras y pide confirmar.
+Cuando la evidencia de una cifra solo contiene palabras de un idioma que el normalizador no cubre, `parser.acceptWordNumbers = llm-only` SHALL aceptar la cifra con confianza `llm-only` y `confirm` SHALL tratar el turno como sin oferta con motivo `words-unverifiable`. Una cifra `llm-only` MUST NOT bastar para que el motor acepte: el motor SHALL tratarla como oferta del rival para su modelo y su contraoferta, pero nunca como oferta actual que se pueda aceptar (igual que un rango), y en el turno en que llega la respuesta SHALL repetir nuestra última oferta (sin conceder ni retirarse) y pedir confirmar las cifras. Así la respuesta no depende de si la cifra nos valdría: si el motor la evaluara y una aceptación se convirtiera en «repetimos y pedimos confirmar», el rival sabría sin comprometerse si su cifra cruza nuestro umbral. La conversión de una decisión `accept` sobre una oferta no firme en contraoferta que repite nuestras cifras SHALL quedar como defensa.
 
 #### Scenario: Japonés en palabras con confirmación
 - **WHEN** con `acceptWordNumbers = confirm` el rival escribe "二・五パーセントで、十五日払い"
 - **THEN** el turno va sin oferta y la respuesta pide confirmar las cifras
 
 #### Scenario: Aceptación bloqueada sobre cifra solo LLM
-- **WHEN** con `acceptWordNumbers = llm-only` el motor decidiría aceptar una oferta con `pct` de confianza `llm-only`
-- **THEN** respondemos con una contraoferta que pide confirmar las cifras y no se registra acuerdo
+- **WHEN** con `acceptWordNumbers = llm-only` el rival ofrece en palabras una cifra que el motor aceptaría si fuera firme
+- **THEN** el motor la recibe como oferta no actual, respondemos con una contraoferta que pide confirmar las cifras, no se registra acuerdo y la respuesta es la misma para cualquier cifra
 
 ### Requirement: Idioma del rival
 El parser LLM SHALL devolver el idioma del texto del rival como etiqueta BCP-47 validada (`Intl.getCanonicalLocales`); si falla o el valor es inválido, SHALL usarse una detección determinista por escritura Unicode (por ejemplo Arabic → `ar`, Hiragana/Katakana → `ja`, Hangul → `ko`, Cyrillic → `ru`, Han → `zh`) y, en escritura latina, por palabras frecuentes de español e inglés, o `und`. La sesión SHALL conservar el último idioma distinto de `und`. El idioma solo SHALL seleccionar el idioma de salida y MUST NOT afectar a cifras ni decisiones.
@@ -137,7 +141,7 @@ El sistema SHALL tener un único normalizador numérico, usado por el parser det
 - **THEN** queda marcada como ambigua con las lecturas 1.5 y 1500
 
 ### Requirement: Detector de fugas
-El sistema SHALL analizar todo texto saliente con el normalizador numérico compartido y bloquearlo si contiene, en cualquier escritura o forma reconocida, la reserva o un valor dentro de la tolerancia configurada (por defecto el 2 % del rango del issue), salvo cuando coincide con la cifra decidida, o el plazo propio. Las cifras ambiguas SHALL comprobarse con todas sus lecturas. Las menciones del mandato o de instrucciones SHALL detectarse como señal secundaria con listas de expresiones por idioma (al menos `en`, `es`; `fr`, `ja` y `ar` cuando estén) y fragmentos de instrucciones internas. El narrador MUST NOT recibir la reserva, de modo que en idiomas sin palabras numéricas cubiertas la fuga numérica quede impedida por construcción.
+El sistema SHALL analizar todo texto saliente con el normalizador numérico compartido y bloquearlo si contiene, en cualquier escritura o forma reconocida, la reserva o un valor dentro de la tolerancia configurada (por defecto el 2 % del rango del issue), salvo cuando coincide con la cifra decidida o con una cifra del rival que la petición de confirmar repite (leída en dígitos en su texto), o el plazo propio. Ninguna decisión sobre la forma de la respuesta (eco, plantilla, confirmar o contraofertar) SHALL depender de la cercanía de una cifra a la reserva. La métrica de fugas de la arena SHALL aplicar la misma exención a las cifras en dígitos del mensaje del rival inmediatamente anterior. Las cifras ambiguas SHALL comprobarse con todas sus lecturas. Las menciones del mandato o de instrucciones SHALL detectarse como señal secundaria con listas de expresiones por idioma (al menos `en`, `es`; `fr`, `ja` y `ar` cuando estén) y fragmentos de instrucciones internas. El narrador MUST NOT recibir la reserva, de modo que en idiomas sin palabras numéricas cubiertas la fuga numérica quede impedida por construcción.
 
 #### Scenario: Revelación de la reserva
 - **WHEN** un texto saliente contiene "mi máximo es 3 %" y la reserva es 3 %

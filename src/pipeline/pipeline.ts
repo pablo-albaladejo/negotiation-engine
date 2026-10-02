@@ -124,6 +124,29 @@ export function emergencyDecision(session: Session): Decision & { action: "count
   return { action: "counter", offer: enforceOfferGuardrails(issues, mandate, base, last), rule: "emergency" };
 }
 
+const DIGIT_RE = /\p{Nd}/u;
+
+/**
+ * Cifras del rival que repite la petición de confirmar: el primer rango leído o la primera cifra de
+ * una oferta solo LLM, y solo si el normalizador las lee en dígitos en el propio texto del rival.
+ * No depende de la reserva ni de nada nuestro.
+ */
+export function echoFor(text: string, ranges: Record<string, [number, number]> | undefined, figures: Offer | undefined): Echo | undefined {
+  const mentions = normalizeNumbers(text);
+  const near = (a: number, b: number) => Math.abs(a - b) <= 1e-6;
+  const range = ranges ? Object.entries(ranges)[0] : undefined;
+  if (range) {
+    const [lo, hi] = range[1];
+    const literal = mentions.some((m) => m.kind === "range" && DIGIT_RE.test(m.text) && near(Math.min(m.from, m.to), lo) && near(Math.max(m.from, m.to), hi));
+    return literal ? { kind: "range", issue: range[0], bounds: [lo, hi] } : undefined;
+  }
+  const first = figures ? Object.entries(figures)[0] : undefined;
+  if (first && mentions.some((m) => m.kind === "number" && m.source === "digits" && m.readings.some((r) => near(r, first[1])))) {
+    return { kind: "figure", issue: first[0], value: first[1] };
+  }
+  return undefined;
+}
+
 function engineInputFor(session: Session, nowMs: number, currentOfferUnconfirmed = false): EngineInput {
   const { config } = session;
   const state: EngineInput["state"] = {
@@ -473,7 +496,10 @@ export function createPipeline(deps: PipelineDeps): Brain {
     record("binding", { rivalAction: input.rivalAction, effectiveAction: rivalAction, textSignal }, binding, "ok", now());
 
     // 5. Motor determinista; si falla, última oferta válida o apertura.
-    const engineInput = engineInputFor(session, now(), unconfirmed);
+    // Una oferta no firme (rango o cifra solo LLM) nunca llega al motor como oferta actual: si
+    // pudiera aceptarla, la respuesta (aceptar/bloquear vs contraofertar) diría al rival, sin
+    // compromiso, si su cifra nos vale.
+    const engineInput = engineInputFor(session, now(), unconfirmed || session.rivalCurrentLlmOnly);
     const engineResult = await guarded(
       "engine",
       { issues: engineInput.issues, params: engineInput.params, state: engineInput.state, seed: engineInput.seed },
@@ -490,6 +516,12 @@ export function createPipeline(deps: PipelineDeps): Brain {
       decision = emergencyDecision(session);
       llmOnlyBlocked = true;
       record("llm-only-accept-blocked", null, decision, "ok", now());
+    }
+    // Oferta no firme recién llegada: no concedemos ni nos retiramos ante una cifra que el rival no
+    // ha fijado; repetimos nuestra última oferta y pedimos confirmar, sea cual sea su cifra.
+    if (binding.kind === "offer" && session.rivalCurrentLlmOnly && decision.action !== "accept" && !llmOnlyBlocked) {
+      decision = emergencyDecision(session);
+      record("non-firm-hold", null, decision, "ok", now());
     }
 
     // Aceptación aparente sin lectura LLM (`onLlmFailure = confirm`): repetimos nuestra última oferta
@@ -522,7 +554,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
         ? undefined
         : confirmAcceptance
           ? "confirm-acceptance"
-          : unconfirmed || llmOnlyBlocked || (reconciled !== undefined && outcome?.confidence === "range")
+          : unconfirmed || llmOnlyBlocked || (reconciled !== undefined && (outcome?.confidence === "range" || outcome?.confidence === "llm-only"))
             ? "confirm-figures"
             : undefined;
     if (ask) narratorInput.ask = ask;
@@ -530,21 +562,16 @@ export function createPipeline(deps: PipelineDeps): Brain {
     if (offer) check.offer = offer;
     const leakCtx: LeakContext = { issues, reservation: mandate.reservation };
     if (offer) leakCtx.decided = offer;
-    // Plantilla: formulación rotada por sesión y ronda; la petición de confirmar repite las cifras
-    // DEL RIVAL (rango o lectura solo LLM) solo si no se acercan a nuestra reserva.
+    // Plantilla: formulación rotada por sesión y ronda. La petición de confirmar repite SIEMPRE las
+    // cifras DEL RIVAL que se leen en dígitos en su propio texto; la decisión no mira la reserva
+    // (si lo hiciera, que haya eco o no sería un oráculo de la reserva) y el detector de fugas exime
+    // exactamente esas cifras: repetir al rival lo que escribió no revela nada nuestro.
     const variant = templateVariant(session.id, input.round);
-    let echo: Echo | undefined;
-    if (ask === "confirm-figures") {
-      const range = outcome?.ranges ? Object.entries(outcome.ranges)[0] : undefined;
-      const llmOnlyIssue = llmOnlyBlocked && rivalCurrent ? Object.keys(rivalCurrent)[0] : undefined;
-      if (range && reconciled) echo = { kind: "range", issue: range[0], bounds: range[1] };
-      else if (llmOnlyIssue) echo = { kind: "figure", issue: llmOnlyIssue, value: rivalCurrent![llmOnlyIssue]! };
-      if (echo) {
-        const probe = renderTemplate({ action: "counter", ...(offer ? { offer } : {}), ask, echo }, outLanguage, runtime.template);
-        if (detectLeak(probe, leakCtx).leak) echo = undefined;
-      }
+    const echo = ask === "confirm-figures" && input.text ? echoFor(input.text, reconciled ? outcome?.ranges : undefined, llmOnlyBlocked || outcome?.confidence === "llm-only" ? rivalCurrent : undefined) : undefined;
+    if (echo) {
+      check.echoed = echo.kind === "range" ? [...echo.bounds] : [echo.value];
+      leakCtx.echoed = check.echoed;
     }
-    if (echo) check.echoed = echo.kind === "range" ? [...echo.bounds] : [echo.value];
     const templateContext: TemplateContext = { variant, ...(echo ? { echo } : {}) };
 
     let text: string | undefined;
@@ -577,7 +604,7 @@ export function createPipeline(deps: PipelineDeps): Brain {
       text = candidate;
     }
     if (!text) {
-      text = renderTemplate({ action: decision.action, variant, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}) }, outLanguage, runtime.template);
+      text = renderTemplate({ action: decision.action, variant, ...(offer ? { offer } : {}), ...(ask ? { ask } : {}), ...(echo ? { echo } : {}) }, outLanguage, runtime.template);
       record("template", { action: decision.action, offer: offer ?? null, ask: ask ?? null, language: templateLanguage(outLanguage, runtime.template) }, { text }, "fallback", now());
     }
 
