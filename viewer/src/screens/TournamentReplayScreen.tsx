@@ -147,7 +147,11 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
             ) : null}
           </Card>
           <Card title="Estimate of their reserve by round">
-            <StatFigure value={finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged"} tone="them" />
+            <StatFigure
+              value={finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged"}
+              tone="them"
+              {...(finalEstimate !== null && finalOffer !== null ? { caption: `vs. final offer ${formatNumber(finalOffer, { locale: "en" })}` } : {})}
+            />
             <DataTable columns={EST_COLUMNS} rows={estRows} />
           </Card>
         </div>

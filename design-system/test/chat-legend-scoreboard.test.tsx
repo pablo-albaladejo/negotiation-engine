@@ -83,4 +83,12 @@ describe("StatFigure", () => {
     expect(html).toContain("nr-stat-figure nr-stat-figure-us");
     expect(html).toContain("vs final close");
   });
+
+  it("lays the value and caption out on one row (finding 8)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toContain(".nr-stat-figure-wrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--space-3);margin:var(--space-2) 0 var(--space-3)}");
+  });
 });
