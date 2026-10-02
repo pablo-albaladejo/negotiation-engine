@@ -2,6 +2,7 @@ import type { z } from "zod";
 import {
   CatalogSchema,
   ClockSchema,
+  DealerInfoSchema,
   DealersSchema,
   ErrorBodySchema,
   MeSchema,
@@ -9,8 +10,10 @@ import {
   ThreadListSchema,
   ThreadSchema,
   ValueSchema,
+  VenuesSchema,
   type Catalog,
   type Clock,
+  type DealerInfo,
   type Me,
   type Thread,
 } from "./schemas.js";
@@ -192,6 +195,16 @@ export class BazaarClient {
   }
   dealers() {
     return this.request("GET", "/api/dealers", DealersSchema);
+  }
+  dealer(id: string): Promise<DealerInfo> {
+    return this.request("GET", `/api/dealers/${encodeURIComponent(id)}`, DealerInfoSchema);
+  }
+  venues() {
+    return this.request("GET", "/api/venues", VenuesSchema);
+  }
+  /** Abre un mercado propio (nivel ≥ 2, 250 P de fianza + 20 P). Solo desde `bazaar:venue` sin --dry-run y con --confirm. */
+  openVenue(body: { name: string; fee_bps: number; fee_per_card: number; rules: Record<string, unknown>; description: string }): Promise<unknown> {
+    return this.raw("POST", "/api/venues", body);
   }
   levels(): Promise<unknown> {
     return this.raw("GET", "/api/levels");

@@ -63,6 +63,41 @@ export const CatalogSchema = z.looseObject({
 });
 export type Catalog = z.infer<typeof CatalogSchema>;
 
+/** Ficha de un dealer (`GET /api/dealers/{id}`): menú (qué vende y compra, y cómo) y regla de desbloqueo. */
+const MenuSetsSchema = z.union([z.string(), z.array(z.string())]).nullish();
+export const DealerInfoSchema = z.looseObject({
+  id: z.string(),
+  name: z.string().nullish(),
+  level: num.nullish(),
+  unlock: z.looseObject({ early_min_deals: num.nullish() }).nullish(),
+  menu: z
+    .looseObject({
+      sells: z
+        .array(
+          z.looseObject({
+            pack: z.string().nullish(),
+            card: z.string().nullish(),
+            rarity: z.string().nullish(),
+            sets: MenuSetsSchema,
+            name: z.string().nullish(),
+            list_price: num.nullish(),
+            opening_ask: num.nullish(),
+            per_team_per_hour: num.nullish(),
+          }),
+        )
+        .default([]),
+      buys: z.array(z.looseObject({ card: z.string().nullish(), rarity: z.string().nullish(), sets: MenuSetsSchema, list_price: num.nullish() })).default([]),
+      deals_per_team_per_hour: num.nullish(),
+    })
+    .default({ sells: [], buys: [] }),
+});
+export type DealerInfo = z.infer<typeof DealerInfoSchema>;
+
+/** Mercados abiertos (`GET /api/venues`) y respuesta de abrir uno (la broker key llega una sola vez y nunca se imprime). */
+export const VenuesSchema = z.looseObject({
+  venues: z.array(z.looseObject({ venue: z.string().nullish(), name: z.string().nullish(), owner: z.string().nullish(), fee_bps: num.nullish(), fee_per_card: num.nullish(), rules: z.unknown().optional() })).default([]),
+});
+
 export const ValueSchema = z.looseObject({ card: z.string().optional(), your_value: num });
 
 export const DealerSchema = z.looseObject({
