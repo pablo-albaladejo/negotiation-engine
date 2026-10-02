@@ -121,7 +121,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
       {model.templateCount > 0 ? <TemplateBanner templateCount={model.templateCount} ourMessageCount={model.ourMessageCount} provider={model.provider} /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
-          <Card title="Offers by round" caption="In a tournament the opponent's reserve is unknown: no ZOPA and no surplus, only our estimate.">
+          <Card title="Offers by round" className="nr-sticky-wide" caption="In a tournament the opponent's reserve is unknown: no ZOPA and no surplus, only our estimate.">
             <OfferChart
               rounds={rounds}
               yDomain={yDomain}

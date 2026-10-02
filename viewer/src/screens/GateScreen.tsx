@@ -150,7 +150,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
           <Verdict model={model} />
         </div>
       </div>
-      <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} />
+      <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} aria-label="Gate phase" />
       <div className="nr-grid" style={gridCols("minmax(0, 1.2fr) minmax(0, 1fr)")}>
         <Card title={`Metrics · ${PHASE_LABEL[phase]}`} caption="Change is the logged paired, role-weighted surplus difference; other rows have no logged change.">
           {metrics ? <DataTable columns={METRIC_COLUMNS(model)} rows={metricRows(metrics)} /> : <p className="nr-muted">Phase not logged.</p>}

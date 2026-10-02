@@ -25,7 +25,7 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 /* Tabs */
 .nr-tabs{display:flex;gap:var(--space-1);border-bottom:1px solid var(--line);overflow-x:auto}
 .nr-tab{font:600 14px var(--font-body);color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer;white-space:nowrap}
-.nr-tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.nr-tab[aria-pressed="true"],.nr-tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink)}
 
 /* Card */
 .nr-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-4);min-width:0}
@@ -151,6 +151,9 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 
 /* P7 projector: invalid-log banner painted above the fixed full-screen canvas (A1) */
 .nr-live-overlay{position:fixed;left:var(--gutter);right:var(--gutter);bottom:var(--gutter);z-index:10}
+
+/* Replay chart column: sticky only on wide viewports, never on mobile (A7) */
+@media (min-width:900px){.nr-sticky-wide{position:sticky;top:var(--space-4)}}
 
 /* Filters */
 .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}

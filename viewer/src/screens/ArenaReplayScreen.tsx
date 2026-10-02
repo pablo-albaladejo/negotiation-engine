@@ -96,7 +96,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
       ) : null}
       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
-        <Card title="Offers by round" style={{ position: "sticky", top: "var(--space-4)" }}>
+        <Card title="Offers by round" className="nr-sticky-wide">
           <OfferChart
             rounds={model.game.roundLimit ?? model.game.rounds}
             yDomain={yDomain}

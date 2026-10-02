@@ -54,14 +54,13 @@ export function Filters({
       </label>
       <div className="nr-filter-field">
         <span className="nr-muted nr-filter-label">Role</span>
-        <div className="nr-tabs" role="tablist">
+        <div className="nr-tabs" role="group" aria-label="Role">
           {roleOptions.map((option) => (
             <button
               key={option.value}
               type="button"
-              role="tab"
               className="nr-tab"
-              aria-selected={option.value === role}
+              aria-pressed={option.value === role}
               onClick={() => onRoleChange(option.value)}
             >
               {option.label}
@@ -71,14 +70,13 @@ export function Filters({
       </div>
       <div className="nr-filter-field">
         <span className="nr-muted nr-filter-label">Outcome</span>
-        <div className="nr-tabs" role="tablist">
+        <div className="nr-tabs" role="group" aria-label="Outcome">
           {resultOptions.map((option) => (
             <button
               key={option.value}
               type="button"
-              role="tab"
               className="nr-tab"
-              aria-selected={option.value === result}
+              aria-pressed={option.value === result}
               onClick={() => onResultChange(option.value)}
             >
               {option.label}

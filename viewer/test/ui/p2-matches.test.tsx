@@ -63,8 +63,8 @@ describe("MatchesScreen (P2)", () => {
   it("opciones de rol en ingl\u00e9s (Buyer/Seller) y \'All opponents\' para el rival", () => {
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
     expect(screen.getByDisplayValue("All opponents")).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((el) => el.textContent)).toContain("Buyer");
-    expect(screen.getAllByRole("tab").map((el) => el.textContent)).toContain("Seller");
+    expect(screen.getAllByRole("button").map((el) => el.textContent)).toContain("Buyer");
+    expect(screen.getAllByRole("button").map((el) => el.textContent)).toContain("Seller");
   });
 
   it("filtros iniciales desde la URL (initialFilters) y onFiltersChange al cambiar", () => {

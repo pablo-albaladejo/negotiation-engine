@@ -54,7 +54,7 @@ describe("GateScreen (P6)", () => {
 
   it("cambiar de fase cambia las métricas y el heatmap; ruta #/promote/<runId>", () => {
     render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Held-out opponents" }));
+    fireEvent.click(screen.getByRole("button", { name: "Held-out opponents" }));
     expect(screen.getByText(/Metrics · Held-out opponents/)).toBeTruthy();
     expect(parseRoute(routeTo.compare("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
     expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });

@@ -79,7 +79,7 @@ describe("App routing (C2, C3)", () => {
     window.location.hash = `#/runs/${fx.runId}`;
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
-    fireEvent.click(screen.getByRole("tab", { name: "Buyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Buyer" }));
     expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`);
     const firstGameId = fx.games[0]!.gameId;
     fireEvent.click(screen.getByText(firstGameId));
@@ -95,7 +95,7 @@ describe("App routing (C2, C3)", () => {
     const { container } = render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} \u00b7 matches`))).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("tab", { name: "Buyer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Buyer" }));
     expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`);
 
     const buyerGame = fx.games.find((g) => g.role === "buyer")!;
@@ -106,7 +106,7 @@ describe("App routing (C2, C3)", () => {
     const backLink = await screen.findByText("\u2190 Matches");
     fireEvent.click(backLink);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Buyer" }).getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Buyer" }).getAttribute("aria-pressed")).toBe("true"));
 
     const roleCells = [...container.querySelectorAll(".nr-table-wrap tbody tr")].map((row) => row.children[3]?.textContent);
     const expectedCount = fx.games.filter((g) => g.role === "buyer").length;
@@ -119,12 +119,12 @@ describe("App routing (C2, C3)", () => {
     window.location.hash = `#/runs/${fx.runId}?role=buyer`;
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
-    const buyerTab = screen.getByRole("tab", { name: "Buyer" });
-    expect(buyerTab.getAttribute("aria-selected")).toBe("true");
+    const buyerTab = screen.getByRole("button", { name: "Buyer" });
+    expect(buyerTab.getAttribute("aria-pressed")).toBe("true");
 
     window.location.hash = `#/runs/${otherRunId}`;
     await waitFor(() => expect(screen.getByText(new RegExp(`${otherRunId} · matches`))).toBeTruthy());
-    expect(screen.getByRole("tab", { name: "Buyer" }).getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByRole("button", { name: "Buyer" }).getAttribute("aria-pressed")).toBe("false");
   });
 });
 
@@ -297,7 +297,7 @@ describe("App focus-on-navigation (C1)", () => {
     window.location.hash = `#/runs/${fx.runId}`;
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
-    const buyerTab = screen.getByRole("tab", { name: "Buyer" });
+    const buyerTab = screen.getByRole("button", { name: "Buyer" });
     buyerTab.focus();
     fireEvent.click(buyerTab);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
