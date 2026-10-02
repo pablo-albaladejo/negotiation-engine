@@ -98,10 +98,15 @@ contra `config/baselines/dummy.json` y `src/bots/dummy-agent.ts`, y deja todo en
 
 ## Medir el valor del LLM (parser y narrador)
 
-`pnpm eval:llm` (`scripts/eval-llm.sh`) compara, con llamadas reales a Claude, el parser y el
-narrador LLM contra la vía determinista: mismos rivales/escenario/semillas con `LLM_PROVIDER=none`
-y con `claude-cli`, más unas partidas reales contra el bot guiado por LLM (`src/bots/llm-bot.ts`).
-Deja los resultados en `results/eval-llm/` (fuera de git).
+`pnpm eval:llm` (`scripts/eval-llm.sh`) juega en texto completo (`--text-mode full`) una matriz
+política del parser (`llm-primary-verified`, `dual-strict`, `deterministic-only`) × idioma del rival
+(`EVAL_LLM_LANGUAGES`, por defecto `es,en`) × proveedor (`claude-cli`, y `anthropic-api` si hay
+`EVAL_LLM_ANTHROPIC_API_KEY`), contra bots en código con el renderizador de lenguaje natural y el
+bot LLM (`src/bots/llm-bot.ts`). Informa por celda sin-extraer, mal-leídas, falsas aceptaciones,
+confirmaciones, plantilla y latencia p50/p95; solo una celda con 0 falsas aceptaciones es candidata
+a valor por defecto. `pnpm eval:llm --dry-run` imprime el plan y la cota de llamadas sin jugar;
+`LLM_PROVIDER=none pnpm eval:llm` juega la matriz sin ninguna llamada. Deja los resultados en
+`results/eval-llm/` (fuera de git).
 
 Necesita el **perfil personal** de Anthropic, no la pasarela de Aircall: como `claude-anthropic` es
 una función de zsh (no se puede invocar desde un `spawn`), el script reproduce su entorno a mano en
@@ -114,10 +119,12 @@ env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHRO
     KAI_PROFILE=anthropic CLAUDE_CONFIG_DIR="$HOME/.claude-anthropic" LLM_PROVIDER=claude-cli <comando>
 ```
 
-Coste: con el presupuesto por defecto (1 escenario, 1 semilla, 6 rivales de texto + 3 partidas
-contra el bot LLM) son del orden de 100-150 llamadas reales al modelo por defecto del CLI
-(unos minutos y céntimos de dólar); ajustable con las variables `EVAL_LLM_*` (ver
-`src/arena/eval-llm-main.ts`). `pnpm arena` sin argumentos sigue sin hacer ninguna llamada al LLM.
+Coste: con el presupuesto por defecto (1 escenario, 1 semilla, boulware + bot LLM, 6 celdas) la
+cota es de 280 llamadas reales (en la práctica menos: las partidas acaban antes del límite); el
+script corta si la cota supera `EVAL_LLM_MAX_CALLS` (300). Ajustable con las variables `EVAL_LLM_*`
+(ver `src/arena/eval-llm-main.ts`). En modo texto, `anthropic-api` es el proveedor recomendado:
+`claude -p` paga ≈2 s de arranque por llamada y no cabe en el presupuesto del turno.
+`pnpm arena` sin argumentos sigue sin hacer ninguna llamada al LLM.
 
 ## Flujo de trabajo
 

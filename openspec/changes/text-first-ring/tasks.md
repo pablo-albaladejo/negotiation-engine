@@ -40,7 +40,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 - [x] 7.1 `src/bots/nl-renderer.ts` (generaliza `text-only.ts`; es/en; formatos variados; aceptaciones y retiradas solo en texto) y `--text-mode full` en `src/arena/runner.ts`/`scenario.ts`/`cli.ts` con verdad de terreno canónica; verificar con una partida sembrada reproducible contra Boulware
 - [x] 7.2 Métricas `unextracted`, `misread`, `falseAccept`, `missedAccept`, `falseWalk`, `confirmRate`, `templateRate`, latencia p50/p95 por idioma y política en `src/arena/metrics.ts` y esquema de resultados; verificar con partidas fabricadas
-- [ ] 7.3 Bot LLM en texto completo con `--language` y sin nuestra oferta estructurada (`src/bots/llm-bot.ts`); verificar con cliente grabado
+- [x] 7.3 Bot LLM en texto completo con `--language` y sin nuestra oferta estructurada (`src/bots/llm-bot.ts`); verificar con cliente grabado
 - [ ] 7.4 `pnpm eval:llm` con matriz política × idioma × proveedor (`EVAL_LLM_LANGUAGES`, `EVAL_LLM_POLICIES`, `anthropic-api` si hay clave) en `src/arena/eval-llm-main.ts` y `scripts/eval-llm.sh`; verificar ejecutándolo con es,en y decidir los valores por defecto con 0 `falseAccept`
 - [ ] 7.5 Test de combinaciones de configuración (0 violaciones, 0 fugas, siempre respuesta) contra el bot de texto completo; verificar con `pnpm test`
 - [ ] 7.6 Actualizar `src/llm/AGENTS.md`, `src/pipeline/AGENTS.md` y `src/arena/AGENTS.md` con las claves y la política nueva
