@@ -30,6 +30,16 @@ describe("Button variants", () => {
   });
 });
 
+describe("link hit targets (D6)", () => {
+  it("gives .nr-link-back and .nr-link-table a 24px min-height tap target", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toContain(".nr-link-back,.nr-link-table{min-height:24px;padding:2px 0}");
+  });
+});
+
 describe("deprecated button aliases", () => {
   it("keeps .nr-btn as an alias of .nr-btn-secondary in styles.css", async () => {
     const { readFileSync } = await import("node:fs");
