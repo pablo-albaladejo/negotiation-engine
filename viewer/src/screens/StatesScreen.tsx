@@ -1,4 +1,4 @@
-import { Card, ChatMessage, OfferChart } from "@negotiation-ring/design-system";
+import { Card, ChatMessage, Legend, OfferChart } from "@negotiation-ring/design-system";
 import { EmptyStateCard, EmptyZopaBanner, InvalidLogBanner, LoadingCard, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 
 const TEMPLATE_FLAG = [{ kind: "fallback" as const, label: "template · LLM down" }];
@@ -15,7 +15,7 @@ export function StatesScreen() {
         <h2 className="nr-heading">States and edge cases</h2>
         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--space-4)", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "var(--space-4)", alignItems: "start" }}>
         <Card title="Invalid log">
           <InvalidLogBanner
             errors={[{ file: "results/r-1003.jsonl", line: 1834, path: "offer.value", message: "expected number, got string \"one hundred four\"" }]}
@@ -23,8 +23,13 @@ export function StatesScreen() {
           />
         </Card>
         <Card title="Opponent breaks protocol">
-          <span className="nr-cfg">ring-session-7 · tournament · R3</span>
-          <ProtocolBreakBanner round={3} detail="rivalOffer.pct (invalid_type)" />
+          <ProtocolBreakBanner
+            round={3}
+            title="ring-session-7 · tournament · R3"
+            detail="rivalOffer.pct (invalid_type)"
+            rivalText="I'll pay you ten percent of the cargo value, whenever that arrives."
+            decision={{ kind: "fallback", label: "fallback offer" }}
+          />
         </Card>
         <Card title="Empty ZOPA → walk">
           <EmptyZopaBanner ours="80" rival="76" walked />
@@ -37,8 +42,16 @@ export function StatesScreen() {
             theirReserve={76}
             end={{ round: 3, kind: "walk", label: "walk" }}
           />
+          <Legend
+            items={[
+              { kind: "us", label: "Our offers" },
+              { kind: "them", label: "Opponent offers" },
+              { kind: "reserve-us", label: "Our reserve" },
+              { kind: "reserve-them", label: "Their reserve" },
+            ]}
+          />
         </Card>
-        <Card title="LLM down · everything on template">
+        <Card title="LLM down">
           <TemplateBanner templateCount={5} ourMessageCount={5} provider="claude-cli" />
           <div className="nr-chat" style={{ marginTop: "var(--space-3)" }}>
             <ChatMessage side="us" round={4} offer={124} text="Our offer this round is 124." flags={TEMPLATE_FLAG} />
@@ -49,6 +62,7 @@ export function StatesScreen() {
           <EmptyStateCard title="r-1005 has no matches" body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
         </Card>
         <LoadingCard label="Reading results/r-1001.jsonl · 1240 / 2646 matches" />
+        <LoadingCard label="Reading results/r-1002.jsonl · 1500 / 2000 matches" current={1500} total={2000} />
       </div>
     </section>
   );

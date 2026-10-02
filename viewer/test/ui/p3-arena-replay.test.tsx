@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { arenaReplayModel, type ArenaReplayModel } from "../../src/model/index.js";
 import { ArenaReplayScreen } from "../../src/screens/ArenaReplayScreen.js";
+import { endReasonLabel, matchWindow } from "../../src/ui/match-selector.js";
 import { generateFixtures, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -55,5 +56,74 @@ describe("ArenaReplayScreen (P3)", () => {
     const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
     expect(container.querySelector("script")).toBeNull();
     expect(screen.getByText("<script>alert(1)</script>")).toBeTruthy();
+  });
+
+  it("grid layout tiene las proporciones correctas: minmax(0,1.35fr) minmax(0,1fr)", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const gridParent = container.querySelector("[style*='minmax(0, 1.35fr)']");
+    expect(gridParent).toBeTruthy();
+  });
+
+  it("cuando cambia la ronda, el contenedor de mensajes puede hacer scroll usando data-round", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const messagesContainer = container.querySelector(".nr-chat") as HTMLElement;
+    expect(messagesContainer).toBeTruthy();
+    // Los mensajes deben tener el atributo data-round
+    const messages = messagesContainer.querySelectorAll("[data-round]");
+    expect(messages.length).toBeGreaterThan(0);
+    // Cada mensaje debe tener un data-round con un número
+    messages.forEach((msg) => {
+      const round = msg.getAttribute("data-round");
+      expect(round).toBeTruthy();
+      expect(!isNaN(Number(round))).toBe(true);
+    });
+  });
+
+  it("un mensaje con números como '9,3' no tiene código ni mark tags", () => {
+    const line = fx.games[0]!;
+    const base = arenaReplayModel(line, null);
+    const model: ArenaReplayModel = { ...base, chat: [{ round: 1, from: "rival", action: "offer", text: "Te ofrezco 9,3", offer: null }] };
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const codeElements = container.querySelectorAll("code");
+    const markElements = container.querySelectorAll("mark");
+    expect(codeElements.length).toBe(0);
+    expect(markElements.length).toBe(0);
+    expect(screen.getByText("Te ofrezco 9,3")).toBeTruthy();
+  });
+
+  it("muestra selector de partidas cuando se pasan games y onSelectGame", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const mockSelectGame = vi.fn();
+    render(
+      <ArenaReplayScreen
+        runId={fx.runId}
+        model={model}
+        onBack={() => {}}
+        games={fx.games}
+        onSelectGame={mockSelectGame}
+      />
+    );
+    // MatchSelector del design system: botones con aria-pressed, no un <select> propio.
+    expect(screen.queryByRole("combobox")).toBeNull();
+    const pressed = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true");
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0]!.textContent).toContain(model.game.gameId);
+    const other = screen.getAllByRole("button").find((b) => b.getAttribute("aria-pressed") === "false");
+    other!.click();
+    expect(mockSelectGame).toHaveBeenCalledTimes(1);
+    expect(mockSelectGame.mock.calls[0]![0]).not.toBe(model.game.gameId);
+  });
+
+  it("el selector muestra solo una ventana de partidas vecinas", () => {
+    const games = Array.from({ length: 50 }, (_, i) => ({ gameId: `g-${i}`, rival: "boulware", endReason: "agreement" }));
+    expect(matchWindow(games, "g-25").map((g) => g.gameId)).toEqual(["g-22", "g-23", "g-24", "g-25", "g-26", "g-27", "g-28"]);
+    expect(matchWindow(games, "g-0")).toHaveLength(4);
+    expect(endReasonLabel("agent-walk")).toEqual({ result: "walk", label: "Walk" });
+    expect(endReasonLabel(undefined).label).toBe("not logged");
   });
 });

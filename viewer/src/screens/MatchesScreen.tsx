@@ -48,7 +48,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
   if (model.empty) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-        <button type="button" onClick={onBack}>
+        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
           ← Runs
         </button>
         <EmptyStateCard title={`${runId} has no matches`} body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
@@ -70,7 +70,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <button type="button" onClick={onBack}>
+        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
           ← Runs
         </button>
         <h2 className="nr-heading">{runId}</h2>
@@ -78,7 +78,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
       <KpiStrip
         items={[
           { label: "Matches", value: formatNumber(model.kpis.games, { locale: "en" }) },
-          { label: "Agreement", value: pct(model.kpis.agreementRate) },
+          { label: "Deal", value: pct(model.kpis.agreementRate), tone: model.kpis.agreementRate ? "deal" : "walk" },
           { label: "Avg. surplus", value: pct(model.kpis.meanSurplus) },
           { label: "Violations", value: formatNumber(model.kpis.violations, { locale: "en" }), tone: model.kpis.violations > 0 ? "walk" : "deal" },
           { label: "Leaks", value: formatNumber(model.kpis.leaks, { locale: "en" }), tone: model.kpis.leaks > 0 ? "walk" : "deal" },
@@ -109,7 +109,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
         </div>
         <DataTable
           columns={COLUMNS}
-          rows={rows.map((r, i) => ({ ...r, id: <button type="button" onClick={() => onOpenGame(model.rows[i]!.gameId)}>{r.id as string}</button> }))}
+          rows={rows.map((r, i) => ({ ...r, id: <button className="nr-btn" type="button" onClick={() => onOpenGame(model.rows[i]!.gameId)}>{r.id as string}</button> }))}
         />
       </Card>
     </section>

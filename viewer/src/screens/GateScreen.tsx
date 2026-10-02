@@ -67,6 +67,7 @@ function CopyCommand({ command }: { command: string }) {
         {command}
       </code>
       <button
+        className="nr-btn"
         type="button"
         onClick={() => {
           void navigator.clipboard?.writeText(command).catch(() => {});
@@ -98,7 +99,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <button type="button" onClick={onBack} style={{ alignSelf: "flex-start" }}>
+      <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
         ← Runs
       </button>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>

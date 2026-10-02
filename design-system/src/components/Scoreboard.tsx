@@ -2,12 +2,13 @@ export interface ScoreboardProps {
   badge: string;
   us: string;
   rival: string;
-  round: number;
+  round: number | null;
   rounds: number;
-  attacksBlocked: number;
+  attacksBlocked: number | null;
 }
 
 export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: ScoreboardProps) {
+  const attacksClass = ["nr-scoreboard-value", attacksBlocked !== null && attacksBlocked > 0 ? "nr-scoreboard-attacks" : "nr-scoreboard-attacks-muted"].join(" ");
   return (
     <div className="nr-scoreboard">
       <div className="nr-scoreboard-teams">
@@ -21,12 +22,12 @@ export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: 
       <div className="nr-scoreboard-stats">
         <div className="nr-scoreboard-stat">
           <span className="nr-scoreboard-value">
-            {round}/{rounds}
+            {round === null ? "—" : round}/{rounds}
           </span>
           <span className="nr-scoreboard-label">round</span>
         </div>
         <div className="nr-scoreboard-stat">
-          <span className="nr-scoreboard-value nr-scoreboard-attacks">{attacksBlocked}</span>
+          <span className={attacksClass}>{attacksBlocked === null ? "—" : attacksBlocked}</span>
           <span className="nr-scoreboard-label">attacks blocked</span>
         </div>
       </div>

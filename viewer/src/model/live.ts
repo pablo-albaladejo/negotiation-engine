@@ -13,7 +13,7 @@ export interface LiveFeed {
 
 export const emptyLiveFeed = (): LiveFeed => ({ runId: null, session: null, lines: [], previous: null, lastEventAt: null });
 
-export type LiveStatus = "live" | "final" | "break";
+export type LiveStatus = "waiting" | "live" | "finished";
 
 /** Final registrado: la acción terminal de nuestra salida (`output`), tal como se envió. */
 export interface LiveOutcome {
@@ -38,7 +38,7 @@ export interface LiveBubble {
  */
 export interface LiveModel {
   status: LiveStatus;
-  badge: "LIVE" | "FINAL" | "BREAK";
+  badge: "LIVE" | "FINISHED" | "WAITING";
   sessionId: string | null;
   role: "buyer" | "seller" | null;
   round: number;
@@ -55,11 +55,9 @@ export interface LiveModel {
   last: LiveOutcome | null;
   templateCount: number;
   ourMessageCount: number;
-  last3: LiveBubble[];
+  lastMessages: LiveBubble[];
 }
 
-/** Tras un final, cuánto tiempo se queda en FINAL antes de pasar a BREAK ("waiting for the next match"). */
-export const FINAL_HOLD_MS = 60_000;
 
 const obj = (value: unknown): Record<string, unknown> | null => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null);
 
@@ -71,14 +69,13 @@ function outcomeOf(lines: readonly TraceLine[]): LiveOutcome | null {
   return { sessionId: output.sessionId, round: output.round, action: out.action, offer: (out.offer as Offer | undefined) ?? null };
 }
 
-export function liveModel(feed: LiveFeed, now: number, holdMs = FINAL_HOLD_MS): LiveModel {
+export function liveModel(feed: LiveFeed): LiveModel {
   const { header, records } = splitTrace(feed.lines);
   const panels = roundPanels(records);
   const explain = explainSeries(panels);
   const outcome = outcomeOf(feed.lines);
   const previous = feed.previous ? outcomeOf(feed.previous.lines) : null;
-  const status: LiveStatus =
-    feed.session === null || records.length === 0 ? "break" : outcome === null ? "live" : feed.lastEventAt !== null && now - feed.lastEventAt > holdMs ? "break" : "final";
+  const status: LiveStatus = feed.session === null || records.length === 0 ? "waiting" : outcome === null ? "live" : "finished";
   const inputs = records.filter((r) => r.box === "input").map((r) => obj(r.output)?.roundLimit);
   const roundLimit = [...inputs].reverse().find((v): v is number => typeof v === "number") ?? null;
   const bubbles = panels.flatMap((p) => {
@@ -93,7 +90,7 @@ export function liveModel(feed: LiveFeed, now: number, holdMs = FINAL_HOLD_MS): 
   const lastExplain = explain.at(-1);
   return {
     status,
-    badge: status === "live" ? "LIVE" : status === "final" ? "FINAL" : "BREAK",
+    badge: status === "live" ? "LIVE" : status === "finished" ? "FINISHED" : "WAITING",
     sessionId: header?.sessionId ?? records[0]?.sessionId ?? null,
     role: header?.mode === "tournament" ? (header.role ?? null) : null,
     round: panels.at(-1)?.round ?? 0,
@@ -104,9 +101,9 @@ export function liveModel(feed: LiveFeed, now: number, holdMs = FINAL_HOLD_MS): 
     injectionRounds: panels.filter((p) => p.parser?.injectionSuspected === true).map((p) => p.round),
     latest: { ourOffer: lastOurs, theirOffer: lastTheirs, uRival: lastExplain?.uRival ?? null, uOffer: lastExplain?.uOffer ?? null },
     outcome,
-    last: status === "break" ? (outcome ?? previous) : previous,
+    last: status === "waiting" ? (outcome ?? previous) : previous,
     templateCount: panels.filter((p) => p.template).length,
     ourMessageCount: panels.filter((p) => p.ourText !== null).length,
-    last3: bubbles.slice(-3),
+    lastMessages: bubbles.slice(-4),
   };
 }

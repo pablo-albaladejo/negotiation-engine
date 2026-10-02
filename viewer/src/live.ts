@@ -19,11 +19,10 @@ export function applyLiveEvent(feed: LiveFeed, event: string, data: unknown, at:
   return feed;
 }
 
-/** Cliente SSE con `EventSource` (reconexión nativa); `now` avanza cada segundo para FINAL → BREAK. */
-export function useLiveFeed(): { feed: LiveFeed; errors: ApiError[]; now: number } {
+/** Cliente SSE con `EventSource` (reconexión nativa). Badge state es log-derived. */
+export function useLiveFeed(): { feed: LiveFeed; errors: ApiError[] } {
   const [feed, setFeed] = useState<LiveFeed>(emptyLiveFeed);
   const [errors, setErrors] = useState<ApiError[]>([]);
-  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const source = new EventSource("/api/live");
     const on = (event: string) => (e: MessageEvent<string>) => setFeed((f) => applyLiveEvent(f, event, JSON.parse(e.data), Date.now()));
@@ -33,11 +32,9 @@ export function useLiveFeed(): { feed: LiveFeed; errors: ApiError[]; now: number
     });
     source.addEventListener("record", on("record"));
     source.addEventListener("invalid", (e) => setErrors((list) => [...list.slice(-19), JSON.parse((e as MessageEvent<string>).data) as ApiError]));
-    const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => {
       source.close();
-      clearInterval(tick);
     };
   }, []);
-  return { feed, errors, now };
+  return { feed, errors };
 }

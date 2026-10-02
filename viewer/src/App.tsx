@@ -1,4 +1,4 @@
-import { Root, Tabs } from "@negotiation-ring/design-system";
+import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
@@ -81,7 +81,7 @@ function MatchesContainer({ runId }: { runId: string }) {
 }
 
 function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string }) {
-  const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null } | null>(null);
+  const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null; games: TranscriptLine[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
     setState(null);
@@ -91,7 +91,8 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
     ]).then(([run, trace]) => {
       if (cancelled) return;
       const line = run.data?.games.find((g) => g.gameId === gameId) ?? null;
-      setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null });
+      const games = run.data?.games ?? [];
+      setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null, games });
     });
     return () => {
       cancelled = true;
@@ -100,8 +101,9 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
   if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
   if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
   const onBack = () => navigate(routeTo.matches(runId));
-  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} />;
+  const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId));
+  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
+  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
 }
 
 function GateContainer({ runId }: { runId: string }) {
@@ -146,10 +148,10 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
 
 /** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */
 function LiveContainer() {
-  const { feed, errors, now } = useLiveFeed();
+  const { feed, errors } = useLiveFeed();
   return (
     <>
-      <LiveScreen model={liveModel(feed, now)} />
+      <LiveScreen model={liveModel(feed)} />
       {errors.length > 0 ? (
         <Root theme="dark">
           <InvalidLogBanner errors={errors} validCount={feed.lines.length} />
@@ -165,18 +167,20 @@ export function App() {
   const activeTab = route.screen === "states" ? "states" : "runs";
   return (
     <Root theme="light">
-      <header>
-        <h1 className="nr-title">Arena Viewer</h1>
-        <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
-      </header>
-      <main>
-        {route.screen === "runs" ? <RunsContainer /> : null}
-        {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
-        {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
-        {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
-        {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
-        {route.screen === "states" ? <StatesScreen /> : null}
-      </main>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+        <header>
+          <h1 className="nr-title">Arena viewer</h1>
+          <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
+        </header>
+        <main>
+          {route.screen === "runs" ? <RunsContainer /> : null}
+          {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
+          {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
+          {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
+          {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
+          {route.screen === "states" ? <StatesScreen /> : null}
+        </main>
+      </div>
     </Root>
   );
 }

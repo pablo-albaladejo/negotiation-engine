@@ -60,6 +60,14 @@ export function HighlightedMessage() {
   );
 }
 
+export function HighlightedRivalMessage() {
+  return (
+    <ChatFrame>
+      <ChatMessage side="them" round={5} offer={104} highlighted text="How about 104?" />
+    </ChatFrame>
+  );
+}
+
 export function ClosingMessage() {
   return (
     <ChatFrame>

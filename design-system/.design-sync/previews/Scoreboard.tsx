@@ -43,3 +43,19 @@ export function MatchEndingSoon() {
     </ProjectorFrame>
   );
 }
+
+export function WaitingForNextMatch() {
+  return (
+    <ProjectorFrame>
+      <Scoreboard badge="WAITING" us="Team 2" rival="next opponent" round={null} rounds={10} attacksBlocked={null} />
+    </ProjectorFrame>
+  );
+}
+
+export function NoAttacksBlockedYet() {
+  return (
+    <ProjectorFrame>
+      <Scoreboard badge="LIVE" us="Team 2" rival="Team 5" round={1} rounds={10} attacksBlocked={0} />
+    </ProjectorFrame>
+  );
+}

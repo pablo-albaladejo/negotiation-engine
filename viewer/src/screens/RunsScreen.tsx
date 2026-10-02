@@ -38,7 +38,7 @@ export function RunsScreen({ rows, errors, onOpenRun }: RunsScreenProps) {
     vio: num(r.violations),
     fug: num(r.leaks),
     act: (
-      <button type="button" onClick={() => onOpenRun(r.runId)}>
+      <button className="nr-btn" type="button" onClick={() => onOpenRun(r.runId)}>
         Open
       </button>
     ),

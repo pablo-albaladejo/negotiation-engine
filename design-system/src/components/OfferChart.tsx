@@ -53,8 +53,34 @@ function findOfferAt(round: number, ourOffers: OfferPoint[], theirOffers: OfferP
   return undefined;
 }
 
-export function Legend({ children }: { children: ReactNode }) {
-  return <div className="nr-legend">{children}</div>;
+export interface LegendItem {
+  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them";
+  label: string;
+}
+
+export interface LegendProps {
+  children?: ReactNode;
+  items?: LegendItem[];
+}
+
+export function Legend({ children, items }: LegendProps) {
+  return (
+    <div className="nr-legend">
+      {items?.map((item, index) => (
+        <span className="nr-legend-item" key={`${item.kind}-${index}`}>
+          <i className={`nr-legend-swatch ${item.kind}`} />
+          {item.label}
+        </span>
+      ))}
+      {children}
+    </div>
+  );
+}
+
+/** Deal/walk label placement near the end point: avoids the incoming line segment by flipping sides. */
+export function endLabelPlacement(prevValue: number | undefined, currentValue: number): { dx: number; dy: number; anchor: "start" | "end" } {
+  const ascending = prevValue === undefined ? true : currentValue >= prevValue;
+  return ascending ? { dx: -13, dy: -13, anchor: "end" } : { dx: 13, dy: 18, anchor: "start" };
 }
 
 export function OfferChart({
@@ -85,6 +111,17 @@ export function OfferChart({
   const zopaHeight = showZopa ? Math.abs(offerChartYScale(theirReserve!, yDomain) - offerChartYScale(ourReserve!, yDomain)) : 0;
 
   const endPoint = end ? findOfferAt(end.round, ourOffers, theirOffers) : undefined;
+  const endPlacement = end && endPoint
+    ? endLabelPlacement(
+        (() => {
+          const earlier = [...(endPoint.side === "us" ? ourOffers : theirOffers)]
+            .sort((a, b) => a.round - b.round)
+            .filter((p) => p.round < end.round);
+          return earlier.length > 0 ? earlier[earlier.length - 1]!.value : undefined;
+        })(),
+        endPoint.value,
+      )
+    : undefined;
 
   return (
     <svg
@@ -180,9 +217,9 @@ export function OfferChart({
           />
           <text
             className={end.kind === "walk" ? "walk-label" : "deal-label"}
-            x={offerChartXScale(end.round, rounds) - 13}
-            y={offerChartYScale(endPoint.value, yDomain) - 13}
-            textAnchor="end"
+            x={offerChartXScale(end.round, rounds) + (endPlacement?.dx ?? -13)}
+            y={offerChartYScale(endPoint.value, yDomain) + (endPlacement?.dy ?? -13)}
+            textAnchor={endPlacement?.anchor ?? "end"}
           >
             {end.label}
           </text>
