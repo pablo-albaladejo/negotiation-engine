@@ -54,8 +54,9 @@ describe("resolveMatches", () => {
 });
 
 describe("resolveArenaReplay", () => {
-  it("uses the last viewed arena match when set", async () => {
+  it("uses the last viewed arena match when it still exists (run + game)", async () => {
     lastViewedMock.arenaMatch.mockReturnValue("#/runs/r-1/games/g-1");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-1", 1)] }, errors: [] });
     const res = await resolveArenaReplay([entry("r-1", "arena", "2026-01-01")]);
     expect(res.target).toBe("#/runs/r-1/games/g-1");
   });
@@ -70,6 +71,21 @@ describe("resolveArenaReplay", () => {
     fetchApiMock.mockResolvedValue({ data: { games: [] }, errors: [] });
     const res = await resolveArenaReplay([entry("r-1", "arena", "2026-01-01")]);
     expect(res.empty).toBe("No matches in results/");
+  });
+
+  // X4
+  it("falls back when the last viewed run no longer exists (stale pointer)", async () => {
+    lastViewedMock.arenaMatch.mockReturnValue("#/runs/r-gone/games/g-1");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-2", 1)] }, errors: [] });
+    const res = await resolveArenaReplay([entry("r-1", "arena", "2026-01-01")]);
+    expect(res.target).toBe("#/runs/r-1/games/g-2");
+  });
+
+  it("falls back when the last viewed game no longer exists in that run (stale pointer)", async () => {
+    lastViewedMock.arenaMatch.mockReturnValue("#/runs/r-1/games/g-gone");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-2", 1)] }, errors: [] });
+    const res = await resolveArenaReplay([entry("r-1", "arena", "2026-01-01")]);
+    expect(res.target).toBe("#/runs/r-1/games/g-2");
   });
 });
 
@@ -87,10 +103,19 @@ describe("resolveTournamentReplay", () => {
 });
 
 describe("resolveTwoIssue", () => {
-  it("uses the last viewed two-issue match when set", async () => {
+  it("uses the last viewed two-issue match when it still exists (run + game)", async () => {
     lastViewedMock.twoIssueMatch.mockReturnValue("#/runs/r-1/games/g-2");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-2", 2)] }, errors: [] });
     const res = await resolveTwoIssue([entry("r-1", "arena", "2026-01-01")]);
     expect(res.target).toBe("#/runs/r-1/games/g-2");
+  });
+
+  // X4
+  it("falls back to the first two-issue match when the remembered run is gone (stale pointer)", async () => {
+    lastViewedMock.twoIssueMatch.mockReturnValue("#/runs/r-gone/games/g-2");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-1", 1), game("g-3", 2)] }, errors: [] });
+    const res = await resolveTwoIssue([entry("r-1", "arena", "2026-01-01")]);
+    expect(res.target).toBe("#/runs/r-1/games/g-3");
   });
 
   it("finds the first two-issue match across runs", async () => {

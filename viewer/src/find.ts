@@ -2,7 +2,7 @@ import type { TranscriptLine } from "../../src/arena/results-schema.js";
 import { fetchApi } from "./api.js";
 import { isTwoIssue, runsModel, type RunEntry } from "./model/index.js";
 import { lastViewed } from "./last-viewed.js";
-import { routeTo, type FindTab } from "./route.js";
+import { parseRoute, routeTo, type FindTab } from "./route.js";
 
 export interface FindResult {
   /** A real route to redirect to (the hash router swaps it in place, L1). */
@@ -26,6 +26,19 @@ async function runGames(runId: string): Promise<TranscriptLine[]> {
   return res.data?.games ?? [];
 }
 
+/**
+ * X4: a remembered arena/two-issue route can go stale (its run or match no longer exists in
+ * `results/`, e.g. after a re-run) -- never trust it blind. `null` when the remembered hash isn't
+ * even an arena-replay route, its run is gone, or its game is gone from that run.
+ */
+async function validArenaRoute(hash: string, entries: readonly RunEntry[]): Promise<string | null> {
+  const route = parseRoute(hash);
+  if (route.screen !== "arena-replay") return null;
+  if (!entries.some((e) => e.runId === route.runId)) return null;
+  const games = await runGames(route.runId);
+  return games.some((g) => g.gameId === route.gameId) ? hash : null;
+}
+
 /** Matches tab: last viewed run (if it still exists), else the most recent run, else empty. */
 export async function resolveMatches(entries: readonly RunEntry[]): Promise<FindResult> {
   const last = lastViewed.run();
@@ -38,7 +51,8 @@ export async function resolveMatches(entries: readonly RunEntry[]): Promise<Find
 /** Replay · arena tab: last viewed arena match, else the first match of the Matches-tab run, else empty. */
 export async function resolveArenaReplay(entries: readonly RunEntry[]): Promise<FindResult> {
   const last = lastViewed.arenaMatch();
-  if (last) return found(last);
+  const valid = last ? await validArenaRoute(last, entries) : null;
+  if (valid) return found(valid);
   for (const run of newestFirst(entries)) {
     const games = await runGames(run.runId);
     const first = games[0];
@@ -62,7 +76,8 @@ export async function resolveTournamentReplay(entries: readonly RunEntry[]): Pro
 /** Two dimensions tab: last viewed two-issue match, else the first two-issue match found, else empty. */
 export async function resolveTwoIssue(entries: readonly RunEntry[]): Promise<FindResult> {
   const last = lastViewed.twoIssueMatch();
-  if (last) return found(last);
+  const valid = last ? await validArenaRoute(last, entries) : null;
+  if (valid) return found(valid);
   for (const run of newestFirst(entries)) {
     const games = await runGames(run.runId);
     const match = games.find((g) => isTwoIssue(g));
