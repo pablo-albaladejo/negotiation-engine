@@ -23,6 +23,41 @@ describe("extractScoreFields", () => {
     expect(extractScoreFields(ME(undefined))).toBeUndefined();
     expect(extractScoreFields(ME(42))).toBeUndefined();
   });
+
+  it("regresión: la forma real de /api/me (bench_efficiency/bench_points/bench_venue/venue en null) no invalida el parseo", () => {
+    const fields = extractScoreFields(
+      ME({
+        team: "t02",
+        name: "Team 2",
+        score: 0,
+        negotiating: 0,
+        market: 0,
+        neg_points: 0,
+        mm_points: 0,
+        duel_points: 0,
+        ladder_points: 0,
+        bench_efficiency: null,
+        bench_points: null,
+        bench_venue: null,
+        level: 1,
+        album_filled: 14,
+        album_slots: 40,
+        pages_complete: 0,
+        rarest: { ref: "SAL-10", name: "Museo Lázaro Galdiano", serial: 1, print_run: 30, rarity: "rare" },
+        luck: 0,
+        deals: 0,
+        badges: [],
+        adjustments: [],
+        frozen: false,
+        venue: null,
+        luck_private: 0,
+        rank: 17,
+      }),
+    );
+    expect(fields).toBeDefined();
+    expect(fields).toMatchObject({ score: 0, bench_efficiency: null, bench_points: null, bench_venue: null, venue: null, rank: 17 });
+    expect(JSON.stringify(fields)).not.toMatch(/rarest|luck/);
+  });
 });
 
 describe("computeDelta", () => {

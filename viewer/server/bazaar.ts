@@ -83,7 +83,8 @@ export class BazaarLive {
       const client = makeClient({ url: env.url, key: env.key });
       const [me, clock] = await Promise.all([client.me(), client.clock()]);
       const score = extractScoreFields(me) ?? null;
-      const data = { team: me.name ?? null, round: score?.venue ?? null, tick: clock.tick, score };
+      const round = clock.round_name ?? (typeof clock.round === "number" ? String(clock.round) : null);
+      const data = { team: me.name ?? null, round, tick: clock.tick, score };
       this.cache = { at: now(), data };
       return ok(data);
     } catch {

@@ -12,6 +12,8 @@ export const ClockSchema = z.looseObject({
   tick_seconds: num.optional(),
   paused: z.boolean().optional(),
   next_tick_in: num.optional(),
+  round: num.optional(),
+  round_name: z.string().optional(),
   limits: z.record(z.string(), z.unknown()).optional(),
 });
 export type Clock = z.infer<typeof ClockSchema>;

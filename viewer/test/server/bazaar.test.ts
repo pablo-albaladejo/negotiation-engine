@@ -93,19 +93,106 @@ describe("/api/bazaar/live", () => {
                 assets: [{ id: 1, kind: "card", ref: "x", your_value: 42 }],
                 score: { score: 3.2, neg_points: 2.1, rank: 9, venue: "sat", rarest: "mega-rare", luck: 0.9, luck_private: { seed: 1 } },
               }) as never,
-            clock: async () => ({ tick: 42 }) as never,
+            clock: async () => ({ tick: 42, round: 2, round_name: "Saturday · El Rastro" }) as never,
           };
         },
       },
     });
     const res = await get(port, "/api/bazaar/live");
     expect(res.status).toBe(200);
-    expect(res.json.data).toEqual({ team: "Team 2", round: "sat", tick: 42, score: { score: 3.2, neg_points: 2.1, rank: 9, venue: "sat" } });
+    expect(res.json.data).toEqual({ team: "Team 2", round: "Saturday · El Rastro", tick: 42, score: { score: 3.2, neg_points: 2.1, rank: 9, venue: "sat" } });
     expect(res.text).not.toMatch(/team-secret-key|rarest|luck/);
     expect(res.text).not.toContain("your_value");
     // 5 s de caché: una segunda llamada inmediata no vuelve a llamar al Bazaar.
     await get(port, "/api/bazaar/live");
     expect(calls).toBe(1);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("regresión: la forma real del Bazaar (score con campos null, round_name en el reloj) no deja ni score ni round en null", async () => {
+    const root = mkdtempSync(join(tmpdir(), "viewer-bazaar-live-real-"));
+    const { server, port } = await startViewerServer({
+      repoRoot: root,
+      env: { VIEWER_PORT: "0" },
+      bazaarLiveDeps: {
+        loadEnv: () => ({ url: "https://example.invalid", key: "team-secret-key" }),
+        makeClient: () => ({
+          me: async () =>
+            ({
+              name: "Team 2",
+              cash: 0,
+              assets: [],
+              score: {
+                team: "t02",
+                name: "Team 2",
+                score: 0,
+                negotiating: 0,
+                market: 0,
+                neg_points: 0,
+                mm_points: 0,
+                duel_points: 0,
+                ladder_points: 0,
+                bench_efficiency: null,
+                bench_points: null,
+                bench_venue: null,
+                level: 1,
+                album_filled: 14,
+                album_slots: 40,
+                pages_complete: 0,
+                rarest: { ref: "SAL-10", name: "Museo Lázaro Galdiano", serial: 1, print_run: 30, rarity: "rare" },
+                luck: 0,
+                deals: 0,
+                badges: [],
+                adjustments: [],
+                frozen: false,
+                venue: null,
+                luck_private: 0,
+                rank: 17,
+              },
+            }) as never,
+          clock: async () =>
+            ({
+              tick: 27,
+              round: 1,
+              round_name: "Friday · El Rastro",
+              tick_seconds: 60,
+              paused: false,
+              next_tick_in: 46.92,
+            }) as never,
+        }),
+      },
+    });
+    const res = await get(port, "/api/bazaar/live");
+    expect(res.status).toBe(200);
+    expect(res.json.data).toEqual({
+      team: "Team 2",
+      round: "Friday · El Rastro",
+      tick: 27,
+      score: {
+        score: 0,
+        negotiating: 0,
+        market: 0,
+        neg_points: 0,
+        mm_points: 0,
+        duel_points: 0,
+        ladder_points: 0,
+        bench_efficiency: null,
+        bench_points: null,
+        bench_venue: null,
+        level: 1,
+        album_filled: 14,
+        album_slots: 40,
+        pages_complete: 0,
+        deals: 0,
+        badges: [],
+        adjustments: [],
+        frozen: false,
+        venue: null,
+        rank: 17,
+      },
+    });
+    expect(res.json.data).not.toMatchObject({ score: null, round: null });
+    expect(res.text).not.toMatch(/team-secret-key|rarest|luck_private/);
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 });

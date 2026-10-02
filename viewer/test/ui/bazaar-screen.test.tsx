@@ -58,6 +58,14 @@ describe("BazaarScreen", () => {
     expect(screen.getByText(/Judges: not scored yet/)).toBeTruthy();
   });
 
+  it("sin snapshots logueados aún: usa la cifra de /api/bazaar/live para los KPI", () => {
+    const liveOnly: BazaarLiveInfo = { team: "Team 2", round: "Friday · El Rastro", tick: 27, score: { score: 0, neg_points: 0, mm_points: 0, duel_points: 0, ladder_points: 0, rank: 17 } };
+    render(<BazaarScreen model={bazaarModel([])} live={liveOnly} />);
+    expect(screen.getByText("Team 2 · Friday · El Rastro · tick 27")).toBeTruthy();
+    expect(screen.getAllByText("17").length).toBeGreaterThan(0); // Rank
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0); // Score
+  });
+
   it("nunca muestra rarest/luck/luck_private aunque vinieran en el snapshot", () => {
     const { container } = render(
       <BazaarScreen

@@ -21,7 +21,9 @@ function kpi(label: string, value: number | string | undefined): { label: string
  * `/api/bazaar/live` sirve en vivo (ambos ya sin `rarest`/`luck`/`luck_private`).
  */
 export function BazaarScreen({ model, live }: BazaarScreenProps) {
-  const latest = model.latest;
+  // Si aun no hay snapshots logueados (`score.jsonl`), se cae a la cifra que ya sirvió
+  // `/api/bazaar/live` para no mostrar "not logged" teniendo el dato a mano.
+  const latest = model.latest ?? live?.score ?? null;
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>

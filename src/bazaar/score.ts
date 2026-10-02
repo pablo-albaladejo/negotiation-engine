@@ -41,9 +41,9 @@ export const ScoreFieldsSchema = z.looseObject({
   mm_points: z.number().optional(),
   duel_points: z.number().optional(),
   ladder_points: z.number().optional(),
-  bench_efficiency: z.number().optional(),
-  bench_points: z.number().optional(),
-  bench_venue: z.string().optional(),
+  bench_efficiency: z.number().nullish(),
+  bench_points: z.number().nullish(),
+  bench_venue: z.string().nullish(),
   level: z.number().optional(),
   album_filled: z.number().optional(),
   album_slots: z.number().optional(),
@@ -52,7 +52,7 @@ export const ScoreFieldsSchema = z.looseObject({
   badges: z.array(z.unknown()).optional(),
   adjustments: z.unknown().optional(),
   frozen: z.boolean().optional(),
-  venue: z.string().optional(),
+  venue: z.string().nullish(),
   rank: z.number().optional(),
 });
 export type ScoreFields = z.infer<typeof ScoreFieldsSchema>;
@@ -141,7 +141,7 @@ export class ScoreTracker {
     const snapshot: ScoreSnapshot = {
       ts: new Date(this.now()).toISOString(),
       tick,
-      ...(fields.venue !== undefined ? { round: fields.venue } : {}),
+      ...(fields.venue ? { round: fields.venue } : {}),
       ...fields,
       delta,
       cause,
