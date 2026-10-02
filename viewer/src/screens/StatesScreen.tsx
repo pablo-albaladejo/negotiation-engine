@@ -62,6 +62,7 @@ export function StatesScreen() {
           <EmptyStateCard title="r-1005 has no matches" body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
         </Card>
         <LoadingCard label="Reading results/r-1001.jsonl · 1240 / 2646 matches" />
+        <LoadingCard label="Reading results/r-1002.jsonl · 1500 / 2000 matches" current={1500} total={2000} />
       </div>
     </section>
   );

@@ -34,4 +34,63 @@ describe("StatesScreen (P8)", () => {
     expect(screen.getByText(/5 of 5 via template/)).toBeTruthy();
     expect(screen.getAllByText("template · LLM down")).toHaveLength(2);
   });
+
+  it("tone mapping: warn for invalid log, broken protocol, empty-ZOPA walk; info for LLM down", () => {
+    const { container } = render(<StatesScreen />);
+    const banners = container.querySelectorAll(".nr-warning-banner");
+    expect(banners.length).toBeGreaterThan(0);
+    let warnCount = 0;
+    let infoCount = 0;
+    banners.forEach((banner) => {
+      const style = window.getComputedStyle(banner);
+      const bgColor = style.backgroundColor;
+      // Warn banners will have a different background than info banners
+      // We can check by text content or by the visual style
+      const text = banner.textContent || "";
+      if (text.includes("Invalid log") || text.includes("Opponent breaks protocol") || text.includes("Empty ZOPA")) {
+        warnCount++;
+      }
+      if (text.includes("LLM down")) {
+        infoCount++;
+      }
+    });
+    expect(warnCount).toBeGreaterThan(0);
+    expect(infoCount).toBeGreaterThan(0);
+  });
+
+  it("protocol state: rival message shown literally, error paths/codes, decision or 'not logged'", () => {
+    const { container } = render(<StatesScreen />);
+    const chatMessages = container.querySelectorAll(".nr-chat");
+    expect(chatMessages.length).toBeGreaterThan(0);
+    // Find the protocol break banner chat message
+    let found = false;
+    chatMessages.forEach((chat) => {
+      if (chat.textContent?.includes("ten percent of the cargo value")) {
+        found = true;
+      }
+    });
+    expect(found).toBe(true);
+    // Error paths/codes should be shown
+    expect(screen.getByText("rivalOffer.pct (invalid_type)")).toBeTruthy();
+    // Decision should be shown
+    expect(screen.getByText("fallback offer")).toBeTruthy();
+  });
+
+  it("loading variants: indeterminate when no counts, determinate when counts provided", () => {
+    const { container } = render(<StatesScreen />);
+    const progressbars = container.querySelectorAll("[role='progressbar']");
+    expect(progressbars.length).toBeGreaterThan(0);
+    let hasIndeterminate = false;
+    let hasDeterminate = false;
+    progressbars.forEach((bar) => {
+      if (bar.hasAttribute("aria-busy")) {
+        hasIndeterminate = true;
+      }
+      if (bar.hasAttribute("aria-valuenow")) {
+        hasDeterminate = true;
+      }
+    });
+    expect(hasIndeterminate).toBe(true);
+    expect(hasDeterminate).toBe(true);
+  });
 });

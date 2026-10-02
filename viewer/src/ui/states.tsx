@@ -94,10 +94,8 @@ export function ProtocolBreakBanner({
       ) : null}
       <WarningBanner tone="warn" title={bannerTitle}>
         <BannerBody>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "var(--space-2)" }}>
-            <span className="nr-cfg">{detail}</span>
-            {decision ? <Flag kind={decision.kind}>{decision.label}</Flag> : <span className="nr-muted">not logged</span>}
-          </div>
+          <span className="nr-cfg">{detail}</span>
+          {decision ? <Flag kind={decision.kind}>{decision.label}</Flag> : <span className="nr-muted">not logged</span>}
         </BannerBody>
       </WarningBanner>
     </>
