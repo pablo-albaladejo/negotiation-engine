@@ -19,6 +19,7 @@ import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
 import { BazaarScreen } from "./screens/BazaarScreen.js";
 import { useBazaarData } from "./bazaarLive.js";
+import { useBazaarConversations } from "./bazaarConversationsLive.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
 import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "./ui/states.js";
@@ -130,7 +131,8 @@ function useResultsFolder(): string | null {
 
 function BazaarContainer() {
   const { model, live } = useBazaarData();
-  return <BazaarScreen model={model} live={live} />;
+  const { threads, duels } = useBazaarConversations();
+  return <BazaarScreen model={model} live={live} conversations={threads} duels={duels} />;
 }
 
 function RunsContainer() {

@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { handleApi, rootsFor, type ApiResponse, type Roots } from "./api.js";
-import { BazaarLive, bazaarScore, type BazaarLiveDeps } from "./bazaar.js";
+import { BazaarDuels, BazaarLive, bazaarScore, BazaarThreads, type BazaarDuelsDeps, type BazaarLiveDeps, type BazaarThreadsDeps } from "./bazaar.js";
 import { serveLive } from "./live.js";
 
 /**
@@ -27,6 +27,10 @@ export interface ViewerServerOptions {
   bazaarDir?: string;
   /** Inyectable en tests (clase `BazaarLive`); por defecto, usa `BAZAAR_KEY`/`BAZAAR_URL` del entorno. */
   bazaarLiveDeps?: BazaarLiveDeps;
+  /** Inyectable en tests (clase `BazaarThreads`). */
+  bazaarThreadsDeps?: BazaarThreadsDeps;
+  /** Inyectable en tests (clase `BazaarDuels`). */
+  bazaarDuelsDeps?: BazaarDuelsDeps;
   /** Inyectable en tests; por defecto, el router de solo lectura sobre `results/` y `config/`. */
   api?: ApiHandler;
 }
@@ -54,10 +58,12 @@ function apiSegments(rawPath: string): string[] | null {
   }
 }
 
-export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLiveDeps, middleware, api }: ViewerServerOptions): Server {
+export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLiveDeps, bazaarThreadsDeps, bazaarDuelsDeps, middleware, api }: ViewerServerOptions): Server {
   const roots: Roots = { ...rootsFor(repoRoot), ...(resultsDir ? { results: resultsDir } : {}) };
   const bazaarRoot = bazaarDir ?? join(repoRoot, "results", "bazaar-live");
   const bazaarLive = new BazaarLive(bazaarLiveDeps);
+  const bazaarThreads = new BazaarThreads(bazaarRoot, bazaarThreadsDeps);
+  const bazaarDuels = new BazaarDuels(bazaarDuelsDeps);
   const handle: ApiHandler = api ?? ((segments, query) => handleApi(roots, segments, query));
 
   const server = createServer((req, res) => {
@@ -86,6 +92,20 @@ export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLive
     }
     if (rawPath === "/api/bazaar/live") {
       bazaarLive.get().then(
+        (response) => sendJson(req, res, response),
+        () => sendJson(req, res, failure(500, "internal error")),
+      );
+      return;
+    }
+    if (rawPath === "/api/bazaar/threads") {
+      bazaarThreads.get().then(
+        (response) => sendJson(req, res, response),
+        () => sendJson(req, res, failure(500, "internal error")),
+      );
+      return;
+    }
+    if (rawPath === "/api/bazaar/duels") {
+      bazaarDuels.get().then(
         (response) => sendJson(req, res, response),
         () => sendJson(req, res, failure(500, "internal error")),
       );
