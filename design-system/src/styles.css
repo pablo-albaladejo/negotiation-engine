@@ -4,7 +4,6 @@
 
 .nr-root{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
 .nr-root h1,.nr-root h2,.nr-root h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
-.nr-root code,.nr-root mark{background:transparent;color:inherit;font-family:inherit}
 .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}
 .nr-heading{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
 .nr-muted{color:var(--muted);font-size:13.5px}

@@ -27,7 +27,7 @@ function metaLabel(side: "us" | "them", round: number, offer?: number): ReactNod
 export function ChatMessage({ side, round, offer, flags, text, highlighted }: ChatMessageProps) {
   const classes = ["nr-msg", side, highlighted ? "is-highlighted" : ""].filter(Boolean).join(" ");
   return (
-    <div className={classes}>
+    <div className={classes} data-round={round}>
       <div className="nr-msg-meta">
         <span>{metaLabel(side, round, offer)}</span>
         {flags?.map((flag, index) => (

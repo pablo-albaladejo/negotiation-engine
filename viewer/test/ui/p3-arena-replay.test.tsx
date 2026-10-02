@@ -65,14 +65,21 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(gridParent).toBeTruthy();
   });
 
-  it("cuando cambia la ronda, el contenedor de mensajes puede hacer scroll", () => {
+  it("cuando cambia la ronda, el contenedor de mensajes puede hacer scroll usando data-round", () => {
     const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
     const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
     const messagesContainer = container.querySelector(".nr-chat") as HTMLElement;
     expect(messagesContainer).toBeTruthy();
-    // El contenedor debe existir y tener la capacidad de hacer scroll
-    expect(messagesContainer.querySelector(".nr-msg")).toBeTruthy();
+    // Los mensajes deben tener el atributo data-round
+    const messages = messagesContainer.querySelectorAll("[data-round]");
+    expect(messages.length).toBeGreaterThan(0);
+    // Cada mensaje debe tener un data-round con un número
+    messages.forEach((msg) => {
+      const round = msg.getAttribute("data-round");
+      expect(round).toBeTruthy();
+      expect(!isNaN(Number(round))).toBe(true);
+    });
   });
 
   it("un mensaje con números como '9,3' no tiene código ni mark tags", () => {

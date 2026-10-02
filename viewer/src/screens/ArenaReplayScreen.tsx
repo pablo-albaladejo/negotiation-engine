@@ -6,6 +6,7 @@ import {
   type DataTableRow,
   KpiStrip,
   Legend,
+  ModeBadge,
   OfferChart,
   Pill,
   formatNumber,
@@ -58,15 +59,7 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
   useEffect(() => {
     if (!messagesContainerRef.current) return;
     const container = messagesContainerRef.current;
-    const messageElements = container.querySelectorAll(".nr-msg");
-    let targetElement: HTMLElement | null = null;
-    for (const elem of messageElements) {
-      const roundText = elem.querySelector(".nr-msg-meta")?.textContent;
-      if (roundText?.includes(`R${selectedRound}`)) {
-        targetElement = elem as HTMLElement;
-        break;
-      }
-    }
+    const targetElement = container.querySelector(`[data-round="${selectedRound}"]`) as HTMLElement | null;
     if (targetElement) {
       container.scrollTop = targetElement.offsetTop - container.offsetTop;
     }
@@ -132,12 +125,15 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-          ← Matches in {runId}
-        </button>
-        <h2 className="nr-heading">
-          {model.game.gameId} · vs {model.game.rival}
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
+            ← Matches
+          </button>
+          <ModeBadge mode={model.game.mode} />
+          <h2 className="nr-heading">
+            {model.game.gameId} · vs {model.game.rival}
+          </h2>
+        </div>
       </div>
       <KpiStrip
         items={[

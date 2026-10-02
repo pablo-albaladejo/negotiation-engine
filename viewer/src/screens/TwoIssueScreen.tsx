@@ -5,6 +5,7 @@ import {
   type DataTableRow,
   KpiStrip,
   Legend,
+  ModeBadge,
   OfferChart,
   Scatter2D,
   type Scatter2DRegion,
@@ -74,12 +75,15 @@ export function TwoIssueScreen({ runId, model, onBack }: TwoIssueScreenProps) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-          ← Matches in {runId}
-        </button>
-        <h2 className="nr-heading">
-          {model.game.gameId} · vs {model.game.rival}
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
+            ← Matches
+          </button>
+          <ModeBadge mode={model.game.mode} />
+          <h2 className="nr-heading">
+            {model.game.gameId} · vs {model.game.rival}
+          </h2>
+        </div>
         <span className="nr-muted">
           {model.game.role} · {y.name} and {x.name}
           {model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}
