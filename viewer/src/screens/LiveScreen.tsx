@@ -70,7 +70,9 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "attack blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
-    ...(b.side === "us" && model.outcome?.action === "accept" && model.outcome.round === b.round ? [{ kind: "decision" as const, label: "AC_next · accepts" }] : []),
+    ...(b.side === "us" && model.outcome?.action === "accept" && model.outcome.round === b.round
+      ? [{ kind: "decision" as const, label: model.outcome.rule ? `${model.outcome.rule} · accepts` : "deal" }]
+      : []),
   ];
   const stats =
     model.status === "finished" && model.outcome

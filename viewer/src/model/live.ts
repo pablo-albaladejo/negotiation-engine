@@ -1,5 +1,5 @@
 import type { TraceLine } from "../../../src/pipeline/trace.js";
-import { explainSeries, roundPanels, splitTrace, type Offer } from "./rounds.js";
+import { dealRule, dealUtility, explainSeries, roundPanels, splitTrace, type Offer } from "./rounds.js";
 
 /** Lo que el cliente acumula de `/api/live`: la sesión en curso y la anterior (para el descanso). */
 export interface LiveFeed {
@@ -21,8 +21,10 @@ export interface LiveOutcome {
   round: number;
   action: "accept" | "walk";
   offer: Offer | null;
-  /** L2: our utility of the accepted offer (the last logged explain.uOffer); `null` on a walk or when explain wasn't logged. */
+  /** L2/X1: our utility of the deal, derived from who closed it (`dealUtility`); `null` on a walk or when not logged. */
   utility: number | null;
+  /** X3: acceptance rule logged for the round that closed the deal; `null` on a walk, when the rival accepted our offer, or when not logged. */
+  rule: string | null;
 }
 
 export interface LiveBubble {
@@ -70,8 +72,10 @@ function outcomeOf(lines: readonly TraceLine[]): LiveOutcome | null {
   const output = [...records].reverse().find((r) => r.box === "output");
   const out = obj(output?.output);
   if (!output || !out || (out.action !== "accept" && out.action !== "walk")) return null;
-  const utility = out.action === "accept" ? (explainSeries(roundPanels(records)).at(-1)?.uOffer ?? null) : null;
-  return { sessionId: output.sessionId, round: output.round, action: out.action, offer: (out.offer as Offer | undefined) ?? null, utility };
+  const panels = roundPanels(records);
+  const utility = out.action === "accept" ? dealUtility(panels) : null;
+  const rule = out.action === "accept" ? dealRule(panels) : null;
+  return { sessionId: output.sessionId, round: output.round, action: out.action, offer: (out.offer as Offer | undefined) ?? null, utility, rule };
 }
 
 export function liveModel(feed: LiveFeed): LiveModel {

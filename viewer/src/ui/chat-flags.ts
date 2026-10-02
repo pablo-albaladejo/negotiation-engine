@@ -13,7 +13,11 @@ export function chatFlags(from: "agent" | "rival", panel: RoundPanel | null): Ch
   if (from === "agent") {
     if (panel.decision?.action === "accept") {
       const price = offerValue(panel.decision.offer);
-      return [{ kind: "decision", label: price !== null ? `AC_next · accepts ${price}` : "AC_next · accepts" }];
+      // X3: the logged acceptance rule (e.g. "ac-time"), or no rule when the rival accepted our
+      // offer ("rival-accepted" isn't an acceptance rule of ours -- just a confirmed deal).
+      const rule = panel.decision.rule !== "rival-accepted" ? panel.decision.rule : null;
+      const label = rule ? (price !== null ? `${rule} · accepts ${price}` : `${rule} · accepts`) : price !== null ? `deal at ${price}` : "deal";
+      return [{ kind: "decision", label }];
     }
     const flags: ChatMessageFlag[] = [];
     if (panel.explain) flags.push({ kind: "neutral", label: `target ${panel.explain.target}` });

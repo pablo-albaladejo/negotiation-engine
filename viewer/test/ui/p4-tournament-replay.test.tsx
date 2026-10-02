@@ -125,7 +125,8 @@ describe("TournamentReplayScreen KPIs/injections/end marker (R1, R2, R6)", () =>
       {
         round: 2,
         box: "engine",
-        output: { action: "accept", rule: "r2", offer: { pct: 18 }, explain: { target: 10, targetOffer: null, uOffer: 0.63, uRival: null, rivalReserveEstimate: { pct: 20 }, step: 1, t: 0.9, acNext: true, acTime: "applies" } },
+        // X1: when we accept the rival's current offer, the deal utility is this round's uRival (what the accepted offer is worth to us), not uOffer (our hypothetical next counter).
+        output: { action: "accept", rule: "r2", offer: { pct: 18 }, explain: { target: 10, targetOffer: null, uOffer: 0.5, uRival: 0.63, rivalReserveEstimate: { pct: 20 }, step: 1, t: 0.9, acNext: true, acTime: "applies" } },
       },
     ]);
   }

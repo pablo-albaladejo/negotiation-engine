@@ -65,13 +65,15 @@ export function TwoIssueScreen({ runId, model, onBack, summary, games, onSelectG
       }
     : undefined;
   const agreement = model.game.agreement;
+  // X3: the logged acceptance rule, or no rule when the rival accepted our offer.
+  const rulePrefix = model.dealRule ? `${model.dealRule} → ` : "";
   const deal =
     agreement && agreement[x.name] !== undefined && agreement[y.name] !== undefined
-      ? { x: agreement[x.name]!, y: agreement[y.name]!, label: `AC_next → deal at ${fmtOffer(agreement)}` }
+      ? { x: agreement[x.name]!, y: agreement[y.name]!, label: `${rulePrefix}deal at ${fmtOffer(agreement)}` }
       : undefined;
   const lastRound = model.game.rounds || 1;
-  // T5: "AC_next → 0.63" (d:680), the utility of the agreed offer; walk mirrors the arena's "R{n} · walk" (A9).
-  const endLabel = model.game.endReason === "agreement" ? `AC_next → ${utility(model.lastUtility)}` : `R${lastRound} · walk`;
+  // T5: "{rule} → 0.63" (d:680), the utility of the agreed offer; walk mirrors the arena's "R{n} · walk" (A9).
+  const endLabel = model.game.endReason === "agreement" ? `${rulePrefix}${utility(model.lastUtility)}` : `R${lastRound} · walk`;
   const end =
     model.game.endReason === "agreement"
       ? { round: lastRound, kind: "deal" as const, label: endLabel }

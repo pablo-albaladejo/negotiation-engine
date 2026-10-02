@@ -91,6 +91,36 @@ export function explainSeries(
   );
 }
 
+/**
+ * Utilidad (para nosotros) del acuerdo cerrado, derivada de quién cerró (X1): si el rival aceptó
+ * nuestra última oferta (`decision.rule === "rival-accepted"`), la utilidad es el `uOffer` de la
+ * ronda en la que hicimos esa oferta (la ronda anterior); si fuimos nosotros quienes aceptamos la
+ * oferta del rival, es el `uRival` de esa misma ronda (ya calculado sobre la oferta aceptada).
+ * `null` ("not logged") si no hay ninguna ronda con `decision.action === "accept"` o si a la ronda
+ * relevante le falta `explain`. No distingue un "walk" (sin acuerdo): eso lo decide quien llama,
+ * que ya conoce el desenlace de la sesión.
+ */
+export function dealUtility(panels: readonly RoundPanel[]): number | null {
+  const accepted = panels
+    .map((p, i) => ({ p, i }))
+    .reverse()
+    .find(({ p }) => p.decision?.action === "accept");
+  if (!accepted) return null;
+  const { p, i } = accepted;
+  if (p.decision!.rule === "rival-accepted") return panels[i - 1]?.explain?.uOffer ?? null;
+  return p.explain?.uRival ?? null;
+}
+
+/**
+ * Acceptance rule logged for the round that closed the deal (X3), e.g. `"ac-time"`; `null` when the
+ * rival accepted our offer (no acceptance rule of ours applied -- it's just a confirmed deal) or
+ * when no `decision.action === "accept"` was logged.
+ */
+export function dealRule(panels: readonly RoundPanel[]): string | null {
+  const rule = [...panels].reverse().find((p) => p.decision?.action === "accept")?.decision?.rule ?? null;
+  return rule && rule !== "rival-accepted" ? rule : null;
+}
+
 /** Registros `protocol` (rival que rompe el protocolo): solo rutas y códigos de Zod, tal como se escribieron. */
 export function protocolBreaks(records: readonly BoxLine[]): { round: number; issues: { path: string; code: string }[] }[] {
   return records.flatMap((r) => {

@@ -1,7 +1,7 @@
 import { Card, ChatMessage, KpiStrip, Legend, OfferChart, formatNumber } from "@negotiation-ring/design-system";
 import type { Summary } from "../../../src/arena/results-schema.js";
 import React, { useEffect, useState } from "react";
-import type { ArenaReplayModel } from "../model/index.js";
+import { dealRule, type ArenaReplayModel } from "../model/index.js";
 import { arenaChartCaption, offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
 import { matchConfigLine, resultLabel, roleLabel } from "../ui/labels.js";
@@ -59,10 +59,11 @@ export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSele
   ]);
   const injectionRounds = model.rounds?.filter((p) => p.parser?.injectionSuspected).map((p) => p.round) ?? [];
 
-  // A9: "AC_next → deal at {price}" / "R{n} · walk" on the chart end marker.
+  // A9/X3: "{rule} → deal at {price}" (no rule when the rival accepted our offer) / "R{n} · walk".
+  const rule = model.rounds ? dealRule(model.rounds) : null;
   const endLabel =
     model.game.endReason === "agreement"
-      ? `AC_next → deal at ${priceLabel(model.game.agreement)}`
+      ? `${rule ? `${rule} → ` : ""}deal at ${priceLabel(model.game.agreement)}`
       : `R${lastRound} · walk`;
   const end =
     model.game.endReason === "agreement"

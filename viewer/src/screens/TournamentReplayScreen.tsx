@@ -12,7 +12,7 @@ import {
 } from "@negotiation-ring/design-system";
 import { useEffect, useRef, useState } from "react";
 import type { Summary } from "../../../src/arena/results-schema.js";
-import type { TournamentReplayModel } from "../model/index.js";
+import { dealRule, dealUtility, type TournamentReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
 import { configParamsLine, roleLabel } from "../ui/labels.js";
@@ -72,14 +72,12 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
 
   // R1: injection-rounds + end marker on the chart, like the arena replay (A9).
   const injectionRounds = model.rounds.filter((p) => p.parser?.injectionSuspected).map((p) => p.round);
-  const lastRoundPanel = model.rounds[model.rounds.length - 1] ?? null;
-  const finalOffer =
-    model.outcome?.kind === "agreement"
-      ? offerValue(model.outcome.offer)
-      : offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
+  // X2: Price is the agreed price -- never our last offer on a walk (that was never accepted).
+  const finalOffer = model.outcome?.kind === "agreement" ? offerValue(model.outcome.offer) : null;
+  const priceValue = model.outcome === null ? "not logged" : model.outcome.kind === "agreement" ? (finalOffer !== null ? formatNumber(finalOffer, { locale: "en" }) : "not logged") : "\u2014";
   const lastExplain = model.explain[model.explain.length - 1] ?? null;
   const finalEstimate = lastExplain ? offerValue(lastExplain.rivalReserveEstimate) : null;
-  const lastUtility = lastExplain ? lastExplain.uOffer : null;
+  const lastUtility = model.outcome?.kind === "agreement" ? dealUtility(model.rounds) : null;
   const result = model.outcome
     ? model.outcome.kind === "agreement"
       ? "Deal"
@@ -88,9 +86,11 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
         : "Opponent walked"
     : "not logged";
   const resultTone = model.outcome ? (model.outcome.kind === "agreement" ? ("deal" as const) : ("walk" as const)) : undefined;
+  // X3: the logged acceptance rule, or no rule when the rival accepted our offer.
+  const rule = dealRule(model.rounds);
   const endLabel = model.outcome
     ? model.outcome.kind === "agreement"
-      ? `AC_next → deal at ${finalOffer === null ? "not logged" : finalOffer}`
+      ? `${rule ? `${rule} → ` : ""}deal at ${finalOffer === null ? "not logged" : finalOffer}`
       : `R${lastRound} · walk`
     : undefined;
   const endKind: "deal" | "walk" = model.outcome?.kind === "agreement" ? "deal" : "walk";
@@ -131,7 +131,7 @@ export function TournamentReplayScreen({ model, summary }: TournamentReplayScree
       <KpiStrip
         items={[
           { label: "Outcome", value: result, ...(resultTone ? { tone: resultTone } : {}) },
-          { label: "Price", value: finalOffer !== null ? formatNumber(finalOffer, { locale: "en" }) : "not logged" },
+          { label: "Price", value: priceValue },
           { label: "Utility", value: dec(lastUtility) },
           { label: "Estimated opponent reserve", value: finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged" },
           { label: "Rounds", value: model.roundLimit !== null ? `${rounds}/${model.roundLimit}` : String(rounds) },

@@ -1,7 +1,7 @@
 import type { TranscriptLine } from "../../../src/arena/results-schema.js";
 import type { TraceLine } from "../../../src/pipeline/trace.js";
 import { arenaReplayModel, type ArenaReplayModel } from "./arenaReplay.js";
-import { splitTrace, type Offer } from "./rounds.js";
+import { dealRule, dealUtility, splitTrace, type Offer } from "./rounds.js";
 
 /** Issue tal como lo registra la entrada del registro `engine` (dirección declarada desde el comprador). */
 export interface LoggedIssue {
@@ -37,8 +37,10 @@ export interface TwoIssueModel {
   mandateLine: string | null;
   /** Both agreed values inside the mandate's acceptable region (T1, d:681); `null` without a logged mandate or agreement -- "not logged", never guessed. */
   withinMandate: boolean | null;
-  /** Our utility of the last logged offer (T1/T5, d:680/d:681); `null` without `explain`. */
+  /** Our utility of the deal (T1/T5, d:680/d:681; X1), derived from who closed it; `null` without an agreement or not logged. */
   lastUtility: number | null;
+  /** X3: acceptance rule logged for the round that closed the deal; `null` when the rival accepted our offer or not logged. */
+  dealRule: string | null;
 }
 
 /** Nombres de issue de las ofertas del transcript (en orden de aparición). */
@@ -101,8 +103,8 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
     mandate?.region && agreement && agreement[xName] !== undefined && agreement[yName] !== undefined
       ? agreement[xName]! >= mandate.region.x[0] && agreement[xName]! <= mandate.region.x[1] && agreement[yName]! >= mandate.region.y[0] && agreement[yName]! <= mandate.region.y[1]
       : null;
-  const explainSeries = base.explain;
-  const lastUtility = explainSeries.length > 0 ? explainSeries[explainSeries.length - 1]!.uOffer : null;
+  const lastUtility = base.game.endReason === "agreement" ? dealUtility(base.rounds ?? []) : null;
+  const lastDealRule = base.rounds ? dealRule(base.rounds) : null;
 
   return {
     game: base.game,
@@ -125,5 +127,6 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
     mandateLine,
     withinMandate,
     lastUtility,
+    dealRule: lastDealRule,
   };
 }

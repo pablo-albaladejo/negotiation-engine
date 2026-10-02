@@ -66,4 +66,15 @@ describe("liveModel (P7)", () => {
     const m = liveModel(feed([], { session: "next", previous: { session: "s", lines: prev } }));
     expect(m).toMatchObject({ status: "waiting", last: { action: "walk", offer: null } });
   });
+
+  it("X1/test17: utilidad al aceptar la oferta del rival = uRival registrado esa ronda (no el último uOffer)", () => {
+    const explain = { target: 0.5, targetOffer: null, step: null, uOffer: 0.2, uRival: 0.42, acNext: true, acTime: "applies", rivalReserveEstimate: {} };
+    const lines = [
+      ...fx.tournament.trace,
+      box(4, "engine", { action: "accept", offer: { pct: 3 }, rule: "ac-time", explain }),
+      box(4, "output", { sessionId: "ring-session-1", round: 4, action: "accept", offer: { pct: 3 }, text: "ok" }),
+    ];
+    const m = liveModel(feed(lines));
+    expect(m.outcome).toMatchObject({ action: "accept", utility: 0.42, rule: "ac-time" });
+  });
 });
