@@ -16,7 +16,14 @@ export const RivalOfferSchema = z.union([num, z.looseObject({ price: num.nullish
 /** Peso privado por día de entrega: un número (P por día) o una tabla por día (array u objeto "0".."10"). */
 export const DaysWeightSchema = z.union([num, z.array(num), z.record(z.string(), num), z.null()]).optional();
 
-export const DuelSchema = z.looseObject({
+/** El servidor real usa `duel` como id, `deadline_tick` y `rounds`; se normalizan a id/deadline/round. */
+const normalizeDuel = (raw: unknown): unknown => {
+  if (!raw || typeof raw !== "object") return raw;
+  const r = raw as Record<string, unknown>;
+  return { ...r, id: r.id ?? r.duel, deadline: r.deadline ?? r.deadline_tick, round: r.round ?? r.rounds };
+};
+
+export const DuelSchema = z.preprocess(normalizeDuel, z.looseObject({
   id: z.union([z.number(), z.string()]),
   role: z.enum(["seller", "buyer"]),
   your_limit: num,
@@ -27,7 +34,7 @@ export const DuelSchema = z.looseObject({
   status: z.string().nullish(),
   round: num.nullish(),
   rival: z.string().nullish(),
-});
+}));
 export type Duel = z.infer<typeof DuelSchema>;
 
 export const DuelsSchema = z.looseObject({ duels: z.array(DuelSchema).default([]) });
