@@ -43,8 +43,9 @@ export interface NegotiatorParams {
    */
   fixedAfterConcessions: number;
   /**
-   * Venta con su primera puja < esto × nuestro mínimo: tras una contraoferta, si sigue por debajo, se cierra
-   * educadamente para no gastar su paciencia ni la cuota de tratos (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
+   * Venta con su primera puja < esto × nuestro mínimo (o compra con su precio > nuestro máximo ÷ esto): tras una
+   * contraoferta, si sigue igual de lejos, se cierra educadamente para no gastar su paciencia ni la cuota de tratos
+   * (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
    */
   lowballFrac: number;
 }
@@ -301,10 +302,17 @@ export function holdsAllowed(_pricedSent: number, p: Pick<NegotiatorParams, "ste
   return p.maxHolds;
 }
 
-/** Venta: su primera puja y la vigente quedan por debajo de `lowballFrac` × nuestro mínimo tras una contraoferta nuestra. */
+/**
+ * Su primer precio y el vigente quedan lejos de nuestro límite tras una contraoferta nuestra: venta, puja < `lowballFrac` ×
+ * nuestro mínimo; compra, precio > nuestro máximo ÷ `lowballFrac` (p. ej. al revelar una repetida en rareza+set).
+ */
 export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herCurrent" | "ourPrices">, p: Pick<NegotiatorParams, "lowballFrac">): boolean {
-  if (view.side !== "sell" || p.lowballFrac <= 0 || view.ourPrices.length < 1 || !view.herCurrent) return false;
+  if (p.lowballFrac <= 0 || view.ourPrices.length < 1 || !view.herCurrent) return false;
   const first = view.herOpening ?? view.herCurrent.price;
+  if (view.side === "buy") {
+    const ceiling = view.reservation / p.lowballFrac;
+    return first > ceiling && view.herCurrent.price > ceiling;
+  }
   const floor = p.lowballFrac * view.reservation;
   return first < floor && view.herCurrent.price < floor;
 }

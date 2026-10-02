@@ -6,6 +6,9 @@ import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets,
 import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
 import { formatPatience, PatienceLog } from "./patience.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
+import { gameHours } from "./dealer-profile.js";
+import { TeamBudget } from "./team.js";
+import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
 
 /**
@@ -33,6 +36,12 @@ export interface AgentOptions {
   maxSpendTotal?: number;
   /** `--only`: solo estos objetivos del planificador por menú, en este orden (aunque no dejen margen sobre su lista). */
   only?: readonly OnlyFilter[];
+  /** Topes compartidos entre dealers (gasto, suelo de caja, una aceptación por tick); si falta, uno propio. */
+  team?: TeamBudget;
+  /** Tratos por hora de juego con este dealer (`menu.deals_per_team_per_hour`); al llegar, no abre más hasta que pase la hora. */
+  dealsPerHour?: number;
+  /** Resumen de cada conversación terminada (cartas, copias, apertura/final, paciencia...). */
+  onThreadSummary?: (s: ThreadSummary) => void;
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
@@ -48,6 +57,17 @@ interface Active {
   holdsUsed: number;
   /** Mensajes, respuestas, tics hasta su final y su respuesta a cada paso nuestro. */
   patience: PatienceLog;
+  openTick?: number;
+  openTs?: string;
+  /** Cartas de la conversación y copias que teníamos al abrir; ids de activos al abrir (para ver qué llegó). */
+  cards: string[];
+  copiesBefore: Record<string, number>;
+  assetIds?: Set<number>;
+  negBefore?: number;
+  ladderBefore?: number;
+  /** Rareza+set: carta que ella ofrece, ya revalorada a nuestro valor. */
+  revealed?: string;
+  lastRule?: string;
 }
 
 const HOUR_MS = 3_600_000;
@@ -55,11 +75,14 @@ const STOP_CODES = new Set(["sold_out", "locked", "asset_locked", "insufficient_
 
 export class BazaarAgent {
   private active: Active | undefined;
-  private lastAcceptTick = -1;
   private blockedUntilMs = 0;
   private cooloffUntilTick = -1;
   private readonly skip = new Map<string, number>();
-  private readonly spend = new Map<number, number>();
+  private readonly team: TeamBudget;
+  /** Horas de juego de cada trato con este dealer (cuota por hora). */
+  private readonly dealHours: number[] = [];
+  private hoursNow = 0;
+  private lastCash: number | undefined;
   private readonly values = new Map<string, number>();
   private catalog: Catalog | undefined;
   /** Si el dealer rechaza `{buy: {card}}`, se compra por rareza y set. */
@@ -82,15 +105,30 @@ export class BazaarAgent {
     this.safety = o.safety ?? 0.85;
     this.maxLookups = o.maxLookups ?? 12;
     this.negotiatorParams = { ...DEFAULT_NEGOTIATOR_PARAMS, ...o.negotiator };
+    this.team = o.team ?? new TeamBudget({ maxSpendPerHour: o.maxSpendPerHour, ...(o.maxSpendTotal !== undefined ? { maxSpendTotal: o.maxSpendTotal } : {}), now: this.now });
+  }
+
+  get dealerId(): string {
+    return this.o.dealer.id;
   }
 
   spentThisHour(): number {
-    return this.spend.get(Math.floor(this.now() / HOUR_MS)) ?? 0;
+    return this.team.spentThisHour();
   }
 
-  /** Lo que aún se puede gastar: lo que queda de la hora y de la ejecución. */
-  budgetLeft(): number {
-    return Math.min(this.o.maxSpendPerHour - this.spentThisHour(), (this.o.maxSpendTotal ?? Infinity) - this.spentRun);
+  /** Lo que aún se puede gastar: lo que queda de la hora, de la ejecución y de la caja por encima del suelo. */
+  budgetLeft(cash: number | undefined = this.lastCash): number {
+    return this.team.left(cash);
+  }
+
+  /** Tratos con este dealer en la última hora de juego. */
+  dealsLastHour(): number {
+    return this.dealHours.filter((h) => h > this.hoursNow - 1).length;
+  }
+
+  /** Hay una conversación abierta con este dealer. */
+  busy(): boolean {
+    return !!this.active;
   }
 
   /** La ejecución terminó: se alcanzó el tope de tratos, o el de conversaciones y no queda ninguna abierta. */
@@ -108,8 +146,8 @@ export class BazaarAgent {
     const me = await this.api.me();
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
-    const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, this.budgetLeft()), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend });
+    const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk });
     const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
     const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend, only: !!this.o.only });
     const lines = formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams);
@@ -126,8 +164,10 @@ export class BazaarAgent {
       out.push(rec);
       this.log(describe(rec));
     };
+    this.hoursNow = gameHours(clock);
     try {
       const me = await this.api.me();
+      this.lastCash = me.cash;
       if (!this.active) await this.adoptOpenThread(me, tick);
       if (this.active) {
         const thread = await this.api.thread(this.active.id);
@@ -135,7 +175,7 @@ export class BazaarAgent {
           await this.negotiate(thread, tick, me, ticksPerHour, emit);
           return out;
         }
-        this.finish(thread, tick, ticksPerHour, emit);
+        this.finish(thread, tick, ticksPerHour, emit, me);
       }
       if (this.done()) {
         emit({ action: "idle", rule: this.dealsDone >= (this.o.maxDeals ?? Infinity) ? "max-deals" : "max-threads" });
@@ -143,6 +183,10 @@ export class BazaarAgent {
       }
       if (this.now() < this.blockedUntilMs || tick < this.cooloffUntilTick) {
         emit({ action: "blocked", rule: this.now() < this.blockedUntilMs ? "persona_quota" : "cooloff" });
+        return out;
+      }
+      if (this.o.dealsPerHour !== undefined && this.dealsLastHour() >= this.o.dealsPerHour) {
+        emit({ action: "blocked", rule: "dealer-quota" });
         return out;
       }
       const target = await this.nextTarget(me, tick);
@@ -156,7 +200,7 @@ export class BazaarAgent {
       }
       try {
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick) };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
         this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
@@ -190,7 +234,7 @@ export class BazaarAgent {
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
     if (target) {
-      this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick) };
+      this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
       this.threadsOpened += 1;
     } else if (!this.o.dryRun) await this.api.closeThread(thread.id);
   }
@@ -221,6 +265,75 @@ export class BazaarAgent {
     return undefined;
   }
 
+  /** Lo que se apunta al abrir (o retomar) una conversación para su resumen. */
+  private openSnapshot(me: Me, target: Target, tick: number): Pick<Active, "openTick" | "openTs" | "cards" | "copiesBefore" | "assetIds" | "negBefore" | "ladderBefore"> {
+    const cards = cardsOfTarget(target, me);
+    const score = (me.score ?? {}) as { neg_points?: unknown; ladder_points?: unknown };
+    return {
+      openTick: tick,
+      openTs: new Date(this.now()).toISOString(),
+      cards,
+      copiesBefore: copiesOf(me, cards),
+      assetIds: new Set(me.assets.map((a) => a.id)),
+      ...(typeof score.neg_points === "number" ? { negBefore: score.neg_points } : {}),
+      ...(typeof score.ladder_points === "number" ? { ladderBefore: score.ladder_points } : {}),
+    };
+  }
+
+  private summarize(thread: Thread, me: Me | undefined, tick: number, outcome: ThreadOutcome, settled: number | undefined, reservation: number): ThreadSummary {
+    const a = this.active!;
+    const { target } = a;
+    const p = threadPrices(thread, target.side, this.o.dealer, me ? selfIdOf(thread, me) : undefined);
+    const received = outcome === "deal" && target.side === "buy" && me && a.assetIds ? me.assets.filter((x) => !a.assetIds!.has(x.id)).map((x) => x.ref) : undefined;
+    const cards = [...new Set([...(a.revealed ? [a.revealed] : a.cards), ...(received ?? [])])];
+    const copiesBefore = { ...Object.fromEntries(cards.map((c) => [c, 0])), ...a.copiesBefore };
+    const finalOffer = [...thread.standing_offers].reverse().find((o) => isDealer(this.o.dealer, o.maker) && o.final === true);
+    const herFinal = finalOffer ? (target.side === "buy" ? finalOffer.want?.cash : finalOffer.give?.cash) : undefined;
+    const ps = a.patience.summary(tick);
+    const list = this.listFor(target);
+    const ourPrices = p.ourPrices.length ? p.ourPrices : a.sent;
+    return {
+      thread: thread.id,
+      dealer: this.o.dealer.id,
+      kind: target.side,
+      target: target.key,
+      cards,
+      ...(received?.length ? { received } : {}),
+      copiesBefore: Object.fromEntries(cards.map((c) => [c, copiesBefore[c] ?? 0])),
+      copiesAfter: me ? copiesOf(me, cards) : {},
+      dealsWithDealerLastHour: this.dealsLastHour(),
+      ...(a.openTick !== undefined ? { openTick: a.openTick } : {}),
+      ...(a.openTs ? { openTs: a.openTs } : {}),
+      tick,
+      ts: new Date(this.now()).toISOString(),
+      ...(list !== undefined ? { herList: list } : {}),
+      ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
+      ...(typeof herFinal === "number" ? { herFinal } : {}),
+      finalFlag: !!finalOffer,
+      herPrices: p.herPrices,
+      ourPrices,
+      patience: { msgs: ps.ourMsgs, herReplies: ps.herReplies, ticks: ps.ticks, untilFinal: ps.untilFinal },
+      outcome,
+      ...(thread.closed_reason ? { closedReason: thread.closed_reason } : {}),
+      ...(a.lastRule ? { rule: a.lastRule } : {}),
+      ...(settled !== undefined ? { price: settled } : {}),
+      ...(target.value !== undefined ? { ourValue: target.value } : {}),
+      ourLimit: reservation,
+      ...(outcome === "deal" ? (() => { const v = valueCreated(target.side, target.value, settled); return v !== undefined ? { valueCreated: v } : {}; })() : {}),
+      ...(a.negBefore !== undefined ? { negPointsBefore: a.negBefore } : {}),
+      ...(a.ladderBefore !== undefined ? { ladderPointsBefore: a.ladderBefore } : {}),
+    };
+  }
+
+  /** Su lista para esta conversación: al comprar, la de esa entrada del menú; al vender, su lista de venta de esa rareza. */
+  private listFor(target: Target): number | undefined {
+    const sells = this.o.menu?.menu.sells ?? [];
+    const t = target.topic as { buy?: { card?: string; rarity?: string }; sell?: unknown };
+    const rarity = (target as { rarity?: string }).rarity ?? t.buy?.rarity;
+    const byCard = t.buy?.card ? sells.find((e) => e.card === t.buy!.card)?.list_price : undefined;
+    return byCard ?? (rarity ? (sells.find((e) => e.rarity?.toLowerCase() === rarity)?.list_price ?? undefined) : undefined);
+  }
+
   private async valueOf(card: string): Promise<number> {
     const cached = this.values.get(card);
     if (cached !== undefined) return cached;
@@ -232,15 +345,15 @@ export class BazaarAgent {
   private async nextTarget(me: Me, tick: number): Promise<Target | undefined> {
     const free = (t: Target) => (this.skip.get(t.key) ?? -1) <= tick;
     if (this.o.menu) {
-      const budget = Math.max(0, this.budgetLeft());
+      const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
       const cands = this.o.only ? applyOnly(ranked, this.o.only) : ranked;
       return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
     }
     const sell = spareTargets(me).find(free);
     if (sell) return sell;
-    const budget = this.budgetLeft();
+    const budget = this.budgetLeft(me.cash);
     if (budget < 1) return undefined;
     this.catalog ??= await this.api.catalog();
     const missing = missingPageCards(me, this.catalog).filter((m) => (this.skip.get(`buy:${m.id}`) ?? -1) <= tick);
@@ -253,6 +366,7 @@ export class BazaarAgent {
 
   private async negotiate(thread: Thread, tick: number, me: Me, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
     const active = this.active!;
+    await this.repriceRevealed(thread, active);
     const { target } = active;
     const selfId = selfIdOf(thread, me);
     const p = threadPrices(thread, target.side, this.o.dealer, selfId);
@@ -260,7 +374,7 @@ export class BazaarAgent {
     // Nuestro último intento cuenta aunque el hilo no lo muestre (p. ej. el POST falló a medias): nunca se repite.
     const lastTried = active.sent[active.sent.length - 1];
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
-    const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.budgetLeft())) : target.reservation;
+    const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, Math.floor(this.budgetLeft(me.cash)))) : target.reservation;
     const herAt = active.patience.herAtCounters();
     const view: ThreadView = {
       side: target.side,
@@ -270,12 +384,13 @@ export class BazaarAgent {
       ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
       ...(p.herCurrent ? { herCurrent: p.herCurrent } : {}),
       canMessage: active.lastSentTick !== tick,
-      canAccept: this.lastAcceptTick !== tick,
+      canAccept: this.team.canAccept(tick),
       holdsUsed: active.holdsUsed,
       ...(target.value !== undefined ? { privateValue: target.value } : {}),
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
     };
     const d: Decision = decide(view, this.negotiatorParams);
+    active.lastRule = d.rule;
     const base = {
       thread: thread.id,
       target: target.key,
@@ -290,7 +405,7 @@ export class BazaarAgent {
       switch (d.action.kind) {
         case "accept":
           if (!this.o.dryRun) await this.api.accept(d.action.offerId);
-          this.lastAcceptTick = tick;
+          this.team.markAccept(tick);
           emit({ ...base, action: "accept", ourPrice: d.action.price, patience: active.patience.summary(tick) });
           return;
         case "counter": {
@@ -315,15 +430,20 @@ export class BazaarAgent {
           emit({ ...base, action: "hold", ourPrice: d.action.price, text });
           return;
         }
-        case "close":
+        case "close": {
           if (!this.o.dryRun) {
             if (view.canMessage) await this.api.say(thread.id, closeText(p.ourPrices.length)).catch(() => undefined);
             await this.api.closeThread(thread.id);
             this.skip.set(target.key, tick + ticksPerHour);
+          }
+          const summary = this.summarize(thread, me, tick, "closed_no_deal", undefined, reservation);
+          emit({ ...base, action: "close", patience: active.patience.summary(tick), summary });
+          if (!this.o.dryRun) {
+            this.o.onThreadSummary?.(summary);
             this.active = undefined;
           }
-          emit({ ...base, action: "close", patience: active.patience.summary(tick) });
           return;
+        }
         case "wait":
           emit({ ...base, action: "wait" });
       }
@@ -332,18 +452,19 @@ export class BazaarAgent {
     }
   }
 
-  private finish(thread: Thread, tick: number, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
+  private finish(thread: Thread, tick: number, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void, me?: Me) {
     const { target, patience } = this.active!;
     const settled = settledPrice(thread, target, this.o.dealer);
     if (thread.status === "deal") {
       this.dealsDone += 1;
+      this.dealHours.push(this.hoursNow);
       if (target.side === "buy" && settled !== undefined) {
-        const hour = Math.floor(this.now() / HOUR_MS);
-        this.spend.set(hour, (this.spend.get(hour) ?? 0) + settled);
+        this.team.record(settled);
         this.spentRun += settled;
       }
       this.values.clear();
     }
+    const summary = this.summarize(thread, me, tick, outcomeOf(thread.status, thread.closed_reason), thread.status === "deal" ? settled : undefined, target.reservation);
     this.applyReason(thread.closed_reason ?? undefined, thread.until_tick ?? undefined, tick);
     this.skip.set(target.key, tick + ticksPerHour);
     emit({
@@ -355,8 +476,27 @@ export class BazaarAgent {
       ...(thread.closed_reason ? { closedReason: thread.closed_reason } : {}),
       ...(settled !== undefined ? { settledPrice: settled } : {}),
       patience: patience.summary(tick),
+      summary,
     });
+    this.o.onThreadSummary?.(summary);
     this.active = undefined;
+  }
+
+  /**
+   * Rareza+set: su oferta dice qué carta da (`give.types` = "card:SAL-05", hilo 184). Se revalora a nuestro valor
+   * de esa carta, así una repetida baja el límite y el negociador cierra en vez de pagar por ella (SAL-07 a 23).
+   */
+  private async repriceRevealed(thread: Thread, active: Active): Promise<void> {
+    const topic = active.target.topic as { buy?: { rarity?: string; card?: string } };
+    if (active.target.side !== "buy" || !topic.buy?.rarity || topic.buy.card) return;
+    const card = revealedCards(thread, this.o.dealer)[0];
+    if (!card || card === active.revealed) return;
+    const value = await this.valueOf(card);
+    const reservation = Math.floor(value * (this.o.safety ?? 0.9));
+    const held = active.copiesBefore[card] ?? 0;
+    this.log(`  thread ${active.id}: she offers ${card} (${held ? `DUPLICATE, we hold ${held}` : "new for us"}): our value ${Math.round(value * 10) / 10} → limit ${reservation} (was ${active.target.reservation})`);
+    active.revealed = card;
+    active.target = { ...active.target, value, reservation };
   }
 
   private applyReason(reason: string | undefined, untilTick: number | undefined, tick: number) {
@@ -406,7 +546,8 @@ function describe(r: TraceRecord): string {
   if (r.settledPrice !== undefined) parts.push(`settled ${r.settledPrice}`);
   if (r.error) parts.push(`error ${r.error}`);
   const line = parts.join(" · ");
-  return r.patience ? `${line}\n  ${formatPatience(r.patience)}` : line;
+  const withPatience = r.patience ? `${line}\n  ${formatPatience(r.patience)}` : line;
+  return r.summary ? `${withPatience}\n${formatThreadSummary(r.summary)}` : withPatience;
 }
 
 /** Mensajes del dealer posteriores a nuestro primer mensaje en el hilo (sus respuestas, sin su apertura). */
@@ -432,4 +573,13 @@ export function isCardTopicRefusal(e: unknown, target: Target): boolean {
     "buy" in target.topic &&
     "card" in target.topic.buy
   );
+}
+
+/** Cartas de un objetivo: la carta pedida, la del activo que vendemos o las de esa rareza y set (hasta que ella diga cuál). */
+export function cardsOfTarget(target: Target, me: Me): string[] {
+  const t = target.topic as { buy?: { card?: string; rarity?: string; set?: string }; sell?: { assets?: number[] } };
+  if (t.buy?.card) return [t.buy.card];
+  if (t.sell?.assets) return [...new Set(t.sell.assets.map((id) => me.assets.find((a) => a.id === id)?.ref).filter((r): r is string => !!r))];
+  const cands = (target as { cards?: { id: string }[] }).cards;
+  return cands ? cands.map((c) => c.id) : [];
 }

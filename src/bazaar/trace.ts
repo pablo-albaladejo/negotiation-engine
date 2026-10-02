@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { PatienceSummary } from "./patience.js";
+import type { ThreadSummary } from "./thread-log.js";
 
 /** Una línea JSONL por decisión: lo que el visor necesita para reconstruir cada hilo. Sin clave. */
 export interface TraceRecord {
@@ -27,6 +28,8 @@ export interface TraceRecord {
   error?: string;
   /** Al cerrar/aceptar/terminar: mensajes nuestros, respuestas suyas, tics hasta su final y respuesta a cada paso. */
   patience?: PatienceSummary;
+  /** Al terminar una conversación: cartas, copias antes/después, tratos con el dealer en la hora, apertura/final y paciencia. */
+  summary?: ThreadSummary;
 }
 
 export interface TraceSink {
