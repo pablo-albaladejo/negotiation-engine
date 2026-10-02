@@ -5,7 +5,7 @@ import { initialTheme, storeTheme, type Theme } from "./theme.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, filterGames, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, queryToPage, queryWithPage, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo, type Route } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
@@ -118,9 +118,12 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
   const [state, setState] = useState<{ summary: Summary | null; games: TranscriptLine[] } | null>(null);
   const championVersion = useChampionVersion().version;
   const [initialFilters] = useState<MatchFilters>(() => queryToFilters(query));
-  /** Tracks the query currently reflected in the URL (kept in sync by onFiltersChange), so opening a
-   * game can carry it along and "← Matches" returns with the same filters applied (INBOX A2). */
+  const [initialPage] = useState<number>(() => queryToPage(query));
+  /** Tracks the query currently reflected in the URL (kept in sync by onFiltersChange/onPageChange),
+   * so opening a game can carry it along and "← Matches" returns with the same filters and page
+   * applied (INBOX A2, T7). `currentFilters` lets a page-only change rebuild the full query. */
   const currentQuery = useRef(query);
+  const currentFilters = useRef<MatchFilters>(initialFilters);
   useEffect(() => {
     let cancelled = false;
     setState(null);
@@ -142,8 +145,14 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
       onOpenGame={(gameId) => navigate(routeTo.arenaReplay(runId, gameId, currentQuery.current))}
       onBack={() => navigate(routeTo.runs())}
       initialFilters={initialFilters}
+      initialPage={initialPage}
       onFiltersChange={(filters) => {
-        currentQuery.current = filtersToQuery(filters);
+        currentFilters.current = filters;
+        currentQuery.current = queryWithPage(filters, 0);
+        replaceRoute(routeTo.matches(runId, currentQuery.current));
+      }}
+      onPageChange={(page) => {
+        currentQuery.current = queryWithPage(currentFilters.current, page);
         replaceRoute(routeTo.matches(runId, currentQuery.current));
       }}
       isChampion={isChampion}

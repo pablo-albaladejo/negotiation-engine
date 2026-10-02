@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isTwoIssue, matchesModel, queryToFilters, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
+import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isTwoIssue, matchesModel, queryToFilters, queryToPage, queryWithPage, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
 import { asV1Trace, generateFixtures, generateGateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -110,6 +110,21 @@ describe("matchesModel (P2)", () => {
   it("queryToFilters drops an unknown result value (L9)", () => {
     expect(queryToFilters("result=agreement")).toEqual({ result: "agreement" });
     expect(queryToFilters("result=not-a-real-reason")).toEqual({});
+  });
+
+  it("queryToPage/queryWithPage: round-trip, 1-based in the URL, 0-based internally (T7)", () => {
+    expect(queryToPage("")).toBe(0);
+    expect(queryToPage("p=2")).toBe(1);
+    expect(queryWithPage({}, 0)).toBe("");
+    expect(queryWithPage({}, 1)).toBe("p=2");
+    expect(queryToPage(queryWithPage({ rival: "boulware" }, 2))).toBe(2);
+    expect(queryWithPage({ rival: "boulware" }, 2)).toBe("rival=boulware&p=3");
+  });
+
+  it("queryToPage clamps an invalid or non-positive p to the first page (T7)", () => {
+    expect(queryToPage("p=0")).toBe(0);
+    expect(queryToPage("p=-1")).toBe(0);
+    expect(queryToPage("p=abc")).toBe(0);
   });
 });
 

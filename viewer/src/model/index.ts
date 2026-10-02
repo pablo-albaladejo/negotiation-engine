@@ -1,5 +1,5 @@
 export { CHAMPION_CONFIG_PATH, isChampionRun, runsModel, type RunEntry, type RunKind, type RunRow } from "./runs.js";
-export { filterGames, filtersToQuery, matchesModel, queryToFilters, type MatchFilters, type MatchRow, type MatchesModel } from "./matches.js";
+export { filterGames, filtersToQuery, matchesModel, queryToFilters, queryToPage, queryWithPage, type MatchFilters, type MatchRow, type MatchesModel } from "./matches.js";
 export { arenaReplayModel, type ArenaReplayModel } from "./arenaReplay.js";
 export { tournamentReplayModel, type ScenarioRef, type TournamentReplayModel } from "./tournamentReplay.js";
 export { splitTrace } from "./rounds.js";

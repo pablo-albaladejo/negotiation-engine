@@ -128,6 +128,25 @@ describe("App back/forward across routes (B3)", () => {
 });
 
 
+describe("App routing: Matches page persists through replay and back (T7)", () => {
+  it("page 2 -> open game -> back -> 'Page 2 of N'", async () => {
+    const games = Array.from({ length: 201 }, (_, i) => ({ ...fx.games[0]!, gameId: `g-${i}` }));
+    mockFetch(fx.summary, games);
+    window.location.hash = `#/runs/${fx.runId}`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("Page 1 of 5")).toBeTruthy());
+    fireEvent.click(screen.getByText("Next"));
+    await waitFor(() => expect(screen.getByText("Page 2 of 5")).toBeTruthy());
+    expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`);
+    fireEvent.click(screen.getByText("g-50"));
+    await waitFor(() => expect(window.location.hash).toContain("/games/g-50"));
+    const backLink = await screen.findByText("← Matches");
+    fireEvent.click(backLink);
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`));
+    expect(screen.getByText("Page 2 of 5")).toBeTruthy();
+  });
+});
+
 describe("App Runs: invalid config/champion.json shows the InvalidLogBanner (L11)", () => {
   it("renders the schema-failure banner on Runs when /api/champion reports errors", async () => {
     vi.stubGlobal(

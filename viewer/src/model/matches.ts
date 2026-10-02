@@ -114,6 +114,23 @@ export function filtersToQuery(filters: MatchFilters): string {
   return params.toString();
 }
 
+/** T7: current page (0-based) carried as `p` (1-based) in the query string; missing, non-numeric or
+ * non-positive values fall back to the first page. Upper-bound clamping needs the row count, so it
+ * is the caller's job (MatchesScreen already clamps against `pageCount`). */
+export function queryToPage(query: string): number {
+  const raw = new URLSearchParams(query).get("p");
+  const n = raw === null ? NaN : Number(raw);
+  return Number.isInteger(n) && n > 0 ? n - 1 : 0;
+}
+
+/** Encodes the filters and the page (0-based) together; `p` is omitted for the first page so a plain
+ * filter-only URL stays unchanged. */
+export function queryWithPage(filters: MatchFilters, page: number): string {
+  const params = new URLSearchParams(filtersToQuery(filters));
+  if (page > 0) params.set("p", String(page + 1));
+  return params.toString();
+}
+
 /** Reads `MatchFilters` back out of the hash route's query string; unknown or empty values are dropped. */
 export function queryToFilters(query: string): MatchFilters {
   const params = new URLSearchParams(query);

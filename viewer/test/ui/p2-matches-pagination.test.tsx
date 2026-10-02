@@ -74,6 +74,35 @@ describe("MatchesScreen pagination (INBOX A3)", () => {
   });
 });
 
+describe("MatchesScreen page is driven by initialPage/onPageChange (T7)", () => {
+  it("renders on the page given by initialPage and notifies onPageChange on Next/Previous", () => {
+    const games = manyGames(fx.games[0]!, 201);
+    const onPageChange: number[] = [];
+    render(
+      <MatchesScreen
+        runId={fx.runId}
+        summary={fx.summary}
+        games={games}
+        onOpenGame={() => {}}
+        onBack={() => {}}
+        initialPage={1}
+        onPageChange={(p) => onPageChange.push(p)}
+      />,
+    );
+    expect(screen.getByText("Page 2 of 5")).toBeTruthy();
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Page 3 of 5")).toBeTruthy();
+    fireEvent.click(screen.getByText("Previous"));
+    expect(onPageChange).toEqual([2, 1]);
+  });
+
+  it("an out-of-range initialPage clamps to the last page", () => {
+    const games = manyGames(fx.games[0]!, 201);
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} initialPage={99} />);
+    expect(screen.getByText("Page 5 of 5")).toBeTruthy();
+  });
+});
+
 describe("MatchesScreen Clear filters moves focus to the results count (L24)", () => {
   it("focuses the count span after clearing filters", () => {
     const games = manyGames(fx.games[0]!, 10);

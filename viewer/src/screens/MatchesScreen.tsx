@@ -48,16 +48,20 @@ export interface MatchesScreenProps {
   onBack: () => void;
   /** Filters read from the hash route's query string on first render (INBOX §2: persisted on reload/back). */
   initialFilters?: MatchFilters;
+  /** Page (0-based) read from the hash route's `p` query param on first render (T7). */
+  initialPage?: number;
   /** Called with the next filters, before they are applied, so the container can write them back into the URL. */
   onFiltersChange?: (filters: MatchFilters) => void;
+  /** Called with the next page (0-based) so the container can write it back into the URL (T7). */
+  onPageChange?: (page: number) => void;
   /** `true` when this run's config version matches `config/champion.json#version` (ajuste 2). */
   isChampion?: boolean;
 }
 
 /** P2: KPIs de `summary.overall` y partidas de `transcripts.jsonl`, filtrables con `Filters`. */
-export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, onFiltersChange, isChampion }: MatchesScreenProps) {
+export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, initialPage, onFiltersChange, onPageChange, isChampion }: MatchesScreenProps) {
   const [filters, setFiltersState] = useState<MatchFilters>(initialFilters ?? {});
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(initialPage ?? 0);
   const countRef = useRef<HTMLSpanElement>(null);
   /** Clear filters (L24): the count span only exists once the (now unfiltered) rows render, so
    * the focus move happens in an effect, after that commit, not inline in the click handler. */
@@ -84,8 +88,14 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
 
   const paginated = model.rows.length > PAGINATE_ABOVE;
   const pageCount = paginated ? Math.max(1, Math.ceil(model.rows.length / PAGE_SIZE)) : 1;
-  const currentPage = Math.min(page, pageCount - 1);
+  /** T7: an out-of-range `p` (e.g. edited by hand, or stale after the result set shrank) clamps
+   * instead of showing an empty page. */
+  const currentPage = Math.max(0, Math.min(page, pageCount - 1));
   const pageRows = paginated ? model.rows.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE) : model.rows;
+  const changePage = (next: number) => {
+    setPage(next);
+    onPageChange?.(next);
+  };
 
   const rows: DataTableRow[] = pageRows.map((r) => ({
     id: r.gameId,
@@ -158,13 +168,13 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
           />
           {paginated ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
-              <SecondaryButton onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
+              <SecondaryButton onClick={() => changePage(Math.max(0, currentPage - 1))} disabled={currentPage === 0}>
                 Previous
               </SecondaryButton>
               <span className="nr-muted" aria-live="polite">
                 Page {currentPage + 1} of {pageCount}
               </span>
-              <SecondaryButton onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={currentPage >= pageCount - 1}>
+              <SecondaryButton onClick={() => changePage(Math.min(pageCount - 1, currentPage + 1))} disabled={currentPage >= pageCount - 1}>
                 Next
               </SecondaryButton>
             </div>
