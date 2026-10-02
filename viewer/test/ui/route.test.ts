@@ -69,6 +69,37 @@ describe("B3: round-trip per route — parse(format(x)) === x for every screen",
   });
 });
 
+describe("T11: ids with reserved/special characters round-trip through routeTo/parseRoute", () => {
+  it("a run id containing ? / # % and a space round-trips", () => {
+    const runId = "r 1?#/%x";
+    const hash = routeTo.matches(runId);
+    expect(parseRoute(hash)).toEqual({ screen: "matches", runId, query: "" });
+  });
+
+  it("a game id containing the same characters round-trips alongside a query", () => {
+    const runId = "r-1";
+    const gameId = "g 1?#/%x";
+    const hash = routeTo.arenaReplay(runId, gameId, "role=buyer");
+    expect(parseRoute(hash)).toEqual({ screen: "arena-replay", runId, gameId, query: "role=buyer" });
+  });
+});
+
+describe("T11: routing edge cases (unknown head, empty hash, trailing '?')", () => {
+  it("an unknown head falls back to Runs", () => {
+    expect(parseRoute("#/not-a-real-screen/x")).toEqual({ screen: "runs" });
+  });
+
+  it("an empty hash falls back to Runs", () => {
+    expect(parseRoute("")).toEqual({ screen: "runs" });
+    expect(parseRoute("#")).toEqual({ screen: "runs" });
+    expect(parseRoute("#/")).toEqual({ screen: "runs" });
+  });
+
+  it("a trailing '?' with nothing after it is an empty query, not undefined or '?'", () => {
+    expect(parseRoute("#/runs/r?")).toEqual({ screen: "matches", runId: "r", query: "" });
+  });
+});
+
 describe("T1: malformed percent-encoding does not throw (falls back to the raw segment)", () => {
   it("an invalid %-sequence in a run id is kept as-is instead of throwing URIError", () => {
     expect(() => parseRoute("#/runs/%E0%A4%A")).not.toThrow();
