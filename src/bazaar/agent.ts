@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "./client.js";
 import { closeText, counterText, textMatchesPrice } from "./messages.js";
 import { decide, type Decision, type ThreadView } from "./negotiator.js";
-import { buyTargets, missingPageCards, spareTargets, type Target } from "./planner.js";
+import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
 import type { Catalog, Clock, Me, Thread } from "./schemas.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
@@ -30,6 +30,8 @@ interface Active {
   id: number;
   target: Target;
   lastSentTick?: number;
+  /** Precios que hemos enviado en este hilo (fuente fiable; el hilo solo se usa al retomarlo). */
+  sent: number[];
 }
 
 const HOUR_MS = 3_600_000;
@@ -44,6 +46,8 @@ export class BazaarAgent {
   private readonly spend = new Map<number, number>();
   private readonly values = new Map<string, number>();
   private catalog: Catalog | undefined;
+  /** Si el dealer rechaza `{buy: {card}}`, se compra por rareza y set. */
+  private cardTopicOk = true;
   private readonly now: () => number;
   private readonly log: (line: string) => void;
   private readonly safety: number;
@@ -99,7 +103,7 @@ export class BazaarAgent {
       }
       try {
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [] };
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
           action: "open",
@@ -111,7 +115,12 @@ export class BazaarAgent {
           ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
         });
       } catch (e) {
-        this.onError(e, tick, ticksPerHour, target, emit);
+        if (isCardTopicRefusal(e, target)) {
+          this.cardTopicOk = false;
+          emit({ action: "error", target: target.key, error: (e as BazaarError).code, rule: "card-topic-unsupported" });
+        } else {
+          this.onError(e, tick, ticksPerHour, target, emit);
+        }
       }
     } catch (e) {
       this.onError(e, tick, ticksPerHour, this.active?.target, emit);
@@ -126,7 +135,8 @@ export class BazaarAgent {
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
-    if (target) this.active = { id: thread.id, target };
+    if (target) this.active = { id: thread.id, target, sent: [] };
+    else if (!this.o.dryRun) await this.api.closeThread(thread.id);
   }
 
   private async targetFromTopic(thread: Thread, me: Me): Promise<Target | undefined> {
@@ -137,6 +147,15 @@ export class BazaarAgent {
       const asset = me.assets.find((a) => a.id === id);
       if (id === undefined || typeof asset?.your_value !== "number") return undefined;
       return { key: `sell:${id}`, side, topic: { sell: { assets: [id] } }, reservation: Math.max(1, Math.ceil(asset.your_value)), label: `sell ${asset.ref}` };
+    }
+    const rs = (thread.topic as { buy?: { rarity?: string; set?: string } } | undefined)?.buy;
+    if (side === "buy" && rs?.rarity && rs.set) {
+      this.catalog ??= await this.api.catalog();
+      const cards = this.catalog.sets.find((s) => s.id === rs.set)?.cards.filter((c) => rarityOf(c) === rs.rarity) ?? [];
+      if (!cards.length) return undefined;
+      const vals = await Promise.all(cards.map((c) => this.valueOf(c.id)));
+      const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+      return { key: `buy:${rs.set}:${rs.rarity}`, side, topic: { buy: { rarity: rs.rarity, set: rs.set } }, reservation: Math.floor(mean * this.safety), label: `buy ${rs.rarity} ${rs.set}` };
     }
     const card = topic?.buy?.card;
     if (side === "buy" && card) {
@@ -162,7 +181,10 @@ export class BazaarAgent {
     if (budget < 1) return undefined;
     this.catalog ??= await this.api.catalog();
     const missing = missingPageCards(me, this.catalog).filter((m) => (this.skip.get(`buy:${m.id}`) ?? -1) <= tick);
-    const buys = await buyTargets(missing, (c) => this.valueOf(c), { budget, cash: me.cash, safety: this.safety, maxLookups: this.maxLookups });
+    const plan = { budget, cash: me.cash, safety: this.safety, maxLookups: this.maxLookups };
+    const buys = this.cardTopicOk
+      ? await buyTargets(missing, (c) => this.valueOf(c), plan)
+      : await raritySetTargets(missing, this.catalog, (c) => this.valueOf(c), { ...plan, maxLookups: 40, rarities: ["common", "uncommon"] });
     return buys.find(free);
   }
 
@@ -170,6 +192,7 @@ export class BazaarAgent {
     const active = this.active!;
     const { target } = active;
     const p = threadPrices(thread, target.side, this.o.dealer);
+    if (active.sent.length) p.ourPrices = [...active.sent];
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.o.maxSpendPerHour - this.spentThisHour())) : target.reservation;
     const view: ThreadView = {
       side: target.side,
@@ -204,6 +227,7 @@ export class BazaarAgent {
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
           if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
           active.lastSentTick = tick;
+          active.sent.push(d.action.price);
           emit({ ...base, action: "counter", ourPrice: d.action.price, text });
           return;
         }
@@ -288,4 +312,17 @@ function describe(r: TraceRecord): string {
   if (r.settledPrice !== undefined) parts.push(`settled ${r.settledPrice}`);
   if (r.error) parts.push(`error ${r.error}`);
   return parts.join(" · ");
+}
+
+const NOT_A_TOPIC_PROBLEM = new Set(["insufficient_cash", "persona_quota", "cooloff", "sold_out", "wait_for_tick", "rate_limited", "locked", "bad_key"]);
+
+/** El servidor rechazó abrir un hilo `{buy: {card}}` por el topic (400/422 sin otro motivo conocido). */
+export function isCardTopicRefusal(e: unknown, target: Target): boolean {
+  return (
+    e instanceof BazaarError &&
+    (e.status === 400 || e.status === 422) &&
+    !NOT_A_TOPIC_PROBLEM.has(e.code) &&
+    "buy" in target.topic &&
+    "card" in target.topic.buy
+  );
 }

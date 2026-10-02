@@ -99,3 +99,36 @@ export async function buyTargets(missing: readonly MissingCard[], valueOf: (card
   }
   return out.sort((a, b) => b.surplus - a.surplus).map(({ surplus: _s, ...t }) => t);
 }
+
+/**
+ * Alternativa si el dealer no vende cartas concretas: `{buy: {rarity, set}}`. Puede tocarnos
+ * cualquier carta de esa rareza y set (también una repetida), así que la reserva es la media de
+ * nuestro valor de todas ellas × seguridad. Solo rarezas que vende el dealer y sets con huecos.
+ */
+export async function raritySetTargets(
+  missing: readonly MissingCard[],
+  catalog: Catalog,
+  valueOf: (card: string) => Promise<number>,
+  o: BuyPlanOptions & { rarities: readonly string[] },
+): Promise<Target[]> {
+  const cap = Math.floor(Math.min(o.budget, o.cash));
+  if (cap < 1) return [];
+  const out: (Target & { surplus: number })[] = [];
+  let lookups = 0;
+  for (const set of catalog.sets) {
+    for (const rarity of o.rarities) {
+      const cards = set.cards.filter((c) => rarityOf(c) === rarity);
+      const setId = set.id ?? cards[0]?.id.split("-")[0];
+      if (!setId || !cards.length || !missing.some((m) => m.set === setId && cards.some((c) => c.id === m.id))) continue;
+      if (lookups + cards.length > o.maxLookups) continue;
+      lookups += cards.length;
+      const vals = await Promise.all(cards.map((c) => valueOf(c.id)));
+      const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+      const reservation = Math.min(cap, Math.floor(mean * o.safety));
+      const book = cards[0]?.book ?? undefined;
+      if (reservation < 1 || (book !== undefined && reservation < book * 0.6)) continue;
+      out.push({ key: `buy:${setId}:${rarity}`, side: "buy", topic: { buy: { rarity, set: setId } }, reservation, label: `buy ${rarity} ${setId}`, surplus: mean - (book ?? 0) });
+    }
+  }
+  return out.sort((a, b) => b.surplus - a.surplus).map(({ surplus: _s, ...t }) => t);
+}
