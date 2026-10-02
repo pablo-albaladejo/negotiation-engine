@@ -276,6 +276,11 @@ export function App() {
       heading.focus();
     }
   }, [hash]);
+  /** D2: keep <html data-theme> (set pre-paint by the inline script in index.html) in sync with
+   * React state, so color-scheme and the html/body background track every toggle too. */
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "states" ? "states" : "runs";
   const toggleTheme = () => {

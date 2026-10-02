@@ -2,6 +2,13 @@
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @import "./tokens.css";
 
+/* D2: the page shell (outside <Root>, e.g. during pre-paint) also uses the tokens, and
+   color-scheme follows the explicit choice on <html data-theme> so native UI (scrollbars, form
+   controls) matches even when it overrides a dark OS preference. */
+html,body{margin:0;background:var(--bg);color-scheme:light dark}
+[data-theme="light"]{color-scheme:light}
+[data-theme="dark"]{color-scheme:dark}
+
 .nr-root{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
 .nr-root h1,.nr-root h2,.nr-root h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
 .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}

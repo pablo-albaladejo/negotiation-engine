@@ -45,6 +45,16 @@ describe("App theme toggle (B1)", () => {
     expect(after).not.toBe(before);
     expect(window.localStorage.getItem("nr-theme")).toBe(after);
   });
+
+  it("keeps document.documentElement's data-theme in sync with the toggle (D2)", async () => {
+    window.location.hash = "#/runs";
+    render(<App />);
+    const button = screen.getByText(/mode$/i);
+    const before = document.documentElement.dataset.theme;
+    fireEvent.click(button);
+    expect(document.documentElement.dataset.theme).not.toBe(before);
+    expect(document.documentElement.dataset.theme).toBe(window.localStorage.getItem("nr-theme"));
+  });
 });
 
 describe("App routing (C2, C3)", () => {

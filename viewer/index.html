@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Negotiation Ring · Arena viewer</title>
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("nr-theme");
+          var theme = stored === "light" || stored === "dark" ? stored : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          /* Storage/matchMedia unavailable: leave data-theme unset, CSS falls back to prefers-color-scheme. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
