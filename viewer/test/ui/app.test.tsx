@@ -148,3 +148,21 @@ describe("App Runs: invalid config/champion.json shows the InvalidLogBanner (L11
     await screen.findByText("schema fails");
   });
 });
+
+describe("App Runs: a rejecting /api/champion fetch (T5)", () => {
+  it("renders Runs with no champion pill instead of an unhandled rejection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/champion")) throw new Error("network down");
+        if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: [], errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("No runs yet");
+    expect(screen.queryByText("champion")).toBeNull();
+  });
+});

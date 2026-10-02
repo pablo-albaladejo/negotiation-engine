@@ -70,9 +70,15 @@ function useChampionVersion(): { version: number | null; errors: ApiError[] } {
   const [state, setState] = useState<{ version: number | null; errors: ApiError[] }>({ version: null, errors: [] });
   useEffect(() => {
     let cancelled = false;
-    fetchApi<{ version: number; path: string } | null>("champion").then((res) => {
-      if (!cancelled) setState({ version: res.data?.version ?? null, errors: res.errors });
-    });
+    fetchApi<{ version: number; path: string } | null>("champion")
+      .then((res) => {
+        if (!cancelled) setState({ version: res.data?.version ?? null, errors: res.errors });
+      })
+      /** T5: a rejecting fetch (network down, etc.) must not surface as an unhandled rejection;
+       * Runs still renders, just without the champion pill. */
+      .catch(() => {
+        if (!cancelled) setState({ version: null, errors: [] });
+      });
     return () => {
       cancelled = true;
     };
