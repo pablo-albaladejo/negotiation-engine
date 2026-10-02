@@ -142,6 +142,10 @@ export function OfferChart({
   const zopaTop = showZopa ? offerChartYScale(Math.max(ourReserve!, theirReserve!), yDomain) : 0;
   const zopaHeight = showZopa ? Math.abs(offerChartYScale(theirReserve!, yDomain) - offerChartYScale(ourReserve!, yDomain)) : 0;
 
+  /** A8: the 12-viewBox-unit hit radius below renders smaller than the 24px touch target on a
+   * scaled-down mobile viewport (no ResizeObserver here to rescale it); DecisionPanel's Previous/
+   * Next buttons give keyboard and touch users an always-reachable, properly sized alternative to
+   * tapping a point directly. */
   const interactivePoints = onPointClick ? buildOfferInteractivePoints(ourOffers, theirOffers) : [];
   const [activeIndex, setActiveIndex] = useState(() => initialOfferChartIndex(interactivePoints, selectedRound));
   // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.

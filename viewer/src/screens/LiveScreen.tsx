@@ -106,6 +106,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           data-screen="p7"
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
+          <h1 className="nr-sr-only">Live match</h1>
           <div style={{ display: "flex", alignItems: "center", justifyContent: projectorMode ? "flex-end" : "space-between", gap: 24 }}>
             {!projectorMode ? (
               <div style={{ display: "flex", alignItems: "center", gap: 24 }}>

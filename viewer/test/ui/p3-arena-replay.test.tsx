@@ -61,7 +61,7 @@ describe("ArenaReplayScreen (P3)", () => {
     const line = fx.games[0]!;
     const model = arenaReplayModel(line, null);
     render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    expect(screen.getByText(/no trace recorded/i)).toBeTruthy();
+    expect(screen.getByText(/no trace logged/i)).toBeTruthy();
   });
 
   it("clicar un punto de una ronda resalta el mensaje de esa ronda", () => {

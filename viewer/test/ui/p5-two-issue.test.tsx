@@ -56,7 +56,7 @@ describe("TwoIssueScreen (P5)", () => {
   it("sin traza: plano con las ofertas del transcript y aviso de que no hay traza", () => {
     const line = pctDay();
     render(<TwoIssueScreen runId={fx.runId} model={twoIssueModel(line, null)} onBack={() => {}} />);
-    expect(screen.getByText(/no trace recorded/i)).toBeTruthy();
+    expect(screen.getByText(/no trace logged/i)).toBeTruthy();
     expect(screen.getByText("mandate: not logged")).toBeTruthy();
   });
 });

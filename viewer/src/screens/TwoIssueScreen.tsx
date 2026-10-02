@@ -165,7 +165,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             {model.hasTrace ? (
               <DataTable columns={COLUMNS} rows={rows} selectedRowIndex={(model.rows ?? []).findIndex((r) => r.round === selectedRound)} />
             ) : (
-              <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
+              <p className="nr-muted">No trace logged for this match (played with --no-traces or --agent-url).</p>
             )}
           </Card>
         </div>

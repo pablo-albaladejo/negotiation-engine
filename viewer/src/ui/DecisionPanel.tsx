@@ -99,7 +99,7 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
           <p className="nr-muted">R{selectedRound}: not logged.</p>
         )
       ) : (
-        <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
+        <p className="nr-muted">No trace logged for this match (played with --no-traces or --agent-url).</p>
       )}
     </Card>
   );

@@ -103,6 +103,10 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
   const rounds = Array.from(new Set([...ourOffers, ...theirOffers].map((point) => point.round)));
   const xTicks = ticksFor(xDomain);
   const yTicks = ticksFor(yDomain);
+  /** A8: the 12-viewBox-unit hit radius below renders smaller than the 24px touch target on a
+   * scaled-down mobile viewport (no ResizeObserver here to rescale it); DecisionPanel's Previous/
+   * Next buttons give keyboard and touch users an always-reachable, properly sized alternative to
+   * tapping a point directly. */
   const interactivePoints = onPointClick ? buildInteractivePoints(sortedOurs, sortedTheirs) : [];
   const [activeIndex, setActiveIndex] = useState(() => initialScatterIndex(interactivePoints, selectedRound));
   // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.
