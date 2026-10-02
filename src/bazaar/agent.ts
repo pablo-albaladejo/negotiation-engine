@@ -1,8 +1,9 @@
 import { BazaarError, type BazaarClient } from "./client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
+import { formatPlan, rankCandidates, selectCandidates } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
-import type { Catalog, Clock, Me, Thread } from "./schemas.js";
+import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
 import type { TraceRecord, TraceSink } from "./trace.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
 
@@ -23,6 +24,12 @@ export interface AgentOptions {
   maxLookups?: number;
   /** Sobrescribe parámetros del negociador (ancla, Boulware, aguantes...); el resto queda por defecto. */
   negotiator?: Partial<NegotiatorParams>;
+  /** Ficha del dealer: con ella los objetivos salen del planificador por menú (`plan.ts`); sin ella, del antiguo. */
+  menu?: DealerInfo;
+  /** Topes de la ejecución: tratos (se para al llegar), conversaciones abiertas en total y gasto en compras. */
+  maxDeals?: number;
+  maxThreads?: number;
+  maxSpendTotal?: number;
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
@@ -57,6 +64,9 @@ export class BazaarAgent {
   private readonly safety: number;
   private readonly maxLookups: number;
   private readonly negotiatorParams: NegotiatorParams;
+  private threadsOpened = 0;
+  private dealsDone = 0;
+  private spentRun = 0;
 
   constructor(
     private readonly api: BazaarApi,
@@ -71,6 +81,31 @@ export class BazaarAgent {
 
   spentThisHour(): number {
     return this.spend.get(Math.floor(this.now() / HOUR_MS)) ?? 0;
+  }
+
+  /** Lo que aún se puede gastar: lo que queda de la hora y de la ejecución. */
+  budgetLeft(): number {
+    return Math.min(this.o.maxSpendPerHour - this.spentThisHour(), (this.o.maxSpendTotal ?? Infinity) - this.spentRun);
+  }
+
+  /** La ejecución terminó: se alcanzó el tope de tratos, o el de conversaciones y no queda ninguna abierta. */
+  done(): boolean {
+    return this.dealsDone >= (this.o.maxDeals ?? Infinity) || (!this.active && this.threadsOpened >= (this.o.maxThreads ?? Infinity));
+  }
+
+  runStats(): { deals: number; threads: number; spent: number } {
+    return { deals: this.dealsDone, threads: this.threadsOpened, spent: this.spentRun };
+  }
+
+  /** Plan legible del dry-run (mismo planificador y misma caché de valores que el bucle). Solo GET. */
+  async plan(): Promise<string[]> {
+    if (!this.o.menu) return ["(no dealer menu: the legacy planner is used; no plan to show)"];
+    const me = await this.api.me();
+    this.catalog ??= await this.api.catalog();
+    const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, this.budgetLeft()), maxThreads: this.o.maxThreads ?? Infinity };
+    const cands = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget: caps.maxSpend });
+    const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend });
+    return formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams);
   }
 
   async step(clock: Clock): Promise<TraceRecord[]> {
@@ -94,6 +129,10 @@ export class BazaarAgent {
         }
         this.finish(thread, tick, ticksPerHour, emit);
       }
+      if (this.done()) {
+        emit({ action: "idle", rule: this.dealsDone >= (this.o.maxDeals ?? Infinity) ? "max-deals" : "max-threads" });
+        return out;
+      }
       if (this.now() < this.blockedUntilMs || tick < this.cooloffUntilTick) {
         emit({ action: "blocked", rule: this.now() < this.blockedUntilMs ? "persona_quota" : "cooloff" });
         return out;
@@ -110,6 +149,7 @@ export class BazaarAgent {
       try {
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
         this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0 };
+        this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
           action: "open",
@@ -141,8 +181,10 @@ export class BazaarAgent {
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
-    if (target) this.active = { id: thread.id, target, sent: [], holdsUsed: 0 };
-    else if (!this.o.dryRun) await this.api.closeThread(thread.id);
+    if (target) {
+      this.active = { id: thread.id, target, sent: [], holdsUsed: 0 };
+      this.threadsOpened += 1;
+    } else if (!this.o.dryRun) await this.api.closeThread(thread.id);
   }
 
   private async targetFromTopic(thread: Thread, me: Me): Promise<Target | undefined> {
@@ -181,9 +223,15 @@ export class BazaarAgent {
 
   private async nextTarget(me: Me, tick: number): Promise<Target | undefined> {
     const free = (t: Target) => (this.skip.get(t.key) ?? -1) <= tick;
+    if (this.o.menu) {
+      const budget = Math.max(0, this.budgetLeft());
+      this.catalog ??= await this.api.catalog();
+      const cands = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget });
+      return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget })[0]?.candidate;
+    }
     const sell = spareTargets(me).find(free);
     if (sell) return sell;
-    const budget = this.o.maxSpendPerHour - this.spentThisHour();
+    const budget = this.budgetLeft();
     if (budget < 1) return undefined;
     this.catalog ??= await this.api.catalog();
     const missing = missingPageCards(me, this.catalog).filter((m) => (this.skip.get(`buy:${m.id}`) ?? -1) <= tick);
@@ -201,7 +249,7 @@ export class BazaarAgent {
     // Nuestro último intento cuenta aunque el hilo no lo muestre (p. ej. el POST falló a medias): nunca se repite.
     const lastTried = active.sent[active.sent.length - 1];
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
-    const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.o.maxSpendPerHour - this.spentThisHour())) : target.reservation;
+    const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.budgetLeft())) : target.reservation;
     const view: ThreadView = {
       side: target.side,
       reservation,
@@ -273,9 +321,11 @@ export class BazaarAgent {
     const target = this.active!.target;
     const settled = settledPrice(thread, target, this.o.dealer);
     if (thread.status === "deal") {
+      this.dealsDone += 1;
       if (target.side === "buy" && settled !== undefined) {
         const hour = Math.floor(this.now() / HOUR_MS);
         this.spend.set(hour, (this.spend.get(hour) ?? 0) + settled);
+        this.spentRun += settled;
       }
       this.values.clear();
     }

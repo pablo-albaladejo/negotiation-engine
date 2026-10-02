@@ -7,15 +7,25 @@ import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
 
 /**
- * `pnpm bazaar [--dry-run] [--once] [--max-spend 120] [--dealer abuela]`: un paso por tick hasta Ctrl-C.
- * `--dry-run` solo lee (GET) y registra lo que haría; ningún POST.
+ * `pnpm bazaar [--dry-run] [--once] [--max-spend 120] [--max-deals N] [--max-threads N] [--dealer abuela]`:
+ * un paso por tick hasta Ctrl-C o hasta llegar a `--max-deals` (o agotar `--max-threads` conversaciones).
+ * `--dry-run` solo lee (GET), imprime el plan y registra lo que haría; ningún POST.
  */
+
+function cap(raw: string | undefined, name: string): number {
+  if (raw === undefined || raw === "") return Infinity;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) throw new Error(`${name} debe ser un entero ≥ 0`);
+  return n;
+}
 async function main() {
   const { values } = parseArgs({
     options: {
       "dry-run": { type: "boolean", default: false },
       once: { type: "boolean", default: false },
       "max-spend": { type: "string", default: "120" },
+      "max-deals": { type: "string" },
+      "max-threads": { type: "string" },
       dealer: { type: "string", default: "abuela" },
       "buy-anchor-frac": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.buyAnchorFrac) },
       "sell-anchor-mult": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.sellAnchorMult) },
@@ -30,6 +40,8 @@ async function main() {
   if (!Number.isFinite(buyAnchorFrac) || buyAnchorFrac <= 0) throw new Error("--buy-anchor-frac debe ser un número > 0");
   if (!Number.isFinite(sellAnchorMult) || sellAnchorMult <= 0) throw new Error("--sell-anchor-mult debe ser un número > 0");
   if (!Number.isInteger(maxHolds) || maxHolds < 0) throw new Error("--max-holds debe ser un entero ≥ 0");
+  const maxDeals = cap(values["max-deals"], "--max-deals");
+  const maxThreads = cap(values["max-threads"], "--max-threads");
   const env = loadBazaarEnv();
   if (!env.key) {
     console.error("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
@@ -40,6 +52,10 @@ async function main() {
   const dealers = await client.dealers().catch(() => ({ dealers: [] }));
   const info = dealers.dealers.find((d) => d.id === dealerId);
   const aliases = [...(info?.name ? [info.name] : []), "persona", "dealer"];
+  const menu = await client.dealer(dealerId).catch((e: unknown) => {
+    console.error(`sin ficha del dealer (${e instanceof Error ? e.message : String(e)}): planificador antiguo`);
+    return undefined;
+  });
   const trace = new FileTrace(liveTraceDir(process.cwd()));
   const scoreTracker = new ScoreTracker(new FileScoreTrace(trace.dir));
   let lastRank: number | undefined;
@@ -47,11 +63,19 @@ async function main() {
     dealer: { id: dealerId, aliases },
     dryRun: values["dry-run"],
     maxSpendPerHour: maxSpend,
+    maxSpendTotal: maxSpend,
+    maxDeals,
+    maxThreads,
+    ...(menu ? { menu } : {}),
     negotiator: { buyAnchorFrac, sellAnchorMult, maxHolds },
     trace,
     log: (line) => console.log(line),
   });
-  console.log(`bazaar agent · dealer ${dealerId} · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · max ${maxSpend} P/h · trazas en ${trace.dir}`);
+  const fmt = (n: number) => (Number.isFinite(n) ? String(n) : "∞");
+  console.log(
+    `bazaar agent · dealer ${dealerId} · ${values["dry-run"] ? "DRY-RUN (sin POST)" : "LIVE"} · max-spend ${maxSpend} P (run and per hour) · max-deals ${fmt(maxDeals)} · max-threads ${fmt(maxThreads)} · trazas en ${trace.dir}`,
+  );
+  if (values["dry-run"]) for (const line of await agent.plan()) console.log(line);
 
   let stop = false;
   process.on("SIGINT", () => {
@@ -86,6 +110,11 @@ async function main() {
       console.error(`error en el bucle: ${e instanceof Error ? e.message : String(e)}`);
     }
     if (values.once) break;
+    if (agent.done()) {
+      const s = agent.runStats();
+      console.log(`topes alcanzados: ${s.deals} trato(s), ${s.threads} conversación(es), ${s.spent} P gastados; fin de la ejecución`);
+      break;
+    }
     await sleep(wait);
   }
 }
