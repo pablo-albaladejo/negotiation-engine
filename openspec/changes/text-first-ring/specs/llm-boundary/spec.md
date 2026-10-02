@@ -18,7 +18,7 @@ El sistema SHALL elegir la extracción de la oferta del rival según `parser.pol
 - **THEN** no se hace ninguna llamada al LLM para extraer la oferta y la traza lo registra
 
 ### Requirement: Evidencia literal por cifra y verificación determinista
-Con `llm-primary-verified`, la salida del parser LLM SHALL contener, por cada cifra, el issue, el valor y el fragmento LITERAL del texto del rival que la respalda (como máximo 200 caracteres), en un esquema cerrado que sigue sin campos de identidad, rol, mandato, reserva, plazo propio ni decisión. El código SHALL verificar cada cifra así: (1) tras normalizar texto y fragmento (NFKC, quitar caracteres de formato `\p{Cf}`, plegar mayúsculas y espacios), el fragmento MUST aparecer en el texto; (2) si el fragmento contiene dígitos de cualquier escritura (`\p{Nd}`), normalizarlo con el normalizador compartido MUST dar una lectura igual al valor (tolerancia 1e-6, con conversión de unidades como pb → %), y si hay varias lecturas, solo cuentan las que caen dentro del rango del issue; (3) si el fragmento solo tiene palabras numéricas que el normalizador conoce (español e inglés al menos), su lectura MUST ser igual al valor (`verified-words`). La oferta SHALL registrarse solo si todos los issues declarados tienen una cifra verificada. Discrepancia, fragmento no encontrado, valor distinto, lectura ambigua dentro del rango u oferta parcial SHALL dejar el turno sin oferta y pedir confirmación, registrando el motivo.
+Con `llm-primary-verified`, la salida del parser LLM SHALL contener, por cada cifra, el issue, el valor y el fragmento LITERAL del texto del rival que la respalda (como máximo 200 caracteres), en un esquema cerrado que sigue sin campos de identidad, rol, mandato, reserva, plazo propio ni decisión. El código SHALL verificar cada cifra así: (1) tras normalizar texto y fragmento (NFKC, quitar caracteres de formato `\p{Cf}`, plegar mayúsculas y espacios), el fragmento MUST aparecer en el texto en límites de cifra: si empieza o acaba en un dígito de cualquier escritura, la aparición no cuenta pegada a otro dígito ni a un separador decimal, de miles o espacio seguido de dígito ("500" no aparece en "1500" ni en "1,500", "15" no aparece en "150", "15" sí aparece en "15%"); (2) si el fragmento contiene dígitos de cualquier escritura (`\p{Nd}`), normalizarlo con el normalizador compartido MUST dar una lectura igual al valor (tolerancia 1e-6, con conversión de unidades como pb → %), y si hay varias lecturas, solo cuentan las que caen dentro del rango del issue; (3) si el fragmento solo tiene palabras numéricas que el normalizador conoce (español e inglés al menos), su lectura MUST ser igual al valor (`verified-words`). La oferta SHALL registrarse solo si todos los issues declarados tienen una cifra verificada. Discrepancia, fragmento no encontrado, valor distinto, lectura ambigua dentro del rango u oferta parcial SHALL dejar el turno sin oferta y pedir confirmación, registrando el motivo.
 
 #### Scenario: Dígitos arábigo-índicos
 - **WHEN** el rival escribe "نقبل ٢٫٥٪ والدفع في اليوم ١٥" y el LLM devuelve `pct` 2.5 con evidencia "٢٫٥٪" y `day` 15 con evidencia "١٥"
@@ -27,6 +27,10 @@ Con `llm-primary-verified`, la salida del parser LLM SHALL contener, por cada ci
 #### Scenario: Fragmento inventado
 - **WHEN** el LLM devuelve `pct` 1.5 con evidencia "1,5 %" y ese fragmento no aparece en el texto
 - **THEN** el turno va sin oferta, pide confirmar las cifras y la traza registra `span-not-found`
+
+#### Scenario: Fragmento dentro de un número mayor
+- **WHEN** el LLM devuelve `pct` 5 con evidencia "5 %" y el texto dice "un 1,5 %"
+- **THEN** el fragmento no aparece (`span-not-found`)
 
 #### Scenario: Convención decimal desambiguada por el rango
 - **WHEN** el issue `pct` tiene rango [0, 10] y la evidencia es "2.500" con valor 2.5

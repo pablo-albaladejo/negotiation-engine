@@ -45,11 +45,33 @@ export function foldForMatch(text: string): string {
   return text.normalize("NFKC").replace(/\p{Cf}/gu, "").toLowerCase().replace(/\s+/gu, " ").trim();
 }
 
-/** ¿El fragmento aparece literalmente (tras el plegado) en el texto? Un fragmento vacío nunca aparece. */
+const DIGIT_AT = /^\p{Nd}$/u;
+/** Separadores que pueden unir dos grupos de dígitos (decimal, miles; el espacio, por los espacios de no separación que NFKC pliega). */
+const JOINER_AT = /^[.,٫٬'’ ]$/u;
+
+const isDigit = (ch: string | undefined) => ch !== undefined && DIGIT_AT.test(ch);
+
+/** ¿La aparición en [start, end) respeta los límites de cifra (no está dentro de un número mayor)? */
+function onFigureBoundary(chars: readonly string[], start: number, end: number): boolean {
+  if (isDigit(chars[start]) && (isDigit(chars[start - 1]) || (JOINER_AT.test(chars[start - 1] ?? "") && isDigit(chars[start - 2])))) return false;
+  if (isDigit(chars[end - 1]) && (isDigit(chars[end]) || (JOINER_AT.test(chars[end] ?? "") && isDigit(chars[end + 1])))) return false;
+  return true;
+}
+
+/**
+ * ¿El fragmento aparece literalmente (tras el plegado) en el texto, en límites de cifra? Un
+ * fragmento que empieza o acaba en dígito no cuenta dentro de un número mayor ("500" en "1500" o
+ * "1,500", "15" en "150"), sea cual sea la escritura. Un fragmento vacío nunca aparece.
+ */
 export function spanAppears(text: string, span: string | undefined): boolean {
   if (!span) return false;
-  const needle = foldForMatch(span);
-  return needle.length > 0 && foldForMatch(text).includes(needle);
+  const needle = [...foldForMatch(span)];
+  if (needle.length === 0) return false;
+  const hay = [...foldForMatch(text)];
+  for (let i = 0; i + needle.length <= hay.length; i++) {
+    if (needle.every((ch, k) => hay[i + k] === ch) && onFigureBoundary(hay, i, i + needle.length)) return true;
+  }
+  return false;
 }
 
 const close = (a: number, b: number) => Math.abs(a - b) <= TOLERANCE;

@@ -153,10 +153,10 @@ describe("pipeline con llm-primary-verified (valor por defecto en hybrid)", () =
   });
 
   it("discrepancia con el determinista: sin oferta, el motor no acepta y pide confirmar", async () => {
-    // "5 %" aparece dentro de "1,5 %": la evidencia se verifica, pero el determinista lee 1,5 y veta.
-    const parser = llmSaying(llmOut([fig("pct", 5, "5 %"), fig("day", 15, "día 15")]));
+    // El LLM cruza los issues: ambas evidencias se verifican, pero el determinista lee pct 5, día 8 y veta.
+    const parser = llmSaying(llmOut([fig("pct", 8, "8"), fig("day", 5, "5")]));
     const { brain, store, trace } = makeBrain({ config: twoIssues, mandate: mandate2, parser });
-    const out = await brain.turn(t(5, { rivalAction: "message", text: "Acepto un 1,5 % pagando el día 15" }));
+    const out = await brain.turn(t(5, { rivalAction: "message", text: "Te ofrezco un 5 % pagando el día 8" }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);
     expect(out.action).not.toBe("accept");
     expect(out.text).toMatch(/confirmar tus cifras/);

@@ -54,6 +54,27 @@ describe("verifyFigure: tabla de casos", () => {
     expect(spanAppears("Hola", "")).toBe(false);
     expect(spanAppears("Einverstanden,  das nehmen wir", "einverstanden, das")).toBe(true);
   });
+
+  it.each<[string, string, boolean]>([
+    ["1500 unidades", "500", false],
+    ["1,500 unidades", "500", false],
+    ["1.500 unidades", "500", false],
+    ["un 1,5 %", "5 %", false],
+    ["día 150", "15", false],
+    ["150 días", "15", false],
+    ["un 15% ya", "15", true],
+    ["un 15%", "15%", true],
+    ["día 15, y 500 unidades", "500", true],
+    ["el 15.", "15", true],
+    ["١٥٠ يوما", "١٥", false],
+    ["٢٫٥٪", "٥٪", false],
+    ["اليوم ١٥ ثم", "١٥", true],
+    ["１５０日", "15", false],
+    ["１５日", "15", true],
+    ["2١٥", "١٥", false],
+  ])("spanAppears en límites de cifra: %j contiene %j → %s", (text, span, expected) => {
+    expect(spanAppears(text, span)).toBe(expected);
+  });
 });
 
 describe("verifyFigures: oferta derivada", () => {
