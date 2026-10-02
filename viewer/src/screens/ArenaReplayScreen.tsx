@@ -123,8 +123,8 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
             ]}
           />
         </Card>
-        <Card title="Messages" style={{ maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div ref={messagesContainerRef} className="nr-chat" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
+        <Card title="Messages">
+          <div ref={messagesContainerRef} className="nr-chat nr-chat-scroll">
             {model.chat.map((c, i) => (
               <ChatMessage
                 key={i}

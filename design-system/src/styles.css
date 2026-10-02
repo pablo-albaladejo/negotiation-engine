@@ -38,6 +38,8 @@
 
 /* Chat */
 .nr-chat{display:flex;flex-direction:column;gap:var(--space-2);overflow:auto}
+.nr-chat-scroll{overflow:auto;max-height:560px;margin-top:var(--space-3);padding-right:var(--space-1)}
+.nr-chat-scroll.is-tall{max-height:820px}
 .nr-msg{border:1px solid var(--line);border-radius:var(--radius-lg);padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:4px;max-width:92%}
 .nr-msg.us{align-self:flex-end;background:var(--us-soft);border-color:transparent}
 .nr-msg.them{align-self:flex-start;background:var(--them-soft);border-color:transparent}

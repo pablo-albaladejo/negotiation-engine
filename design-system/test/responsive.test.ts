@@ -26,3 +26,11 @@ describe("B2/D1: responsive grids collapse below 900px", () => {
     expect(css).toContain(".nr-table-wrap{overflow-x:auto}");
   });
 });
+
+describe("finding 11: .nr-chat-scroll replaces inline maxHeight: 80vh chat panels", () => {
+  it("defines .nr-chat-scroll with a 560px cap and an is-tall 820px tournament variant", () => {
+    const css = readFileSync(stylesPath, "utf8");
+    expect(css).toContain(".nr-chat-scroll{overflow:auto;max-height:560px;margin-top:var(--space-3);padding-right:var(--space-1)}");
+    expect(css).toContain(".nr-chat-scroll.is-tall{max-height:820px}");
+  });
+});

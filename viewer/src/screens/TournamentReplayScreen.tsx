@@ -151,8 +151,8 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
             <DataTable columns={EST_COLUMNS} rows={estRows} />
           </Card>
         </div>
-        <Card title="Messages" style={{ maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div ref={messagesContainerRef} className="nr-chat" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
+        <Card title="Messages">
+          <div ref={messagesContainerRef} className="nr-chat nr-chat-scroll is-tall">
             {chat.map((c, i) => (
               <ChatMessage
                 key={i}
