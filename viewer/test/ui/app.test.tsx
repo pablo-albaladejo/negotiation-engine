@@ -71,7 +71,7 @@ describe("App routing (C2, C3)", () => {
     fireEvent.click(screen.getByText(firstGameId));
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
     expect(window.location.hash).toContain("role=buyer");
-    const backLink = await screen.findByText("← Matches");
+    const backLink = await screen.findByText(new RegExp(`← Matches in ${fx.runId}`));
     fireEvent.click(backLink);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
   });
@@ -86,7 +86,7 @@ describe("App routing (C2, C3)", () => {
     fireEvent.click(screen.getByText(firstGameId));
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
     expect(window.location.hash).toContain("role=buyer");
-    const backLink = await screen.findByText("← Matches");
+    const backLink = await screen.findByText(new RegExp(`← Matches in ${fx.runId}`));
     fireEvent.click(backLink);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
   });
@@ -104,7 +104,7 @@ describe("App routing (C2, C3)", () => {
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(buyerGame.gameId)}`));
     expect(window.location.hash).toContain("role=buyer");
 
-    const backLink = await screen.findByText("\u2190 Matches");
+    const backLink = await screen.findByText(new RegExp(`\u2190 Matches in ${fx.runId}`));
     fireEvent.click(backLink);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
     await waitFor(() => expect(screen.getByRole("button", { name: "Buyer" }).getAttribute("aria-pressed")).toBe("true"));
@@ -147,7 +147,7 @@ describe("App back/forward across routes (B3)", () => {
     const firstGameId = fx.games[0]!.gameId;
     fireEvent.click(screen.getByText(firstGameId));
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
-    await screen.findByText("← Matches");
+    await screen.findByText(new RegExp(`← Matches in ${fx.runId}`));
 
     window.history.back();
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}`));
@@ -163,7 +163,7 @@ describe("App back/forward across routes (B3)", () => {
 
     window.history.forward();
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
-    await screen.findByText("← Matches");
+    await screen.findByText(new RegExp(`← Matches in ${fx.runId}`));
   });
 });
 
@@ -180,7 +180,7 @@ describe("App routing: Matches page persists through replay and back (T7)", () =
     expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`);
     fireEvent.click(screen.getByText("g-50"));
     await waitFor(() => expect(window.location.hash).toContain("/games/g-50"));
-    const backLink = await screen.findByText("← Matches");
+    const backLink = await screen.findByText(new RegExp(`← Matches in ${fx.runId}`));
     fireEvent.click(backLink);
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?p=2`));
     expect(screen.getByText("Page 2 of 5")).toBeTruthy();

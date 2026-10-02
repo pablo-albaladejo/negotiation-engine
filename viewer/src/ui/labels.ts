@@ -1,4 +1,4 @@
-import type { TranscriptLine } from "../../../src/arena/results-schema.js";
+import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import type { RunKind } from "../model/index.js";
 
 export type EndReason = TranscriptLine["endReason"];
@@ -89,4 +89,18 @@ export function formatRunDate(iso: string | null): string {
 /** English label for the logged `role` ("buyer"/"seller"), used in Filters (INBOX §2). */
 export function roleLabel(role: string): string {
   return role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : role;
+}
+
+/** Engine params portion of the `.nr-cfg` config line, shared by Matches and the replay headers (M1/A2). */
+export function configParamsLine(params: Summary["config"]["params"] | undefined): string {
+  if (!params) return "not logged";
+  return `β=${params.beta} · openingMargin ${params.openingMargin} · acceptMargin ${params.acceptMargin} · acTimeThreshold ${params.acTimeThreshold} · noise ${params.noise} · horizon ${params.defaultHorizon}`;
+}
+
+/**
+ * Full `.nr-cfg` config line for a single match replay header (A2, d:93): engine params, persona
+ * and provider, each "not logged" on its own when the run/trace doesn't carry it.
+ */
+export function matchConfigLine(params: Summary["config"]["params"] | undefined, persona: string | null, provider: string | null): string {
+  return [configParamsLine(params), persona ? `persona ${persona}` : "persona not logged", provider ? `LLM_PROVIDER ${provider}` : "LLM_PROVIDER not logged"].join(" · ");
 }

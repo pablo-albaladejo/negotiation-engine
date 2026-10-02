@@ -21,6 +21,7 @@ export interface TwoIssueModel {
   game: ArenaReplayModel["game"];
   /** `configVersion` de la cabecera de la traza; `null` sin traza ("not logged"). */
   configVersion: number | null;
+  provider: string | null;
   /** Eje Y = primer issue, eje X = segundo (como en el diseño: descuento × día). */
   axes: { x: { name: string; issue: LoggedIssue | null }; y: { name: string; issue: LoggedIssue | null } };
   /** Mandato de la cabecera de arena; `null` sin traza. `region` son los límites de cada issue que cumple la reserva. */
@@ -32,6 +33,12 @@ export interface TwoIssueModel {
   rows: { round: number; ours: Offer | null; uOffer: number | null; rival: Offer | null; uRival: number | null }[] | null;
   hasTrace: boolean;
   hasExplain: boolean;
+  /** Mandate reservation per issue, with the comparison derived from the logged issue direction and role (T2, d:192): e.g. "discount ≤ 6, day ≤ 60"; `null` without a logged mandate. */
+  mandateLine: string | null;
+  /** Both agreed values inside the mandate's acceptable region (T1, d:681); `null` without a logged mandate or agreement -- "not logged", never guessed. */
+  withinMandate: boolean | null;
+  /** Our utility of the last logged offer (T1/T5, d:680/d:681); `null` without `explain`. */
+  lastUtility: number | null;
 }
 
 /** Nombres de issue de las ofertas del transcript (en orden de aparición). */
@@ -79,9 +86,28 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
     mandate = { role, reservation, region };
   }
 
+  const mandateLine = mandate
+    ? Object.entries(mandate.reservation)
+        .map(([name, reserve]) => {
+          const iss = issue(name);
+          if (!iss) return `${name} ${reserve}`;
+          const higherBetter = (iss.direction === "higher-better") === (mandate!.role === "buyer");
+          return `${name} ${higherBetter ? "≥" : "≤"} ${reserve}`;
+        })
+        .join(", ")
+    : null;
+  const agreement = base.game.agreement;
+  const withinMandate =
+    mandate?.region && agreement && agreement[xName] !== undefined && agreement[yName] !== undefined
+      ? agreement[xName]! >= mandate.region.x[0] && agreement[xName]! <= mandate.region.x[1] && agreement[yName]! >= mandate.region.y[0] && agreement[yName]! <= mandate.region.y[1]
+      : null;
+  const explainSeries = base.explain;
+  const lastUtility = explainSeries.length > 0 ? explainSeries[explainSeries.length - 1]!.uOffer : null;
+
   return {
     game: base.game,
     configVersion: header?.configVersion ?? null,
+    provider: base.provider,
     axes: { x: { name: xName, issue: issue(xName) }, y: { name: yName, issue: issue(yName) } },
     mandate,
     offers: { ours: toPoints(base.offers.ours), rival: toPoints(base.offers.rival) },
@@ -96,5 +122,8 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
       })) ?? null,
     hasTrace: base.hasTrace,
     hasExplain: base.explain.length > 0,
+    mandateLine,
+    withinMandate,
+    lastUtility,
   };
 }

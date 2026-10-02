@@ -26,7 +26,7 @@ describe("ArenaReplayScreen (P3)", () => {
     const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
     render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    expect(screen.getByText("Select a point on the chart, or use Previous / Next round, to switch rounds. Values exactly as logged by the engine.")).toBeTruthy();
+    expect(screen.getByText("Click a point on the chart to switch rounds. Values exactly as logged by the engine.")).toBeTruthy();
   });
 
   it("el validador se muestra legible (ok / rejected · motivo), nunca JSON.stringify", () => {
@@ -34,7 +34,7 @@ describe("ArenaReplayScreen (P3)", () => {
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
     const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
     expect(container.textContent).not.toContain("{\"ok\"");
-    expect(container.textContent).toMatch(/ok \(\d+ attempt/);
+    expect(container.textContent).toMatch(/ok · \d+ attempt/);
   });
 
   it("gráfico, chat y panel de decisión con ZOPA y ambas reservas", () => {
@@ -153,7 +153,8 @@ describe("ArenaReplayScreen (P3)", () => {
       <ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} games={fx.games} onSelectGame={() => {}} />,
     );
     expect(container.querySelectorAll(".nr-link-back")).toHaveLength(1);
-    expect(container.querySelectorAll(".nr-mode-badge")).toHaveLength(1);
+    // A2: the arena replay header has no ModeBadge (only the tournament one keeps it).
+    expect(container.querySelectorAll(".nr-mode-badge")).toHaveLength(0);
   });
 
   it("el selector muestra solo una ventana de partidas vecinas", () => {

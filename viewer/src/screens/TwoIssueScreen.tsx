@@ -11,17 +11,19 @@ import {
   formatNumber,
 } from "@negotiation-ring/design-system";
 import { useState } from "react";
+import type { Summary } from "../../../src/arena/results-schema.js";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
-import { resultLabel } from "../ui/labels.js";
+import { matchConfigLine, resultLabel } from "../ui/labels.js";
 import { ReplayHeader } from "../ui/replay-header.js";
+import { MatchSelector } from "../ui/match-selector.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "r", label: "Round" },
   { key: "us", label: "Our offer" },
   { key: "uu", label: "Utility", numeric: true },
-  { key: "th", label: "Their offer (bound this turn)" },
+  { key: "th", label: "Their offer" },
   { key: "tu", label: "Utility", numeric: true },
 ];
 
@@ -33,12 +35,14 @@ export interface TwoIssueScreenProps {
   runId: string;
   model: TwoIssueModel;
   onBack: () => void;
+  /** Run summary, for the `cfg` config line (A2/T2); `null` when `summary.json` wasn't available. */
+  summary?: Summary | null;
   games?: Array<{ gameId: string }>;
   onSelectGame?: (gameId: string) => void;
 }
 
 /** P5: partida de 2 issues en el plano, utilidades por ronda tal como las registró el motor y tabla de ofertas. */
-export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: TwoIssueScreenProps) {
+export function TwoIssueScreen({ runId, model, onBack, summary, games, onSelectGame }: TwoIssueScreenProps) {
   const { x, y } = model.axes;
   const [selectedRound, setSelectedRound] = useState(model.game.rounds || 1);
   const selectPoint = (point: { round: number }) => setSelectedRound(point.round);
@@ -50,7 +54,8 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
   const region = model.mandate?.region ?? null;
   const mandate: Scatter2DRegion | undefined = region
     ? {
-        label: "Mandate",
+        // T3: "region allowed by our mandate" (d:625).
+        label: "region allowed by our mandate",
         points: [
           { x: region.x[0], y: region.y[0] },
           { x: region.x[1], y: region.y[0] },
@@ -62,14 +67,16 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
   const agreement = model.game.agreement;
   const deal =
     agreement && agreement[x.name] !== undefined && agreement[y.name] !== undefined
-      ? { x: agreement[x.name]!, y: agreement[y.name]!, label: "Deal" }
+      ? { x: agreement[x.name]!, y: agreement[y.name]!, label: `AC_next → deal at ${fmtOffer(agreement)}` }
       : undefined;
   const lastRound = model.game.rounds || 1;
+  // T5: "AC_next → 0.63" (d:680), the utility of the agreed offer; walk mirrors the arena's "R{n} · walk" (A9).
+  const endLabel = model.game.endReason === "agreement" ? `AC_next → ${utility(model.lastUtility)}` : `R${lastRound} · walk`;
   const end =
     model.game.endReason === "agreement"
-      ? { round: lastRound, kind: "deal" as const, label: "Deal" }
+      ? { round: lastRound, kind: "deal" as const, label: endLabel }
       : model.game.endReason === "agent-walk" || model.game.endReason === "rival-walk"
-        ? { round: lastRound, kind: "walk" as const, label: "Walk" }
+        ? { round: lastRound, kind: "walk" as const, label: endLabel }
         : undefined;
   const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
   const rows: DataTableRow[] = (model.rows ?? []).map((r) => ({
@@ -80,35 +87,16 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
     tu: utility(r.uRival),
   }));
 
+  const sub = `${model.game.role} · ${y.name} and ${x.name}${model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}`;
+  const cfg = `${matchConfigLine(summary?.config.params, summary?.config.params?.persona ?? null, model.provider)} · ${
+    model.mandateLine ? `mandate: ${model.mandateLine}` : "mandate: not logged"
+  }`;
+  const withinMandateValue = model.withinMandate === null ? "not logged" : model.withinMandate ? "Yes" : "No";
+
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <ReplayHeader
-          onBack={onBack}
-          backLabel={`← Matches in ${runId}`}
-          gameId={model.game.gameId}
-          rival={model.game.rival}
-          {...(games ? { games } : {})}
-          {...(onSelectGame ? { onSelectGame } : {})}
-        />
-        <span className="nr-muted">
-          {model.game.role} · {y.name} and {x.name}
-          {model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}
-        </span>
-        <span className="nr-cfg">
-          <span>config v{model.configVersion !== null ? model.configVersion : "not logged"}</span>
-          {" · "}
-          <span>utility: not logged</span>
-          {" · "}
-          <span>
-            {model.mandate
-              ? `mandate: ${Object.entries(model.mandate.reservation)
-                  .map(([k, v]) => `${k} ${num(v)}`)
-                  .join(" · ")}`
-              : "mandate: not logged"}
-          </span>
-        </span>
-      </div>
+      <ReplayHeader onBack={onBack} backLabel={`← Matches in ${runId}`} gameId={model.game.gameId} rival={model.game.rival} sub={sub} cfg={cfg} />
+      {games && onSelectGame ? <MatchSelector games={games} currentGameId={model.game.gameId} onSelectGame={onSelectGame} /> : null}
       <KpiStrip
         items={[
           {
@@ -116,10 +104,11 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             value: result.label,
             ...(result.tone ? { tone: result.tone } : {}),
           },
-          { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
-          { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
+          { label: "Agreement", value: agreement ? fmtOffer(agreement) : "—" },
+          { label: "Utility", value: utility(model.lastUtility) },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds}/${model.game.roundLimit}` : String(model.game.rounds) },
           { label: "Role", value: model.game.role },
+          { label: "Within mandate", value: withinMandateValue, ...(model.withinMandate === true ? { tone: "deal" as const } : model.withinMandate === false ? { tone: "walk" as const } : {}) },
         ]}
       />
       <div className="nr-grid" style={gridCols("minmax(0, 1.3fr) minmax(0, 1fr)")}>

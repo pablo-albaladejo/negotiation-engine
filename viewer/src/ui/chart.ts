@@ -88,3 +88,18 @@ export function offerDomain(values: readonly (number | null | undefined)[]): [nu
   
   return [domainMin, domainMax];
 }
+
+/**
+ * Offers chart caption for an arena replay (A4, d:98): the ZOPA span from the logged reserves, or
+ * the empty-ZOPA sentence (d:474), or "not logged" when reserves weren't recorded (v1 transcripts).
+ */
+export function arenaChartCaption(ourReserve: number | null, theirReserve: number | null, zopaEmpty: boolean): string {
+  if (ourReserve === null || theirReserve === null) return "not logged";
+  if (zopaEmpty) {
+    const relation = theirReserve < ourReserve ? "below" : "above";
+    return `Empty ZOPA: their reserve (${theirReserve}) is ${relation} ours (${ourReserve}). No ZOPA band.`;
+  }
+  const lo = Math.min(ourReserve, theirReserve);
+  const hi = Math.max(ourReserve, theirReserve);
+  return `ZOPA ${lo}\u2013${hi} (arena: the opponent's reserve is revealed afterwards). Click a point to highlight its message.`;
+}

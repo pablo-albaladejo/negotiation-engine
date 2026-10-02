@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters, type MatchRow } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
-import { resultLabel, roleLabel } from "../ui/labels.js";
-import { offerLabel } from "../ui/offer.js";
+import { configParamsLine, resultLabel, roleLabel } from "../ui/labels.js";
+import { priceLabel } from "../ui/offer.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { PageTitle } from "../ui/page-title.js";
 
@@ -29,9 +29,6 @@ const pct = (v: number | null): string => (v === null ? "not logged" : `${format
 const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
 /** `summary.durationMs` -> seconds with one decimal (design: "11.7 s"). */
 const durationLabel = (ms: number): string => `${formatNumber(ms / 1000, { locale: "en", decimals: 1 })} s`;
-/** Price column: the logged agreement offer, or "\u2014" when there was no deal (M2). */
-const priceLabel = (agreement: MatchRow["agreement"]): string => (agreement ? offerLabel(agreement) : "\u2014");
-
 function withFilter<K extends keyof MatchFilters>(filters: MatchFilters, key: K, value: MatchFilters[K] | undefined): MatchFilters {
   const next = { ...filters };
   if (value === undefined) delete next[key];
@@ -154,11 +151,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
           <PageTitle>{runId} · matches</PageTitle>
           {isChampion ? <Pill kind="champion">champion</Pill> : null}
         </div>
-        <span className="nr-cfg">{`${runId} · ${formatNumber(model.kpis.games, { locale: "en" })} matches · ${durationLabel(model.kpis.durationMs)} · ${
-          summary.config.params
-            ? `β=${summary.config.params.beta} · openingMargin ${summary.config.params.openingMargin} · acceptMargin ${summary.config.params.acceptMargin} · acTimeThreshold ${summary.config.params.acTimeThreshold} · noise ${summary.config.params.noise} · horizon ${summary.config.params.defaultHorizon}`
-            : "not logged"
-        }`}</span>
+        <span className="nr-cfg">{`${runId} · ${formatNumber(model.kpis.games, { locale: "en" })} matches · ${durationLabel(model.kpis.durationMs)} · ${configParamsLine(summary.config.params)}`}</span>
       </div>
       <KpiStrip
         items={[

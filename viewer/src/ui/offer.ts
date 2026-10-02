@@ -18,3 +18,14 @@ export function offerLabel(offer: Offer | null): string {
   if (entries.length === 1) return formatNumber(entries[0]![1], { locale: "en" });
   return entries.map(([k, v]) => `${k} ${formatNumber(v, { locale: "en" })}`).join(" · ");
 }
+
+/** Price column/KPI: the logged agreement offer, or "\u2014" when there was no deal (M2/A3). */
+export function priceLabel(agreement: Offer | null): string {
+  return agreement ? offerLabel(agreement) : "\u2014";
+}
+
+/** First issue name seen on a side's logged offers, e.g. "price" (A2 header `sub`); `null` if none logged. */
+export function firstIssueName(offers: readonly { offer: Offer }[]): string | null {
+  const first = offers.find((o) => Object.keys(o.offer).length > 0);
+  return first ? Object.keys(first.offer)[0]! : null;
+}

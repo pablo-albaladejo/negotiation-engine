@@ -1,13 +1,16 @@
 import { Card, ChatMessage, KpiStrip, Legend, OfferChart, formatNumber } from "@negotiation-ring/design-system";
+import type { Summary } from "../../../src/arena/results-schema.js";
 import React, { useEffect, useState } from "react";
 import type { ArenaReplayModel } from "../model/index.js";
-import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
+import { arenaChartCaption, offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
-import { resultLabel, zopaKpi } from "../ui/labels.js";
-import { offerLabel, offerValue } from "../ui/offer.js";
+import { matchConfigLine, resultLabel, roleLabel } from "../ui/labels.js";
+import { firstIssueName, offerLabel, offerValue, priceLabel } from "../ui/offer.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 import { ReplayHeader } from "../ui/replay-header.js";
+import { MatchSelector } from "../ui/match-selector.js";
 import { DecisionPanel } from "../ui/DecisionPanel.js";
+import { chatFlags } from "../ui/chat-flags.js";
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
 const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
@@ -16,12 +19,14 @@ export interface ArenaReplayScreenProps {
   runId: string;
   model: ArenaReplayModel;
   onBack: () => void;
+  /** Run summary, for the `cfg` config line (A2); `null` when `summary.json` wasn't available. */
+  summary?: Summary | null;
   games?: Array<{ gameId: string }>;
   onSelectGame?: (gameId: string) => void;
 }
 
 /** P3: replay de una partida de arena, con el chart, el chat y el panel de decisión por ronda. */
-export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }: ArenaReplayScreenProps) {
+export function ArenaReplayScreen({ runId, model, onBack, summary, games, onSelectGame }: ArenaReplayScreenProps) {
   const lastRound = model.game.rounds || 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
@@ -53,17 +58,34 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
     theirReserve,
   ]);
   const injectionRounds = model.rounds?.filter((p) => p.parser?.injectionSuspected).map((p) => p.round) ?? [];
+
+  // A9: "AC_next → deal at {price}" / "R{n} · walk" on the chart end marker.
+  const endLabel =
+    model.game.endReason === "agreement"
+      ? `AC_next → deal at ${priceLabel(model.game.agreement)}`
+      : `R${lastRound} · walk`;
   const end =
     model.game.endReason === "agreement"
-      ? { round: lastRound, kind: "deal" as const, label: "Deal" }
+      ? { round: lastRound, kind: "deal" as const, label: endLabel }
       : model.game.endReason === "agent-walk" || model.game.endReason === "rival-walk"
-        ? { round: lastRound, kind: "walk" as const, label: "Walk" }
+        ? { round: lastRound, kind: "walk" as const, label: endLabel }
         : undefined;
 
   const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
   const roundNumbers = model.rounds ? model.rounds.map((p) => p.round) : Array.from({ length: model.game.rounds }, (_, i) => i + 1);
+
+  // A2: "Seller · price · T=10 · run r-1001" -- issue name from the logged offers, never guessed.
+  const issueName = firstIssueName(model.offers.ours) ?? firstIssueName(model.offers.rival) ?? "not logged";
+  const sub = `${roleLabel(model.game.role)} · ${issueName} · T=${model.game.roundLimit ?? "not logged"} · run ${runId}`;
+  const cfg = matchConfigLine(summary?.config.params, summary?.config.params?.persona ?? null, model.provider);
+
+  // A3: drop the separate "ZOPA" KPI -- empty ZOPA now reads in the Surplus / ZOPA value itself.
+  const surplusKpi = model.game.zopaEmpty
+    ? `${model.game.surplusShare === null ? "—" : dec(model.game.surplusShare)} · empty ZOPA`
+    : dec(model.game.surplusShare);
+  const ourReserveValue = model.reserves ? offerValue(model.reserves.ours) : null;
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -72,15 +94,18 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         backLabel={`← Matches in ${runId}`}
         gameId={model.game.gameId}
         rival={model.game.rival}
-        {...(games ? { games } : {})}
-        {...(onSelectGame ? { onSelectGame } : {})}
+        sub={sub}
+        cfg={cfg}
       />
+      {games && onSelectGame ? <MatchSelector games={games} currentGameId={model.game.gameId} onSelectGame={onSelectGame} /> : null}
       <KpiStrip
         items={[
-          { label: "Result", value: result.label, ...(result.tone ? { tone: result.tone } : {}) },
-          { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
+          { label: "Outcome", value: result.label, ...(result.tone ? { tone: result.tone } : {}) },
+          { label: "Price", value: priceLabel(model.game.agreement) },
+          { label: "Surplus / ZOPA", value: surplusKpi },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds}/${model.game.roundLimit}` : String(model.game.rounds) },
-          { label: "ZOPA", value: zopaKpi(model.game.zopaEmpty) },
+          { label: "Role · reserve", value: `${roleLabel(model.game.role)} · ${ourReserveValue === null ? "not logged" : ourReserveValue}` },
+          { label: "Injections", value: String(injectionRounds.length), ...(injectionRounds.length > 0 ? { tone: "walk" as const } : {}) },
         ]}
       />
       {model.game.endReason === "rival-error" || model.game.endReason === "protocol-violation" ? (
@@ -96,7 +121,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
       ) : null}
       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
-        <Card title="Offers by round" className="nr-sticky-wide">
+        <Card title="Offers by round" caption={arenaChartCaption(ourReserve ?? null, theirReserve ?? null, model.game.zopaEmpty)}>
           <OfferChart
             rounds={model.game.roundLimit ?? model.game.rounds}
             yDomain={yDomain}
@@ -126,17 +151,24 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         </Card>
         <Card title="Messages">
           <div ref={messagesContainerRef} className="nr-chat nr-chat-scroll">
-            {model.chat.map((c, i) => (
-              <ChatMessage
-                key={i}
-                side={c.from === "agent" ? "us" : "them"}
-                round={c.round}
-                {...(offerValue(c.offer) !== null ? { offer: offerValue(c.offer)! } : {})}
-                text={c.text}
-                {...(c.from === "agent" && model.rounds?.find((p) => p.round === c.round)?.template ? { flags: [{ kind: "fallback" as const, label: "template" }] } : {})}
-                highlighted={c.round === selectedRound}
-              />
-            ))}
+            {model.chat.map((c, i) => {
+              const roundPanel = model.rounds?.find((p) => p.round === c.round) ?? null;
+              const flags = [
+                ...(c.from === "agent" && roundPanel?.template ? [{ kind: "fallback" as const, label: "template" }] : []),
+                ...chatFlags(c.from, roundPanel),
+              ];
+              return (
+                <ChatMessage
+                  key={i}
+                  side={c.from === "agent" ? "us" : "them"}
+                  round={c.round}
+                  {...(offerValue(c.offer) !== null ? { offer: offerValue(c.offer)! } : {})}
+                  text={c.text}
+                  {...(flags.length > 0 ? { flags } : {})}
+                  highlighted={c.round === selectedRound}
+                />
+              );
+            })}
           </div>
         </Card>
       </div>

@@ -14,11 +14,11 @@ afterEach(cleanup);
 const pctDay = () => fx.games.find((g) => g.scenarioId === "pct-day-buyer-wide")!;
 
 describe("TwoIssueScreen (P5)", () => {
-  it("Surplus / ZOPA KPI se muestra como decimal, nunca como porcentaje", () => {
+  it("Utility KPI se muestra como decimal, nunca como porcentaje (T1)", () => {
     const line = pctDay();
     const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
     render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    expect(screen.getByText("Surplus / ZOPA")).toBeTruthy();
+    expect(screen.getAllByText("Utility").length).toBeGreaterThan(0);
     expect(screen.queryByText(/%$/)).toBeNull();
   });
 
@@ -57,6 +57,6 @@ describe("TwoIssueScreen (P5)", () => {
     const line = pctDay();
     render(<TwoIssueScreen runId={fx.runId} model={twoIssueModel(line, null)} onBack={() => {}} />);
     expect(screen.getByText(/no trace logged/i)).toBeTruthy();
-    expect(screen.getByText("mandate: not logged")).toBeTruthy();
+    expect(screen.getByText(/mandate: not logged/)).toBeTruthy();
   });
 });

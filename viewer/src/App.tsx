@@ -216,11 +216,11 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
   /** T9: the run payload (summary + every game) is cached per `runId` and only refetched when it
    * changes; switching games via the MatchSelector/onSelectGame only changes `gameId`, so only the
    * trace is refetched below instead of the whole run again. */
-  const [games, setGames] = useState<{ runId: string; data: TranscriptLine[] } | null>(null);
+  const [games, setGames] = useState<{ runId: string; data: TranscriptLine[]; summary: Summary | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`).then((run) => {
-      if (!cancelled) setGames({ runId, data: run.data?.games ?? [] });
+      if (!cancelled) setGames({ runId, data: run.data?.games ?? [], summary: run.data?.summary ?? null });
     });
     return () => {
       cancelled = true;
@@ -254,8 +254,8 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
   const filteredGames = filterGames(games.data, queryToFilters(query));
   const onBack = () => navigate(routeTo.matches(runId, query));
   const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId, query));
-  if (isTwoIssue(line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
+  if (isTwoIssue(line)) return <TwoIssueScreen runId={runId} summary={games.summary} model={twoIssueModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
+  return <ArenaReplayScreen runId={runId} summary={games.summary} model={arenaReplayModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
 }
 
 function CompareContainer({ runId }: { runId: string }) {
