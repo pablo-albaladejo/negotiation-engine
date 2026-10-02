@@ -1,0 +1,343 @@
+{
+  "id": 56,
+  "kind": "persona",
+  "team": "t02",
+  "with": "abuela",
+  "venue": null,
+  "topic": {
+    "sell": {
+      "assets": [
+        23
+      ]
+    }
+  },
+  "status": "open",
+  "created_tick": 28,
+  "messages": [
+    {
+      "id": 269,
+      "tick": 29,
+      "sender": "abuela",
+      "text": "Hola, cari\u00f1o, have you eaten? Plaza del Dos de Mayo for 13 P. A good start for your album.",
+      "offer": {
+        "id": 305,
+        "maker": "abuela",
+        "to": "t02",
+        "venue": null,
+        "thread": 56,
+        "status": "cancelled",
+        "give": {
+          "cash": 13,
+          "assets": [],
+          "types": []
+        },
+        "want": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "expires_tick": 31,
+        "created_tick": 29,
+        "final": false
+      }
+    },
+    {
+      "id": 273,
+      "tick": 29,
+      "sender": "t02",
+      "text": "Hello, Abuela! I have a card you might like. I was hoping for 21 P, if that is all right with you.",
+      "offer": {
+        "id": 309,
+        "maker": "t02",
+        "to": "abuela",
+        "venue": null,
+        "thread": 56,
+        "status": "cancelled",
+        "give": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "want": {
+          "cash": 21,
+          "assets": [],
+          "types": []
+        },
+        "expires_tick": 31,
+        "created_tick": 29,
+        "final": false
+      }
+    },
+    {
+      "id": 283,
+      "tick": 30,
+      "sender": "abuela",
+      "text": "Oh, oh... 13 P, and only because you have a kind face. A little advice, cari\u00f1o: a full page is worth much more than the loose cards. Swap your duplicates!",
+      "offer": {
+        "id": 323,
+        "maker": "abuela",
+        "to": "t02",
+        "venue": null,
+        "thread": 56,
+        "status": "cancelled",
+        "give": {
+          "cash": 13,
+          "assets": [],
+          "types": []
+        },
+        "want": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "expires_tick": 32,
+        "created_tick": 30,
+        "final": false
+      }
+    },
+    {
+      "id": 291,
+      "tick": 30,
+      "sender": "t02",
+      "text": "Hello, Abuela! I have a card you might like. I was hoping for 21 P, if that is all right with you.",
+      "offer": {
+        "id": 330,
+        "maker": "t02",
+        "to": "abuela",
+        "venue": null,
+        "thread": 56,
+        "status": "cancelled",
+        "give": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "want": {
+          "cash": 21,
+          "assets": [],
+          "types": []
+        },
+        "expires_tick": 32,
+        "created_tick": 30,
+        "final": false
+      }
+    },
+    {
+      "id": 299,
+      "tick": 31,
+      "sender": "abuela",
+      "text": "Let's meet in the middle, cari\u00f1o: 13 P. A little advice, cari\u00f1o: a full page is worth much more than the loose cards. Swap your duplicates!",
+      "offer": {
+        "id": 338,
+        "maker": "abuela",
+        "to": "t02",
+        "venue": null,
+        "thread": 56,
+        "status": "cancelled",
+        "give": {
+          "cash": 13,
+          "assets": [],
+          "types": []
+        },
+        "want": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "expires_tick": 33,
+        "created_tick": 31,
+        "final": false
+      }
+    },
+    {
+      "id": 310,
+      "tick": 31,
+      "sender": "t02",
+      "text": "Hello, Abuela! I have a card you might like. I was hoping for 21 P, if that is all right with you.",
+      "offer": {
+        "id": 348,
+        "maker": "t02",
+        "to": "abuela",
+        "venue": null,
+        "thread": 56,
+        "status": "open",
+        "give": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "want": {
+          "cash": 21,
+          "assets": [],
+          "types": []
+        },
+        "expires_tick": 33,
+        "created_tick": 31,
+        "final": false
+      }
+    },
+    {
+      "id": 318,
+      "tick": 32,
+      "sender": "abuela",
+      "text": "Oh, oh... 13 P, and only because you have a kind face.",
+      "offer": {
+        "id": 356,
+        "maker": "abuela",
+        "to": "t02",
+        "venue": null,
+        "thread": 56,
+        "status": "open",
+        "give": {
+          "cash": 13,
+          "assets": [],
+          "types": []
+        },
+        "want": {
+          "cash": 0,
+          "assets": [
+            {
+              "id": 23,
+              "kind": "card",
+              "ref": "MAL-02",
+              "serial": 2,
+              "rarity": "common",
+              "set": "MAL",
+              "print_run": 300
+            }
+          ],
+          "types": []
+        },
+        "expires_tick": 34,
+        "created_tick": 32,
+        "final": false
+      }
+    }
+  ],
+  "standing_offers": [
+    {
+      "id": 356,
+      "maker": "abuela",
+      "to": "t02",
+      "venue": null,
+      "thread": 56,
+      "status": "open",
+      "give": {
+        "cash": 13,
+        "assets": [],
+        "types": []
+      },
+      "want": {
+        "cash": 0,
+        "assets": [
+          {
+            "id": 23,
+            "kind": "card",
+            "ref": "MAL-02",
+            "serial": 2,
+            "rarity": "common",
+            "set": "MAL",
+            "print_run": 300
+          }
+        ],
+        "types": []
+      },
+      "expires_tick": 34,
+      "created_tick": 32,
+      "final": false
+    },
+    {
+      "id": 348,
+      "maker": "t02",
+      "to": "abuela",
+      "venue": null,
+      "thread": 56,
+      "status": "open",
+      "give": {
+        "cash": 0,
+        "assets": [
+          {
+            "id": 23,
+            "kind": "card",
+            "ref": "MAL-02",
+            "serial": 2,
+            "rarity": "common",
+            "set": "MAL",
+            "print_run": 300
+          }
+        ],
+        "types": []
+      },
+      "want": {
+        "cash": 21,
+        "assets": [],
+        "types": []
+      },
+      "expires_tick": 33,
+      "created_tick": 31,
+      "final": false
+    }
+  ],
+  "item": "Plaza del Dos de Mayo",
+  "closed_reason": null
+}

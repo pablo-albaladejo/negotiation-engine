@@ -20,19 +20,20 @@ export type Clock = z.infer<typeof ClockSchema>;
 
 export const AssetSchema = z.looseObject({
   id: num,
-  kind: z.string(),
+  kind: z.string().nullish(),
   ref: z.string(),
-  name: z.string().optional(),
+  name: z.string().nullish(),
   your_value: num.nullish(),
   serial: num.nullish(),
   print_run: num.nullish(),
   rarity: z.string().nullish(),
-  locked: z.boolean().optional(),
+  locked: z.boolean().nullish(),
 });
 export type Asset = z.infer<typeof AssetSchema>;
 
 export const MeSchema = z.looseObject({
-  name: z.string().optional(),
+  id: z.string().nullish(),
+  name: z.string().nullish(),
   cash: num,
   level: num.optional(),
   unlocked: z.array(z.string()).optional(),
@@ -77,23 +78,27 @@ export const DealersSchema = z.preprocess(
 );
 
 export const OfferSideSchema = z.looseObject({
-  cash: num.optional(),
-  assets: z.array(z.unknown()).optional(),
-  cards: z.array(z.unknown()).optional(),
+  cash: num.nullish(),
+  assets: z.array(z.unknown()).nullish(),
+  cards: z.array(z.unknown()).nullish(),
+  types: z.array(z.unknown()).nullish(),
 });
 
 export const StandingOfferSchema = z.looseObject({
   id: num,
   maker: z.string().nullish(),
-  status: z.string().optional(),
+  to: z.string().nullish(),
+  status: z.string().nullish(),
   give: OfferSideSchema.nullish(),
   want: OfferSideSchema.nullish(),
-  final: z.boolean().optional(),
+  final: z.boolean().nullish(),
+  expires_tick: num.nullish(),
 });
 export type StandingOffer = z.infer<typeof StandingOfferSchema>;
 
+/** `offer` se deja sin validar aquí: `view.ts` la lee con `StandingOfferSchema.safeParse`, así una oferta rara no tumba el hilo. */
 export const MessageSchema = z.looseObject({
-  id: num.optional(),
+  id: z.union([num, z.string()]).nullish(),
   text: z.string().nullish(),
   sender: z.string().nullish(),
   price: num.nullish(),
@@ -104,19 +109,21 @@ export type Message = z.infer<typeof MessageSchema>;
 
 export const ThreadSchema = z.looseObject({
   id: num,
-  status: z.string(),
+  status: z.string().nullish().transform((s) => s ?? "open"),
   closed_reason: z.string().nullish(),
+  team: z.string().nullish(),
   until_tick: num.nullish(),
   with: z.string().nullish(),
   topic: z.unknown().optional(),
-  messages: z.array(MessageSchema).default([]),
-  standing_offers: z.array(StandingOfferSchema).default([]),
+  messages: z.array(MessageSchema).nullish().transform((m) => m ?? []),
+  standing_offers: z.array(StandingOfferSchema).nullish().transform((o) => o ?? []),
 });
 export type Thread = z.infer<typeof ThreadSchema>;
 
-export const ThreadSummarySchema = z.looseObject({ id: num, status: z.string().optional(), with: z.string().nullish() });
-export const ThreadListSchema = z.looseObject({ threads: z.array(ThreadSummarySchema).default([]) });
+export const ThreadSummarySchema = z.looseObject({ id: num, status: z.string().nullish(), with: z.string().nullish() });
+export const ThreadListSchema = z.looseObject({ threads: z.array(ThreadSummarySchema).nullish().transform((t) => t ?? []) });
 
-export const SayResultSchema = z.looseObject({ message: MessageSchema.nullish(), standing_offer: StandingOfferSchema.nullish() });
+/** El agente no lee la respuesta de un mensaje: validarla solo servía para tumbar un envío que el servidor ya aceptó. */
+export const SayResultSchema = z.unknown();
 
 export const ErrorBodySchema = z.looseObject({ error: z.string().optional(), message: z.string().optional() });

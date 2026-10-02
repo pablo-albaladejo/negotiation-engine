@@ -197,8 +197,10 @@ export class BazaarAgent {
   private async negotiate(thread: Thread, tick: number, me: Me, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
     const active = this.active!;
     const { target } = active;
-    const p = threadPrices(thread, target.side, this.o.dealer);
-    if (active.sent.length) p.ourPrices = [...active.sent];
+    const p = threadPrices(thread, target.side, this.o.dealer, selfIdOf(thread, me));
+    // Nuestro último intento cuenta aunque el hilo no lo muestre (p. ej. el POST falló a medias): nunca se repite.
+    const lastTried = active.sent[active.sent.length - 1];
+    if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, this.o.maxSpendPerHour - this.spentThisHour())) : target.reservation;
     const view: ThreadView = {
       side: target.side,
@@ -232,18 +234,20 @@ export class BazaarAgent {
         case "counter": {
           const text = counterText(target.side, p.ourPrices.length, d.action.price);
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
-          if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
+          if (d.action.price === p.ourPrices[p.ourPrices.length - 1]) throw new Error("precio repetido");
+          // Se apunta antes del POST: si falla (o el servidor lo aceptó y la respuesta no valida), no se reenvía.
           active.lastSentTick = tick;
           active.sent.push(d.action.price);
+          if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
           emit({ ...base, action: "counter", ourPrice: d.action.price, text });
           return;
         }
         case "hold": {
           const text = holdText(p.ourPrices.length, d.action.price);
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
-          if (!this.o.dryRun) await this.api.say(thread.id, text);
           active.lastSentTick = tick;
           active.holdsUsed += 1;
+          if (!this.o.dryRun) await this.api.say(thread.id, text);
           emit({ ...base, action: "hold", ourPrice: d.action.price, text });
           return;
         }
@@ -295,6 +299,7 @@ export class BazaarAgent {
 
   private onError(e: unknown, tick: number, ticksPerHour: number, target: Target | undefined, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void, thread?: number) {
     const code = e instanceof BazaarError ? e.code : "exception";
+    if (e instanceof Error && (code === "bad_response" || code === "exception")) this.log(`  ${code}: ${e.message.slice(0, 400)}`);
     const untilTick = e instanceof BazaarError && typeof e.extra.until_tick === "number" ? e.extra.until_tick : undefined;
     this.applyReason(code, untilTick, tick);
     if (target && (STOP_CODES.has(code) || code === "persona_quota" || code === "cooloff")) {
@@ -304,6 +309,12 @@ export class BazaarAgent {
     }
     emit({ action: "error", error: code, ...(thread !== undefined ? { thread } : {}), ...(target ? { target: target.key } : {}) });
   }
+}
+
+/** Nuestro id de equipo en el hilo ("t02"): `thread.team`, si no `me.id` o `me.score.team`. */
+export function selfIdOf(thread: Thread, me: Me): string | undefined {
+  const score = me.score as { team?: unknown } | null | undefined;
+  return thread.team ?? me.id ?? (typeof score?.team === "string" ? score.team : undefined);
 }
 
 /** Precio al que cerró: la oferta aceptada si se ve; si no, la última oferta del dealer. */

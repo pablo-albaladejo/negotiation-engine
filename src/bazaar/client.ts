@@ -78,6 +78,12 @@ export type Topic =
   | { buy: { rarity: string; set: string } }
   | { sell: { assets: number[] } };
 
+/** Rutas y códigos de los fallos de validación (nunca valores: la respuesta no se vuelca al log). */
+export function zodIssues(error: z.ZodError): string {
+  const parts = error.issues.slice(0, 5).map((i) => `${i.path.length ? i.path.join(".") : "(root)"}: ${i.code}${"expected" in i ? ` expected ${String(i.expected)}` : ""}`);
+  return parts.join("; ") + (error.issues.length > 5 ? `; +${error.issues.length - 5} more` : "");
+}
+
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Cliente HTTP del Bazaar (equipo). La clave solo viaja en la cabecera; nunca aparece en errores ni logs. */
@@ -105,7 +111,7 @@ export class BazaarClient {
   async request<S extends z.ZodType>(method: string, path: string, schema: S, body?: unknown): Promise<z.infer<S>> {
     const raw = await this.raw(method, path, body);
     const parsed = schema.safeParse(raw);
-    if (!parsed.success) throw new BazaarError("bad_response", `${method} ${path}: ${parsed.error.message.slice(0, 300)}`, 200);
+    if (!parsed.success) throw new BazaarError("bad_response", `${method} ${path}: ${zodIssues(parsed.error)}`, 200);
     return parsed.data;
   }
 
