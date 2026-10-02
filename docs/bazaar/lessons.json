@@ -1,7 +1,7 @@
 {
   "schema": "bazaar-lessons/v1",
   "description": "Lessons learned per Bazaar conversation (dealers, duels, trades). One entry per closed conversation; global lessons and open hypotheses at the end. Values are our private values from /api/me/value; prices in primas (P).",
-  "updated": "2026-10-02T22:52:18",
+  "updated": "2026-10-02T22:52:56",
   "conversations": [
     {
       "thread": 56,
@@ -276,7 +276,8 @@
     "Abuela selling specific cards: uncommons 29 -> ~25, commons 12 -> 10 (her list); she reaches her list fast and stops there.",
     "Duels (practice, 2 Oct): rivals are house bots (Rival Plata/Rojo/Luna); many do not reply for several ticks. Our duel agent conceded after 3 silent ticks: that is negotiating against ourselves. Never concede without a rival counter.",
     "El Chato (from /api/dealers): patience 0.35, generosity 0.25, shrewdness 0.85, memory 0.9, strictness 0.85, chattiness 0.30. Silver pack opening 188 = 1.25 x list 150 (Abuela's pack is 1.15 x). He buys uncommons and rares at no published price; first measured bid 13 P for an uncommon (0.50 x list). Be brief, use his name, small steps, no tricks.",
-    "Duels: the live API marks message authors with `from` (\"you\" or the rival's name), not `sender`. Reading only `sender` turned our own opening into a phantom rival offer: every accept failed with no_offer for hours and the 'surplus 71' was fake. Check a field against a real payload before trusting it."
+    "Duels: the live API marks message authors with `from` (\"you\" or the rival's name), not `sender`. Reading only `sender` turned our own opening into a phantom rival offer: every accept failed with no_offer for hours and the 'surplus 71' was fake. Check a field against a real payload before trusting it.",
+    "El Chato measured from /api/feed (16 settlements, 44 threads, 9 teams): buying an uncommon from teams he holds at 13 for 3-5 messages, then +1 per message (best seen 15 after 6 messages, 16 after 8-9, never 17); rare 39 -> 46 in 8 messages, final 46. Threads last 8-9 messages per side; he marks final after 5-9. Patience is about 8, not the 3 our trait formula gave. He sells uncommons at 28-32 and rares at 82-93. El Rastro pays more for uncommons (18-21): sell to him only for the ladder."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
