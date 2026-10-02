@@ -25,6 +25,7 @@
     "bazaar:sim": "tsx src/bazaar/sim/sim-main.ts",
     "bazaar:venue": "tsx src/bazaar/venue-main.ts",
     "bazaar:duels": "tsx src/bazaar/duels-main.ts",
+    "bazaar:trades": "tsx src/bazaar/trades-main.ts",
     "box": "tsx src/dev/box-main.ts",
     "replay": "tsx src/dev/replay-main.ts",
     "golden:update": "tsx src/dev/golden-main.ts",

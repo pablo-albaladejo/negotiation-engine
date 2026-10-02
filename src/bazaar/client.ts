@@ -233,4 +233,25 @@ export class BazaarClient {
   accept(offerId: number): Promise<unknown> {
     return this.raw("POST", `/api/offers/${offerId}/accept`, {});
   }
+  /** Ofertas públicas de un venue (El Rastro por defecto). Se validan en `trades.ts` (`parseOffers`). */
+  board(venue = "rastro"): Promise<unknown> {
+    return this.raw("GET", `/api/venues/${encodeURIComponent(venue)}/offers`);
+  }
+  /** Nuestras ofertas abiertas/en cola y las dirigidas a nosotros (`parseMyOffers`). */
+  myOffers(): Promise<unknown> {
+    return this.raw("GET", "/api/me/offers");
+  }
+  feed(limit = 100): Promise<unknown> {
+    return this.raw("GET", `/api/feed?limit=${Math.max(1, Math.round(limit))}`);
+  }
+  postOffer(body: { venue: string; give: Record<string, unknown>; want: Record<string, unknown>; to?: string; expires_in_ticks?: number }): Promise<unknown> {
+    return this.raw("POST", "/api/offers", body);
+  }
+  cancelOffer(offerId: number): Promise<unknown> {
+    return this.raw("DELETE", `/api/offers/${offerId}`);
+  }
+  /** Acepta una oferta; `assets` elige qué copias nuestras entregamos cuando pide un tipo de carta. */
+  acceptOffer(offerId: number, assets?: number[]): Promise<unknown> {
+    return this.raw("POST", `/api/offers/${offerId}/accept`, assets?.length ? { assets } : {});
+  }
 }
