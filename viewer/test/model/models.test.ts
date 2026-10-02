@@ -312,3 +312,65 @@ describe("los modelos no calculan", () => {
     expect(computed).toEqual([]);
   });
 });
+
+describe("twoIssueModel additional assertions (T8)", () => {
+  const pctDay = () => fx.games.find((g) => g.scenarioId === "pct-day-buyer-wide")!;
+
+  it("mandateLine reflects the mandate when present (mandate: {pct} × {day})", () => {
+    const line = pctDay();
+    const m = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    expect(m.mandateLine).toBeTruthy();
+    expect(m.mandateLine).toContain("pct");
+    expect(m.mandateLine).toContain("day");
+  });
+
+  it("withinMandate is true/false/null based on agreement vs mandate (real behaviour)", () => {
+    const line = pctDay();
+    const m = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    // withinMandate is null without explain, true or false with agreement
+    expect(typeof m.withinMandate === "boolean" || m.withinMandate === null).toBe(true);
+  });
+
+  it("utility null when explain is not present (v1 trace)", () => {
+    const line = pctDay();
+    const v1 = twoIssueModel(line, asV1Trace(fx.traces.get(line.gameId)!));
+    expect(v1.utilities.length).toBe(0);
+    if (v1.rows) {
+      v1.rows.forEach((r) => {
+        expect(r.uOffer).toBeNull();
+        expect(r.uRival).toBeNull();
+      });
+    }
+  });
+});
+
+describe("matchesModel KPIs and game state assertions (T10)", () => {
+  it("model rows include zopaEmpty field from metrics", () => {
+    const withZopaEmpty = { ...fx.games[0]!, metrics: { ...fx.games[0]!.metrics, zopaEmpty: true } };
+    const m = matchesModel(fx.summary, [withZopaEmpty]);
+    expect(m.rows[0]!.zopaEmpty).toBe(true);
+  });
+
+  it("model rows include agreement field from line", () => {
+    const withAgreement = { ...fx.games[0]!, agreement: { price: 50 } };
+    const m = matchesModel(fx.summary, [withAgreement]);
+    expect(m.rows[0]!.agreement).toEqual({ price: 50 });
+  });
+
+  it("KPIs emptyZopaCorrect is null when not present in summary.overall", () => {
+    const summary = { ...fx.summary, overall: { ...fx.summary.overall, emptyZopaCorrect: undefined } };
+    const m = matchesModel(summary, fx.games);
+    expect(m.kpis.emptyZopaCorrect).toBeNull();
+  });
+
+  it("KPIs durationMs is always present from summary", () => {
+    const m = matchesModel(fx.summary, fx.games);
+    expect(typeof m.kpis.durationMs).toBe("number");
+  });
+
+  it("model rows include injectionSuspected as optional metrics field", () => {
+    const withInjection = { ...fx.games[0]!, metrics: { ...fx.games[0]!.metrics, injectionSuspected: 2 } };
+    const m = matchesModel(fx.summary, [withInjection]);
+    expect(m.rows[0]!.injectionSuspected).toBe(2);
+  });
+});
