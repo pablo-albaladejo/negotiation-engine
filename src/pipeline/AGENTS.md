@@ -19,7 +19,7 @@ Maneja errores de esquema, timeouts, excepciones, y asegura respuesta siempre.
 - **`session.ts`** — `Session` y `SessionStore`: persistencia de estado entre turnos (historial, ofertas, decisiones).
 - **`binding.ts`** — `bindRivalMove()`: mapea acción rival a estructura `EngineInput`.
 - **`reconcile.ts`** — `reconcileOffer()`: oferta del rival desde el texto según `parser.policy` (`llm-primary-verified`: cada cifra del LLM verificada por evidencia literal con `src/llm/verify.ts` y veto del determinista; `dual-strict` = `reconcileTextOffer()`, ambos parsers deben coincidir; `deterministic-only`). Registra confianza y motivo en la caja `reconcile`; las evidencias van solo a la caja local `evidence`. Es la puerta que impide que el LLM fije una cifra por su cuenta: no quitarla.
-- **`runtime-config.ts`** — `loadRuntimeConfig()`/`resolveRuntimeConfig()`: `config/runtime.json` (o `RUNTIME_CONFIG`), esquema cerrado, `ring.mode = hybrid` por defecto y valores por modo; su huella (`runtimeConfig`) va en cada entrada de la traza.
+- **`runtime-config.ts`** — `loadRuntimeConfig()`/`resolveRuntimeConfig()`: `config/runtime.json` (o `RUNTIME_CONFIG`), esquema cerrado, `ring.mode = hybrid` por defecto y valores por modo; su huella (`runtimeConfig`) va en cada entrada de la traza. Claves: `ring.{mode,timeoutMs}`, `parser.{policy,acceptWordNumbers,onLlmFailure,ranges,units.bps}`, `acceptance.{signal,walkSignal}`, `narrator.language`, `template.{languages,fallbackLanguage,uncovered}`, `validator.coherence`, `llm.parser` y `llm.narrator` (`provider`, `model`, `timeoutMs`, `attempts`), `llm.narrator.minRemainingMs`, `turn.budgetRatio` y `mandate.source` (solo `scenario-file`). Nunca lleva mandato, reserva ni claves.
 - **`binding.ts`** — además, `verifyTextAcceptance()`: aceptación leída en el texto (solo turnos `message` con `acceptance.signal = parser-intent-verified`), siempre sobre nuestra última oferta. **Fallo del parser LLM**: con `parser.onLlmFailure = deterministic` la intención y la evidencia del determinista verifican la aceptación con las reglas del camino sin LLM; con `confirm` nunca hay acuerdo y repetimos nuestra última oferta con `ask = confirm-acceptance` (la caja `binding` lo marca en su traza).
 - **Rangos y puntos básicos** (`reconcile.ts`, `src/llm/verify.ts`) — `parser.ranges = conservative`: un rango del rival vale su extremo peor para nosotros (confianza `range`, ambos extremos en la caja `reconcile`), se pide una cifra y nunca se acepta sobre él; `confirm`: sin oferta. Unidades de pb explícitas (integradas más `parser.units.bps`); una cifra sin unidad nunca es pb.
 - **`otel.ts`** — Exporta traza a OpenTelemetry (spans, atributos sanitizados).
@@ -34,7 +34,8 @@ Desde root `AGENTS.md`:
 - **Local-only boxes** (`rivalText`, `protocol`, `evidence`): solo en la traza local (`results/*.jsonl`), nunca en OTel/Langfuse.
 - **Redactados en pino y OTel** (`explain`, `mandate`, `reservation`, `config`): censurados porque `explain` es equivalente a la reserva.
 - **La traza local** (`results/*.jsonl`) conserva todos los campos.
-- **Presupuesto del turno**: `Math.max(0, timeoutMs - turnSafetyMarginMs)` si el ring envía `timeoutMs`; en otro caso, `config.turnBudgetMs` (obligatorio, sin defecto). Solo el margen default a 500 ms.
+- **Presupuesto del turno** (`turnBudgetMs()`): si el ring declara su tiempo (`timeoutMs` del turno o `ring.timeoutMs`), `min(tiempo × turn.budgetRatio, tiempo − turnSafetyMarginMs)` (0.9 y 500 ms por defecto; 3000 ms ⇒ 2500); si no, `config.turnBudgetMs`.
+- **Tiempo e intentos por caja**: el parser hace `llm.parser.attempts` intentos de hasta `min(llm.parser.timeoutMs, restante − 300 ms)` (reserva para validador, fugas y plantilla); al fallar o agotar el tiempo se aplica `parser.onLlmFailure`. El narrador LLM hace `llm.narrator.attempts` intentos de hasta `min(llm.narrator.timeoutMs, restante − 300 ms)` y se omite (registro `narrator-skipped`, plantilla) si antes de llamarlo, o de reintentar, quedan menos de `llm.narrator.minRemainingMs` (900 ms). Intentos por defecto: 1 en `hybrid`/`text-only`, 2 en `structured`; `PipelineDeps.attempts` los sustituye (tests).
 
 ## Cómo trabajar aquí
 
@@ -53,7 +54,7 @@ pnpm typecheck
 
 - `trace` (propiedad de `PipelineDeps`) acumula registros de cajas para acceso local.
 - Logs sanitizados van a pino (env: `LOG_LEVEL=debug`).
-- Ver `log.ts` para reglas de redacción en pino (`REDACT_PATHS`) y `otel.ts` para OTel (`LOCAL_ONLY_BOXES` y `REDACT_KEYS`). En pipeline.ts: `logBoxRecord()` filtra antes de pasar a pino, y `LOCAL_ONLY_BOXES` solo tiene `rivalText`.
+- Ver `log.ts` para reglas de redacción en pino (`REDACT_PATHS`) y `otel.ts` para OTel (`LOCAL_ONLY_BOXES` y `REDACT_KEYS`). En pipeline.ts: `logBoxRecord()` filtra antes de pasar a pino, y `LOCAL_ONLY_BOXES` tiene `rivalText` y `evidence`.
 
 ## Links
 

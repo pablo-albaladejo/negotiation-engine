@@ -43,7 +43,7 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 - [x] 7.3 Bot LLM en texto completo con `--language` y sin nuestra oferta estructurada (`src/bots/llm-bot.ts`); verificar con cliente grabado
 - [ ] 7.4 `pnpm eval:llm` con matriz política × idioma × proveedor (`EVAL_LLM_LANGUAGES`, `EVAL_LLM_POLICIES`, `anthropic-api` si hay clave) en `src/arena/eval-llm-main.ts` y `scripts/eval-llm.sh`; verificar ejecutándolo con es,en y decidir los valores por defecto con 0 `falseAccept`
 - [x] 7.5 Test de combinaciones de configuración (0 violaciones, 0 fugas, siempre respuesta) contra el bot de texto completo; verificar con `pnpm test`
-- [ ] 7.6 Actualizar `src/llm/AGENTS.md`, `src/pipeline/AGENTS.md` y `src/arena/AGENTS.md` con las claves y la política nueva
+- [x] 7.6 Actualizar `src/llm/AGENTS.md`, `src/pipeline/AGENTS.md` y `src/arena/AGENTS.md` con las claves y la política nueva
 
 ## 8. Protocolo real
 

@@ -94,8 +94,17 @@ export interface RuntimeConfig {
   narrator: { language: string };
   template: { languages: string[]; fallbackLanguage: string; uncovered: "neutral" | "fallback-language" };
   validator: { coherence: "known-languages" | "strict" };
-  llm: { parser: LlmBoxConfig; narrator: LlmBoxConfig & { minRemainingMs: number } };
-  turn: { budgetRatio: number };
+  llm: {
+    parser: LlmBoxConfig;
+    narrator: LlmBoxConfig & {
+      /** Con menos tiempo restante no se llama al narrador: plantilla y registro `narrator-skipped`. */
+      minRemainingMs: number;
+    };
+  };
+  turn: {
+    /** Presupuesto del turno = min(tiempo del ring × budgetRatio, tiempo del ring − margen). */
+    budgetRatio: number;
+  };
   mandate: { source: "scenario-file" };
   /** Huella de la configuración efectiva (sha256 truncado), para la traza. */
   fingerprint: string;

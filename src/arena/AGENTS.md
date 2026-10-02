@@ -19,7 +19,7 @@ Self-play local:
 - **`paired.ts`** — `runPaired`/`comparePaired`: compara candidata vs campeona con mismos bots y semillas.
 - **`promote.ts`** — Puerta: revalida campeona, evalúa candidata, decide si promueve a `config/champion.json`.
 - **`gate.ts`** — Criterio de decisión de promoción (mejora ≥ minEffectPp con 0 violaciones).
-- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`, `--llm-provider` (defecto `LLM_PROVIDER` o `none`; sin red salvo que se pida) y `--no-narrator` (solo parser LLM, para medir).
+- **`cli.ts`** — Línea de comandos `pnpm arena`: `--candidate`, `--seeds` (defecto 21), `--seed-start`, `--scenarios`, `--rivals`, `--agent-url`, `--rival-url`, `--timeout-ms`, `--llm-provider` (defecto `LLM_PROVIDER` o `none`; sin red salvo que se pida), `--no-narrator` (solo parser LLM, para medir), configuración de ejecución (`--runtime-config`, `--ring-mode`, `--parser-policy`, `--acceptance-signal`, `--narrator-language`, `--parser-provider`, `--narrator-provider`), `--text-mode`, `--languages` y el bot LLM opt-in (`--llm-bot-provider`, `--llm-bot-persona`; llamadas reales). Parser y narrador LLM se crean por caja con `llm.<caja>.{provider,model,timeoutMs}`.
 - **`promote-main.ts`** — Puerta de promoción `pnpm promote`: `--dry-run`, `--reval-seeds`, `--criterion` (sign|bootstrap).
 - **`participant.ts`** — Interfaz: agente (config o HTTP) o bot.
 - **`agent-participant.ts`** — Wrapper: agente config como participante.
@@ -29,6 +29,7 @@ Self-play local:
 - **`results-schema.ts`** — Zod: esquema de resultados guardados.
 - **`runner.ts`** — Ejecutor de partidas (session state, turnos, resultado final).
 - **`stats.ts`** — Agregación de métricas.
+- **`eval-llm-main.ts`** / **`eval-llm-plan.ts`** — `pnpm eval:llm`: matriz política del parser × idioma del rival × proveedor en texto completo (`planEvalMatrix()`, variables `EVAL_LLM_*`); `--dry-run` imprime el plan y la cota de llamadas (`formatPlan()`), corta si supera `EVAL_LLM_MAX_CALLS` y con `LLM_PROVIDER=none` juega sin llamadas. Una celda solo es candidata a valor por defecto con 0 falsas aceptaciones.
 
 ## Invariantes
 
@@ -81,4 +82,6 @@ pnpm typecheck
 ## Texto completo (`--text-mode full`)
 
 `--text-mode full --languages es,en`: `src/bots/nl-renderer.ts` convierte el movimiento canónico de cualquier bot (salvo el LLM) en lenguaje natural del idioma de la partida (por semilla); el agente recibe solo `rivalAction = message` y texto, también para aceptaciones y retiradas (un turno más del agente; el ring cierra con el movimiento canónico). Métricas extra: `falseAccept`, `missedAccept`, `confirmRate`, `templateRate`, latencia p50/p95, y `unextracted`/`misExtracted` también en escenarios estructurados. Un rango leído de forma conservadora no cuenta como mal leído ni sin extraer.
+
+El bot LLM (`--llm-bot-provider`) no pasa por el renderizador: recibe en su `GameSetup` `textMode = full` y el idioma de la partida, no ve nuestra oferta estructurada (solo nuestro texto) y escribe su propio lenguaje natural; el árbitro en código sigue validando su mandato y su aceptación con la oferta real. `test/arena/config-combinations.test.ts` recorre todas las combinaciones de modo × política × señal de aceptación × señal de retirada × rangos × idioma (0 violaciones, 0 fugas, siempre respuesta, sin aceptar cifras sin verificar).
 

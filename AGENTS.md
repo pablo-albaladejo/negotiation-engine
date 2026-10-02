@@ -21,7 +21,7 @@ Agente negociador para un torneo (Negotiation Ring, hackathon Causa Prima). El L
     ↓
   [ motor determinista ]      (modelo del rival, oferta Boulware+TFT, aceptación, guardarraíles)
     ↓
-  [ narrador (LLM) ]          (redacta respuesta; 2 fallos o timeout → plantilla)
+  [ narrador (LLM) ]          (redacta respuesta; fallo, timeout o poco tiempo → plantilla)
     ↓
   [ validador ]               (la cifra de la respuesta = decisión del motor)
     ↓
