@@ -86,11 +86,11 @@ describe("plan: candidatos por menú", () => {
     expect(chosen[0]!.reason).toContain("fallback");
   });
 
-  it("camino previsto contra su puja fija de 13: ancla 26, dos concesiones y acepta 13 (precio fijo)", async () => {
+  it("camino previsto contra su puja fija de 13: ancla 26, paso 3 sin respuesta → pasos de 1, y acepta 13 (precio fijo)", async () => {
     const cands = await rankCandidates({ me: me([asset(1, "AAA-01", "common", 5)]), catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, budget: 50 });
     const sell = cands.find((c) => c.key === "sell:1")!;
     const path = previewPath(sell);
-    expect(path.prices).toEqual([26, 25, 24]);
+    expect(path.prices).toEqual([26, 23, 22]);
     expect(path.rule).toBe("fixed-price");
     expect(path.outcome).toContain("accept her 13");
     expect(path.firstText).toContain("26 P");

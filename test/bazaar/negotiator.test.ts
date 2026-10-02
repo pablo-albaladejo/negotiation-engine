@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { closeText, counterText, numbersIn, textMatchesPrice } from "../../src/bazaar/messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, LEGACY_NEGOTIATOR_PARAMS, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
 import { buyTargets, missingPageCards, spareTargets } from "../../src/bazaar/planner.js";
 import { ThreadSchema } from "../../src/bazaar/schemas.js";
 import { threadPrices } from "../../src/bazaar/view.js";
@@ -30,9 +30,11 @@ function simulate(side: Side, reservation: number, herOpen: number, herLimit: nu
 describe("negotiator: compra", () => {
   it("abre lejos de su precio (ancla); su apertura sin final no se acepta", () => {
     const d = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false } }));
-    expect(d.action).toEqual({ kind: "counter", price: 27 });
+    expect(d.action).toEqual({ kind: "counter", price: 45 });
     expect(d.rule).toBe("anchor");
-    const next = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false }, ourPrices: [27] }));
+    const legacy = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false } }), LEGACY_NEGOTIATOR_PARAMS);
+    expect(legacy.action).toEqual({ kind: "counter", price: 27 });
+    const next = decide(view({ side: "buy", reservation: 100, herOpening: 60, herPrices: [60], herCurrent: { offerId: 1, price: 60, final: false }, ourPrices: [45] }));
     expect(next.action.kind).toBe("counter");
   });
 
@@ -129,7 +131,7 @@ describe("negotiator: compra", () => {
         const effRes = effectiveReservation({ side: "buy", reservation: res, herOpening: open });
         for (let i = 1; i < ourPrices.length; i++) {
           expect(ourPrices[i]!).toBeGreaterThan(ourPrices[i - 1]!);
-          expect(ourPrices[i]! - ourPrices[i - 1]!).toBeLessThanOrEqual(Math.max(1, Math.round(Math.abs(effRes - ourPrices[0]!) * 0.08)) + 1);
+          expect(ourPrices[i]! - ourPrices[i - 1]!).toBeLessThanOrEqual(DEFAULT_NEGOTIATOR_PARAMS.maxStep);
         }
         for (const p of ourPrices) expect(p).toBeLessThanOrEqual(Math.max(1, effRes));
         const last = decisions[decisions.length - 1]!;

@@ -79,7 +79,7 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(posts.filter((p) => p === "open")).toHaveLength(2);
     expect(posts.filter((p) => p.startsWith("accept"))).toHaveLength(2);
     // Cada hilo: ancla 26 y dos concesiones (25, 24), nunca un precio repetido.
-    expect(posts.filter((p) => p.startsWith("say "))).toEqual(["say 26", "say 25", "say 24", "say 26", "say 25", "say 24"]);
+    expect(posts.filter((p) => p.startsWith("say "))).toEqual(["say 26", "say 23", "say 22", "say 26", "say 23", "say 22"]);
     expect(records.filter((r) => r.action === "accept").map((r) => [r.rule, r.ourPrice])).toEqual([
       ["fixed-price", 13],
       ["fixed-price", 13],
