@@ -15,6 +15,22 @@ describe("theme (B1)", () => {
     expect(initialTheme()).toBe("light");
   });
 
+  it("asserts the direction follows the OS preference, not a fixed default (T12)", () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false } as MediaQueryList);
+    expect(initialTheme()).toBe("light");
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true } as MediaQueryList);
+    expect(initialTheme()).toBe("dark");
+  });
+
+  it("falls back to matchMedia (dark) when localStorage reads throw (T12)", () => {
+    const getItem = vi.spyOn(window.localStorage.__proto__, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true } as MediaQueryList);
+    expect(initialTheme()).toBe("dark");
+    getItem.mockRestore();
+  });
+
   it("prefers a stored choice over prefers-color-scheme", () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true } as MediaQueryList);
     storeTheme("light");

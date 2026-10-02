@@ -1,7 +1,7 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, rmSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { startViewerServer } from "../../server/http.js";
 import { arenaReplayModel, runsModel, tournamentReplayModel, type RunEntry, type ScenarioRef } from "../../src/model/index.js";
 import type { TranscriptLine } from "../../../src/arena/results-schema.js";
@@ -79,5 +79,47 @@ describe("API { data, errors } sobre los esquemas y adaptadores", () => {
     ]);
     expect(res.text).not.toContain(repo.root);
     expect((await get(port, "/api/runs")).status).toBe(200);
+  });
+});
+
+describe("/api/champion edge cases (T6)", () => {
+  const championPath = () => join(repo.root, "config", "champion.json");
+  afterEach(() => {
+    writeFileSync(championPath(), '{"version":1}');
+  });
+
+  it("missing champion.json: {data: null, errors: []}", async () => {
+    rmSync(championPath());
+    const res = await get(port, "/api/champion");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ data: null, errors: [] });
+  });
+
+  it("malformed JSON: 200, data null, one error", async () => {
+    writeFileSync(championPath(), "{not json");
+    const res = await get(port, "/api/champion");
+    expect(res.status).toBe(200);
+    expect(res.json.data).toBeNull();
+    expect(res.json.errors).toHaveLength(1);
+  });
+
+  it("missing version field: 200, data null, one error", async () => {
+    writeFileSync(championPath(), "{}");
+    const res = await get(port, "/api/champion");
+    expect(res.status).toBe(200);
+    expect(res.json.data).toBeNull();
+    expect(res.json.errors).toHaveLength(1);
+  });
+
+  it("extra fields (e.g. mandate) are stripped: only version and path come through", async () => {
+    writeFileSync(championPath(), '{"version":3,"mandate":{"reservation":80}}');
+    const res = await get(port, "/api/champion");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ data: { version: 3, path: "config/champion.json" }, errors: [] });
+  });
+
+  it("/api/champion/x: 404", async () => {
+    const res = await get(port, "/api/champion/x");
+    expect(res.status).toBe(404);
   });
 });
