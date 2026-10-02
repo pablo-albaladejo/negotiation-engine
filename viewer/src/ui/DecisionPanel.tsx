@@ -98,8 +98,9 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
           <h3 className="nr-heading">Engine decision this round</h3>
-          <span className="nr-cfg" role="status" aria-live="polite" aria-label={`Round ${selectedRound} of ${lastRound}`}>
-            R{selectedRound} / {lastRound}
+          <span className="nr-cfg" role="status" aria-live="polite">
+            <span aria-hidden="true">R{selectedRound} / {lastRound}</span>
+            <span className="nr-sr-only">Round {selectedRound} of {lastRound}</span>
           </span>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>

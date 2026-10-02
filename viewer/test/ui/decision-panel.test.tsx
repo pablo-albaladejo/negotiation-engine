@@ -32,9 +32,13 @@ const panelWithExplain = (round: number): RoundPanel => ({
 
 describe("DecisionPanel (L4/L5/L25/L26)", () => {
   it("round label uses the actual round numbers, not a count (may start above 1 / skip)", () => {
-    render(<DecisionPanel hasTrace panel={panel(7)} rounds={[3, 5, 7]} selectedRound={7} onSelectRound={() => {}} />);
-    expect(screen.getByText("R7 / 7")).toBeTruthy();
-    expect(screen.getByText("R7 / 7").getAttribute("aria-label")).toBe("Round 7 of 7");
+    const { container } = render(<DecisionPanel hasTrace panel={panel(7)} rounds={[3, 5, 7]} selectedRound={7} onSelectRound={() => {}} />);
+    const visible = screen.getByText("R7 / 7");
+    expect(visible.getAttribute("aria-hidden")).toBe("true");
+    // F7: a sr-only "Round N of M" inside the role=status live region, not an aria-label override.
+    const liveRegion = container.querySelector("[role='status']")!;
+    expect(liveRegion.contains(visible)).toBe(true);
+    expect(liveRegion.querySelector(".nr-sr-only")!.textContent).toBe("Round 7 of 7");
   });
 
   it("Previous is disabled on the first round, Next on the last; onSelectRound gets the neighbouring round number", () => {
