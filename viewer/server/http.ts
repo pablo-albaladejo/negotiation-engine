@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import { handleApi, rootsFor, type ApiResponse, type Roots } from "./api.js";
+import { BazaarLive, bazaarScore, type BazaarLiveDeps } from "./bazaar.js";
 import { serveLive } from "./live.js";
 
 /**
@@ -21,6 +23,10 @@ export interface ViewerServerOptions {
   middleware?: Middleware;
   /** Raíz de resultados distinta de `<repoRoot>/results` (`VIEWER_RESULTS_DIR`); solo lectura igualmente. */
   resultsDir?: string;
+  /** Directorio de `score.jsonl` distinto de `<repoRoot>/results/bazaar-live` (`VIEWER_BAZAAR_DIR`). */
+  bazaarDir?: string;
+  /** Inyectable en tests (clase `BazaarLive`); por defecto, usa `BAZAAR_KEY`/`BAZAAR_URL` del entorno. */
+  bazaarLiveDeps?: BazaarLiveDeps;
   /** Inyectable en tests; por defecto, el router de solo lectura sobre `results/` y `config/`. */
   api?: ApiHandler;
 }
@@ -48,8 +54,10 @@ function apiSegments(rawPath: string): string[] | null {
   }
 }
 
-export function createViewerServer({ repoRoot, resultsDir, middleware, api }: ViewerServerOptions): Server {
+export function createViewerServer({ repoRoot, resultsDir, bazaarDir, bazaarLiveDeps, middleware, api }: ViewerServerOptions): Server {
   const roots: Roots = { ...rootsFor(repoRoot), ...(resultsDir ? { results: resultsDir } : {}) };
+  const bazaarRoot = bazaarDir ?? join(repoRoot, "results", "bazaar-live");
+  const bazaarLive = new BazaarLive(bazaarLiveDeps);
   const handle: ApiHandler = api ?? ((segments, query) => handleApi(roots, segments, query));
 
   const server = createServer((req, res) => {
@@ -67,6 +75,20 @@ export function createViewerServer({ repoRoot, resultsDir, middleware, api }: Vi
     const rawPath = raw.split("?", 1)[0] ?? "/";
     if (rawPath === "/api/live") {
       serveLive(req, res, roots.results);
+      return;
+    }
+    if (rawPath === "/api/bazaar/score") {
+      bazaarScore(bazaarRoot).then(
+        (response) => sendJson(req, res, response),
+        () => sendJson(req, res, failure(500, "internal error")),
+      );
+      return;
+    }
+    if (rawPath === "/api/bazaar/live") {
+      bazaarLive.get().then(
+        (response) => sendJson(req, res, response),
+        () => sendJson(req, res, failure(500, "internal error")),
+      );
       return;
     }
     if (rawPath === "/api" || rawPath.startsWith("/api/")) {
