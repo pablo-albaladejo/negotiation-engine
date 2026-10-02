@@ -96,6 +96,10 @@ AGENT_AUTH_TOKEN=
 AGENT_AUTH_HEADER=
 # Solo tests en local
 AGENT_ALLOW_NOAUTH=1
+
+# Bazaar: URL y clave del equipo (solo en .env, nunca en git)
+BAZAAR_URL=https://bazaar.causaprima.ai
+BAZAAR_KEY=
 ```
 
 Ver `.env.example`.
@@ -112,6 +116,8 @@ Ver `.env.example`.
 | `pnpm promote` | Puerta de promoción: revalida campeona, evalúa candidata, decide si promueve. |
 | `pnpm tune` | Barrido de parámetros en el espacio del motor. |
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
+| `pnpm bazaar` | Agente del Bazaar: un paso por tick contra Abuela Carmen (`--dry-run`, `--once`, `--max-spend`). Ver [`src/bazaar/`](src/bazaar/AGENTS.md). |
+| `pnpm bazaar:status` | Resumen de solo lectura del Bazaar (equipo, reloj, dealers, hilos). |
 | `pnpm redteam` | Harness de red team. |
 | `pnpm bot:serve` | Servidor de un bot como agente HTTP para sparring. |
 | `pnpm dummy:serve` | Servidor del dummy-agent (estrategia fija). |
@@ -198,6 +204,7 @@ Ver `openspec/changes/<id>/` para tareas y propuesta. Validar con `openspec vali
 ## Links a subcarpetas
 
 - [`src/`](src/AGENTS.md) — módulos de lógica
+- [`src/bazaar/`](src/bazaar/AGENTS.md) — agente del Bazaar (dealers por HTTP)
 - [`test/`](test/AGENTS.md) — tests y fixtures
 - [`config/`](config/AGENTS.md) — configuración
 - [`scripts/`](scripts/AGENTS.md) — scripts shell

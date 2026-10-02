@@ -33,6 +33,7 @@ export const MeSchema = z.looseObject({
   name: z.string().optional(),
   cash: num,
   level: num.optional(),
+  unlocked: z.array(z.string()).optional(),
   unlocked_dealers: z.array(z.string()).optional(),
   assets: z.array(AssetSchema).default([]),
   album: z.unknown().optional(),
@@ -67,7 +68,11 @@ export const DealerSchema = z.looseObject({
   level: num.nullish(),
   status: z.string().optional(),
 });
-export const DealersSchema = z.looseObject({ dealers: z.array(DealerSchema).default([]) });
+/** El servidor responde `personas` (nombre antiguo) o `dealers`. */
+export const DealersSchema = z.preprocess(
+  (raw) => (raw && typeof raw === "object" && !("dealers" in raw) && "personas" in raw ? { ...raw, dealers: (raw as { personas: unknown }).personas } : raw),
+  z.looseObject({ dealers: z.array(DealerSchema).default([]) }),
+);
 
 export const OfferSideSchema = z.looseObject({
   cash: num.optional(),

@@ -133,6 +133,18 @@ script corta si la cota supera `EVAL_LLM_MAX_CALLS` (300). Ajustable con las var
 3. **Promover**: si mejora el excedente con **0 violaciones del mandato**, pasa a `config/champion.json` (commit `champion vN`).
 4. **Competir**: el agente arranca siempre con el campeón. Si algo falla, se vuelve al campeón anterior con git.
 
+## Bazaar (Cromos de Madrid)
+
+Agente para el juego del Bazaar en `src/bazaar/`: vende repetidas y compra cartas que faltan a Abuela Carmen, con la cifra del motor (Boulware, AC_next, guardarraíles) y mensajes de plantilla. Pon `BAZAAR_KEY` en `.env`.
+
+```bash
+pnpm bazaar:status             # solo lectura
+pnpm bazaar --dry-run --once   # registra lo que haría, sin POST
+pnpm bazaar --max-spend 120    # en vivo, hasta Ctrl-C
+```
+
+Trazas JSONL en `results/bazaar-live/<fecha>/`. Detalle en [`src/bazaar/AGENTS.md`](src/bazaar/AGENTS.md).
+
 ## Equipo
 
 | Quién  | Pieza                                                       |
