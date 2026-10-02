@@ -1,6 +1,6 @@
 import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatNumber } from "@negotiation-ring/design-system";
 import type { ApiError } from "../api.js";
-import type { RunRow } from "../model/index.js";
+import { isChampionRun, type RunRow } from "../model/index.js";
 import { EmptyStateCard, InvalidLogBanner } from "../ui/states.js";
 import { PrimaryButton, TableLink } from "../ui/buttons.js";
 import { runKindLabel } from "../ui/labels.js";
@@ -15,7 +15,6 @@ const COLUMNS: DataTableColumn[] = [
   { key: "acu", label: "Agreement", numeric: true },
   { key: "vio", label: "Violations", numeric: true },
   { key: "fug", label: "Leaks", numeric: true },
-  { key: "act", label: "Actions" },
 ];
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
@@ -33,7 +32,7 @@ export interface RunsScreenProps {
 /** P1: runs de `results/` por tipo, con su `summary.json`. */
 export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersion }: RunsScreenProps) {
   const tableRows: DataTableRow[] = rows.map((r) => {
-    const isChampion = championVersion != null && r.config?.version === championVersion;
+    const isChampion = isChampionRun(r.config, championVersion ?? null);
     return {
       id: (
         <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
@@ -49,7 +48,6 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
       acu: pct(r.agreementRate),
       vio: num(r.violations),
       fug: num(r.leaks),
-      act: <TableLink onClick={() => onOpenRun(r.runId)}>Open</TableLink>,
     };
   });
 

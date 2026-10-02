@@ -7,6 +7,18 @@ import type { Summary } from "../../../src/arena/results-schema.js";
 
 export type RunKind = "arena" | "promotion" | "tournament";
 
+/** Only a run whose config *is* `config/champion.json` can be "the champion run": matching version
+ * alone would also mark unrelated runs/candidates that happen to share a version number (L10). */
+export const CHAMPION_CONFIG_PATH = "config/champion.json";
+
+/** `true` when a run's logged config is the current champion (path + version), not just a version match.
+ * `config.path` is whatever `--config` was invoked with (relative or absolute), so it matches by
+ * suffix rather than exact string. */
+export function isChampionRun(config: { path: string; version: number } | null, championVersion: number | null): boolean {
+  if (championVersion == null || !config || config.version !== championVersion) return false;
+  return config.path === CHAMPION_CONFIG_PATH || config.path.endsWith(`/${CHAMPION_CONFIG_PATH}`);
+}
+
 /** Entrada de `/api/runs`: el servidor clasifica el directorio y adjunta su `summary.json` si lo hay. */
 export interface RunEntry {
   runId: string;

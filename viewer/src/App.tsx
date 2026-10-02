@@ -5,7 +5,7 @@ import { initialTheme, storeTheme, type Theme } from "./theme.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, filtersToQuery, gateModel, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, filtersToQuery, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
@@ -38,24 +38,26 @@ function navigate(hash: string) {
   window.location.hash = hash;
 }
 
-/** `/api/champion`: solo `version`, de solo lectura (ajuste 2); `null` si el fichero no existe. */
-function useChampionVersion(): number | null {
-  const [version, setVersion] = useState<number | null>(null);
+/** `/api/champion`: solo `version` (+ `path` fijo), de solo lectura (ajuste 2); `null` si el fichero
+ * no existe. `errors` trae el fallo de esquema/lectura cuando `config/champion.json` es inválido, para
+ * que Runs lo muestre (ajuste 2, L11): ausente no es un error, inválido sí. */
+function useChampionVersion(): { version: number | null; errors: ApiError[] } {
+  const [state, setState] = useState<{ version: number | null; errors: ApiError[] }>({ version: null, errors: [] });
   useEffect(() => {
     let cancelled = false;
-    fetchApi<{ version: number } | null>("champion").then((res) => {
-      if (!cancelled) setVersion(res.data?.version ?? null);
+    fetchApi<{ version: number; path: string } | null>("champion").then((res) => {
+      if (!cancelled) setState({ version: res.data?.version ?? null, errors: res.errors });
     });
     return () => {
       cancelled = true;
     };
   }, []);
-  return version;
+  return state;
 }
 
 function RunsContainer() {
   const [state, setState] = useState<{ entries: RunEntry[]; errors: ApiError[] } | null>(null);
-  const championVersion = useChampionVersion();
+  const champion = useChampionVersion();
   useEffect(() => {
     let cancelled = false;
     fetchApi<RunEntry[]>("runs").then((res) => {
@@ -70,12 +72,20 @@ function RunsContainer() {
     const kind = state.entries.find((e) => e.runId === runId)?.kind;
     navigate(kind === "promotion" ? routeTo.compare(runId) : routeTo.matches(runId));
   };
-  return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={open} onOpenLive={() => navigate(routeTo.live())} championVersion={championVersion} />;
+  return (
+    <RunsScreen
+      rows={runsModel(state.entries)}
+      errors={[...state.errors, ...champion.errors]}
+      onOpenRun={open}
+      onOpenLive={() => navigate(routeTo.live())}
+      championVersion={champion.version}
+    />
+  );
 }
 
 function MatchesContainer({ runId, query }: { runId: string; query: string }) {
   const [state, setState] = useState<{ summary: Summary | null; games: TranscriptLine[] } | null>(null);
-  const championVersion = useChampionVersion();
+  const championVersion = useChampionVersion().version;
   const [initialFilters] = useState<MatchFilters>(() => queryToFilters(query));
   /** Tracks the query currently reflected in the URL (kept in sync by onFiltersChange), so opening a
    * game can carry it along and "← Matches" returns with the same filters applied (INBOX A2). */
@@ -92,7 +102,7 @@ function MatchesContainer({ runId, query }: { runId: string; query: string }) {
   }, [runId]);
   if (!state) return <LoadingCard label={`Reading results/${runId}`} />;
   if (!state.summary) return <LoadingCard label={`results/${runId}/summary.json is not available`} />;
-  const isChampion = championVersion != null && state.summary.config.version === championVersion;
+  const isChampion = isChampionRun(state.summary.config, championVersion);
   return (
     <MatchesScreen
       runId={runId}

@@ -112,3 +112,24 @@ describe("App back/forward across routes (B3)", () => {
   });
 });
 
+
+describe("App Runs: invalid config/champion.json shows the InvalidLogBanner (L11)", () => {
+  it("renders the schema-failure banner on Runs when /api/champion reports errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/champion")) {
+          return new Response(
+            JSON.stringify({ data: null, errors: [{ file: "config/champion.json", line: null, path: "version", message: "invalid" }] }),
+          );
+        }
+        if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: [], errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("schema fails");
+  });
+});

@@ -99,6 +99,11 @@ describe("matchesModel (P2)", () => {
     expect(queryToFilters("")).toEqual({});
     expect(queryToFilters("role=not-a-role")).toEqual({});
   });
+
+  it("queryToFilters drops an unknown result value (L9)", () => {
+    expect(queryToFilters("result=agreement")).toEqual({ result: "agreement" });
+    expect(queryToFilters("result=not-a-real-reason")).toEqual({});
+  });
 });
 
 describe("arenaReplayModel (P3)", () => {

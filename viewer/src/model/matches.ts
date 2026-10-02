@@ -46,6 +46,9 @@ export interface MatchesModel {
 
 const distinct = <T extends string>(values: readonly T[]): T[] => [...new Set(values)].sort();
 
+/** The finite set of `endReason` values the engine can log (`results-schema.ts`'s `EndReasonSchema`); anything else from the URL is dropped. */
+const KNOWN_END_REASONS: readonly EndReason[] = ["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error", "protocol-violation"];
+
 /** P2: KPIs de `summary.overall` y tabla de `transcripts.jsonl` filtrada. */
 export function matchesModel(summary: Summary, games: readonly TranscriptLine[], filters: MatchFilters = {}): MatchesModel {
   const { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors } = summary.overall;
@@ -110,8 +113,9 @@ export function queryToFilters(query: string): MatchFilters {
   if (rival) filters.rival = rival;
   const role = params.get("role");
   if (role === "buyer" || role === "seller") filters.role = role;
+  // `rival` is free-form (the run's own data, not a fixed set) and not validated here; `result` is.
   const result = params.get("result");
-  if (result) filters.result = result as EndReason;
+  if (result && (KNOWN_END_REASONS as readonly string[]).includes(result)) filters.result = result as EndReason;
   if (params.get("template") === "1") filters.template = true;
   if (params.get("injection") === "1") filters.injection = true;
   return filters;

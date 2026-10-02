@@ -5,14 +5,15 @@ import { ScenarioSchema as MandateFileSchema } from "../../src/agent/agent.js";
 import { GateFileSchema, SummarySchema, TranscriptLineSchema } from "../../src/arena/results-schema.js";
 import { scenarioHash } from "../../src/arena/scenario.js";
 import { TraceLineSchema } from "../../src/pipeline/trace.js";
-import type { RunEntry, RunKind, ScenarioRef } from "../src/model/index.js";
+import { CHAMPION_CONFIG_PATH, type RunEntry, type RunKind, type ScenarioRef } from "../src/model/index.js";
 import { isSafeId, resolveInside } from "./paths.js";
 import { readJson, readJsonl, type ReadError } from "./read.js";
 
 /**
- * API de solo lectura del visor. Únicas raíces: `results/` y, de `config/`, solo el fichero de
- * escenario cuyo nombre y hash pide una cabecera de torneo. El contenido de los ficheros se valida
- * y se devuelve como datos; nunca se ejecuta ni se renderiza aquí.
+ * API de solo lectura del visor. Únicas raíces: `results/` y, de `config/`, `champion.json` (solo
+ * su `version`, ajuste 2) y el fichero de escenario cuyo nombre y hash pide una cabecera de torneo.
+ * El contenido de los ficheros se valida y se devuelve como datos; nunca se ejecuta ni se renderiza
+ * aquí.
  */
 export interface Roots {
   results: string;
@@ -29,8 +30,10 @@ const fail = (status: 400 | 404, message: string): ApiResponse => ({ status, bod
 const badRequest = () => fail(400, "invalid identifier");
 const notFound = () => fail(404, "not found");
 
-/** Solo expone la versión de `config/champion.json`, de solo lectura (ajuste 2): ni el resto de campos ni el mandato. */
-const ChampionVersionSchema = z.looseObject({ version: z.number() }).transform(({ version }) => ({ version }));
+/** Solo expone la versión de `config/champion.json`, de solo lectura (ajuste 2): ni el resto de campos ni el mandato.
+ * `path` es la ruta fija del fichero leído (nunca un campo de su contenido): permite al visor marcar
+ * como "champion" solo los runs ejecutados contra ese fichero, no cualquier run cuya versión coincida (L10). */
+const ChampionVersionSchema = z.looseObject({ version: z.number() }).transform(({ version }) => ({ version, path: CHAMPION_CONFIG_PATH }));
 
 function kindOf(name: string, files: ReadonlySet<string>): RunKind {
   if (files.has("gate.json")) return "promotion";
@@ -112,6 +115,11 @@ async function championVersion(roots: Roots): Promise<ApiResponse> {
   return ok(read.data, read.errors);
 }
 
+/**
+ * P4 (ajuste 2, excepción): sirve `mandate.reservation` del escenario local de `config/` al
+ * visor, y solo cuando `id` + `hash` coinciden con los de la cabecera de torneo pedida (el mismo
+ * escenario que se jugó), nunca el de un fichero arbitrario.
+ */
 async function scenarioRef(roots: Roots, query: URLSearchParams): Promise<ApiResponse> {
   const id = query.get("id");
   const hash = query.get("hash");

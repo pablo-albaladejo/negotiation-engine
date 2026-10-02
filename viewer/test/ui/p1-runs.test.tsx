@@ -37,6 +37,13 @@ describe("RunsScreen (P1)", () => {
     expect(screen.queryByText("champion")).toBeNull();
   });
 
+  it("misma versión pero config de otro fichero: no es el champion (L10)", () => {
+    const summary = { ...fx.summary, config: { ...fx.summary.config, path: "config/candidate.json" } };
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} championVersion={summary.config.version} />);
+    expect(screen.queryByText("champion")).toBeNull();
+  });
+
   it("\'Open live view\' es un PrimaryButton que llama a onOpenLive", () => {
     const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
     let opened = false;
