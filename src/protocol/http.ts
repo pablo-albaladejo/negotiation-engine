@@ -113,6 +113,11 @@ export class RemoteAgentError extends Error {
   override name = "RemoteAgentError";
 }
 
+/** La respuesta llegó pero no cumple el `TurnOutput` canónico (la arena lo trata como violación de protocolo, no como fallo de red). */
+export class RemoteContractError extends RemoteAgentError {
+  override name = "RemoteContractError";
+}
+
 export interface HttpClientOptions {
   baseUrl: string;
   timeoutMs?: number;
@@ -143,7 +148,7 @@ export function createHttpAgentClient(options: HttpClientOptions & { issueNames:
       const body = (await res.json().catch(() => null)) as unknown;
       if (!res.ok) throw new RemoteAgentError(`El agente respondió ${res.status}`);
       const parsed = schemas.turnOutput.safeParse(body);
-      if (!parsed.success) throw new RemoteAgentError("Respuesta del agente fuera de contrato");
+      if (!parsed.success) throw new RemoteContractError(`Respuesta del agente fuera de contrato: ${ProtocolError.fromZod(parsed.error, "TurnOutput").message}`);
       return parsed.data;
     },
     async health(): Promise<unknown> {

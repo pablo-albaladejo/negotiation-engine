@@ -20,13 +20,13 @@ describe("esquemas de resultados v2 (src/arena/results-schema.ts)", () => {
     summary = JSON.parse(readFileSync(join(runDir, "summary.json"), "utf8"));
   });
 
-  it("cada línea de transcripts.jsonl pasa TranscriptLineSchema con schemaVersion 2, roundLimit y reservas del catálogo", () => {
+  it("cada línea de transcripts.jsonl pasa TranscriptLineSchema con schemaVersion 3, roundLimit y reservas del catálogo", () => {
     const catalog = loadCatalog();
     expect(lines.length).toBeGreaterThan(0);
     for (const raw of lines) {
       const line: TranscriptLine = TranscriptLineSchema.parse(raw);
       const scenario = catalog.find((s) => s.id === line.scenarioId)!;
-      expect(line.schemaVersion).toBe(2);
+      expect(line.schemaVersion).toBe(3);
       expect(line.roundLimit).toBe(scenario.rounds);
       expect(line.reserves).toEqual({
         ours: scenario.mandates[scenario.role].reservation,

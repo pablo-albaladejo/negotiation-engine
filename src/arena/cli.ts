@@ -7,7 +7,7 @@ import { NL_LANGUAGES, type NlLanguage } from "../bots/nl-renderer.js";
 import { loadConfig, type AgentConfig } from "../engine/config.js";
 import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
-import { createHttpParticipant } from "./external.js";
+import { createA2AParticipant, createHttpParticipant, createMcpParticipant } from "./external.js";
 import type { Participant } from "./participant.js";
 import { comparePaired, type PairedReport } from "./paired.js";
 import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
@@ -78,6 +78,10 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "rival-url": { type: "string" },
       "rival-name": { type: "string", default: "external" },
       "agent-url": { type: "string" },
+      "rival-a2a": { type: "string" },
+      "rival-mcp": { type: "string" },
+      "agent-a2a": { type: "string" },
+      "agent-mcp": { type: "string" },
       "timeout-ms": { type: "string", default: "5000" },
       "llm-provider": { type: "string", default: process.env.LLM_PROVIDER ?? "none" },
       "no-narrator": { type: "boolean", default: false },
@@ -100,11 +104,14 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const seedStart = Number(values["seed-start"]);
   if (!Number.isInteger(seedCount) || seedCount < 1 || !Number.isInteger(seedStart)) throw new Error("--seeds y --seed-start deben ser enteros");
   const seeds = Array.from({ length: seedCount }, (_, k) => seedStart + k);
-  const scenarios = pick(loadCatalog(values.catalog), list(values.scenarios), "Escenario");
+  const scenarios = pick(loadCatalog(values.catalog, { includeOptIn: Boolean(values.scenarios) }), list(values.scenarios), "Escenario");
   const timeoutMs = Number(values["timeout-ms"]);
-  const rivalNames = list(values.rivals) ?? (values["rival-url"] ? [] : Object.keys(BOTS));
+  const externalRival = Boolean(values["rival-url"] || values["rival-a2a"] || values["rival-mcp"]);
+  const rivalNames = list(values.rivals) ?? (externalRival ? [] : Object.keys(BOTS));
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));
   if (values["rival-url"]) rivals.push(createHttpParticipant({ name: values["rival-name"], baseUrl: values["rival-url"], timeoutMs }));
+  if (values["rival-a2a"]) rivals.push(createA2AParticipant({ name: `${values["rival-name"]}-a2a`, baseUrl: values["rival-a2a"], timeoutMs }));
+  if (values["rival-mcp"]) rivals.push(createMcpParticipant({ name: `${values["rival-name"]}-mcp`, baseUrl: values["rival-mcp"], timeoutMs }));
   // Bot LLM opt-in (llamadas reales): en `--text-mode full` lee y escribe solo lenguaje natural en el idioma de la partida.
   const llmBotProvider = values["llm-bot-provider"] === undefined ? "none" : LlmProviderSchema.parse(values["llm-bot-provider"]);
   const llmBotClient = createBoxClient({ provider: llmBotProvider });
@@ -133,10 +140,16 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator>; runtime: typeof runtime } = { runtime };
   if (parserClient) agentDeps.parser = createLlmParser(parserClient, { timeoutMs: runtime.llm.parser.timeoutMs });
   if (narratorClient) agentDeps.narrator = createLlmNarrator(narratorClient, { timeoutMs: runtime.llm.narrator.timeoutMs });
-  // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
+  // Con --agent-url/--agent-a2a/--agent-mcp el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
+  const agentTransports = (["agent-url", "agent-a2a", "agent-mcp"] as const).filter((k) => values[k]);
+  if (agentTransports.length > 1) throw new Error(`Solo un transporte de agente: ${agentTransports.join(", ")}`);
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
-    : createAgentParticipant({ config, provider: llmProvider, ...agentDeps });
+    : values["agent-a2a"]
+      ? createA2AParticipant({ name: "agent-a2a", baseUrl: values["agent-a2a"], kind: "agent", timeoutMs })
+      : values["agent-mcp"]
+        ? createMcpParticipant({ name: "agent-mcp", baseUrl: values["agent-mcp"], kind: "agent", timeoutMs })
+        : createAgentParticipant({ config, provider: llmProvider, ...agentDeps });
 
   const runId = values["run-id"] ?? `arena-${new Date().toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
   const runDir = join(values.out, runId);
@@ -158,7 +171,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     onGame: (game, metrics, scenario) => {
       const { records, ...rest } = game;
       const reserves = { ours: mandateFor(scenario, scenario.role).reservation, rival: mandateFor(scenario, rivalRole(scenario.role)).reservation };
-      transcripts.write(`${JSON.stringify({ schemaVersion: 2, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
+      transcripts.write(`${JSON.stringify({ schemaVersion: 3, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
       if (values["no-traces"] || records.length === 0) return;
       writeJsonlTrace(join(runDir, "traces", `${game.gameId}.jsonl`), {
         kind: "header",
@@ -170,7 +183,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         seed: game.seed,
         configVersion: config.version,
         createdAt: new Date().toISOString(),
-        traceVersion: 2,
+        traceVersion: scenario.mandateUnit === "apr" ? 3 : 2,
         mandate: mandateFor(scenario, scenario.role),
       }, records);
     },
@@ -194,7 +207,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     runId,
     createdAt: new Date().toISOString(),
     llmProvider,
-    network: Boolean(values["rival-url"] || values["agent-url"]),
+    network: Boolean(externalRival || agentTransports.length > 0),
     agent: agent.name,
     config: { path: values.config, version: config.version, provenance: config.provenance, params: configParams(config) },
     seeds: { start: seedStart, count: seedCount },
@@ -226,6 +239,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
           `confirmación ${pct(o.confirmRate)} · plantilla ${pct(o.templateRate)} · latencia p50 ${o.latencyP50Ms?.toFixed(2) ?? "—"} ms p95 ${o.latencyP95Ms?.toFixed(2) ?? "—"} ms`,
       );
     }
+    if (o.protocolViolations > 0) log(`violaciones de protocolo ${o.protocolViolations} (nuestro agente ${o.protocolViolationsByAgent})`);
     log(`resultados: ${runDir}`);
   }
   return { runDir, report, summary };

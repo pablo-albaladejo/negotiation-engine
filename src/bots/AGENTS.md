@@ -18,6 +18,8 @@ Ejecutables como servidores HTTP para sparring interactivo.
 - **`adversarial.ts`** — Bots con estrategias matemáticas: Boulware, TFT, agresivos con β, márgenes.
 - **`text-only.ts`** — Bot que responde solo con texto (sin cifras). Prueba del parser.
 - **`llm-bot.ts`** — `createLlmBot()`: bot guiado por LLM (conjunto reservado, fuera de `BOTS`, opt-in). Persona configurable; con `textMode = full` (o el de la partida) no ve nuestra oferta estructurada y escribe en lenguaje natural en `language`. El código obliga a respetar su mandato. Requiere proveedor configurado.
+- **`causa-prima-engine.ts`** — `createCausaPrimaEngineBot`: imitación (inferida) del motor de Causa Prima. Abre en su ancla, concede según `DEFAULT_SCHEDULE` (configurable con `schedule`), límite de rondas (opción maxRounds), recomprueba su mandato antes de enviar, acepta dentro de su banda y se retira con protocol_violation, no_convergence (`stallRounds`) o round_limit. Texto «Opening offer: X% for payment by day D» / «Counter: …» / «Accepted». Distinto del bot de texto `causa-prima`.
+- **`index.ts`** — `BOTS` (ejecución por defecto) y `OPT_IN_BOTS` (solo por nombre con `--rivals`, p. ej. `causa-prima-engine`); `createBotByName` busca en ambos.
 - **`dummy-agent.ts`** — Dummy simple: acepta/rechaza por estrategia fija (útil para baseline).
 - **`serve.ts`** — Entry point: instancia bot, lo sirve como HTTP en puerto configurado.
 - **`serve-app.ts`** — Aplicación Hono: rutas `/turn`, `/health`, autenticación.
