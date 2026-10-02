@@ -106,6 +106,10 @@
 .nr-link-table{background:transparent;border:none;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
 .nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 
+/* P7 projector: discreet corner back link, visible on hover/focus only */
+.nr-live-corner-back{opacity:.35;transition:opacity .15s ease}
+.nr-live-corner-back:hover,.nr-live-corner-back:focus-visible{opacity:1}
+
 /* Filters */
 .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
 .nr-filter-field{display:flex;flex-direction:column;gap:2px}
@@ -134,6 +138,7 @@
 .nr-scoreboard-us{color:var(--us)}
 .nr-scoreboard-vs{color:var(--muted);font-weight:700;margin:0 12px}
 .nr-scoreboard-rival{color:var(--them)}
+.nr-scoreboard-rival-pending{color:var(--muted)}
 .nr-scoreboard-stats{display:flex;align-items:baseline;gap:48px}
 .nr-scoreboard-stat{display:flex;flex-direction:column;align-items:flex-end}
 .nr-scoreboard-value{font:800 72px/1 var(--font-display)}

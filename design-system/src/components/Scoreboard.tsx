@@ -2,12 +2,14 @@ export interface ScoreboardProps {
   badge: string;
   us: string;
   rival: string;
+  /** True while waiting for the next match: mutes the rival colour instead of the usual them accent. */
+  rivalPending?: boolean;
   round: number | null;
   rounds: number | null;
   attacksBlocked: number | null;
 }
 
-export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: ScoreboardProps) {
+export function Scoreboard({ badge, us, rival, rivalPending, round, rounds, attacksBlocked }: ScoreboardProps) {
   const attacksClass = ["nr-scoreboard-value", attacksBlocked !== null && attacksBlocked > 0 ? "nr-scoreboard-attacks" : "nr-scoreboard-attacks-muted"].join(" ");
   return (
     <div className="nr-scoreboard">
@@ -16,7 +18,7 @@ export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: 
         <span className="nr-scoreboard-match">
           <span className="nr-scoreboard-us">{us}</span>
           <span className="nr-scoreboard-vs">vs</span>
-          <span className="nr-scoreboard-rival">{rival}</span>
+          <span className={rivalPending ? "nr-scoreboard-rival nr-scoreboard-rival-pending" : "nr-scoreboard-rival"}>{rival}</span>
         </span>
       </div>
       <div className="nr-scoreboard-stats">

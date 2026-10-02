@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { TraceLine } from "../../../src/pipeline/trace.js";
 import { applyLiveEvent } from "../../src/live.js";
@@ -75,5 +75,33 @@ describe("LiveScreen (P7)", () => {
     const { container } = render(<LiveScreen model={liveModel(emptyLiveFeed())} />);
     const stat = container.querySelector(".nr-scoreboard-value");
     expect(stat?.textContent).toBe("—/—");
+  });
+
+  it("WAITING: el rival se pinta en var(--muted), nunca en el color de rival", () => {
+    const { container } = render(<LiveScreen model={liveModel(emptyLiveFeed())} />);
+    const rival = container.querySelector(".nr-scoreboard-rival");
+    expect(rival?.textContent).toBe("next opponent");
+    expect(rival?.classList.contains("nr-scoreboard-rival-pending")).toBe(true);
+  });
+
+  it("projector mode: el botón oculta el marcador y Esc lo restaura", () => {
+    const { container } = render(<LiveScreen model={liveModel(feedFrom(fx.tournament.trace))} />);
+    expect(container.querySelector(".nr-scoreboard")).toBeTruthy();
+    fireEvent.click(screen.getByText("Projector mode"));
+    expect(container.querySelector(".nr-scoreboard")).toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(container.querySelector(".nr-scoreboard")).toBeTruthy();
+  });
+
+  it("Esc fuera de projector mode navega a #/runs; el back link de la esquina también", () => {
+    window.location.hash = "#/live";
+    const { container } = render(<LiveScreen model={liveModel(feedFrom(fx.tournament.trace))} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(window.location.hash).toBe(routeTo.runs());
+    window.location.hash = "#/live";
+    const corner = container.querySelector(".nr-live-corner-back") as HTMLElement;
+    expect(corner).toBeTruthy();
+    fireEvent.click(corner);
+    expect(window.location.hash).toBe(routeTo.runs());
   });
 });

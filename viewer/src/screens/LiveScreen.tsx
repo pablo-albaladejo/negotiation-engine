@@ -2,7 +2,8 @@ import { ChatMessage, type ChatMessageFlag, ModeBadge, OfferChart, Root, Scorebo
 import { useEffect, useState } from "react";
 import type { LiveModel, LiveOutcome } from "../model/index.js";
 import { offerLabel } from "../ui/offer.js";
-import { SecondaryButton } from "../ui/buttons.js";
+import { BackLink, SecondaryButton } from "../ui/buttons.js";
+import { routeTo } from "../route.js";
 
 export const PROJECTOR = { width: 1920, height: 1080 } as const;
 /** Nombre de nuestro equipo en el marcador (design.md, Open Questions). */
@@ -24,11 +25,17 @@ function Stat({ value, label, color }: { value: string; label: string; color: st
   );
 }
 
-/** Escala el lienzo 1920 × 1080 al ancho de la ventana (el proyector lo ve a tamaño real). */
+function projectorScale(): number {
+  if (typeof window === "undefined") return 1;
+  return Math.min(window.innerWidth / PROJECTOR.width, window.innerHeight / PROJECTOR.height);
+}
+
+/** Escala el lienzo 1920 × 1080 a la ventana entera, sin recortar ni dejar franja: el factor es
+ * el mínimo entre ancho y alto (el proyector lo ve centrado, con el sobrante relleno de --bg). */
 function useProjectorScale(): number {
-  const [scale, setScale] = useState(() => (typeof window === "undefined" ? 1 : Math.min(1, window.innerWidth / PROJECTOR.width)));
+  const [scale, setScale] = useState(projectorScale);
   useEffect(() => {
-    const onResize = () => setScale(Math.min(1, window.innerWidth / PROJECTOR.width));
+    const onResize = () => setScale(projectorScale());
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -42,16 +49,19 @@ export function LiveScreen({ model }: { model: LiveModel }) {
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setProjectorMode(false);
+      if (e.key !== "Escape") return;
+      if (projectorMode) setProjectorMode(false);
+      else window.location.hash = routeTo.runs();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, []);
+  }, [projectorMode]);
 
   const chartRounds = model.roundLimit ?? model.round;
   const rounds = model.status === "waiting" ? model.roundLimit : chartRounds;
   const playing = model.status === "live" || model.status === "finished";
-  const rival = model.status === "waiting" ? "next opponent" : (model.sessionId ?? "—");
+  const waiting = model.status === "waiting";
+  const rival = waiting ? "next opponent" : (model.sessionId ?? "—");
   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
@@ -74,20 +84,31 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
   return (
-    <div style={{ width: PROJECTOR.width * scale, height: PROJECTOR.height * scale, overflow: "hidden" }}>
-      <div style={{ width: PROJECTOR.width, height: PROJECTOR.height, transform: `scale(${scale})`, transformOrigin: "0 0" }}>
+    <div style={{ position: "fixed", inset: 0, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <div style={{ width: PROJECTOR.width, height: PROJECTOR.height, transform: `scale(${scale})`, transformOrigin: "center center" }}>
         <Root
           theme="dark"
           data-screen="p7"
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-              <Scoreboard badge={model.badge} us={US} rival={rival} round={model.status === "waiting" ? null : model.round} rounds={rounds} attacksBlocked={model.status === "waiting" ? null : model.attacksBlocked} />
-              <ModeBadge mode="tournament" />
+          <BackLink
+            className="nr-live-corner-back"
+            style={{ position: "absolute", top: 16, left: 16, color: "var(--muted)" }}
+            onClick={() => {
+              window.location.hash = routeTo.runs();
+            }}
+          >
+            ← Runs
+          </BackLink>
+          {!projectorMode ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                <Scoreboard badge={model.badge} us={US} rival={rival} rivalPending={waiting} round={waiting ? null : model.round} rounds={rounds} attacksBlocked={waiting ? null : model.attacksBlocked} />
+                <ModeBadge mode="tournament" />
+              </div>
+              <SecondaryButton onClick={() => setProjectorMode(true)}>Projector mode</SecondaryButton>
             </div>
-            <SecondaryButton onClick={() => setProjectorMode(!projectorMode)}>{projectorMode ? "Exit projector mode" : "Projector mode"}</SecondaryButton>
-          </div>
+          ) : null}
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
@@ -105,7 +126,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                     <Stat key={s.label} {...s} />
                   ))}
                 </div>
-                <div className="nr-chat" style={{ zoom: 1.6, gap: 10, overflow: "hidden" }}>
+                <div className="nr-chat" style={{ gap: 10, overflow: "hidden", transform: "scale(1.6)", transformOrigin: "top left", width: `${100 / 1.6}%` }}>
                   {model.lastMessages.map((b, i) => (
                     <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
                   ))}
