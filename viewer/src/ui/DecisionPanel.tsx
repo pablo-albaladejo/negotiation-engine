@@ -15,7 +15,7 @@ function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: numb
       {shown.map((s) => `${s.name} ${s.latencyMs} ms`).join(" · ")}
       {hiddenCount > 0 ? (
         <SecondaryButton style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
-          {showAll ? "hide 0 ms steps" : `show all (+${hiddenCount})`}
+          {showAll ? "Hide 0 ms steps" : `Show all (+${hiddenCount})`}
         </SecondaryButton>
       ) : null}
     </span>
@@ -46,7 +46,7 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
     ? [
         { k: "Rule", v: panel.decision?.rule ?? "not logged" },
         { k: "Target (Boulware curve)", v: panel.explain ? formatNumber(panel.explain.target, { locale: "en", decimals: 3 }) : "not logged" },
-        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "n/a" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
+        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "not logged" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
         {
           k: "AC_next",
           v: panel.explain ? <Pill kind={panel.explain.acNext ? "verdict" : "rejected"}>{panel.explain.acNext ? "accept" : "no accept"}</Pill> : "not logged",

@@ -1,5 +1,5 @@
 import { Card, ChatMessage, Flag, Legend, WarningBanner } from "@negotiation-ring/design-system";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import type { ApiError } from "../api.js";
 
 /** Flag + text inside a `WarningBanner`: stacked, left-aligned, so the Flag never stretches full width. */
@@ -16,12 +16,14 @@ function BannerBody({ children }: { children: ReactNode }) {
 export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
   const isDeterminate = current !== undefined && total !== undefined && total > 0;
   const percentage = isDeterminate ? (current / total) * 100 : 0;
+  const labelId = useId();
   return (
     <Card title="Loading">
-      <div style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-        <span className="nr-cfg">{label}</span>
+      <div role="status" style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <span className="nr-cfg" id={labelId}>{label}</span>
         <div
           role="progressbar"
+          aria-labelledby={labelId}
           {...(isDeterminate ? { "aria-valuenow": percentage, "aria-valuemin": 0, "aria-valuemax": 100 } : { "aria-busy": true })}
           className="nr-progress-track"
         >
@@ -37,11 +39,11 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
   const first = errors[0];
   if (!first) return null;
   return (
-    <WarningBanner tone="warn" title={`${first.file ?? "?"}${first.line !== null ? ` · line ${first.line}` : ""}`}>
+    <WarningBanner tone="warn" title={`${first.file ?? "not logged"}${first.line !== null ? ` · line ${first.line}` : ""}`}>
       <BannerBody>
         <Flag kind="walk">schema fails</Flag>
         <span style={{ font: "13px var(--font-mono)", color: "var(--ink)" }}>
-          field <b>{first.path || "?"}</b>: {first.message}
+          field <b>{first.path || "(root)"}</b>: {first.message}
         </span>
         <span className="nr-muted">{validCount} valid lines loaded.</span>
       </BannerBody>

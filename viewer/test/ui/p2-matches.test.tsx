@@ -19,11 +19,11 @@ describe("MatchesScreen (P2)", () => {
 
   it("checkbox 'with injection' solo aparece si alguna partida trae metrics.injectionSuspected", () => {
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} />);
-    expect(screen.getByText("with injection")).toBeTruthy();
+    expect(screen.getByText("With injection")).toBeTruthy();
     cleanup();
     const withoutField = fx.games.map((g) => ({ ...g, metrics: { ...g.metrics, injectionSuspected: undefined } }));
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={withoutField} onOpenGame={() => {}} onBack={() => {}} />);
-    expect(screen.queryByText("with injection")).toBeNull();
+    expect(screen.queryByText("With injection")).toBeNull();
   });
 
   it("filtrar por rival deja solo sus partidas", () => {

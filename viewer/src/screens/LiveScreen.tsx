@@ -70,17 +70,17 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     model.status === "finished" && model.outcome
       ? [
           { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
-          { value: `${model.round}/${model.roundLimit ?? "—"}`, label: "rounds", color: "var(--ink)" },
+          { value: `${model.round}/${model.roundLimit ?? "not logged"}`, label: "rounds", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
           { value: num(model.attacksBlocked), label: "attacks blocked", color: model.attacksBlocked > 0 ? "var(--warn)" : "var(--muted)" },
         ]
       : [
           { value: offerLabel(model.latest.theirOffer), label: "their latest offer", color: "var(--them)" },
           { value: offerLabel(model.latest.ourOffer), label: "our latest offer", color: "var(--us)" },
-          { value: model.latest.uRival === null ? "—" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
+          { value: model.latest.uRival === null ? "not logged" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
         ];
-  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "—"}${model.role ? ` · ${model.role}` : ""}`;
+  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "not logged"}${model.role ? ` · ${model.role}` : ""}`;
   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
   return (

@@ -41,8 +41,8 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
   const { x, y } = model.axes;
   const [selectedRound, setSelectedRound] = useState(model.game.rounds || 1);
   const selectPoint = (point: { round: number }) => setSelectedRound(point.round);
-  const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "—" : num(offer[key]!));
-  const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "—");
+  const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "not logged" : num(offer[key]!));
+  const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "not logged");
   const all = [...model.offers.ours, ...model.offers.rival];
   const xDomain: [number, number] = x.issue ? [x.issue.min, x.issue.max] : offerDomain(all.map((p) => p.x));
   const yDomain: [number, number] = y.issue ? [y.issue.min, y.issue.max] : offerDomain(all.map((p) => p.y));

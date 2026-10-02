@@ -76,7 +76,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
     const estimateForRound = model.explain.find((e) => e.round === p.round);
     return {
       r: `R${p.round}`,
-      th: offerValue(p.rivalOffer) ?? "—",
+      th: offerValue(p.rivalOffer) ?? "not logged",
       e: estimateForRound ? (offerValue(estimateForRound.rivalReserveEstimate) ?? "not logged") : "not logged",
       us: offerValue(p.ourOffer) ?? "accept",
     };

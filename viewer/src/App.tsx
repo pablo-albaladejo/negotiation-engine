@@ -6,7 +6,7 @@ import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
 import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
-import { parseRoute, routeTo } from "./route.js";
+import { parseRoute, routeTo, type Route } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
 import { GateScreen } from "./screens/GateScreen.js";
@@ -24,15 +24,26 @@ const TABS = [
   { id: "live", label: "Live" },
 ];
 
-function useHashRoute() {
+function useHashRoute(): { route: Route; hash: string } {
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
     const onChange = () => setHash(window.location.hash);
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  return parseRoute(hash);
+  return { route: parseRoute(hash), hash };
 }
+
+/** L27: document title per screen, English, suffixed with the app name. */
+const SCREEN_TITLE: Record<Route["screen"], string> = {
+  runs: "Runs",
+  matches: "Matches",
+  "arena-replay": "Replay",
+  "tournament-replay": "Tournament replay",
+  compare: "Compare",
+  states: "States",
+  live: "Live",
+};
 
 function navigate(hash: string) {
   window.location.hash = hash;
@@ -191,6 +202,9 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
 /** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */
 function LiveContainer() {
   const { feed, errors } = useLiveFeed();
+  useEffect(() => {
+    document.title = `${SCREEN_TITLE.live} · Arena viewer`;
+  }, []);
   return (
     <>
       <LiveScreen model={liveModel(feed)} />
@@ -204,8 +218,25 @@ function LiveContainer() {
 }
 
 export function App() {
-  const route = useHashRoute();
+  const { route, hash } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const skipFocus = useRef(true);
+  /** L27: title per screen on every hash change; focus moves to the page h2 so screen readers and
+   * keyboard users land on the new content, but not on the very first paint (no screen to leave).
+   * Runs before the `live` early return so this hook is called on every render (rules of hooks). */
+  useEffect(() => {
+    document.title = `${SCREEN_TITLE[route.screen]} · Arena viewer`;
+    if (skipFocus.current) {
+      skipFocus.current = false;
+      return;
+    }
+    const heading = mainRef.current?.querySelector<HTMLElement>("h2");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+  }, [hash]);
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "states" ? "states" : "runs";
   const toggleTheme = () => {
@@ -223,7 +254,7 @@ export function App() {
           </div>
           <SecondaryButton onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</SecondaryButton>
         </header>
-        <main>
+        <main ref={mainRef}>
           {route.screen === "runs" ? <RunsContainer /> : null}
           {route.screen === "matches" ? <MatchesContainer key={`${route.runId}?${route.query}`} runId={route.runId} query={route.query} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}

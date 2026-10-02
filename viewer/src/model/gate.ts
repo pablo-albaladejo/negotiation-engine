@@ -113,7 +113,7 @@ function fromOverview(o: { agreementRate: number; meanSurplus: number | null }):
   return { games: null, meanSurplus: o.meanSurplus, agreementRate: o.agreementRate, violations: null, leaks: null, meanRoundsToAgreement: null, emptyZopaCorrect: null };
 }
 
-const show = (v: unknown): string => (v === undefined ? "—" : JSON.stringify(v));
+const show = (v: unknown): string => (v === undefined ? "not logged" : JSON.stringify(v));
 
 /** P6: `gate.json` tal como lo escribió `pnpm promote`; el veredicto y cada comprobación salen del fichero. */
 export function gateModel(runId: string, file: GateFile): GateModel {

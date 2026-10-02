@@ -13,7 +13,7 @@ export function offerValue(offer: Offer | null | undefined): number | null {
 
 /** Oferta registrada como texto: un issue ⇒ su valor; varios ⇒ `issue value` separados por " · ". */
 export function offerLabel(offer: Offer | null): string {
-  if (!offer) return "—";
+  if (!offer) return "not logged";
   const entries = Object.entries(offer);
   if (entries.length === 1) return formatNumber(entries[0]![1], { locale: "en" });
   return entries.map(([k, v]) => `${k} ${formatNumber(v, { locale: "en" })}`).join(" · ");
