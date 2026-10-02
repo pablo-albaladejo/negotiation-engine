@@ -353,9 +353,13 @@ function AppContent() {
   /** L27: document title per screen; kept on `route.screen` alone (not `navKey`/`hash`) so a
    * filter/page change (which only touches the query via `replaceRoute`) never re-triggers it.
    * Runs before the `live` early return so this hook is called on every render (rules of hooks). */
+  // X5: an arena-replay route is shared by the "Replay · arena" and "Two dimensions" tabs; the
+  // `view` query param (set by the Find resolver) says which one actually led here, so the
+  // title (and `activeTab` below) doesn't always default to "Replay · arena".
+  const arenaReplayView = route.screen === "arena-replay" && new URLSearchParams(route.query).get("view") === "two-issue" ? "two-issue" : "arena-replay";
   useEffect(() => {
-    document.title = `${route.screen === "find" ? FIND_TAB_LABEL[route.tab] : SCREEN_TITLE[route.screen]} · Arena viewer`;
-  }, [route.screen, route.screen === "find" ? route.tab : null]);
+    document.title = `${route.screen === "find" ? FIND_TAB_LABEL[route.tab] : route.screen === "arena-replay" ? FIND_TAB_LABEL[arenaReplayView] : SCREEN_TITLE[route.screen]} · Arena viewer`;
+  }, [route.screen, route.screen === "find" ? route.tab : arenaReplayView]);
   /** C1: flags a real navigation (`navKey`, bumped only by an actual `hashchange`, never by
    * `replaceRoute`) so the screen's own `PageTitle` heading focuses itself once it has actually
    * rendered — it may still be behind a `LoadingCard` right after this fires. Not on the very
@@ -375,7 +379,7 @@ function AppContent() {
   useEffect(() => watchSystemTheme(setTheme), []);
   const resultsFolder = useResultsFolder();
   if (route.screen === "live") return <LiveContainer />;
-  const activeTab = route.screen === "find" ? route.tab : route.screen;
+  const activeTab = route.screen === "find" ? route.tab : route.screen === "arena-replay" ? arenaReplayView : route.screen;
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);

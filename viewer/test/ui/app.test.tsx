@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { App } from "../../src/App.js";
+import { isTwoIssue } from "../../src/model/index.js";
 import { generateFixtures } from "../fixtures.js";
 
 let fx: Awaited<ReturnType<typeof generateFixtures>>;
@@ -392,6 +393,33 @@ describe("App header + tabs (spec item 1/2)", () => {
     expect(labels).toEqual(["Runs", "Matches", "Replay · arena", "Replay · tournament", "Two dimensions", "Champion vs candidate", "Live", "States"]);
     expect(screen.getByRole("button", { name: "Runs" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("button", { name: "Matches" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  // X5/test14: both "Replay · arena" and "Two dimensions" resolve to the same arena-replay route
+  // shape; the Find resolver tags the "Two dimensions" one so the active tab (and title) follow the
+  // tab actually picked, instead of always defaulting to "Replay · arena".
+  it("Two dimensions tab keeps aria-current and the title on 'Two dimensions' (X5)", async () => {
+    const twoIssueLine = fx.games.find((g) => isTwoIssue(g))!;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/champion")) return new Response(JSON.stringify({ data: null, errors: [] }));
+        if (url.includes("/api/info")) return new Response(JSON.stringify({ data: { resultsFolder: "results" }, errors: [] }));
+        if (url.includes("/api/runs/") && url.includes("/games/")) return new Response(JSON.stringify({ data: fx.traces.get(twoIssueLine.gameId) ?? [], errors: [] }));
+        if (url.includes("/api/runs/")) return new Response(JSON.stringify({ data: { runId: fx.runId, summary: fx.summary, games: fx.games }, errors: [] }));
+        if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: [{ runId: fx.runId, kind: "arena", summary: fx.summary }], errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText(fx.runId);
+    fireEvent.click(screen.getByRole("button", { name: "Two dimensions" }));
+    await waitFor(() => expect(window.location.hash).toContain(`games/${twoIssueLine.gameId}`));
+    expect(screen.getByRole("button", { name: "Two dimensions" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: "Replay · arena" }).getAttribute("aria-current")).toBeNull();
+    expect(document.title).toContain("Two dimensions");
   });
 
   it("header subtitle shows the results folder from the server, never hardcoded", async () => {

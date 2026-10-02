@@ -14,6 +14,16 @@ export interface FindResult {
 const found = (target: string): FindResult => ({ target });
 const empty = (title: string): FindResult => ({ empty: title });
 
+/** X5: tags an arena-replay hash with `view=<view>` so the nav tab active after a Find redirect
+ * matches the tab the user actually picked ("Two dimensions" vs "Replay · arena"), not always
+ * "Replay · arena" just because both tabs land on the same route shape. */
+function withView(hash: string, view: "two-issue"): string {
+  const [path, query] = hash.split("?");
+  const params = new URLSearchParams(query ?? "");
+  params.set("view", view);
+  return `${path}?${params.toString()}`;
+}
+
 /** Most recent run first, by the same ordering `RunsScreen` uses (`runsModel`'s `createdAt` sort). */
 function newestFirst(entries: readonly RunEntry[]): RunEntry[] {
   const order = runsModel(entries).map((r) => r.runId);
@@ -77,11 +87,11 @@ export async function resolveTournamentReplay(entries: readonly RunEntry[]): Pro
 export async function resolveTwoIssue(entries: readonly RunEntry[]): Promise<FindResult> {
   const last = lastViewed.twoIssueMatch();
   const valid = last ? await validArenaRoute(last, entries) : null;
-  if (valid) return found(valid);
+  if (valid) return found(withView(valid, "two-issue"));
   for (const run of newestFirst(entries)) {
     const games = await runGames(run.runId);
     const match = games.find((g) => isTwoIssue(g));
-    if (match) return found(routeTo.arenaReplay(run.runId, match.gameId));
+    if (match) return found(withView(routeTo.arenaReplay(run.runId, match.gameId), "two-issue"));
   }
   return empty("No two-issue match in results/");
 }
