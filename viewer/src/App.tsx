@@ -81,7 +81,7 @@ function MatchesContainer({ runId }: { runId: string }) {
 }
 
 function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string }) {
-  const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null } | null>(null);
+  const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null; games: TranscriptLine[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
     setState(null);
@@ -91,7 +91,8 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
     ]).then(([run, trace]) => {
       if (cancelled) return;
       const line = run.data?.games.find((g) => g.gameId === gameId) ?? null;
-      setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null });
+      const games = run.data?.games ?? [];
+      setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null, games });
     });
     return () => {
       cancelled = true;
@@ -100,8 +101,9 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
   if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
   if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
   const onBack = () => navigate(routeTo.matches(runId));
-  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} />;
+  const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId));
+  if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
+  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
 }
 
 function GateContainer({ runId }: { runId: string }) {

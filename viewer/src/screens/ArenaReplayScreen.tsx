@@ -17,6 +17,7 @@ import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js"
 import { nameLatencySteps } from "../ui/decision.js";
 import { resultKpi, zopaKpi } from "../ui/labels.js";
 import { offerLabel, offerValue } from "../ui/offer.js";
+import { MatchSelector } from "../ui/match-selector.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 
 /** P3: una entrada por paso, con nombre único cuando una caja corrió más de una vez; los pasos de 0 ms quedan tras "show all". */
@@ -48,10 +49,12 @@ export interface ArenaReplayScreenProps {
   runId: string;
   model: ArenaReplayModel;
   onBack: () => void;
+  games?: Array<{ gameId: string }>;
+  onSelectGame?: (gameId: string) => void;
 }
 
 /** P3: replay de una partida de arena, con el chart, el chat y el panel de decisión por ronda. */
-export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenProps) {
+export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }: ArenaReplayScreenProps) {
   const lastRound = model.game.rounds || 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
@@ -134,6 +137,16 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
             {model.game.gameId} · vs {model.game.rival}
           </h2>
         </div>
+        {games && onSelectGame ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <button className="nr-btn nr-btn-back" type="button" onClick={onBack} style={{ alignSelf: "flex-start" }}>
+              ←
+            </button>
+            <span className="nr-muted">{model.game.gameId}</span>
+            <ModeBadge mode="arena" />
+            <MatchSelector games={games} currentGameId={model.game.gameId} onSelectGame={onSelectGame} />
+          </div>
+        ) : null}
       </div>
       <KpiStrip
         items={[

@@ -13,10 +13,12 @@ const EST_COLUMNS: DataTableColumn[] = [
 
 export interface TournamentReplayScreenProps {
   model: TournamentReplayModel;
+  games?: Array<{ gameId: string }>;
+  onSelectGame?: (gameId: string) => void;
 }
 
 /** P4: replay en modo torneo. Privacidad: nunca ZOPA ni reserva del rival; la nuestra solo si el escenario local coincide. */
-export function TournamentReplayScreen({ model }: TournamentReplayScreenProps) {
+export function TournamentReplayScreen({ model, games, onSelectGame }: TournamentReplayScreenProps) {
   const ourOffers = toOfferPoints(model.offers.ours);
   const theirOffers = toOfferPoints(model.offers.rival);
   const target = toTargetOfferPoints(model.explain);

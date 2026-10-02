@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { arenaReplayModel, type ArenaReplayModel } from "../../src/model/index.js";
 import { ArenaReplayScreen } from "../../src/screens/ArenaReplayScreen.js";
 import { generateFixtures, type ViewerFixtures } from "../fixtures.js";
@@ -92,5 +92,23 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(codeElements.length).toBe(0);
     expect(markElements.length).toBe(0);
     expect(screen.getByText("Te ofrezco 9,3")).toBeTruthy();
+  });
+
+  it("muestra selector de partidas cuando se pasan games y onSelectGame", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const mockSelectGame = vi.fn();
+    render(
+      <ArenaReplayScreen
+        runId={fx.runId}
+        model={model}
+        onBack={() => {}}
+        games={fx.games}
+        onSelectGame={mockSelectGame}
+      />
+    );
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe(model.game.gameId);
   });
 });

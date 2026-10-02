@@ -13,6 +13,7 @@ import {
 } from "@negotiation-ring/design-system";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
+import { MatchSelector } from "../ui/match-selector.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "r", label: "Round" },
@@ -30,10 +31,12 @@ export interface TwoIssueScreenProps {
   runId: string;
   model: TwoIssueModel;
   onBack: () => void;
+  games?: Array<{ gameId: string }>;
+  onSelectGame?: (gameId: string) => void;
 }
 
 /** P5: partida de 2 issues en el plano, utilidades por ronda tal como las registró el motor y tabla de ofertas. */
-export function TwoIssueScreen({ runId, model, onBack }: TwoIssueScreenProps) {
+export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: TwoIssueScreenProps) {
   const { x, y } = model.axes;
   const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "—" : num(offer[key]!));
   const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "—");
@@ -84,6 +87,16 @@ export function TwoIssueScreen({ runId, model, onBack }: TwoIssueScreenProps) {
             {model.game.gameId} · vs {model.game.rival}
           </h2>
         </div>
+        {games && onSelectGame ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <button className="nr-btn nr-btn-back" type="button" onClick={onBack} style={{ alignSelf: "flex-start" }}>
+              ←
+            </button>
+            <span className="nr-muted">{model.game.gameId}</span>
+            <ModeBadge mode="arena" />
+            <MatchSelector games={games} currentGameId={model.game.gameId} onSelectGame={onSelectGame} />
+          </div>
+        ) : null}
         <span className="nr-muted">
           {model.game.role} · {y.name} and {x.name}
           {model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}
