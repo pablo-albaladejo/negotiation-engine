@@ -60,6 +60,6 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 
 ## 11. Red team
 
-- [ ] 11.1 Casos de inyección es/en/fr/ja en `redteam/cases.yaml` y test de aserciones deterministas
+- [x] 11.1 Casos de inyección es/en/fr/ja en `redteam/cases.yaml` y test de aserciones deterministas
 - [ ] 11.2 Casos adversariales de evidencia (ancho cero, dígitos mezclados, etiquetas falsas, aceptaciones negadas o condicionales multilingües, cita de nuestra oferta) [aplazada: sábado]
 - [ ] 11.3 Suite extendida de red team en ar y otros idiomas con el bot LLM como atacante [si hay tiempo]
