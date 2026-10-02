@@ -1,0 +1,21 @@
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bzyzt38qy.output <==
+> tsx src/bazaar/main.ts --safety 1.0 --max-spend 40 --max-deals 3 --max-threads 3
+bazaar agent · dealer abuela · LIVE · max-spend 40 P (run and per hour) · max-deals 3 · max-threads 3 · safety 1 · trazas en /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bqt4ubb82.output <==
+> negotiation-ring@0.1.0 bazaar:duels /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/duels-main.ts
+bazaar:duels · LIVE · params {"anchorMargin":0.5,"beta":2,"maxRounds":4,"floorShare":0.3,"minSurplus":1,"lastMoveTicks":1,"endgameTicks":3,"staleTicks":3,"assumedDaysWeight":0,"daysWeightScale":1}
+tick 114 · no duels scheduled now · next: "Practice duels" at 2.00 h (now 1.90 h; in ~6 ticks ≈ 6 min at 60 s/tick) · price · 12 ticks per duel · decay 6%/round · max 6 at once · practice (not scored)
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bzyzt38qy.output <==
+[tick 114] · open · thread 222 · buy:SAL-06
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 16
+[tick 115] · counter · thread 222 · buy:SAL-06 · her 29 · ours 22 · rule anchor
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bqt4ubb82.output <==
+tick 115 · no duels scheduled now · next: "Practice duels" at 2.00 h (now 1.92 h; in ~5 ticks ≈ 5 min at 60 s/tick) · price · 12 ticks per duel · decay 6%/round · max 6 at once · practice (not scored)
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bzyzt38qy.output <==
+score 4.3 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15 ↑1
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bqt4ubb82.output <==
+tick 116 · no duels scheduled now · next: "Practice duels" at 2.00 h (now 1.93 h; in ~4 ticks ≈ 4 min at 60 s/tick) · price · 12 ticks per duel · decay 6%/round · max 6 at once · practice (not scored)
+==> /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/f5f508de-6e1a-4dcf-b54e-20f986317497/tasks/bzyzt38qy.output <==
+[tick
+[killed]

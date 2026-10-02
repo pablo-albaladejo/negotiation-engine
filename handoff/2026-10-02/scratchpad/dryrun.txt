@@ -1,0 +1,31 @@
+bazaar agent · dealer abuela · DRY-RUN (sin POST) · max-spend 40 P (run and per hour) · max-deals 2 · max-threads 2 · safety 1 · only buy:uncommon:SAL,buy:common:SAL · trazas en /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02
+--only buy:uncommon:SAL,buy:common:SAL: 2 matching candidate(s), opened in that order
+== PLAN (dry-run, no POST) · dealer Abuela Carmen ==
+us: cash 413 P · level 1 · deals 1 (next level unlocks early at 3 deals: 2 to go)
+caps: max-deals 2 · max-spend 40 P · max-threads 2 (one conversation at a time per dealer)
+
+ranked candidates (values are ours, private; reservation = buy: value × safety, sell: value ÷ safety):
+ 1. [no room] BUY uncommon SAL (any card of that rarity+set)
+      value gain 24.4 P · reservation 24 · her list 25, opening 29 (opening assumed list × 1.15) · value created at her price -0.6 P
+      cards: SAL-06=32.5 SAL-07=8.1(held) SAL-08=32.5
+      why: value 24.4 × 1 = 24 ≤ list 25: no room; 2/3 would be new (SAL page 4/10)
+ 2. [no room] BUY common SAL (any card of that rarity+set)
+      value gain 9.1 P · reservation 9 · her list 10, opening 12 (opening assumed list × 1.15) · value created at her price -0.9 P
+      cards: SAL-01=3.2(held) SAL-02=3.2(held) SAL-03=13 SAL-04=13 SAL-05=13
+      why: value 9.1 × 1 = 9 ≤ list 10: no room; 3/5 would be new (SAL page 4/10)
+
+would open 2 conversation(s), one at a time, and stop after 2 deal(s):
+  #1 buy uncommon SAL · topic {"buy":{"rarity":"uncommon","set":"SAL"}}
+      why chosen: requested with --only; no room over her list 25: a deal needs her below list, else we close without buying
+      our value 24.4 · our limit 24 (value × 1, capped by spend/cash) · her list 25 · her opening 29 (opening assumed list × 1.15)
+      anchor 22 · planned path within 6 exchanges (step mode adaptive, max step 3): 22 → 23 → 24
+      if she does not move from 29: 22 → 23 → 24 → close (rule fixed-price-out-of-range)
+      first message (price 22): "Good evening, Abuela Carmen! What a lovely stall. I would be happy to offer 22 P for it, if that suits you."
+  #2 buy common SAL · topic {"buy":{"rarity":"common","set":"SAL"}}
+      why chosen: requested with --only; no room over her list 10: a deal needs her below list, else we close without buying
+      our value 9.1 · our limit 9 (value × 1, capped by spend/cash) · her list 10 · her opening 12 (opening assumed list × 1.15)
+      anchor 8 · planned path within 6 exchanges (step mode adaptive, max step 3): 8 → 9
+      if she does not move from 12: 8 → 9 → close (rule holds-exhausted, after 3 holds)
+      first message (price 8): "Good evening, Abuela Carmen! What a lovely stall. I would be happy to offer 8 P for it, if that suits you."
+[tick 92] (dry-run) · open · buy:SAL:uncommon · rule dry-run
+score 4.35 (neg 0 · mm 0 · duel 0 · ladder 0.022) rank 15

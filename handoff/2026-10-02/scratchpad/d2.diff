@@ -1,0 +1,1092 @@
+diff --git a/viewer/src/screens/ArenaReplayScreen.tsx b/viewer/src/screens/ArenaReplayScreen.tsx
+index 444cd08..16d936d 100644
+--- a/viewer/src/screens/ArenaReplayScreen.tsx
++++ b/viewer/src/screens/ArenaReplayScreen.tsx
+@@ -2,6 +2,7 @@ import { Card, ChatMessage, KpiStrip, Legend, OfferChart, formatNumber } from "@
+ import React, { useEffect, useState } from "react";
+ import type { ArenaReplayModel } from "../model/index.js";
+ import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
++import { gridCols } from "../ui/grid.js";
+ import { resultLabel, zopaKpi } from "../ui/labels.js";
+ import { offerLabel, offerValue } from "../ui/offer.js";
+ import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+@@ -59,9 +60,10 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
+         ? { round: lastRound, kind: "walk" as const, label: "Walk" }
+         : undefined;
+ 
+-  const result = resultLabel(model.game.endReason);
++  const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
+   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
+   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
++  const roundNumbers = model.rounds ? model.rounds.map((p) => p.round) : Array.from({ length: model.game.rounds }, (_, i) => i + 1);
+ 
+   return (
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+@@ -93,7 +95,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
+         <EmptyZopaBanner ours={offerLabel(model.reserves.ours)} rival={offerLabel(model.reserves.rival)} walked={model.game.endReason === "agent-walk"} />
+       ) : null}
+       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
+-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)" }}>
++      <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
+         <Card title="Offers by round" style={{ position: "sticky", top: "var(--space-4)" }}>
+           <OfferChart
+             rounds={model.game.roundLimit ?? model.game.rounds}
+@@ -121,8 +123,8 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
+             ]}
+           />
+         </Card>
+-        <Card title="Messages" style={{ maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+-          <div ref={messagesContainerRef} className="nr-chat" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
++        <Card title="Messages">
++          <div ref={messagesContainerRef} className="nr-chat nr-chat-scroll">
+             {model.chat.map((c, i) => (
+               <ChatMessage
+                 key={i}
+@@ -137,14 +139,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
+           </div>
+         </Card>
+       </div>
+-      <DecisionPanel
+-        hasTrace={model.hasTrace}
+-        panel={panel}
+-        selectedRound={selectedRound}
+-        totalRounds={model.game.rounds}
+-        onPrev={() => setSelectedRound((r) => Math.max(1, r - 1))}
+-        onNext={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}
+-      />
++      <DecisionPanel hasTrace={model.hasTrace} panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
+     </section>
+   );
+ }
+diff --git a/viewer/src/screens/GateScreen.tsx b/viewer/src/screens/GateScreen.tsx
+index a0d452c..a4ba268 100644
+--- a/viewer/src/screens/GateScreen.tsx
++++ b/viewer/src/screens/GateScreen.tsx
+@@ -12,6 +12,7 @@ import {
+ import { useEffect, useRef, useState } from "react";
+ import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
+ import { BackLink, PrimaryButton } from "../ui/buttons.js";
++import { gridCols } from "../ui/grid.js";
+ 
+ const METRIC_COLUMNS = (model: GateModel): DataTableColumn[] => [
+   { key: "k", label: "Metric" },
+@@ -29,15 +30,16 @@ const NL = "not logged";
+ const pct = (v: number | null): string => (v === null ? NL : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
+ const int = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en" }));
+ const dec = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en", decimals: 1 }));
++/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
++const surplusDec = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en", decimals: 2 }));
+ 
+ function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplusChangePp: number | null }): DataTableRow[] {
+   const row = (k: string, f: (v: number | null) => string, pick: (p: PhaseMetrics) => number | null) => ({ k, a: f(pick(m.champion)), b: f(pick(m.candidate)), d: NL });
+   const change = m.surplusChangePp;
+   return [
+-    {
+-      ...row("Avg. surplus / ZOPA", pct, (p) => p.meanSurplus),
+-      d: change === null ? NL : { value: formatPp(change), ...(change !== 0 ? { tone: change > 0 ? ("better" as const) : ("worse" as const) } : {}) },
+-    },
++    // gate.json never logs a direction for this change; showing a hard-coded better/worse tone from
++    // the sign would be the UI inventing a judgement the engine never made, so it is plain text (L12).
++    { ...row("Avg. surplus / ZOPA", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
+     row("Agreement", pct, (p) => p.agreementRate),
+     row("Violations", int, (p) => p.violations),
+     row("Leaks", int, (p) => p.leaks),
+@@ -62,18 +64,26 @@ function Verdict({ model }: { model: GateModel }) {
+ 
+ type CopyStatus = "idle" | "copied" | "failed";
+ 
+-/** C1: label reflects the actual clipboard outcome ("Copied" / "Copy failed"), resets after 1.5 s; the timer is cleared on unmount. */
++/** C1: label reflects the actual clipboard outcome ("Copied" / "Copy failed"), resets after 1.5 s; the timer is cleared on unmount. A mounted ref (L16) guards every state update so a clipboard promise that settles after unmount is a no-op. */
+ function CopyCommand({ command }: { command: string }) {
+   const [status, setStatus] = useState<CopyStatus>("idle");
+   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
++  const mounted = useRef(true);
+   useEffect(() => () => {
++    mounted.current = false;
+     if (timer.current !== null) clearTimeout(timer.current);
+   }, []);
+   const scheduleReset = () => {
+     if (timer.current !== null) clearTimeout(timer.current);
+-    timer.current = setTimeout(() => setStatus("idle"), 1500);
++    timer.current = setTimeout(() => {
++      if (mounted.current) setStatus("idle");
++    }, 1500);
++  };
++  const setStatusIfMounted = (next: CopyStatus) => {
++    if (mounted.current) setStatus(next);
+   };
+   const label = status === "copied" ? "Copied" : status === "failed" ? "Copy failed" : "Copy";
++  const liveMessage = status === "copied" ? "Command copied" : status === "failed" ? "Copy failed, select the command manually" : "";
+   return (
+     <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "stretch", margin: "var(--space-3) 0 var(--space-2)" }}>
+       <code className="nr-code-box" style={{ flex: 1, minWidth: 0 }}>
+@@ -82,19 +92,22 @@ function CopyCommand({ command }: { command: string }) {
+       <PrimaryButton
+         onClick={() => {
+           if (!navigator.clipboard) {
+-            setStatus("failed");
++            setStatusIfMounted("failed");
+             scheduleReset();
+             return;
+           }
+           navigator.clipboard
+             .writeText(command)
+-            .then(() => setStatus("copied"))
+-            .catch(() => setStatus("failed"))
++            .then(() => setStatusIfMounted("copied"))
++            .catch(() => setStatusIfMounted("failed"))
+             .finally(scheduleReset);
+         }}
+       >
+         {label}
+       </PrimaryButton>
++      <span role="status" aria-live="polite" className="nr-sr-only">
++        {liveMessage}
++      </span>
+     </div>
+   );
+ }
+@@ -118,21 +131,23 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
+ 
+   return (
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+-      <BackLink onClick={onBack}>← Runs</BackLink>
+-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
+-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+-          <h2 className="nr-heading">
+-            Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
+-          </h2>
+-          <span className="nr-cfg">
+-            {model.runId} · {model.candidatePath} · criterion: {model.criterion}
+-            {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
+-          </span>
++      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
++        <BackLink onClick={onBack}>← Runs</BackLink>
++        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
++          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
++            <h2 className="nr-heading-lg">
++              Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
++            </h2>
++            <span className="nr-cfg">
++              {model.runId} · {model.candidatePath} · criterion: {model.criterion}
++              {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
++            </span>
++          </div>
++          <Verdict model={model} />
+         </div>
+-        <Verdict model={model} />
+       </div>
+       <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} />
+-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)" }}>
++      <div className="nr-grid" style={gridCols("minmax(0, 1.2fr) minmax(0, 1fr)")}>
+         <Card title={`Metrics · ${PHASE_LABEL[phase]}`} caption="Change is the logged paired, role-weighted surplus difference; other rows have no logged change.">
+           {metrics ? <DataTable columns={METRIC_COLUMNS(model)} rows={metricRows(metrics)} /> : <p className="nr-muted">Phase not logged.</p>}
+         </Card>
+@@ -140,7 +155,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
+           <DataTable columns={CHECK_COLUMNS} rows={checkRows} />
+         </Card>
+       </div>
+-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)" }}>
++      <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
+         <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption="Candidate · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor">
+           {heat ? (
+             <Heatmap
+@@ -148,7 +163,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
+               columns={heat.roles}
+               rows={heat.rows.map((r) => ({
+                 rival: r.rival,
+-                cells: r.cells.map((c) => ({ label: c.meanSurplus === null ? "n/a" : formatNumber(c.meanSurplus, { locale: "en", decimals: 2 }), value: c.meanSurplus })),
++                cells: r.cells.map((c) => ({ label: c.meanSurplus === null ? "not logged" : formatNumber(c.meanSurplus, { locale: "en", decimals: 2 }), value: c.meanSurplus })),
+               }))}
+             />
+           ) : (
+@@ -163,7 +178,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
+                   p.changed
+                     ? [
+                         <div key={`${p.key}-a`} className="nr-diff-row">
+-                          <span className="nr-diff-sign">−</span>
++                          <span className="nr-diff-sign">-</span>
+                           <span>{p.key}: {p.champion}</span>
+                         </div>,
+                         <div key={`${p.key}-b`} className="nr-diff-row">
+diff --git a/viewer/src/screens/LiveScreen.tsx b/viewer/src/screens/LiveScreen.tsx
+index bf43aec..1271279 100644
+--- a/viewer/src/screens/LiveScreen.tsx
++++ b/viewer/src/screens/LiveScreen.tsx
+@@ -19,8 +19,8 @@ function outcomeLabel(o: LiveOutcome): string {
+ function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+   return (
+     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+-      <span style={{ font: "800 76px/1 var(--font-display)", color }}>{value}</span>
+-      <span style={{ font: "500 22px var(--font-body)", color: "var(--muted)" }}>{label}</span>
++      <span className="nr-live-stat-value" style={{ color }}>{value}</span>
++      <span className="nr-live-stat-label">{label}</span>
+     </div>
+   );
+ }
+@@ -49,9 +49,8 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+ 
+   useEffect(() => {
+     const handleEsc = (e: KeyboardEvent) => {
+-      if (e.key !== "Escape") return;
+-      if (projectorMode) setProjectorMode(false);
+-      else window.location.hash = routeTo.runs();
++      if (e.key !== "Escape" || !projectorMode) return;
++      setProjectorMode(false);
+     };
+     window.addEventListener("keydown", handleEsc);
+     return () => window.removeEventListener("keydown", handleEsc);
+@@ -61,7 +60,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+   const rounds = model.status === "waiting" ? model.roundLimit : chartRounds;
+   const playing = model.status === "live" || model.status === "finished";
+   const waiting = model.status === "waiting";
+-  const rival = waiting ? "next opponent" : (model.sessionId ?? "—");
++  const rival = waiting ? "next opponent" : (model.rival ?? "not logged");
+   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
+     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
+     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
+@@ -70,36 +69,36 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+     model.status === "finished" && model.outcome
+       ? [
+           { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
+-          { value: `${model.round}/${model.roundLimit ?? "—"}`, label: "rounds", color: "var(--ink)" },
++          { value: `${model.round}/${model.roundLimit ?? "not logged"}`, label: "rounds", color: "var(--ink)" },
+           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+           { value: num(model.attacksBlocked), label: "attacks blocked", color: model.attacksBlocked > 0 ? "var(--warn)" : "var(--muted)" },
+         ]
+       : [
+           { value: offerLabel(model.latest.theirOffer), label: "their latest offer", color: "var(--them)" },
+           { value: offerLabel(model.latest.ourOffer), label: "our latest offer", color: "var(--us)" },
+-          { value: model.latest.uRival === null ? "—" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
++          { value: model.latest.uRival === null ? "not logged" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
+           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
+         ];
+-  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "—"}${model.role ? ` · ${model.role}` : ""}`;
++  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "not logged"}${model.role ? ` · ${model.role}` : ""}`;
+   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
+ 
+   return (
+     <div style={{ position: "fixed", inset: 0, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
++      <BackLink
++        className="nr-live-corner-back"
++        style={{ position: "fixed", top: 16, left: 16 }}
++        onClick={() => {
++          window.location.hash = routeTo.runs();
++        }}
++      >
++        ← Runs
++      </BackLink>
+       <div style={{ width: PROJECTOR.width, height: PROJECTOR.height, transform: `scale(${scale})`, transformOrigin: "center center" }}>
+         <Root
+           theme="dark"
+           data-screen="p7"
+           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
+         >
+-          <BackLink
+-            className="nr-live-corner-back"
+-            style={{ position: "absolute", top: 16, left: 16, color: "var(--muted)" }}
+-            onClick={() => {
+-              window.location.hash = routeTo.runs();
+-            }}
+-          >
+-            ← Runs
+-          </BackLink>
+           {!projectorMode ? (
+             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+               <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+@@ -108,12 +107,16 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+               </div>
+               <SecondaryButton onClick={() => setProjectorMode(true)}>Projector mode</SecondaryButton>
+             </div>
+-          ) : null}
++          ) : (
++            <div style={{ display: "flex", justifyContent: "flex-end" }}>
++              <SecondaryButton onClick={() => setProjectorMode(false)}>Exit projector mode (Esc)</SecondaryButton>
++            </div>
++          )}
+           {playing ? (
+             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
+               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
+                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 24 }}>
+-                  <span style={{ font: "800 64px/1 var(--font-display)", color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
++                  <span className="nr-live-headline" style={{ color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
+                   <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
+                 </div>
+                 <div style={{ flex: 1, minHeight: 0 }}>
+@@ -126,7 +129,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+                     <Stat key={s.label} {...s} />
+                   ))}
+                 </div>
+-                <div className="nr-chat" style={{ gap: 10, overflow: "hidden", transform: "scale(1.6)", transformOrigin: "top left", width: `${100 / 1.6}%` }}>
++                <div className="nr-chat nr-chat-projector" style={{ gap: 10, overflow: "hidden" }}>
+                   {model.lastMessages.map((b, i) => (
+                     <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
+                   ))}
+@@ -135,7 +138,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
+             </div>
+           ) : (
+             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, textAlign: "center" }}>
+-              <span style={{ font: "800 96px/1.05 var(--font-display)" }}>Waiting for the next match</span>
++              <span className="nr-live-waiting">Waiting for the next match</span>
+               {model.last ? <span style={{ font: "600 30px var(--font-mono)", color: model.last.action === "accept" ? "var(--ok)" : "var(--warn)", marginTop: 24 }}>Last: {outcomeLabel(model.last)}</span> : null}
+             </div>
+           )}
+diff --git a/viewer/src/screens/MatchesScreen.tsx b/viewer/src/screens/MatchesScreen.tsx
+index 07ff5d7..074d5d2 100644
+--- a/viewer/src/screens/MatchesScreen.tsx
++++ b/viewer/src/screens/MatchesScreen.tsx
+@@ -1,5 +1,5 @@
+ import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
+-import { useState } from "react";
++import { useEffect, useMemo, useRef, useState } from "react";
+ import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
+ import { matchesModel, type MatchFilters } from "../model/index.js";
+ import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
+@@ -22,6 +22,8 @@ const PAGE_SIZE = 50;
+ const PAGINATE_ABOVE = 200;
+ 
+ const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
++/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
++const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
+ 
+ function withFilter<K extends keyof MatchFilters>(filters: MatchFilters, key: K, value: MatchFilters[K] | undefined): MatchFilters {
+   const next = { ...filters };
+@@ -46,25 +48,40 @@ export interface MatchesScreenProps {
+   onBack: () => void;
+   /** Filters read from the hash route's query string on first render (INBOX §2: persisted on reload/back). */
+   initialFilters?: MatchFilters;
++  /** Page (0-based) read from the hash route's `p` query param on first render (T7). */
++  initialPage?: number;
+   /** Called with the next filters, before they are applied, so the container can write them back into the URL. */
+   onFiltersChange?: (filters: MatchFilters) => void;
++  /** Called with the next page (0-based) so the container can write it back into the URL (T7). */
++  onPageChange?: (page: number) => void;
+   /** `true` when this run's config version matches `config/champion.json#version` (ajuste 2). */
+   isChampion?: boolean;
+ }
+ 
+ /** P2: KPIs de `summary.overall` y partidas de `transcripts.jsonl`, filtrables con `Filters`. */
+-export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, onFiltersChange, isChampion }: MatchesScreenProps) {
++export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, initialPage, onFiltersChange, onPageChange, isChampion }: MatchesScreenProps) {
+   const [filters, setFiltersState] = useState<MatchFilters>(initialFilters ?? {});
+-  const [page, setPage] = useState(0);
++  const [page, setPage] = useState(initialPage ?? 0);
++  const countRef = useRef<HTMLSpanElement>(null);
++  /** Clear filters (L24): the count span only exists once the (now unfiltered) rows render, so
++   * the focus move happens in an effect, after that commit, not inline in the click handler. */
++  const [clearedAt, setClearedAt] = useState(0);
++  useEffect(() => {
++    if (clearedAt > 0) countRef.current?.focus();
++  }, [clearedAt]);
+   const setFilters = (updater: MatchFilters | ((f: MatchFilters) => MatchFilters)) => {
+-    setFiltersState((f) => {
+-      const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(f) : updater;
+-      onFiltersChange?.(next);
+-      return next;
+-    });
++    const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(filters) : updater;
++    setFiltersState(next);
++    onFiltersChange?.(next);
+     setPage(0);
+   };
+-  const model = matchesModel(summary, games, filters);
++  // T10: summary/games/filters only change on a real filter action or a new run, not on every render.
++  const model = useMemo(() => matchesModel(summary, games, filters), [summary, games, filters]);
++  /** T8: `injection` is meaningless (and its checkbox hidden) once the run has no injection data at
++   * all; drop it from the filters/URL instead of silently filtering by a column nobody can see. */
++  useEffect(() => {
++    if (!model.hasInjectionData && filters.injection) setFilters((f) => withFilter(f, "injection", undefined));
++  }, [model.hasInjectionData]);
+ 
+   if (model.empty) {
+     return (
+@@ -77,27 +94,36 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
+ 
+   const paginated = model.rows.length > PAGINATE_ABOVE;
+   const pageCount = paginated ? Math.max(1, Math.ceil(model.rows.length / PAGE_SIZE)) : 1;
+-  const currentPage = Math.min(page, pageCount - 1);
++  /** T7: an out-of-range `p` (e.g. edited by hand, or stale after the result set shrank) clamps
++   * instead of showing an empty page. */
++  const currentPage = Math.max(0, Math.min(page, pageCount - 1));
+   const pageRows = paginated ? model.rows.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE) : model.rows;
++  const changePage = (next: number) => {
++    setPage(next);
++    onPageChange?.(next);
++  };
+ 
+   const rows: DataTableRow[] = pageRows.map((r) => ({
+     id: r.gameId,
+     esc: r.scenarioId,
+     rival: r.rival,
+     rol: roleLabel(r.role),
+-    res: resultLabel(r.endReason).label,
+-    exc: pct(r.surplusShare),
++    res: resultLabel(r.endReason, r.protocolViolationBy).label,
++    exc: dec(r.surplusShare),
+     rondas: r.roundLimit !== null ? `${r.rounds} / ${r.roundLimit}` : String(r.rounds),
+     inc: incidents(r),
+   }));
+ 
+-  const clearFilters = () => setFilters({});
++  const clearFilters = () => {
++    setFilters({});
++    setClearedAt((n) => n + 1);
++  };
+ 
+   return (
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+         <BackLink onClick={onBack}>← Runs</BackLink>
+-        <h2 className="nr-heading" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
++        <h2 className="nr-heading-lg" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+           {runId} · matches
+           {isChampion ? <Pill kind="champion">champion</Pill> : null}
+         </h2>
+@@ -106,7 +132,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
+         items={[
+           { label: "Matches", value: formatNumber(model.kpis.games, { locale: "en" }) },
+           { label: "Deal", value: pct(model.kpis.agreementRate), tone: model.kpis.agreementRate ? "deal" : "walk" },
+-          { label: "Avg. surplus", value: pct(model.kpis.meanSurplus) },
++          { label: "Avg. surplus", value: dec(model.kpis.meanSurplus) },
+           { label: "Violations", value: formatNumber(model.kpis.violations, { locale: "en" }), tone: model.kpis.violations > 0 ? "walk" : "deal" },
+           { label: "Leaks", value: formatNumber(model.kpis.leaks, { locale: "en" }), tone: model.kpis.leaks > 0 ? "walk" : "deal" },
+           { label: "Template fallbacks", value: formatNumber(model.kpis.templateFallbacks, { locale: "en" }) },
+@@ -123,8 +149,8 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
+         result={filters.result ?? ""}
+         onResultChange={(v) => setFilters((f) => withFilter(f, "result", v === "" ? undefined : (v as MatchFilters["result"])))}
+         checkboxes={[
+-          { key: "template", label: "with fallback", checked: filters.template ?? false },
+-          ...(model.hasInjectionData ? [{ key: "injection", label: "with injection", checked: filters.injection ?? false }] : []),
++          { key: "template", label: "With fallback", checked: filters.template ?? false },
++          ...(model.hasInjectionData ? [{ key: "injection", label: "With injection", checked: filters.injection ?? false }] : []),
+         ]}
+         onCheckboxChange={(key, checked) => {
+           if (key === "template") setFilters((f) => withFilter(f, "template", checked ? true : undefined));
+@@ -136,8 +162,9 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
+       ) : (
+         <Card>
+           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+-            <span className="nr-muted">
+-              Showing {model.rows.length} of {games.length} matches
++            <span className="nr-muted" ref={countRef} tabIndex={-1} aria-live="polite">
++              {`Showing ${paginated ? currentPage * PAGE_SIZE + 1 : 1}–${paginated ? currentPage * PAGE_SIZE + pageRows.length : model.rows.length} of ${model.rows.length} matches`}
++              {model.rows.length !== games.length ? ` (filtered from ${games.length})` : ""}
+             </span>
+           </div>
+           <DataTable
+@@ -147,13 +174,13 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
+           />
+           {paginated ? (
+             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
+-              <SecondaryButton onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
++              <SecondaryButton onClick={() => changePage(Math.max(0, currentPage - 1))} disabled={currentPage === 0}>
+                 Previous
+               </SecondaryButton>
+-              <span className="nr-muted">
++              <span className="nr-muted" aria-live="polite">
+                 Page {currentPage + 1} of {pageCount}
+               </span>
+-              <SecondaryButton onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={currentPage >= pageCount - 1}>
++              <SecondaryButton onClick={() => changePage(Math.min(pageCount - 1, currentPage + 1))} disabled={currentPage >= pageCount - 1}>
+                 Next
+               </SecondaryButton>
+             </div>
+diff --git a/viewer/src/screens/RunsScreen.tsx b/viewer/src/screens/RunsScreen.tsx
+index e851da3..3b1ea7f 100644
+--- a/viewer/src/screens/RunsScreen.tsx
++++ b/viewer/src/screens/RunsScreen.tsx
+@@ -1,6 +1,6 @@
+ import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatNumber } from "@negotiation-ring/design-system";
+ import type { ApiError } from "../api.js";
+-import type { RunRow } from "../model/index.js";
++import { isChampionRun, type RunRow } from "../model/index.js";
+ import { EmptyStateCard, InvalidLogBanner } from "../ui/states.js";
+ import { PrimaryButton, TableLink } from "../ui/buttons.js";
+ import { runKindLabel } from "../ui/labels.js";
+@@ -15,11 +15,12 @@ const COLUMNS: DataTableColumn[] = [
+   { key: "acu", label: "Agreement", numeric: true },
+   { key: "vio", label: "Violations", numeric: true },
+   { key: "fug", label: "Leaks", numeric: true },
+-  { key: "act", label: "Actions" },
+ ];
+ 
+ const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
+ const num = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en" }));
++/** Surplus / ZOPA is reported as a decimal share everywhere (L18), not a percentage. */
++const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
+ 
+ export interface RunsScreenProps {
+   rows: RunRow[];
+@@ -33,7 +34,7 @@ export interface RunsScreenProps {
+ /** P1: runs de `results/` por tipo, con su `summary.json`. */
+ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersion }: RunsScreenProps) {
+   const tableRows: DataTableRow[] = rows.map((r) => {
+-    const isChampion = championVersion != null && r.config?.version === championVersion;
++    const isChampion = isChampionRun(r.config, championVersion ?? null);
+     return {
+       id: (
+         <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+@@ -45,11 +46,10 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
+       date: r.createdAt ?? "not logged",
+       cfg: r.config ? `${r.config.path} v${r.config.version}` : "not logged",
+       n: num(r.games),
+-      exc: pct(r.meanSurplus),
++      exc: dec(r.meanSurplus),
+       acu: pct(r.agreementRate),
+       vio: num(r.violations),
+       fug: num(r.leaks),
+-      act: <TableLink onClick={() => onOpenRun(r.runId)}>Open</TableLink>,
+     };
+   });
+ 
+@@ -57,7 +57,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)" }}>
+         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+-          <h2 className="nr-heading">Runs</h2>
++          <h2 className="nr-heading-lg">Runs</h2>
+           <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
+         </div>
+         {onOpenLive ? <PrimaryButton onClick={onOpenLive}>Open live view</PrimaryButton> : null}
+diff --git a/viewer/src/screens/StatesScreen.tsx b/viewer/src/screens/StatesScreen.tsx
+index e6d95d0..2000e08 100644
+--- a/viewer/src/screens/StatesScreen.tsx
++++ b/viewer/src/screens/StatesScreen.tsx
+@@ -1,4 +1,5 @@
+ import { Card, ChatMessage, Legend, OfferChart } from "@negotiation-ring/design-system";
++import { gridCols } from "../ui/grid.js";
+ import { EmptyStateCard, EmptyZopaBanner, InvalidLogBanner, LoadingCard, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+ 
+ const TEMPLATE_FLAG = [{ kind: "fallback" as const, label: "template · LLM down" }];
+@@ -12,10 +13,10 @@ export function StatesScreen() {
+   return (
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+-        <h2 className="nr-heading">States and edge cases</h2>
++        <h2 className="nr-heading-lg">States and edge cases</h2>
+         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
+       </div>
+-      <div className="nr-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
++      <div className="nr-grid" style={gridCols("repeat(auto-fit, minmax(420px, 1fr))")}>
+         <Card title="Invalid log">
+           <InvalidLogBanner
+             errors={[{ file: "results/r-1003.jsonl", line: 1834, path: "offer.value", message: "expected number, got string \"one hundred four\"" }]}
+diff --git a/viewer/src/screens/TournamentReplayScreen.tsx b/viewer/src/screens/TournamentReplayScreen.tsx
+index 20f924f..51b680b 100644
+--- a/viewer/src/screens/TournamentReplayScreen.tsx
++++ b/viewer/src/screens/TournamentReplayScreen.tsx
+@@ -1,12 +1,23 @@
+-import { Card, ChatMessage, DataTable, type DataTableColumn, type DataTableRow, KpiStrip, Legend, OfferChart, StatFigure, formatNumber } from "@negotiation-ring/design-system";
+-import React, { useEffect, useState } from "react";
++import {
++  Card,
++  ChatMessage,
++  DataTable,
++  type DataTableColumn,
++  type DataTableRow,
++  KpiStrip,
++  Legend,
++  OfferChart,
++  StatFigure,
++  formatNumber,
++} from "@negotiation-ring/design-system";
++import { useEffect, useRef, useState } from "react";
+ import type { TournamentReplayModel } from "../model/index.js";
+ import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
++import { gridCols } from "../ui/grid.js";
+ import { offerValue } from "../ui/offer.js";
+-import { BackLink } from "../ui/buttons.js";
+ import { DecisionPanel } from "../ui/DecisionPanel.js";
++import { ReplayHeader } from "../ui/replay-header.js";
+ import { ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+-import { ModeBadge } from "@negotiation-ring/design-system";
+ 
+ const EST_COLUMNS: DataTableColumn[] = [
+   { key: "r", label: "Round" },
+@@ -29,7 +40,7 @@ export interface TournamentReplayScreenProps {
+ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreenProps) {
+   const lastRound = model.rounds.length > 0 ? model.rounds[model.rounds.length - 1]!.round : 1;
+   const [selectedRound, setSelectedRound] = useState(lastRound);
+-  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
++  const messagesContainerRef = useRef<HTMLDivElement>(null);
+ 
+   useEffect(() => {
+     if (!messagesContainerRef.current) return;
+@@ -52,16 +63,20 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+   const rounds = model.rounds.length;
+ 
+   const lastRoundPanel = model.rounds[model.rounds.length - 1] ?? null;
+-  const finalOffer = offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
++  const finalOffer =
++    model.outcome?.kind === "agreement"
++      ? offerValue(model.outcome.offer)
++      : offerValue(lastRoundPanel?.decision?.offer ?? lastRoundPanel?.ourOffer ?? null);
+   const lastEstimate = model.explain[model.explain.length - 1] ?? null;
+   const finalEstimate = lastEstimate ? offerValue(lastEstimate.rivalReserveEstimate) : null;
+-  const result = lastRoundPanel?.decision?.action ?? "not logged";
++  const result = model.outcome ? (model.outcome.kind === "agreement" ? "Deal" : "Opponent walked") : "not logged";
++  const resultTone = model.outcome ? (model.outcome.kind === "agreement" ? ("deal" as const) : ("walk" as const)) : undefined;
+ 
+   const estRows: DataTableRow[] = model.rounds.map((p) => {
+     const estimateForRound = model.explain.find((e) => e.round === p.round);
+     return {
+       r: `R${p.round}`,
+-      th: offerValue(p.rivalOffer) ?? "—",
++      th: offerValue(p.rivalOffer) ?? "not logged",
+       e: estimateForRound ? (offerValue(estimateForRound.rivalReserveEstimate) ?? "not logged") : "not logged",
+       us: offerValue(p.ourOffer) ?? "accept",
+     };
+@@ -75,15 +90,12 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+   });
+ 
+   const panel = model.rounds.find((p) => p.round === selectedRound) ?? null;
++  const roundNumbers = model.rounds.map((p) => p.round);
+ 
+   return (
+     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+-          <BackLink onClick={onBack}>← Runs</BackLink>
+-          <ModeBadge mode="tournament" />
+-          <h2 className="nr-heading">{model.sessionId}</h2>
+-        </div>
++        <ReplayHeader onBack={onBack} backLabel="← Runs" mode="tournament" gameId={model.sessionId} />
+         <span className="nr-muted">
+           {model.role ?? "not logged"} · scenario {model.scenario.id}
+         </span>
+@@ -91,7 +103,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+       </div>
+       <KpiStrip
+         items={[
+-          { label: "Result", value: result },
++          { label: "Result", value: result, ...(resultTone ? { tone: resultTone } : {}) },
+           { label: "Rounds", value: formatNumber(rounds, { locale: "en" }) },
+           { label: "Final offer", value: finalOffer !== null ? formatNumber(finalOffer, { locale: "en" }) : "not logged" },
+           { label: "Final estimate", value: finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged" },
+@@ -101,7 +113,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+         <ProtocolBreakBanner key={i} round={b.round} detail={b.issues.length > 0 ? b.issues.map((x) => `${x.path || "(root)"} (${x.code})`).join(", ") : "not logged"} />
+       ))}
+       {model.templateCount > 0 ? <TemplateBanner templateCount={model.templateCount} ourMessageCount={model.ourMessageCount} provider={model.provider} /> : null}
+-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(320px, 1fr)" }}>
++      <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
+         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
+           <Card title="Offers by round" caption="In a tournament the opponent's reserve is unknown: no ZOPA and no surplus, only our estimate.">
+             <OfferChart
+@@ -130,12 +142,16 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+             ) : null}
+           </Card>
+           <Card title="Estimate of their reserve by round">
+-            <StatFigure value={finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged"} tone="them" />
++            <StatFigure
++              value={finalEstimate !== null ? formatNumber(finalEstimate, { locale: "en" }) : "not logged"}
++              tone="them"
++              {...(finalEstimate !== null && finalOffer !== null ? { caption: `vs. final offer ${formatNumber(finalOffer, { locale: "en" })}` } : {})}
++            />
+             <DataTable columns={EST_COLUMNS} rows={estRows} />
+           </Card>
+         </div>
+-        <Card title="Messages" style={{ maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+-          <div ref={messagesContainerRef} className="nr-chat" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
++        <Card title="Messages">
++          <div ref={messagesContainerRef} className="nr-chat nr-chat-scroll is-tall">
+             {chat.map((c, i) => (
+               <ChatMessage
+                 key={i}
+@@ -150,14 +166,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
+           </div>
+         </Card>
+       </div>
+-      <DecisionPanel
+-        hasTrace
+-        panel={panel}
+-        selectedRound={selectedRound}
+-        totalRounds={rounds}
+-        onPrev={() => setSelectedRound((r) => Math.max(1, r - 1))}
+-        onNext={() => setSelectedRound((r) => Math.min(rounds, r + 1))}
+-      />
++      <DecisionPanel hasTrace panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
+     </section>
+   );
+ }
+diff --git a/viewer/src/screens/TwoIssueScreen.tsx b/viewer/src/screens/TwoIssueScreen.tsx
+index 5ba9a69..e80fe67 100644
+--- a/viewer/src/screens/TwoIssueScreen.tsx
++++ b/viewer/src/screens/TwoIssueScreen.tsx
+@@ -13,6 +13,7 @@ import {
+ import { useState } from "react";
+ import type { Offer, TwoIssueModel } from "../model/index.js";
+ import { offerDomain } from "../ui/chart.js";
++import { gridCols } from "../ui/grid.js";
+ import { resultLabel } from "../ui/labels.js";
+ import { ReplayHeader } from "../ui/replay-header.js";
+ 
+@@ -41,8 +42,8 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
+   const { x, y } = model.axes;
+   const [selectedRound, setSelectedRound] = useState(model.game.rounds || 1);
+   const selectPoint = (point: { round: number }) => setSelectedRound(point.round);
+-  const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "—" : num(offer[key]!));
+-  const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "—");
++  const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "not logged" : num(offer[key]!));
++  const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "not logged");
+   const all = [...model.offers.ours, ...model.offers.rival];
+   const xDomain: [number, number] = x.issue ? [x.issue.min, x.issue.max] : offerDomain(all.map((p) => p.x));
+   const yDomain: [number, number] = y.issue ? [y.issue.min, y.issue.max] : offerDomain(all.map((p) => p.y));
+@@ -70,6 +71,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
+       : model.game.endReason === "agent-walk" || model.game.endReason === "rival-walk"
+         ? { round: lastRound, kind: "walk" as const, label: "Walk" }
+         : undefined;
++  const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
+   const rows: DataTableRow[] = (model.rows ?? []).map((r) => ({
+     r: `R${r.round}`,
+     us: fmtOffer(r.ours),
+@@ -111,8 +113,8 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
+         items={[
+           {
+             label: "Outcome",
+-            value: resultLabel(model.game.endReason).label,
+-            ...(resultLabel(model.game.endReason).tone ? { tone: resultLabel(model.game.endReason).tone! } : {}),
++            value: result.label,
++            ...(result.tone ? { tone: result.tone } : {}),
+           },
+           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
+           { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
+@@ -120,7 +122,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
+           { label: "Role", value: model.game.role },
+         ]}
+       />
+-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)" }}>
++      <div className="nr-grid" style={gridCols("minmax(0, 1.3fr) minmax(0, 1fr)")}>
+         <Card title={`Offers on the ${y.name} × ${x.name} plane`}>
+           <Scatter2D
+             xDomain={xDomain}
+@@ -133,12 +135,14 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
+             {...(deal ? { deal } : {})}
+             onPointClick={selectPoint}
+           />
+-          <Legend>
+-            <span>Our offers</span>
+-            <span>Opponent offers</span>
+-            <span>Same round</span>
+-            {mandate ? <span>Mandate</span> : null}
+-          </Legend>
++          <Legend
++            items={[
++              { kind: "us", label: "Our offers" },
++              { kind: "them", label: "Opponent offers" },
++              { kind: "same-round", label: "Same round" },
++              ...(mandate ? [{ kind: "mandate" as const, label: "Mandate" }] : []),
++            ]}
++          />
+         </Card>
+         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
+           <Card title="Utility by round" caption="Our utility × 100 as logged by the engine, for our offer and the opponent's.">
+diff --git a/viewer/src/ui/DecisionPanel.tsx b/viewer/src/ui/DecisionPanel.tsx
+index e961317..11a62aa 100644
+--- a/viewer/src/ui/DecisionPanel.tsx
++++ b/viewer/src/ui/DecisionPanel.tsx
+@@ -15,7 +15,7 @@ function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: numb
+       {shown.map((s) => `${s.name} ${s.latencyMs} ms`).join(" · ")}
+       {hiddenCount > 0 ? (
+         <SecondaryButton style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
+-          {showAll ? "hide 0 ms steps" : `show all (+${hiddenCount})`}
++          {showAll ? "Hide 0 ms steps" : `Show all (+${hiddenCount})`}
+         </SecondaryButton>
+       ) : null}
+     </span>
+@@ -30,19 +30,23 @@ const DECISION_COLUMNS: DataTableColumn[] = [
+ export interface DecisionPanelProps {
+   hasTrace: boolean;
+   panel: RoundPanel | null;
++  /** Actual logged round numbers, in order (may not start at 1 or be contiguous -- e.g. a tournament session). */
++  rounds: number[];
+   selectedRound: number;
+-  totalRounds: number;
+-  onPrev: () => void;
+-  onNext: () => void;
++  onSelectRound: (round: number) => void;
+ }
+ 
+ /** Shared "Engine decision this round" card, reused by the arena and tournament replay screens. */
+-export function DecisionPanel({ hasTrace, panel, selectedRound, totalRounds, onPrev, onNext }: DecisionPanelProps) {
++export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelectRound }: DecisionPanelProps) {
++  const index = rounds.indexOf(selectedRound);
++  const prevRound = index > 0 ? rounds[index - 1]! : null;
++  const nextRound = index >= 0 && index < rounds.length - 1 ? rounds[index + 1]! : null;
++  const lastRound = rounds.length > 0 ? rounds[rounds.length - 1]! : selectedRound;
+   const decisionRows: DataTableRow[] = panel
+     ? [
+         { k: "Rule", v: panel.decision?.rule ?? "not logged" },
+         { k: "Target (Boulware curve)", v: panel.explain ? formatNumber(panel.explain.target, { locale: "en", decimals: 3 }) : "not logged" },
+-        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "n/a" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
++        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "not logged" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
+         {
+           k: "AC_next",
+           v: panel.explain ? <Pill kind={panel.explain.acNext ? "verdict" : "rejected"}>{panel.explain.acNext ? "accept" : "no accept"}</Pill> : "not logged",
+@@ -67,22 +71,30 @@ export function DecisionPanel({ hasTrace, panel, selectedRound, totalRounds, onP
+       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
+           <h3 className="nr-heading">Engine decision this round</h3>
+-          <span className="nr-cfg">
+-            R{selectedRound} / {totalRounds}
++          <span className="nr-cfg" role="status" aria-live="polite">
++            Round {selectedRound} of {lastRound}
+           </span>
+         </div>
+         <div style={{ display: "flex", gap: "var(--space-2)" }}>
+-          <SecondaryButton onClick={onPrev}>← Previous round</SecondaryButton>
+-          <SecondaryButton onClick={onNext}>Next round →</SecondaryButton>
++          <SecondaryButton onClick={() => prevRound !== null && onSelectRound(prevRound)} disabled={prevRound === null}>
++            ← Previous round
++          </SecondaryButton>
++          <SecondaryButton onClick={() => nextRound !== null && onSelectRound(nextRound)} disabled={nextRound === null}>
++            Next round →
++          </SecondaryButton>
+         </div>
+       </div>
+       {hasTrace ? (
+-        <>
+-          <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
+-          <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
+-            Click a point on the chart to switch rounds. Values exactly as logged by the engine.
+-          </p>
+-        </>
++        panel ? (
++          <>
++            <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
++            <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
++              Select a point on the chart, or use Previous / Next round, to switch rounds. Values exactly as logged by the engine.
++            </p>
++          </>
++        ) : (
++          <p className="nr-muted">R{selectedRound}: not logged.</p>
++        )
+       ) : (
+         <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
+       )}
+diff --git a/viewer/src/ui/buttons.tsx b/viewer/src/ui/buttons.tsx
+index 70d516f..6ea530b 100644
+--- a/viewer/src/ui/buttons.tsx
++++ b/viewer/src/ui/buttons.tsx
+@@ -1,27 +1 @@
+-import type { ButtonHTMLAttributes } from "react";
+-
+-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+-
+-function withClass(base: string, className?: string): string {
+-  return className ? `${base} ${className}` : base;
+-}
+-
+-/** Back navigation: no border or background, low-key text link (see INBOX §0.1). */
+-export function BackLink({ className, type = "button", ...props }: ButtonProps) {
+-  return <button type={type} className={withClass("nr-link-back", className)} {...props} />;
+-}
+-
+-/** Secondary action: round navigation, "show all", "Copy", etc. (INBOX §0.1). */
+-export function SecondaryButton({ className, type = "button", ...props }: ButtonProps) {
+-  return <button type={type} className={withClass("nr-btn-secondary", className)} {...props} />;
+-}
+-
+-/** Primary action, reserved for the single most important action in a panel (INBOX §0.1). */
+-export function PrimaryButton({ className, type = "button", ...props }: ButtonProps) {
+-  return <button type={type} className={withClass("nr-btn-primary", className)} {...props} />;
+-}
+-
+-/** Table/row link styled like a link but kept as a `<button>` for keyboard + click semantics (INBOX §0.2). */
+-export function TableLink({ className, type = "button", ...props }: ButtonProps) {
+-  return <button type={type} className={withClass("nr-link-table", className)} {...props} />;
+-}
++export { PrimaryButton, SecondaryButton, BackLink, TableLink } from "@negotiation-ring/design-system";
+diff --git a/viewer/src/ui/grid.ts b/viewer/src/ui/grid.ts
+new file mode 100644
+index 0000000..1f57beb
+--- /dev/null
++++ b/viewer/src/ui/grid.ts
+@@ -0,0 +1,6 @@
++import type { CSSProperties } from "react";
++
++/** `style` for a `.nr-grid` with a content-specific column ratio, via the `--nr-grid-cols` custom property (D1). */
++export function gridCols(value: string): CSSProperties {
++  return { "--nr-grid-cols": value } as CSSProperties;
++}
+diff --git a/viewer/src/ui/labels.ts b/viewer/src/ui/labels.ts
+index 1a418f0..ba0c853 100644
+--- a/viewer/src/ui/labels.ts
++++ b/viewer/src/ui/labels.ts
+@@ -8,12 +8,20 @@ export interface ResultLabel {
+   tone?: "deal" | "walk";
+ }
+ 
++/** Side that broke the protocol, as logged either on the transcript line (`protocolViolation.by`) or on its metrics (`metrics.protocolViolation`). */
++export type ViolationBy = "agent" | "rival" | null | undefined;
++
+ /**
+  * Single label table for the engine's logged `endReason`, used everywhere in the viewer:
+  * KpiStrip, the Matches Outcome column, the Filters options and the MatchSelector labels
+  * (INBOX §0.3). Raw ids stay in the URL and in internal filter values.
++ *
++ * `violationBy` disambiguates `endReason: "protocol-violation"` (either side can break the
++ * protocol): pass `line.protocolViolation?.by ?? metrics.protocolViolation`. Omit it where only
++ * the raw `endReason` is known (e.g. the Filters dropdown options) -- the generic "Protocol
++ * violation" label never collides with "Opponent error" (`rival-error`).
+  */
+-export function resultLabel(endReason: EndReason | string | undefined): ResultLabel {
++export function resultLabel(endReason: EndReason | string | undefined, violationBy?: ViolationBy): ResultLabel {
+   switch (endReason) {
+     case "agreement":
+       return { label: "Deal", tone: "deal" };
+@@ -22,8 +30,11 @@ export function resultLabel(endReason: EndReason | string | undefined): ResultLa
+     case "rival-walk":
+       return { label: "Opponent walked", tone: "walk" };
+     case "rival-error":
+-    case "protocol-violation":
+       return { label: "Opponent error", tone: "walk" };
++    case "protocol-violation":
++      if (violationBy === "rival") return { label: "Opponent protocol violation", tone: "walk" };
++      if (violationBy === "agent") return { label: "Our protocol violation", tone: "walk" };
++      return { label: "Protocol violation", tone: "walk" };
+     case "limit":
+       return { label: "Round limit" };
+     case "agent-error":
+@@ -35,8 +46,8 @@ export function resultLabel(endReason: EndReason | string | undefined): ResultLa
+ }
+ 
+ /** Binary deal/walk classification for components that need one, e.g. MatchSelector's swatch. */
+-export function resultTone(endReason: EndReason | string | undefined): "deal" | "walk" {
+-  return resultLabel(endReason).tone === "deal" ? "deal" : "walk";
++export function resultTone(endReason: EndReason | string | undefined, violationBy?: ViolationBy): "deal" | "walk" {
++  return resultLabel(endReason, violationBy).tone === "deal" ? "deal" : "walk";
+ }
+ 
+ /** ZOPA KPI label: the engine only logs whether it was empty. */
+diff --git a/viewer/src/ui/match-selector.tsx b/viewer/src/ui/match-selector.tsx
+index 16a894f..4d9dac2 100644
+--- a/viewer/src/ui/match-selector.tsx
++++ b/viewer/src/ui/match-selector.tsx
+@@ -6,6 +6,8 @@ export interface MatchSelectorGame {
+   gameId: string;
+   rival?: string;
+   endReason?: string;
++  /** `line.protocolViolation?.by`, when known: disambiguates `endReason: "protocol-violation"`. */
++  protocolViolation?: { by: "agent" | "rival" };
+ }
+ 
+ export interface MatchSelectorProps {
+@@ -32,8 +34,8 @@ export function MatchSelector({ games, currentGameId, onSelectGame }: MatchSelec
+   const matches = matchWindow(games, currentGameId).map((game) => ({
+     id: game.gameId,
+     rival: game.rival ?? "not logged",
+-    result: resultTone(game.endReason),
+-    label: resultLabel(game.endReason).label,
++    result: resultTone(game.endReason, game.protocolViolation?.by),
++    label: resultLabel(game.endReason, game.protocolViolation?.by).label,
+   }));
+   return <DsMatchSelector matches={matches} selectedId={currentGameId} onSelect={onSelectGame} />;
+ }
+diff --git a/viewer/src/ui/offer.ts b/viewer/src/ui/offer.ts
+index 12b3c56..9981383 100644
+--- a/viewer/src/ui/offer.ts
++++ b/viewer/src/ui/offer.ts
+@@ -13,7 +13,7 @@ export function offerValue(offer: Offer | null | undefined): number | null {
+ 
+ /** Oferta registrada como texto: un issue ⇒ su valor; varios ⇒ `issue value` separados por " · ". */
+ export function offerLabel(offer: Offer | null): string {
+-  if (!offer) return "—";
++  if (!offer) return "not logged";
+   const entries = Object.entries(offer);
+   if (entries.length === 1) return formatNumber(entries[0]![1], { locale: "en" });
+   return entries.map(([k, v]) => `${k} ${formatNumber(v, { locale: "en" })}`).join(" · ");
+diff --git a/viewer/src/ui/replay-header.tsx b/viewer/src/ui/replay-header.tsx
+index 6054778..0346771 100644
+--- a/viewer/src/ui/replay-header.tsx
++++ b/viewer/src/ui/replay-header.tsx
+@@ -6,26 +6,26 @@ export interface ReplayHeaderProps {
+   onBack: () => void;
+   backLabel: string;
+   gameId: string;
+-  rival: string;
++  /** Omitted for modes with no single logged opponent (e.g. a tournament session). */
++  rival?: string;
+   mode?: "arena" | "tournament";
+   games?: Array<MatchSelectorGame>;
+   onSelectGame?: (gameId: string) => void;
+ }
+ 
+ /**
+- * Single header row shared by the arena and two-issue replay screens: one back link, one
+- * ModeBadge and one "id · vs rival" heading, with the match selector below (INBOX finding:
+- * ArenaReplayScreen/TwoIssueScreen used to duplicate this row).
++ * Header shared by the arena, two-issue and tournament replay screens: the back link on its own
++ * line, then a badge slot with the "id[ · vs rival]" heading, with the match selector below
++ * (INBOX finding: ArenaReplayScreen/TwoIssueScreen used to duplicate this row; rival is only
++ * shown when logged, never invented).
+  */
+ export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena", games, onSelectGame }: ReplayHeaderProps) {
+   return (
+     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
++      <BackLink onClick={onBack}>{backLabel}</BackLink>
+       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+-        <BackLink onClick={onBack}>{backLabel}</BackLink>
+         <ModeBadge mode={mode} />
+-        <h2 className="nr-heading">
+-          {gameId} · vs {rival}
+-        </h2>
++        <h2 className="nr-heading-lg">{rival ? `${gameId} · vs ${rival}` : gameId}</h2>
+       </div>
+       {games && onSelectGame ? <MatchSelector games={games} currentGameId={gameId} onSelectGame={onSelectGame} /> : null}
+     </div>
+diff --git a/viewer/src/ui/states.tsx b/viewer/src/ui/states.tsx
+index 19831ef..355daa7 100644
+--- a/viewer/src/ui/states.tsx
++++ b/viewer/src/ui/states.tsx
+@@ -1,5 +1,5 @@
+ import { Card, ChatMessage, Flag, Legend, WarningBanner } from "@negotiation-ring/design-system";
+-import type { ReactNode } from "react";
++import { useId, type ReactNode } from "react";
+ import type { ApiError } from "../api.js";
+ 
+ /** Flag + text inside a `WarningBanner`: stacked, left-aligned, so the Flag never stretches full width. */
+@@ -16,12 +16,14 @@ function BannerBody({ children }: { children: ReactNode }) {
+ export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
+   const isDeterminate = current !== undefined && total !== undefined && total > 0;
+   const percentage = isDeterminate ? (current / total) * 100 : 0;
++  const labelId = useId();
+   return (
+     <Card title="Loading">
+-      <div style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+-        <span className="nr-cfg">{label}</span>
++      <div role="status" style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
++        <span className="nr-cfg" id={labelId}>{label}</span>
+         <div
+           role="progressbar"
++          aria-labelledby={labelId}
+           {...(isDeterminate ? { "aria-valuenow": percentage, "aria-valuemin": 0, "aria-valuemax": 100 } : { "aria-busy": true })}
+           className="nr-progress-track"
+         >
+@@ -37,11 +39,11 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
+   const first = errors[0];
+   if (!first) return null;
+   return (
+-    <WarningBanner tone="warn" title={`${first.file ?? "?"}${first.line !== null ? ` · line ${first.line}` : ""}`}>
++    <WarningBanner tone="warn" title={`${first.file ?? "not logged"}${first.line !== null ? ` · line ${first.line}` : ""}`}>
+       <BannerBody>
+         <Flag kind="walk">schema fails</Flag>
+         <span style={{ font: "13px var(--font-mono)", color: "var(--ink)" }}>
+-          field <b>{first.path || "?"}</b>: {first.message}
++          field <b>{first.path || "(root)"}</b>: {first.message}
+         </span>
+         <span className="nr-muted">{validCount} valid lines loaded.</span>
+       </BannerBody>
+@@ -57,11 +59,11 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
+ export function EmptyStateCard({ title, body, command, action }: { title: string; body?: string; command?: string; action?: ReactNode }) {
+   return (
+     <Card>
+-      <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", textAlign: "center", maxWidth: "48ch", margin: "0 auto" }}>
++      <div className="nr-empty">
+         <h3 className="nr-heading-sm">{title}</h3>
+         {body ? (
+           <span className="nr-muted">
+-            {body} {command ? <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code> : null}
++            {body} {command ? <code className="nr-code-inline">{command}</code> : null}
+           </span>
+         ) : null}
+         {action}

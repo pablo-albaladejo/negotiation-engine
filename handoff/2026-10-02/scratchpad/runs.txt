@@ -1,0 +1,16 @@
+     54|     const out = mkdtempSync(join(tmpdir(), "arena-"));
+     55|     const { summary } = await runArenaCli(["--seeds", "2", "--candidat…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 65 passed (66)
+      Tests  1 failed | 864 passed (865)
+   Start at  02:09:29
+   Duration  12.82s (tests 76%, import 17%, transform 7%)
+
+    Isolate  66 workers spawned · ~1.11s startup each (spawn + environment, per file)
+             at least ~4.51s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+(eval):1: ==TC not found

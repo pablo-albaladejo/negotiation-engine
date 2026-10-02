@@ -1,0 +1,75 @@
+bazaar:duels · LIVE · params {"anchorMargin":0.5,"beta":2,"maxRounds":4,"floorShare":0.3,"minSurplus":1,"lastMoveTicks":1,"endgameTicks":3,"staleTicks":3,"assumedDaysWeight":0,"daysWeightScale":1}
+duel 1 · seller · price · limit 86 · rival - · ticks left 10
+  → COUNTER 129 P (surplus 43.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 129 P for this one." [sent]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 10
+  → COUNTER 65 P (surplus 33.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 65 P for this one." [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 10
+  → COUNTER 102 P (surplus 34.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 102 P for this one." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 10
+  → COUNTER 87 P (surplus 44.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 87 P for this one." [sent]
+duel 15 · seller · price · limit 81 · rival - · ticks left 10
+  → COUNTER 122 P (surplus 41.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 122 P for this one." [sent]
+duel 16 · buyer · price · limit 82 · rival - · ticks left 10
+  → COUNTER 54 P (surplus 28.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 54 P for this one." [sent]
+bazaar agent · SERIOUS · LIVE · all unlocked dealers · safety 1 · max-spend-hour 60 P · max-spend 150 P · cash floor 280 P (venue 270 + reserve 10) · limits {"accepts_per_team_per_tick":1,"messages_per_side_per_tick":1,"max_open_threads_per_team":6,"max_open_offers_per_team":30,"offers_per_team_per_tick":12} · trazas en /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02
+dealer abuela (Abuela Carmen): unlocked · quota 8 deals/hour · negotiator {"patienceBudget":6}
+[tick 119] · error · thread 227 · buy:SAL-08 · error wait_for_tick
+[tick 119 · 1.98h · open] cash 365 (floor 280) · spent 0/60 this hour, 0/150 run · abuela: error #227 buy:SAL-08 error wait_for_tick · chato: locked · deals 3 · neg -14.9 · rank 15
+transient error (wait_for_tick); retry in 2 s
+[tick 121] · outcome · thread 227 · buy:SAL-08 · status deal
+  patience: 2 msgs / 2 ticks until close · her replies 2 · steps: anchor 24 (her +3), step 1 → 25 (her 26, no reply yet)
+SUMMARY thread 227 · abuela · buy SAL-08,sobre_bienvenida · deal at ? · her 29→26 · ours 22→25 · our value 32.5 limit 32 · received SAL-08,sobre_bienvenida
+  copies SAL-08×0 sobre_bienvenida×0 → SAL-08×1 sobre_bienvenida×0 · deals with abuela last hour 1 · ticks 119→121 (2026-10-02T20:21:46.991Z) · patience 2 msgs / 2 ticks until close
+duel 1 · seller · price · limit 86 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 15 · seller · price · limit 81 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 16 · buyer · price · limit 82 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+[tick 124] · outcome · thread 236 · buy:SAL-03 · status deal
+SUMMARY thread 236 · abuela · buy SAL-03 · deal at ? · her 12→10 · ours 9 · our value 13 limit 13 · received SAL-03
+  copies SAL-03×0 → SAL-03×1 · deals with abuela last hour 2 · ticks 121→124 (2026-10-02T20:24:47.144Z) · patience 1 msgs / 3 ticks until close
+duel 1 · seller · price · limit 86 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 15 · seller · price · limit 81 · rival 58 P · ticks left 8
+  → COUNTER 108 P (surplus 27.0, round 1, concede) "I appreciate it. Let us try to close quickly: 108 P." [sent]
+duel 53 · seller · price · limit 115 · rival - · ticks left 12
+  → COUNTER 173 P (surplus 58.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 173 P for this one." [sent]
+duel 1 · seller · price · limit 86 · rival - · ticks left 7
+  → COUNTER 114 P (surplus 28.0, round 1, concede) "I appreciate it. Let us try to close quickly: 114 P." [sent]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 7
+  → COUNTER 76 P (surplus 22.0, round 1, concede) "I appreciate it. Let us try to close quickly: 76 P." [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 7
+  → COUNTER 91 P (surplus 23.0, round 1, concede) "I appreciate it. Let us try to close quickly: 91 P." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 7
+  → COUNTER 102 P (surplus 29.0, round 1, concede) "I appreciate it. Let us try to close quickly: 102 P." [sent]
+duel 53 · seller · price · limit 115 · rival 76 P · ticks left 11
+  → COUNTER 153 P (surplus 38.0, round 1, concede) "I appreciate it. Let us try to close quickly: 153 P." [sent]
+duel 54 · buyer · price · limit 76 · rival - · ticks left 12
+  → COUNTER 50 P (surplus 26.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 50 P for this one." [sent]
+duel 1 · seller · price · limit 86 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 53 · seller · price · limit 115 · rival 76 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 54 · buyer · price · limit 76 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+
+[killed]

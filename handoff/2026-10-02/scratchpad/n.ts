@@ -1,0 +1,2 @@
+import { normalizeNumbers } from "/Users/pablo/development/hackathon/negotiation-ring.worktrees/add-agent-architecture/src/llm/numbers.ts";
+for (const t of ["twenty five percent","entre dos y cuatro por ciento","1,5 % a 15 días","once we agree, 3 %","one hundred and fifty bps","te hago una oferta de un 2 %"]) console.log(t, JSON.stringify(normalizeNumbers(t).map(m=>m.kind==="range"?[m.from,m.to,m.unit]:[m.value,m.unit])));

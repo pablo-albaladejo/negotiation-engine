@@ -1,0 +1,59 @@
+{
+  "summary": "Deep research harness — fan-out web searches, fetch sources, adversarially verify claims, synthesize a cited report.",
+  "agentCount": 1,
+  "logs": [
+    "[scope] failed: There's an issue with the selected model (fireworks/deepseek-v4.1-flash). It may not exist or you may not have access to it. Run /model to pick a different model."
+  ],
+  "result": {
+    "error": "Scope agent returned no result — cannot decompose the research question."
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Scope"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Search"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 3,
+      "title": "Fetch"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 4,
+      "title": "Verify"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 5,
+      "title": "Synthesize"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "scope",
+      "phaseIndex": 1,
+      "phaseTitle": "Scope",
+      "agentId": "abbedfd8f067e982b",
+      "model": "fireworks/deepseek-v4.1-flash",
+      "state": "error",
+      "startedAt": 1790622377619,
+      "queuedAt": 1790622377609,
+      "attempt": 1,
+      "promptPreview": "Decompose this research question into complementary search angles.\n\n## Question\nAyuda a organizar el plan del Equipo 2 para el hackathon \"Negotiation Ring\" (Claude Community Madrid, 2-4 oct 2026, torneo 1v1 de agentes comprador/vendedor puntuado por valor capturado de la ZOPA). Investiga y sintetiza, EN ESTE ORDEN, citando fuentes:\n\n1. ESTRATEGIA DE NEGOCIACIÓN CON AGENTES LLM: game theory de nego…",
+      "promptFramed": true,
+      "lastProgressAt": 1790622378193,
+      "error": "There's an issue with the selected model (fireworks/deepseek-v4.1-flash). It may not exist or you may not have access to it. Run /model to pick a different model.",
+      "tokens": 0,
+      "toolCalls": 0,
+      "durationMs": 574
+    }
+  ],
+  "totalTokens": 0,
+  "totalToolCalls": 0
+}

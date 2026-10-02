@@ -1,0 +1,24 @@
+npm warn Unknown env config "reporter". This will stop working in the next major version of npm.
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+(node:52930) ExperimentalWarning: DecompressInterceptor is experimental and subject to change
+(Use `node --trace-warnings ...` to show where the warning was created)
+Cache is disabled.
+Starting evaluation eval-RFQ-2026-10-01T09:16:39
+Running 12 test cases (up to 1 at a time)...
+✓ Eval complete (ID: eval-RFQ-2026-10-01T09:16:39)
+
+» View results: promptfoo view
+» Feedback: https://promptfoo.dev/feedback
+
+
+Results:
+  ✓ 12 passed (100%)
+  0 failed (0%)
+  0 errors (0%)
+Duration: 0s (concurrency: 1)
+
+Writing output to /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/rt2/redteam-2026-10-01T091638048/promptfoo.json
+red team: 12 casos · 12 pasan · 0 fallos reales · 0 pendientes de revisión
+informe: /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/rt2/redteam-2026-10-01T091638048/report.md

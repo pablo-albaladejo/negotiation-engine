@@ -1,0 +1,3 @@
+
+2646 partidas en 11.5 s · acuerdo 61.1 % · excedente medio 26.8 % · violaciones 0 · ZOPA vacía correcta 100 % · errores del rival 0
+fugas 0 · plantilla 0 · latencia media 0.43 ms (máx 9.0 ms) · mal extraídas 0 · sin extraer 1150 · acuerdos distintos de los reales 0

@@ -1,0 +1,59 @@
+# Overnight state (viewer 5 batches)
+- User gave explicit permission (2 oct) for INBOX.md update + DS re-sync without waiting.
+- INBOX plan: plan_21809152111743ac_8778420aa0a2 (project 21809152..., writes INBOX.md, localDir scratchpad/inbox)
+- DS plan: plan_cdd2a1f76d464e13_9f392eea3f1a (project cdd2a1f7..., localDir negotiation-ring/design-system/ds-bundle, std globs)
+- Batch1 pushed d1cfb3b; review clean.
+- Batch2 agent ac1210b7ded4d0e8a resumed after turn limit.
+- Batch2 pushed 338335b (46bf86b, 338335b). Not done: "with injection" checkbox (no match-level data) -> doing as small extra in batch 3 (optional aggregated count). Q: champion matched by summary.config.version.
+- Batch2 review: 3 major (DataTable row click double-fires from inner TableLink + extra tab stops; onBack from replay drops matches query; no pagination tests) + minors (counter shows page size not filtered count, fontSize:16 raw, empty state not EmptyStateCard, stale filters on run switch). QUEUED: apply after batch-3 agent finishes (same files).
+- Batch3 pushed a521f7c. Qs: tournament has no rival id (omitted 'vs rival'); utility fn not logged.
+- Batch3 review: 1 major (Scatter2D svg role=img hides buttons; no aria-label per point; Space no preventDefault; DataTable selected row needs aria-selected) + minor (matches.ts:57 injection=1 on run w/o data hides all rows, no way to clear -> guard with hasInjectionData). QUEUED for batch-5 agent.
+- USER (2 oct): after all 5 batches -> deep review cycle loop: deep review (scope: full) -> plan -> fix -> repeat until clean. Then INBOX update + DS re-sync.
+- Batch4 + batch2 fixes pushed 454c22f (3e747a1,5ba10f5,1210c2e,454c22f). No design Qs.
+- Batch5 + b3/b4 fixes pushed ee156a9. ALL 5 BATCHES DONE. Next: deep review round 1 over 51859c9..ee156a9.
+- Deep review R1 launched: correctness, a11y, DS fidelity (3 concurrent max). PENDING: tests+routing reviewer (launch when a slot frees).
+- R1 findings saved: scratchpad/review-r1-logic.md (L1-L29,Q1) and review-r1-ds.md (1-21 + D1-D9). Waiting tests reviewer; then fix F1 logic, then F2 DS (sequential).
+- R1 tests review saved: scratchpad/review-r1-tests.md (T1-T12). Order: F1 logic (running a8d4bb2583e737224) -> F3 tests/routing -> F2 DS. Then R2 review.
+- F1 partial pushed 88ce5dd (L1-L15,L22-L26). Remaining L16-L21,L27-L29 + T1-T12 -> F3 agent.
+- Logic+routing R1 done, pushed 2d398a7 (viewer 222, ds 54, root 956). Next F2a DS structural, then F2b Live/Scatter/misc + T3,T4,T6,T11,T12 tests.
+- F2a DS structural done, pushed 3a728f9 (viewer 223, ds 72, root 956). Next F2b.
+- R1 ALL FIXES DONE, pushed a172cad (viewer 239, ds 84, root 956). Next: deep review R2.
+- R2 reviews done: review-r2-logic.md (C1-C11, agent a40894f2c40f19ceb running, M2 folded into C1), review-r2-ds.md (S1-S13), review-r2-a11y.md (A1-A13). Next after logic: one agent for S+A. Then R3 review (lighter).
+- R2 logic C1-C11 done, pushed 25933a0 (viewer 262, ds 84, root 956). R2 DS+a11y agent ada21df3cf178b611 running (A1-A12, S1-S13).
+- R2 ALL done, pushed 87c0859 (viewer 262, ds 92, root 956). R3 (blockers only) launched on a172cad..87c0859 + whole.
+- Polish pushed 8c6ead2 (viewer 270, ds 93, root 956). REVIEW LOOP CLOSED (R3 clean). Next: DS re-sync (plan_cdd2a1f76d464e13_9f392eea3f1a), then INBOX upload (draft ready scratchpad/inbox/INBOX.md, plan_21809152111743ac_8778420aa0a2).
+- DS re-synced (22 comps, 116 files + anchor). INBOX.md uploaded. Remaining: final summary.
+- LOOP 2 (user: inbox first, iterate until all listed tasks on main): INBOX updated with §9 + Q7-9. Browser comparison agent ac99204d8fa8d36f3 running. Then fixes (§10), review, INBOX update, DS re-sync if DS changes. Viewer runs on eval-dummy (task b0645kvc3).
+- Design diff saved scratchpad/design-diff.md (52 items, G1 header/runs/matches, G2 arena+2D(+DS legend kinds), G3 tournament/gate/live/states). Live crash fix agent a6f8bbae45d7ca3c8 running; then G1→G2→G3 sequential, review, INBOX §10, DS re-sync (legend kinds).
+- G1 pushed 3fc2baa, G2 pushed ed2af91 (G2 added few tests -> review must require tests for chat flags/caption/KPIs). G3 agent ace8bda8e502ddb00 running. Then: review (tests + correctness + fidelity), INBOX §10 + Qs (Price/Role·reserve/etc not logged; minus sign), DS re-sync (Legend kinds).
+- Design-align reviews saved review-da-logic.md (X1-X15, tests 1-18, F1-F11). Next: fix agent A (X1-X6 + tests), then B (X7-X15, F1-F11, remaining tests).
+- DS re-synced again (Legend injection/end kinds etc.) at ~14:10. Pushed 201316d (F items). Tests agent af1cad885d66cf2c0 running. Remaining after: INBOX §10 + final quick check + restart viewer.
+- Designer answered Q1-11 (my overwrite had erased 1-6; restored by them; NEW RULE: never delete '> **Diseño:**' lines — always merge onto remote). Local inbox copy merged. Agents: viewer answers ae4367cc1d38129b8, openspec planner aa23986e90d53e742.
+- PIVOT 19:40 Fri: real challenge = The Bazaar (Causa Prima). Kit summary scratchpad/bazaar-kit-summary.md. User: quick agent first, in negotiation-ring, key in .env (BAZAAR_KEY/BAZAAR_URL). Phase 1 agent a08e07295d945cf49 (client + Abuela negotiator + loop + traces + tests; dry-run only). Viewer parked (114fe70 committed; openspec engine-trace-viewer-fields untracked, partial). Next: duels (2-issue engine), team trades, venue (level>=2).
+- Abuela real data (/api/dealers/abuela): traits patience .85 gen .8 shrewd .2 memory .15 strict .1 chatty .75; sells pack sobre_barrio list 26 opening 30 (3/h), common 10, uncommon 25; buys common/uncommon; 8 deals/h; unlock early_min_deals 3. Sim+harness agent a52118bb700a956f4 running. Brief doc: https://claude.ai/code/artifact/d1886aee-1a84-449e-bfa3-1439d1d3ff9f
+- USER RULE: do NOT go live until agreed with the user. Live agent stopped after tick 30 (thread 56 open with abuela: her offer 13 P for MAL-02, our ask 21 P). bad_response schema bug -> fix agent a06ab82f380d82658.
+- 20:5x Fri: thread 125 (sell MAL-02 only copy) closed no deal: her 5→6 final 6 < min 10. Patience ~6-7 msgs. User approved: adaptive steps + moderate anchor + safety 1.0 for buy SAL uncommon + SAL common; patience logging. Agent ad9bfe206ea80e614 (dry run only). Do NOT go live until user approves.
+- 21:0x Fri: thread 178 deal (bought SAL uncommon @23, got duplicate SAL-07). deals=2. Thread 184 buy SAL common in progress. Peer causa-prima-ec: schedule (game h) 2.0 practice duels, 2.63 Chato opens all, 3.0 bench, 4.0 R2 (+150P at 4.05, El Retiro), 6.5 Duels I, 13.0 Duels II, 16 hard bench, 18 R3, 20 Duels III, 23 Grand Final, 24 freeze. Top teams 8-13 deals, score 20-28; we 4.35 rank 15. Parallel agents: serious-mode aa695d13a6b9b33e8, duels ad7d708f160f33b44, trades a92e7228ca5590d15. Serious mode start after fix (user said parallel ok).
+- USER STANDING ORDER (Fri ~21:15): set strategy, run live with Abuela NOW, adjust each iteration, DO NOT STOP unless user says; show every conversation message in chat. Live: dealer agent bzyzt38qy (max-deals 3 → relaunch continuous when it ends), duels bqt4ubb82, convo feed monitor bj1h3ting, outcomes monitor b7488izwq. Viewer conversations panel agent a2dde5e828283726c. Trades module ready (needs --confirm), launch after thread 222 (SAL-06) settles.
+- USER: full autonomy, no confirmations needed (Fri ~21:17).
+- Fri ~22:35: LEVEL 2 reached; El Chato unlocked; VENUE OPENED v04 'Team 2 · El Rastro Express' zero fees auto (270 P), broker key in .env.broker. Broker agent being built. Viewer conversations panel live at http://127.0.0.1:5199/#bazaar (viewer task bo1qcnt12). Deals tonight: SAL-07 dup @23, SAL-06 @25, SAL-08 @25, SAL-03 @10, SAL-04 @10, SAL-05 in progress.
+- QUEUED: verdict-per-thread feature for bazaar-threads peer (surplus from real received card value at settlement; good>=1/bad<=-1/neutral; Δneg/Δladder cross-check from score.jsonl cause.thread; persist verdict line in thread-<id>.jsonl; viewer #bazaar column). Launch when an agent slot frees. Thread 260 (Abuela, SAL-07) left open; close was denied by guard.
+
+## Handovers at end of day 1 (23:35 Madrid, game paused at tick 159)
+- From bazaar-threads: second UI at causa-prima/bazaar-ui (port 5310/5311, stopped). Pablo has not chosen between it and :5199. Value precedence there: decisions.jsonl summary.ourValue > Δneg_points (random buys) > /api/me/value.
+- From causa-prima-ec: the monitor runs outside the session via launchd.
+  - Jobs: ai.causaprima.bazaar-sniff (polls 7 endpoints every 10s) and ai.causaprima.bazaar-serve (http://localhost:8787/dashboard.html).
+  - Folder: causa-prima/bazaar-sim/monitor (start.sh, stop.sh, README).
+  - Data: data/snapshots.jsonl (~30 MB/h). Always dedupe feed events by id.
+  - If 3 polls fail, refresh cookie.txt (never print it).
+  - TODO: poll the feed less often while paused, dedupe at write time or rotate per day, and check the Saturday event rate against limit 300.
+- Schedule (game hours):
+  - 4.0: Round 2 starts, holdings carry over, El Retiro set released. 4.05: +150 P for every team.
+  - Benches ("Market Test") every 2 h, hard bench at 16.0.
+  - Duels: I at 6.5 (price only), II at 13.0 (price and delivery day), III at 20.0. Friday practice duels scored 0.
+  - 18.0: Round 3 and Chamberí. 23.0: Grand Final. 24.0: freeze.
+  - Tick: 30 s on Saturday, 15 s on Sunday.
+- Facts:
+  - El Rastro uncommons settle at 18-21; fee 500 bps + 1 per card.
+  - Team 8 lost score on a deal (24.99 -> 23.05).
+  - neg_points probably compares the price with a market reference (hypothesis).

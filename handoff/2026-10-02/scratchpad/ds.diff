@@ -1,0 +1,770 @@
+diff --git a/design-system/src/components/DataTable.tsx b/design-system/src/components/DataTable.tsx
+index bc9aa6c..0dcfe0e 100644
+--- a/design-system/src/components/DataTable.tsx
++++ b/design-system/src/components/DataTable.tsx
+@@ -1,4 +1,4 @@
+-import type { ReactNode } from "react";
++import type { MouseEvent, ReactNode } from "react";
+ 
+ export interface DataTableColumn {
+   key: string;
+@@ -16,13 +16,22 @@ export type DataTableRow = Record<string, ReactNode | DataTableCell>;
+ export interface DataTableProps {
+   columns: DataTableColumn[];
+   rows: DataTableRow[];
++  /** Makes the whole row clickable on click, as a mouse convenience; the row itself is not a tab stop (use an inner link/button for keyboard access). Clicks starting on an interactive child (button, a, input, select, textarea, [role=button]) are ignored. */
++  onRowClick?: (rowIndex: number) => void;
++  /** Row index visually highlighted as "selected" (e.g. the round picked on a chart). */
++  selectedRowIndex?: number;
+ }
+ 
+ function isCell(value: ReactNode | DataTableCell): value is DataTableCell {
+   return typeof value === "object" && value !== null && "value" in (value as object);
+ }
+ 
+-export function DataTable({ columns, rows }: DataTableProps) {
++/** True when the click originated on (or inside) an interactive child, e.g. the row's TableLink. */
++function isInteractiveTarget(target: EventTarget | null): boolean {
++  return target instanceof HTMLElement && target.closest('button, a, input, select, textarea, [role="button"]') !== null;
++}
++
++export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataTableProps) {
+   return (
+     <div className="nr-table-wrap">
+       <table className="nr-table">
+@@ -37,7 +46,19 @@ export function DataTable({ columns, rows }: DataTableProps) {
+         </thead>
+         <tbody>
+           {rows.map((row, rowIndex) => (
+-            <tr key={rowIndex}>
++            <tr
++              key={rowIndex}
++              className={[onRowClick ? "nr-table-row-clickable" : "", rowIndex === selectedRowIndex ? "is-selected" : ""].filter(Boolean).join(" ") || undefined}
++              aria-selected={rowIndex === selectedRowIndex ? true : undefined}
++              {...(onRowClick
++                ? {
++                    onClick: (event: MouseEvent<HTMLTableRowElement>) => {
++                      if (isInteractiveTarget(event.target)) return;
++                      onRowClick(rowIndex);
++                    },
++                  }
++                : {})}
++            >
+               {columns.map((column) => {
+                 const raw = row[column.key];
+                 const cell = isCell(raw) ? raw : { value: raw };
+diff --git a/design-system/src/components/Heatmap.tsx b/design-system/src/components/Heatmap.tsx
+index 9c0a270..79ba434 100644
+--- a/design-system/src/components/Heatmap.tsx
++++ b/design-system/src/components/Heatmap.tsx
+@@ -12,6 +12,8 @@ export interface HeatmapRow {
+ export interface HeatmapProps {
+   rows: HeatmapRow[];
+   columns: string[];
++  /** Header for the leftmost column (the row label); defaults to "Opponent". */
++  rowHeader?: string;
+ }
+ 
+ export function heatmapBand(value: number | null | undefined): "good" | "mid" | "bad" | "none" {
+@@ -21,13 +23,13 @@ export function heatmapBand(value: number | null | undefined): "good" | "mid" |
+   return "bad";
+ }
+ 
+-export function Heatmap({ rows, columns }: HeatmapProps) {
++export function Heatmap({ rows, columns, rowHeader = "Opponent" }: HeatmapProps) {
+   return (
+     <div className="nr-table-wrap">
+       <table className="nr-table">
+         <thead>
+           <tr>
+-            <th>Rival</th>
++            <th>{rowHeader}</th>
+             {columns.map((column) => (
+               <th key={column} style={{ textAlign: "center" }}>
+                 {column}
+diff --git a/design-system/src/components/Pill.tsx b/design-system/src/components/Pill.tsx
+index 5147eb6..1bf1ac7 100644
+--- a/design-system/src/components/Pill.tsx
++++ b/design-system/src/components/Pill.tsx
+@@ -1,7 +1,7 @@
+ import type { ReactNode } from "react";
+ 
+ export interface PillProps {
+-  kind: "verdict" | "rejected" | "sample";
++  kind: "verdict" | "rejected" | "sample" | "champion";
+   children?: ReactNode;
+ }
+ 
+diff --git a/design-system/src/components/Scatter2D.tsx b/design-system/src/components/Scatter2D.tsx
+index e5aa4ba..ab93181 100644
+--- a/design-system/src/components/Scatter2D.tsx
++++ b/design-system/src/components/Scatter2D.tsx
+@@ -1,3 +1,5 @@
++import type { KeyboardEvent } from "react";
++
+ export interface Scatter2DPoint {
+   round: number;
+   x: number;
+@@ -30,6 +32,8 @@ export interface Scatter2DProps {
+   isoLines?: Scatter2DCurve[];
+   mandate?: Scatter2DRegion;
+   deal?: Scatter2DDeal;
++  /** Selects the round of the clicked (or keyboard-activated) point; points become focusable buttons. */
++  onPointClick?: (point: { side: "us" | "them"; round: number }) => void;
+ }
+ 
+ const WIDTH = 640;
+@@ -62,7 +66,7 @@ function ticksFor(domain: [number, number]): number[] {
+   return Array.from({ length: TICK_COUNT + 1 }, (_, index) => min + ((max - min) * index) / TICK_COUNT);
+ }
+ 
+-export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal }: Scatter2DProps) {
++export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal, onPointClick }: Scatter2DProps) {
+   const sortedOurs = [...ourOffers].sort(byRound);
+   const sortedTheirs = [...theirOffers].sort(byRound);
+   const rounds = Array.from(new Set([...ourOffers, ...theirOffers].map((point) => point.round)));
+@@ -70,7 +74,12 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
+   const yTicks = ticksFor(yDomain);
+ 
+   return (
+-    <svg className="nr-scatter" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Offers by round on two issues">
++    <svg
++      className="nr-scatter"
++      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
++      role={onPointClick ? "group" : "img"}
++      aria-label="Offers by round on two issues"
++    >
+       {mandate ? (
+         <polygon
+           className="mandate"
+@@ -162,7 +171,26 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
+ 
+       {sortedOurs.map((point) => (
+         <g key={`us-${point.round}`}>
+-          <circle className="dot-us" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
++          <circle
++            className="dot-us"
++            cx={scatter2DXScale(point.x, xDomain)}
++            cy={scatter2DYScale(point.y, yDomain)}
++            r={4.5}
++            {...(onPointClick
++              ? {
++                  role: "button" as const,
++                  tabIndex: 0,
++                  "aria-label": `Our offer, round ${point.round}`,
++                  onClick: () => onPointClick({ side: "us" as const, round: point.round }),
++                  onKeyDown: (e: KeyboardEvent) => {
++                    if (e.key === "Enter" || e.key === " ") {
++                      e.preventDefault();
++                      onPointClick({ side: "us" as const, round: point.round });
++                    }
++                  },
++                }
++              : {})}
++          />
+           <text className="point-label us" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
+             R{point.round}
+           </text>
+@@ -170,7 +198,26 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
+       ))}
+       {sortedTheirs.map((point) => (
+         <g key={`them-${point.round}`}>
+-          <circle className="dot-them" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
++          <circle
++            className="dot-them"
++            cx={scatter2DXScale(point.x, xDomain)}
++            cy={scatter2DYScale(point.y, yDomain)}
++            r={4.5}
++            {...(onPointClick
++              ? {
++                  role: "button" as const,
++                  tabIndex: 0,
++                  "aria-label": `Opponent offer, round ${point.round}`,
++                  onClick: () => onPointClick({ side: "them" as const, round: point.round }),
++                  onKeyDown: (e: KeyboardEvent) => {
++                    if (e.key === "Enter" || e.key === " ") {
++                      e.preventDefault();
++                      onPointClick({ side: "them" as const, round: point.round });
++                    }
++                  },
++                }
++              : {})}
++          />
+           <text className="point-label them" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
+             R{point.round}
+           </text>
+diff --git a/design-system/src/components/Scoreboard.tsx b/design-system/src/components/Scoreboard.tsx
+index 485a7c6..3dd2e9f 100644
+--- a/design-system/src/components/Scoreboard.tsx
++++ b/design-system/src/components/Scoreboard.tsx
+@@ -2,12 +2,14 @@ export interface ScoreboardProps {
+   badge: string;
+   us: string;
+   rival: string;
++  /** True while waiting for the next match: mutes the rival colour instead of the usual them accent. */
++  rivalPending?: boolean;
+   round: number | null;
+-  rounds: number;
++  rounds: number | null;
+   attacksBlocked: number | null;
+ }
+ 
+-export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }: ScoreboardProps) {
++export function Scoreboard({ badge, us, rival, rivalPending, round, rounds, attacksBlocked }: ScoreboardProps) {
+   const attacksClass = ["nr-scoreboard-value", attacksBlocked !== null && attacksBlocked > 0 ? "nr-scoreboard-attacks" : "nr-scoreboard-attacks-muted"].join(" ");
+   return (
+     <div className="nr-scoreboard">
+@@ -16,13 +18,13 @@ export function Scoreboard({ badge, us, rival, round, rounds, attacksBlocked }:
+         <span className="nr-scoreboard-match">
+           <span className="nr-scoreboard-us">{us}</span>
+           <span className="nr-scoreboard-vs">vs</span>
+-          <span className="nr-scoreboard-rival">{rival}</span>
++          <span className={rivalPending ? "nr-scoreboard-rival nr-scoreboard-rival-pending" : "nr-scoreboard-rival"}>{rival}</span>
+         </span>
+       </div>
+       <div className="nr-scoreboard-stats">
+         <div className="nr-scoreboard-stat">
+           <span className="nr-scoreboard-value">
+-            {round === null ? "—" : round}/{rounds}
++            {round === null ? "—" : round}/{rounds === null ? "—" : rounds}
+           </span>
+           <span className="nr-scoreboard-label">round</span>
+         </div>
+diff --git a/design-system/src/components/StatFigure.tsx b/design-system/src/components/StatFigure.tsx
+new file mode 100644
+index 0000000..4e65286
+--- /dev/null
++++ b/design-system/src/components/StatFigure.tsx
+@@ -0,0 +1,17 @@
++export interface StatFigureProps {
++  /** Literal value already formatted by the caller (e.g. with `formatNumber`); never computed here. */
++  value: string;
++  /** Accent colour: `--us` for our side, `--them` for the rival's (default). */
++  tone?: "us" | "them";
++  caption?: string;
++}
++
++/** Large headline figure (e.g. "final estimate of their reserve"), `font: 800 44px/1 var(--font-display)`. */
++export function StatFigure({ value, tone = "them", caption }: StatFigureProps) {
++  return (
++    <div className="nr-stat-figure-wrap">
++      <span className={`nr-stat-figure nr-stat-figure-${tone}`}>{value}</span>
++      {caption ? <span className="nr-muted">{caption}</span> : null}
++    </div>
++  );
++}
+diff --git a/design-system/src/index.ts b/design-system/src/index.ts
+index eb2e0a0..879399e 100644
+--- a/design-system/src/index.ts
++++ b/design-system/src/index.ts
+@@ -47,5 +47,8 @@ export type { ScoreboardProps } from "./components/Scoreboard";
+ export { WarningBanner } from "./components/WarningBanner";
+ export type { WarningBannerProps } from "./components/WarningBanner";
+ 
++export { StatFigure } from "./components/StatFigure";
++export type { StatFigureProps } from "./components/StatFigure";
++
+ export { formatEsNumber, formatNumber } from "./format";
+ export type { FormatNumberOptions } from "./format";
+diff --git a/design-system/src/styles.css b/design-system/src/styles.css
+index 6730969..fa82fa3 100644
+--- a/design-system/src/styles.css
++++ b/design-system/src/styles.css
+@@ -6,8 +6,13 @@
+ .nr-root h1,.nr-root h2,.nr-root h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
+ .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}
+ .nr-heading{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
++.nr-heading-sm{font-family:var(--font-display);font-size:16px;font-weight:700;margin:0}
+ .nr-muted{color:var(--muted);font-size:13.5px}
+ .nr-cfg{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
++.nr-stat-figure-wrap{display:flex;flex-direction:column;gap:var(--space-1)}
++.nr-stat-figure{font:800 44px/1 var(--font-display)}
++.nr-stat-figure-us{color:var(--us)}
++.nr-stat-figure-them{color:var(--them)}
+ 
+ /* Tabs */
+ .nr-tabs{display:flex;gap:var(--space-1);border-bottom:1px solid var(--line);overflow-x:auto}
+@@ -50,6 +55,7 @@
+ .nr-pill.verdict{background:var(--ok-soft);color:var(--ok)}
+ .nr-pill.rejected{background:var(--warn-soft);color:var(--warn)}
+ .nr-pill.sample{font-family:var(--font-mono);font-weight:400;font-size:11px;padding:3px 9px;background:var(--them-soft);color:var(--ink)}
++.nr-pill.champion{background:var(--us-soft);color:var(--us)}
+ 
+ /* Table */
+ .nr-table-wrap{overflow-x:auto}
+@@ -57,6 +63,10 @@
+ .nr-table th,.nr-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+ .nr-table th{font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500}
+ .nr-table .num{text-align:right}
++.nr-table-row-clickable{cursor:pointer}
++.nr-table-row-clickable:hover{background:var(--us-soft)}
++.nr-table-row-clickable:focus-visible{outline:2px solid var(--us);outline-offset:-2px}
++.nr-table tr.is-selected{background:var(--us-soft)}
+ .nr-better{color:var(--ok);font-weight:600} .nr-worse{color:var(--warn);font-weight:600}
+ 
+ /* Heatmap */
+@@ -98,10 +108,17 @@
+ 
+ .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
+ 
+-/* Plain action button, styled through tokens only (back link, round navigation) */
+-.nr-btn{background:transparent;border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--space-1) var(--space-3);font-family:var(--font-body);font-size:14px;color:var(--ink);cursor:pointer}
+-.nr-btn:focus-visible{outline:2px solid var(--us);outline-offset:2px}
+-.nr-btn-back{align-self:flex-start}
++/* Button variants used by viewer/src/ui/buttons.tsx, styled through tokens only */
++.nr-link-back{background:transparent;border:none;font:500 13px var(--font-body);color:var(--muted);padding:0;align-self:flex-start;cursor:pointer}
++.nr-btn-secondary{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:5px 12px;font:600 13px var(--font-body);color:var(--ink);cursor:pointer}
++.nr-btn-primary{background:var(--ink);color:var(--bg);border:1px solid var(--ink);border-radius:var(--radius-md);padding:7px 14px;font:600 13px var(--font-body);cursor:pointer}
++.nr-link-back:focus-visible,.nr-btn-secondary:focus-visible,.nr-btn-primary:focus-visible{outline:2px solid var(--us);outline-offset:2px}
++.nr-link-table{background:transparent;border:none;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
++.nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
++
++/* P7 projector: discreet corner back link, visible on hover/focus only */
++.nr-live-corner-back{opacity:.35;transition:opacity .15s ease}
++.nr-live-corner-back:hover,.nr-live-corner-back:focus-visible{opacity:1}
+ 
+ /* Filters */
+ .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
+@@ -131,6 +148,7 @@
+ .nr-scoreboard-us{color:var(--us)}
+ .nr-scoreboard-vs{color:var(--muted);font-weight:700;margin:0 12px}
+ .nr-scoreboard-rival{color:var(--them)}
++.nr-scoreboard-rival-pending{color:var(--muted)}
+ .nr-scoreboard-stats{display:flex;align-items:baseline;gap:48px}
+ .nr-scoreboard-stat{display:flex;flex-direction:column;align-items:flex-end}
+ .nr-scoreboard-value{font:800 72px/1 var(--font-display)}
+@@ -156,3 +174,31 @@
+ .nr-scatter .point-label.them{fill:var(--them)}
+ .nr-scatter .deal-ring{fill:none;stroke:var(--ok);stroke-width:2.5}
+ .nr-scatter .deal-label{font:600 11px var(--font-mono);fill:var(--ok)}
++.nr-scatter circle[role="button"]{cursor:pointer}
++.nr-scatter circle[role="button"]:focus-visible{outline:2px solid var(--us);outline-offset:1px}
++
++/* Code box: copy-command and similar literal snippets (B2) */
++.nr-code-box{font:13px var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px 10px;overflow-x:auto;white-space:nowrap;color:var(--ink)}
++
++/* Parameter diff (B3): 22px sign column, muted sign, bordered lines */
++.nr-diff{margin-top:var(--space-3);font:13px/1.7 var(--font-mono);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
++.nr-diff-row{display:grid;grid-template-columns:22px minmax(0,1fr);padding:0 var(--space-3);border-bottom:1px solid var(--line)}
++.nr-diff-row:last-child{border-bottom:none}
++.nr-diff-sign{color:var(--muted)}
++
++/* B2: responsive grids and tables. Screens set their own column ratios inline (content-specific);
++   below 900px every `.nr-grid` collapses to one column (the live/projector canvas is exempt: it never
++   uses this class). Tables already scroll horizontally inside `.nr-table-wrap`, never the page. */
++.nr-grid{display:grid;gap:var(--space-4);align-items:start}
++@media (max-width:899px){
++  .nr-grid{grid-template-columns:1fr!important}
++}
++
++/* Loading progress: determinate fill or an indeterminate 30% slider (P8) */
++.nr-progress-track{height:6px;background:var(--line);border-radius:var(--radius-pill);overflow:hidden;position:relative}
++.nr-progress-fill{height:100%;background:var(--ink);border-radius:var(--radius-pill)}
++.nr-progress-indeterminate{position:absolute;top:0;width:30%;animation:nr-progress-slide 1.2s ease-in-out infinite}
++@keyframes nr-progress-slide{0%{left:-30%}100%{left:100%}}
++@media (prefers-reduced-motion: reduce){
++  .nr-progress-indeterminate{animation:none;left:35%}
++}
+diff --git a/viewer/src/theme.ts b/viewer/src/theme.ts
+new file mode 100644
+index 0000000..915f236
+--- /dev/null
++++ b/viewer/src/theme.ts
+@@ -0,0 +1,33 @@
++export type Theme = "light" | "dark";
++
++const STORAGE_KEY = "nr-theme";
++
++function readStoredTheme(): Theme | null {
++  try {
++    const stored = window.localStorage.getItem(STORAGE_KEY);
++    return stored === "light" || stored === "dark" ? stored : null;
++  } catch {
++    return null;
++  }
++}
++
++function prefersDark(): boolean {
++  try {
++    return window.matchMedia("(prefers-color-scheme: dark)").matches;
++  } catch {
++    return false;
++  }
++}
++
++/** B1: default follows `prefers-color-scheme`; an explicit choice is persisted (best-effort; storage may be unavailable). */
++export function initialTheme(): Theme {
++  return readStoredTheme() ?? (prefersDark() ? "dark" : "light");
++}
++
++export function storeTheme(theme: Theme): void {
++  try {
++    window.localStorage.setItem(STORAGE_KEY, theme);
++  } catch {
++    // Storage unavailable (private mode, quota, disabled): the viewer still renders fine, just without persistence.
++  }
++}
+diff --git a/viewer/src/ui/DecisionPanel.tsx b/viewer/src/ui/DecisionPanel.tsx
+new file mode 100644
+index 0000000..e961317
+--- /dev/null
++++ b/viewer/src/ui/DecisionPanel.tsx
+@@ -0,0 +1,91 @@
++import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatNumber } from "@negotiation-ring/design-system";
++import { useState } from "react";
++import type { RoundPanel } from "../model/index.js";
++import { nameLatencySteps } from "./decision.js";
++import { SecondaryButton } from "./buttons.js";
++
++/** P4: una entrada por paso, con nombre único cuando una caja corrió más de una vez; los pasos de 0 ms quedan tras "show all". */
++function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: number }[] }) {
++  const [showAll, setShowAll] = useState(false);
++  const steps = nameLatencySteps(boxes);
++  const hiddenCount = steps.filter((s) => s.latencyMs === 0).length;
++  const shown = showAll ? steps : steps.filter((s) => s.latencyMs > 0);
++  return (
++    <span>
++      {shown.map((s) => `${s.name} ${s.latencyMs} ms`).join(" · ")}
++      {hiddenCount > 0 ? (
++        <SecondaryButton style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
++          {showAll ? "hide 0 ms steps" : `show all (+${hiddenCount})`}
++        </SecondaryButton>
++      ) : null}
++    </span>
++  );
++}
++
++const DECISION_COLUMNS: DataTableColumn[] = [
++  { key: "k", label: "Turn step" },
++  { key: "v", label: "Engine log" },
++];
++
++export interface DecisionPanelProps {
++  hasTrace: boolean;
++  panel: RoundPanel | null;
++  selectedRound: number;
++  totalRounds: number;
++  onPrev: () => void;
++  onNext: () => void;
++}
++
++/** Shared "Engine decision this round" card, reused by the arena and tournament replay screens. */
++export function DecisionPanel({ hasTrace, panel, selectedRound, totalRounds, onPrev, onNext }: DecisionPanelProps) {
++  const decisionRows: DataTableRow[] = panel
++    ? [
++        { k: "Rule", v: panel.decision?.rule ?? "not logged" },
++        { k: "Target (Boulware curve)", v: panel.explain ? formatNumber(panel.explain.target, { locale: "en", decimals: 3 }) : "not logged" },
++        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "n/a" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
++        {
++          k: "AC_next",
++          v: panel.explain ? <Pill kind={panel.explain.acNext ? "verdict" : "rejected"}>{panel.explain.acNext ? "accept" : "no accept"}</Pill> : "not logged",
++        },
++        { k: "AC_time", v: panel.explain ? panel.explain.acTime : "not logged" },
++        { k: "Quarantined parser", v: panel.parser ? `${panel.parser.intent}${panel.parser.injectionSuspected ? " · injection" : ""}` : "not logged" },
++        {
++          k: "Validator",
++          v: panel.validator
++            ? `${panel.validator.ok ? "ok" : `rejected · ${Array.isArray(panel.validator.reasons) && panel.validator.reasons.length > 0 ? panel.validator.reasons.join(", ") : "no reason logged"}`} (${panel.boxes.filter((b) => b.box === "validator").length} attempt(s))`
++            : "not logged",
++        },
++        {
++          k: "Latencies",
++          v: panel.boxes.length > 0 ? <LatencyList boxes={panel.boxes} /> : "not logged",
++        },
++      ]
++    : [];
++
++  return (
++    <Card>
++      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
++        <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
++          <h3 className="nr-heading">Engine decision this round</h3>
++          <span className="nr-cfg">
++            R{selectedRound} / {totalRounds}
++          </span>
++        </div>
++        <div style={{ display: "flex", gap: "var(--space-2)" }}>
++          <SecondaryButton onClick={onPrev}>← Previous round</SecondaryButton>
++          <SecondaryButton onClick={onNext}>Next round →</SecondaryButton>
++        </div>
++      </div>
++      {hasTrace ? (
++        <>
++          <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
++          <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
++            Click a point on the chart to switch rounds. Values exactly as logged by the engine.
++          </p>
++        </>
++      ) : (
++        <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
++      )}
++    </Card>
++  );
++}
+diff --git a/viewer/src/ui/buttons.tsx b/viewer/src/ui/buttons.tsx
+new file mode 100644
+index 0000000..70d516f
+--- /dev/null
++++ b/viewer/src/ui/buttons.tsx
+@@ -0,0 +1,27 @@
++import type { ButtonHTMLAttributes } from "react";
++
++type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
++
++function withClass(base: string, className?: string): string {
++  return className ? `${base} ${className}` : base;
++}
++
++/** Back navigation: no border or background, low-key text link (see INBOX §0.1). */
++export function BackLink({ className, type = "button", ...props }: ButtonProps) {
++  return <button type={type} className={withClass("nr-link-back", className)} {...props} />;
++}
++
++/** Secondary action: round navigation, "show all", "Copy", etc. (INBOX §0.1). */
++export function SecondaryButton({ className, type = "button", ...props }: ButtonProps) {
++  return <button type={type} className={withClass("nr-btn-secondary", className)} {...props} />;
++}
++
++/** Primary action, reserved for the single most important action in a panel (INBOX §0.1). */
++export function PrimaryButton({ className, type = "button", ...props }: ButtonProps) {
++  return <button type={type} className={withClass("nr-btn-primary", className)} {...props} />;
++}
++
++/** Table/row link styled like a link but kept as a `<button>` for keyboard + click semantics (INBOX §0.2). */
++export function TableLink({ className, type = "button", ...props }: ButtonProps) {
++  return <button type={type} className={withClass("nr-link-table", className)} {...props} />;
++}
+diff --git a/viewer/src/ui/labels.ts b/viewer/src/ui/labels.ts
+index 4dbb602..1a418f0 100644
+--- a/viewer/src/ui/labels.ts
++++ b/viewer/src/ui/labels.ts
+@@ -1,28 +1,66 @@
+ import type { TranscriptLine } from "../../../src/arena/results-schema.js";
++import type { RunKind } from "../model/index.js";
+ 
+-/** UI label + KPI tone for the engine's logged `endReason`: "Deal"/"Walk" per the spec; other reasons keep a plain English label with no tone. */
+-export function resultKpi(endReason: TranscriptLine["endReason"]): { label: string; tone?: "deal" | "walk" } {
++export type EndReason = TranscriptLine["endReason"];
++
++export interface ResultLabel {
++  label: string;
++  tone?: "deal" | "walk";
++}
++
++/**
++ * Single label table for the engine's logged `endReason`, used everywhere in the viewer:
++ * KpiStrip, the Matches Outcome column, the Filters options and the MatchSelector labels
++ * (INBOX §0.3). Raw ids stay in the URL and in internal filter values.
++ */
++export function resultLabel(endReason: EndReason | string | undefined): ResultLabel {
+   switch (endReason) {
+     case "agreement":
+       return { label: "Deal", tone: "deal" };
+     case "agent-walk":
++      return { label: "We walked", tone: "walk" };
+     case "rival-walk":
+-      return { label: "Walk", tone: "walk" };
++      return { label: "Opponent walked", tone: "walk" };
++    case "rival-error":
++    case "protocol-violation":
++      return { label: "Opponent error", tone: "walk" };
+     case "limit":
+       return { label: "Round limit" };
+-    case "rival-error":
+-      return { label: "Rival error" };
+     case "agent-error":
+       return { label: "Agent error" };
+-    case "protocol-violation":
+-      return { label: "Protocol violation", tone: "walk" };
+     default:
+       // Motivo de fin que esta versión del visor no conoce: se muestra literal, sin tono.
+-      return { label: String(endReason) };
++      return { label: endReason ?? "not logged" };
+   }
+ }
+ 
++/** Binary deal/walk classification for components that need one, e.g. MatchSelector's swatch. */
++export function resultTone(endReason: EndReason | string | undefined): "deal" | "walk" {
++  return resultLabel(endReason).tone === "deal" ? "deal" : "walk";
++}
++
+ /** ZOPA KPI label: the engine only logs whether it was empty. */
+ export function zopaKpi(zopaEmpty: boolean): string {
+   return zopaEmpty ? "Empty" : "Open";
+ }
++
++/**
++ * Label for the Runs table "Type" column: raw `RunKind` values never reach the UI (INBOX §1).
++ */
++export function runKindLabel(kind: RunKind): string {
++  switch (kind) {
++    case "arena":
++      return "Arena run";
++    case "promotion":
++      return "Promotion";
++    case "tournament":
++      return "Tournament run";
++    default:
++      return kind;
++  }
++}
++
++/** English label for the logged `role` ("buyer"/"seller"), used in Filters (INBOX §2). */
++export function roleLabel(role: string): string {
++  return role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : role;
++}
+diff --git a/viewer/src/ui/match-selector.tsx b/viewer/src/ui/match-selector.tsx
+index c0918bf..16a894f 100644
+--- a/viewer/src/ui/match-selector.tsx
++++ b/viewer/src/ui/match-selector.tsx
+@@ -1,4 +1,5 @@
+ import { MatchSelector as DsMatchSelector } from "@negotiation-ring/design-system";
++import { resultLabel, resultTone } from "./labels.js";
+ 
+ /** Lo mínimo de cada partida que usa el selector (sale tal cual de transcripts.jsonl). */
+ export interface MatchSelectorGame {
+@@ -16,14 +17,6 @@ export interface MatchSelectorProps {
+ /** Partidas a cada lado de la actual: un run puede tener miles y el componente pinta un botón por partida. */
+ export const MATCH_WINDOW = 3;
+ 
+-/** Etiqueta de UI a partir del motivo de fin registrado; no se calcula nada. */
+-export function endReasonLabel(endReason: string | undefined): { result: "deal" | "walk"; label: string } {
+-  if (endReason === "agreement") return { result: "deal", label: "Deal" };
+-  if (endReason === "agent-walk" || endReason === "rival-walk") return { result: "walk", label: "Walk" };
+-  if (endReason === "limit") return { result: "walk", label: "Round limit" };
+-  return { result: "walk", label: endReason ?? "not logged" };
+-}
+-
+ /** Ventana de partidas alrededor de la actual, en el orden del log. */
+ export function matchWindow(games: MatchSelectorGame[], currentGameId: string, size = MATCH_WINDOW): MatchSelectorGame[] {
+   const index = games.findIndex((game) => game.gameId === currentGameId);
+@@ -36,9 +29,11 @@ export function matchWindow(games: MatchSelectorGame[], currentGameId: string, s
+  * con una ventana de partidas vecinas para no pintar miles de botones.
+  */
+ export function MatchSelector({ games, currentGameId, onSelectGame }: MatchSelectorProps) {
+-  const matches = matchWindow(games, currentGameId).map((game) => {
+-    const { result, label } = endReasonLabel(game.endReason);
+-    return { id: game.gameId, rival: game.rival ?? "not logged", result, label };
+-  });
++  const matches = matchWindow(games, currentGameId).map((game) => ({
++    id: game.gameId,
++    rival: game.rival ?? "not logged",
++    result: resultTone(game.endReason),
++    label: resultLabel(game.endReason).label,
++  }));
+   return <DsMatchSelector matches={matches} selectedId={currentGameId} onSelect={onSelectGame} />;
+ }
+diff --git a/viewer/src/ui/replay-header.tsx b/viewer/src/ui/replay-header.tsx
+new file mode 100644
+index 0000000..6054778
+--- /dev/null
++++ b/viewer/src/ui/replay-header.tsx
+@@ -0,0 +1,33 @@
++import { ModeBadge } from "@negotiation-ring/design-system";
++import { BackLink } from "./buttons.js";
++import { MatchSelector, type MatchSelectorGame } from "./match-selector.js";
++
++export interface ReplayHeaderProps {
++  onBack: () => void;
++  backLabel: string;
++  gameId: string;
++  rival: string;
++  mode?: "arena" | "tournament";
++  games?: Array<MatchSelectorGame>;
++  onSelectGame?: (gameId: string) => void;
++}
++
++/**
++ * Single header row shared by the arena and two-issue replay screens: one back link, one
++ * ModeBadge and one "id · vs rival" heading, with the match selector below (INBOX finding:
++ * ArenaReplayScreen/TwoIssueScreen used to duplicate this row).
++ */
++export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena", games, onSelectGame }: ReplayHeaderProps) {
++  return (
++    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
++      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
++        <BackLink onClick={onBack}>{backLabel}</BackLink>
++        <ModeBadge mode={mode} />
++        <h2 className="nr-heading">
++          {gameId} · vs {rival}
++        </h2>
++      </div>
++      {games && onSelectGame ? <MatchSelector games={games} currentGameId={gameId} onSelectGame={onSelectGame} /> : null}
++    </div>
++  );
++}
+diff --git a/viewer/src/ui/states.tsx b/viewer/src/ui/states.tsx
+index 7c98d1a..19831ef 100644
+--- a/viewer/src/ui/states.tsx
++++ b/viewer/src/ui/states.tsx
+@@ -9,7 +9,9 @@ function BannerBody({ children }: { children: ReactNode }) {
+ 
+ /**
+  * P8: carga en curso. Sin un conteo real de líneas/partidas leídas (la API no lo reporta hoy),
+- * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`.
++ * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`, una franja del 30% que se
++ * desliza (quieta si `prefers-reduced-motion`). Solo se ve un porcentaje real cuando se pasan
++ * `current`/`total`.
+  */
+ export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
+   const isDeterminate = current !== undefined && total !== undefined && total > 0;
+@@ -21,9 +23,9 @@ export function LoadingCard({ label, current, total }: { label: string; current?
+         <div
+           role="progressbar"
+           {...(isDeterminate ? { "aria-valuenow": percentage, "aria-valuemin": 0, "aria-valuemax": 100 } : { "aria-busy": true })}
+-          style={{ height: 6, background: "var(--line)", borderRadius: "var(--radius-pill)", overflow: "hidden" }}
++          className="nr-progress-track"
+         >
+-          <div style={{ width: `${isDeterminate ? percentage : 100}%`, height: "100%", background: "var(--ink)", borderRadius: "var(--radius-pill)" }} />
++          <div className={isDeterminate ? "nr-progress-fill" : "nr-progress-fill nr-progress-indeterminate"} {...(isDeterminate ? { style: { width: `${percentage}%` } } : {})} />
+         </div>
+       </div>
+     </Card>
+@@ -47,17 +49,22 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
+   );
+ }
+ 
+-/** P8: run o partida sin registros: el estado vacío va directo en la Card, sin caja interior. */
+-export function EmptyStateCard({ title, body, command }: { title: string; body: string; command: string }) {
++/**
++ * P8: run o partida sin registros: el estado vacío va directo en la Card, sin caja interior.
++ * `body`/`command` son opcionales (p. ej. "sin resultados para estos filtros" solo necesita un
++ * título y una acción); `action` añade un control debajo (botón "Clear filters", etc.).
++ */
++export function EmptyStateCard({ title, body, command, action }: { title: string; body?: string; command?: string; action?: ReactNode }) {
+   return (
+     <Card>
+       <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", textAlign: "center", maxWidth: "48ch", margin: "0 auto" }}>
+-        <h3 className="nr-heading" style={{ fontSize: 16 }}>
+-          {title}
+-        </h3>
+-        <span className="nr-muted">
+-          {body} <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code>
+-        </span>
++        <h3 className="nr-heading-sm">{title}</h3>
++        {body ? (
++          <span className="nr-muted">
++            {body} {command ? <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code> : null}
++          </span>
++        ) : null}
++        {action}
+       </div>
+     </Card>
+   );
+@@ -117,10 +124,14 @@ export function TemplateBanner({ templateCount, ourMessageCount, provider }: { t
+   );
+ }
+ 
+-/** P8: ZOPA vacía con retirada (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. Always `tone="warn"` (walk). */
++/**
++ * P8: ZOPA vacía (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. El
++ * título lleva el detalle técnico ("Reserves 80 / 76"), no repite el título de la Card que lo
++ * envuelve. `tone="warn"` solo si además se retiró; si la partida sigue, es solo informativo.
++ */
+ export function EmptyZopaBanner({ ours, rival, walked }: { ours: string; rival: string; walked: boolean }) {
+   return (
+-    <WarningBanner tone="warn" title={`Empty ZOPA${walked ? " → walk" : ""}`}>
++    <WarningBanner tone={walked ? "warn" : "info"} title={`Reserves ${ours} / ${rival}${walked ? " → walk" : ""}`}>
+       <BannerBody>
+         <Flag kind={walked ? "walk" : "neutral"}>{walked ? "walk" : "empty ZOPA"}</Flag>
+         <span style={{ color: "var(--ink)" }}>

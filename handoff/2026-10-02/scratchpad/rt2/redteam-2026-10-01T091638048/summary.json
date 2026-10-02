@@ -1,0 +1,10 @@
+{
+  "runId": "redteam-2026-10-01T091638048",
+  "config": "/Users/pablo/development/hackathon/negotiation-ring.worktrees/finish/redteam/promptfooconfig.yaml",
+  "broken": false,
+  "promptfooExit": 0,
+  "cases": 12,
+  "passed": 12,
+  "realFailures": [],
+  "pendingReview": []
+}

@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "issues": [
+    {
+      "name": "pct",
+      "min": 0,
+      "max": 10,
+      "direction": "higher-better",
+      "weight": 1
+    }
+  ],
+  "defaultHorizon": 10,
+  "roleWeights": {
+    "buyer": 1,
+    "seller": 1
+  },
+  "beta": 0.55,
+  "openingMargin": 0.75,
+  "acceptMargin": 0.01,
+  "acTimeThreshold": 0.92,
+  "noise": 0.2,
+  "reciprocity": 0,
+  "turnSafetyMarginMs": 500,
+  "turnBudgetMs": 4500,
+  "minEffectPp": 1,
+  "persona": "calido-firme",
+  "provenance": {
+    "source": "tune",
+    "parent": 1,
+    "sweepId": "t1",
+    "notes": "random: beta=0.55,openingMargin=0.75,acceptMargin=0.01,acTimeThreshold=0.92,noise=0.2,reciprocity=0",
+    "seeds": {
+      "phase": "tuning",
+      "start": 1,
+      "count": 3
+    },
+    "metrics": {
+      "diffPp": 3.444629629629631,
+      "signP": 0.05761267291381955,
+      "violations": 0,
+      "leaks": 0,
+      "tuningGate": false
+    }
+  }
+}

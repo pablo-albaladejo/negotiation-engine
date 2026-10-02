@@ -1,0 +1,197 @@
+diff --git a/src/bazaar/agent.ts b/src/bazaar/agent.ts
+index c9776d0..e6dc008 100644
+--- a/src/bazaar/agent.ts
++++ b/src/bazaar/agent.ts
+@@ -1,7 +1,7 @@
+ import { BazaarError, type BazaarClient } from "./client.js";
+ import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
+ import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
+-import { applyOnly, formatPlan, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
++import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
+ import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
+ import type { Catalog, Clock, DealerInfo, Me, Thread } from "./schemas.js";
+ import { formatPatience, PatienceLog } from "./patience.js";
+@@ -32,6 +32,8 @@ export interface AgentOptions {
+   negotiator?: Partial<NegotiatorParams>;
+   /** Ficha del dealer: con ella los objetivos salen del planificador por menú (`plan.ts`); sin ella, del antiguo. */
+   menu?: DealerInfo;
++  /** Modo serio: sin ficha del dealer no se abre nada (el planificador antiguo vende a cualquiera, sin mirar su menú). */
++  requireMenu?: boolean;
+   /** Topes de la ejecución: tratos (se para al llegar), conversaciones abiertas en total y gasto en compras. */
+   maxDeals?: number;
+   maxThreads?: number;
+@@ -110,6 +112,11 @@ export class BazaarAgent {
+     this.team = o.team ?? new TeamBudget({ maxSpendPerHour: o.maxSpendPerHour, ...(o.maxSpendTotal !== undefined ? { maxSpendTotal: o.maxSpendTotal } : {}), now: this.now });
+   }
+ 
++  /** Ficha releída de `/api/dealers/{id}` (el menú puede cambiar a mitad de partida). */
++  setMenu(menu: DealerInfo): void {
++    this.o.menu = menu;
++  }
++
+   get dealerId(): string {
+     return this.o.dealer.id;
+   }
+@@ -152,8 +159,10 @@ export class BazaarAgent {
+     const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk });
+     const busy = await busyAssets(this.api, me.id);
+     const blocked: string[] = [];
++    const menu = this.o.menu;
++    const catalog = this.catalog;
+     const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => {
+-      const why = sellBlocked(c.topic, busy);
++      const why = menuBlocks(menu, catalog, c) ?? sellBlocked(c.topic, busy);
+       if (why) blocked.push(`not opened: ${c.label} (${why})`);
+       return !why;
+     });
+@@ -358,9 +367,11 @@ export class BazaarAgent {
+       const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
+       // Un activo, un sitio: nada que ya esté en otro hilo abierto o en una oferta abierta (El Rastro, otro dealer).
+       const busy = await busyAssets(this.api, me.id);
+-      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !sellBlocked(c.topic, busy));
++      const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
++      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy));
+       return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
+     }
++    if (this.o.requireMenu) return undefined;
+     const busy = await busyAssets(this.api, me.id);
+     const sell = spareTargets(me).find((t) => free(t) && !sellBlocked(t.topic, busy));
+     if (sell) return sell;
+diff --git a/src/bazaar/plan.ts b/src/bazaar/plan.ts
+index 1ea711c..612e636 100644
+--- a/src/bazaar/plan.ts
++++ b/src/bazaar/plan.ts
+@@ -98,6 +98,19 @@ function pagesOf(me: Me): Map<string, { have: number; of: number }> {
+ 
+ const setOfCard = (ref: string, asset?: { set?: unknown }) => (typeof asset?.set === "string" ? asset.set : (ref.split("-")[0] ?? ref));
+ 
++/**
++ * Guarda final del menú (hilo 257): vender solo lo que su `menu.buys` compra (rareza y sets) y comprar solo lo que
++ * su `menu.sells` vende (la carta, o su rareza en esos sets). Devuelve el motivo si no lo permite.
++ */
++export function menuBlocks(dealer: DealerInfo, catalog: Catalog, c: Pick<Candidate, "side" | "rarity" | "set" | "card">): string | undefined {
++  const rarity = c.rarity?.toLowerCase();
++  const set = c.set ?? (c.card ? setOfCard(c.card) : undefined);
++  const covers = (e: { rarity?: string | null | undefined; sets?: string | string[] | null | undefined; card?: string | null | undefined }) =>
++    (c.card !== undefined && e.card === c.card) || (!e.card && !!rarity && e.rarity?.toLowerCase() === rarity && set !== undefined && setsOf(e, catalog).has(set));
++  if (c.side === "sell") return dealer.menu.buys.some(covers) ? undefined : `${dealer.id} does not buy ${rarity ?? "?"} ${set ?? "?"} (menu.buys)`;
++  return dealer.menu.sells.some((e) => !e.pack && covers(e)) ? undefined : `${dealer.id} does not sell ${c.card ?? `${rarity ?? "?"} ${set ?? "?"}`} (menu.sells)`;
++}
++
+ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
+   const { me, catalog, dealer, valueOf } = input;
+   const safety = input.safety ?? 0.9;
+diff --git a/src/bazaar/serious-run.ts b/src/bazaar/serious-run.ts
+index c5033dc..eec8313 100644
+--- a/src/bazaar/serious-run.ts
++++ b/src/bazaar/serious-run.ts
+@@ -79,7 +79,13 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
+     locked.clear();
+     for (const d of all) if (!open.includes(d.id)) locked.add(d.id);
+     for (const id of open) {
+-      if (slots.has(id)) continue;
++      const existing = slots.get(id);
++      if (existing) {
++        // El menú manda (qué compra y qué vende): se relee en cada refresco.
++        const fresh = await api.dealer(id).catch(() => undefined);
++        if (fresh) existing.agent.setMenu(fresh);
++        continue;
++      }
+       const menu: DealerInfo | undefined = await api.dealer(id).catch(() => undefined);
+       const summary = all.find((d) => d.id === id);
+       const profile = negotiatorForDealer(traitsOf(menu ?? summary));
+@@ -88,6 +94,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
+         dealer: { id, aliases: [...(summary?.name ? [summary.name] : []), ...(menu?.name ? [menu.name] : []), "persona", "dealer"] },
+         dryRun: o.dryRun,
+         maxSpendPerHour: o.maxSpendPerHour,
++        requireMenu: true,
+         team,
+         safety: o.safety,
+         negotiator: { ...o.negotiator, ...profile },
+@@ -101,7 +108,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
+         },
+       });
+       slots.set(id, { id, agent, state: "new" });
+-      o.log(`dealer ${id}${menu?.name ? ` (${menu.name})` : ""}: unlocked · quota ${dealsPerHour ?? "?"} deals/hour · negotiator ${JSON.stringify(profile)}${menu ? "" : " · no menu: legacy planner"}`);
++      o.log(`dealer ${id}${menu?.name ? ` (${menu.name})` : ""}: unlocked · quota ${dealsPerHour ?? "?"} deals/hour · negotiator ${JSON.stringify(profile)}${menu ? "" : " · no menu: nothing opened until it can be read"}`);
+       if (o.dryRun) for (const line of await agent.plan()) o.log(line);
+     }
+     lastRefresh = tick;
+diff --git a/test/bazaar/menu-guard.test.ts b/test/bazaar/menu-guard.test.ts
+new file mode 100644
+index 0000000..f16722f
+--- /dev/null
++++ b/test/bazaar/menu-guard.test.ts
+@@ -0,0 +1,72 @@
++import { describe, expect, it } from "vitest";
++import { BazaarAgent, type BazaarApi } from "../../src/bazaar/agent.js";
++import { menuBlocks } from "../../src/bazaar/plan.js";
++import { CatalogSchema, DealerInfoSchema } from "../../src/bazaar/schemas.js";
++import type { TraceRecord } from "../../src/bazaar/trace.js";
++
++/** Menús reales de `/api/dealers/{id}` (2 oct, tick 132). */
++const CHATO = DealerInfoSchema.parse({
++  id: "chato",
++  menu: {
++    sells: [{ pack: "sobre_plata", name: "Silver pack", list_price: 150, opening_ask: 188, per_team_per_hour: 2 }, { rarity: "uncommon", sets: "released", list_price: 26 }, { rarity: "rare", sets: "released", list_price: 77 }],
++    buys: [{ rarity: "uncommon", sets: "released" }, { rarity: "rare", sets: "released" }],
++  },
++});
++const ABUELA = DealerInfoSchema.parse({
++  id: "abuela",
++  menu: {
++    sells: [{ pack: "sobre_barrio", list_price: 26 }, { rarity: "common", sets: "released", list_price: 10 }, { rarity: "uncommon", sets: "released", list_price: 25 }],
++    buys: [{ rarity: "common", sets: "released" }, { rarity: "uncommon", sets: "released" }],
++  },
++});
++const CATALOG = CatalogSchema.parse({ sets: [{ id: "SAL", released: true, cards: [] }, { id: "NEW", released: false, cards: [] }] });
++
++describe("menú del dealer: vender solo lo que compra, comprar solo lo que vende", () => {
++  it("El Chato compra uncommon y rare de sets publicados; no comunes ni sets sin publicar", () => {
++    expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "uncommon", set: "SAL" })).toBeUndefined();
++    expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "rare", set: "SAL" })).toBeUndefined();
++    expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "common", set: "SAL" })).toBe("chato does not buy common SAL (menu.buys)");
++    expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "uncommon", set: "NEW" })).toMatch(/does not buy/);
++    expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: undefined, set: "SAL" })).toMatch(/does not buy/);
++  });
++
++  it("Abuela no compra raras; vende comunes y uncommon, no raras", () => {
++    expect(menuBlocks(ABUELA, CATALOG, { side: "sell", rarity: "rare", set: "SAL" })).toMatch(/does not buy rare/);
++    expect(menuBlocks(ABUELA, CATALOG, { side: "buy", rarity: "uncommon", set: "SAL", card: "SAL-07" })).toBeUndefined();
++    expect(menuBlocks(ABUELA, CATALOG, { side: "buy", rarity: "rare", set: "SAL" })).toBe("abuela does not sell rare SAL (menu.sells)");
++    // Un sobre en su menú no habilita comprar cartas sueltas por él.
++    expect(menuBlocks(DealerInfoSchema.parse({ id: "x", menu: { sells: [{ pack: "sobre_plata", list_price: 150 }] } }), CATALOG, { side: "buy", rarity: "rare", set: "SAL" })).toMatch(/does not sell/);
++  });
++});
++
++describe("modo serio sin ficha del dealer: no abre nada (el planificador antiguo vende sin mirar el menú)", () => {
++  it("requireMenu: con una repetida para vender, sin menú no hay objetivo", async () => {
++    const posts: string[] = [];
++    const assets = [1, 2].map((id) => ({ id, kind: "card", ref: "SAL-01", rarity: "common", set: "SAL", your_value: 3 }));
++    const api: BazaarApi = {
++      me: async () => ({ id: "t02", cash: 400, assets, score: { team: "t02" } }) as never,
++      catalog: async () => CATALOG as never,
++      value: async () => 3,
++      myThreads: async () => ({ threads: [] }),
++      myOffers: async () => ({ offers: [] }),
++      thread: async () => Promise.reject(new Error("no thread")),
++      openThread: async (_w, topic) => {
++        posts.push(`open ${JSON.stringify(topic)}`);
++        return Promise.reject(new Error("stop"));
++      },
++      say: async () => ({}),
++      closeThread: async () => ({}),
++      accept: async () => ({}),
++    };
++    const run = async (requireMenu: boolean) => {
++      const records: TraceRecord[] = [];
++      const a = new BazaarAgent(api, { dealer: { id: "chato", aliases: [] }, dryRun: false, maxSpendPerHour: 0, requireMenu, trace: { write: (r) => records.push(r) }, now: () => 1_700_000_000_000 });
++      await a.step({ tick: 1, tick_seconds: 60 });
++      return records.map((r) => r.rule);
++    };
++    expect(await run(true)).toEqual(["no-target"]);
++    expect(posts).toEqual([]);
++    await run(false);
++    expect(posts).toEqual(['open {"sell":{"assets":[2]}}']);
++  });
++});

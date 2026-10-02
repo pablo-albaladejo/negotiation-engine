@@ -1,0 +1,228 @@
+
+> negotiation-ring@0.1.0 bazaar:duels /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/duels-main.ts
+
+bazaar:duels · LIVE · params {"anchorMargin":0.5,"beta":2,"maxRounds":4,"floorShare":0.3,"minSurplus":1,"lastMoveTicks":1,"endgameTicks":3,"staleTicks":3,"assumedDaysWeight":0,"daysWeightScale":1}
+tick 122 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival - · ticks left 10
+  → COUNTER 129 P (surplus 43.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 129 P for this one." [sent]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 10
+  → COUNTER 65 P (surplus 33.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 65 P for this one." [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 10
+  → COUNTER 102 P (surplus 34.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 102 P for this one." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 10
+  → COUNTER 87 P (surplus 44.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 87 P for this one." [sent]
+duel 15 · seller · price · limit 81 · rival - · ticks left 10
+  → COUNTER 122 P (surplus 41.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 122 P for this one." [sent]
+duel 16 · buyer · price · limit 82 · rival - · ticks left 10
+  → COUNTER 54 P (surplus 28.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 54 P for this one." [sent]
+tick 123 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 15 · seller · price · limit 81 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 16 · buyer · price · limit 82 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+tick 124 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 15 · seller · price · limit 81 · rival 58 P · ticks left 8
+  → COUNTER 108 P (surplus 27.0, round 1, concede) "I appreciate it. Let us try to close quickly: 108 P." [sent]
+duel 53 · seller · price · limit 115 · rival - · ticks left 12
+  → COUNTER 173 P (surplus 58.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 173 P for this one." [sent]
+tick 125 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival - · ticks left 7
+  → COUNTER 114 P (surplus 28.0, round 1, concede) "I appreciate it. Let us try to close quickly: 114 P." [sent]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 7
+  → COUNTER 76 P (surplus 22.0, round 1, concede) "I appreciate it. Let us try to close quickly: 76 P." [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 7
+  → COUNTER 91 P (surplus 23.0, round 1, concede) "I appreciate it. Let us try to close quickly: 91 P." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 7
+  → COUNTER 102 P (surplus 29.0, round 1, concede) "I appreciate it. Let us try to close quickly: 102 P." [sent]
+duel 53 · seller · price · limit 115 · rival 76 P · ticks left 11
+  → COUNTER 153 P (surplus 38.0, round 1, concede) "I appreciate it. Let us try to close quickly: 153 P." [sent]
+duel 54 · buyer · price · limit 76 · rival - · ticks left 12
+  → COUNTER 50 P (surplus 26.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 50 P for this one." [sent]
+tick 126 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 2 · buyer · price · limit 98 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 6
+  → WAIT (waiting-for-rival) [skipped]
+duel 53 · seller · price · limit 115 · rival 76 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 54 · buyer · price · limit 76 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+tick 127 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival 80 P · ticks left 5
+  → COUNTER 108 P (surplus 22.0, round 2, concede) "Fair enough, I will meet you partway at 108 P." [sent]
+duel 2 · buyer · price · limit 98 · rival 95 P · ticks left 5
+  → COUNTER 81 P (surplus 17.0, round 2, concede) "Fair enough, I will meet you partway at 81 P." [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 53 · seller · price · limit 115 · rival 76 P · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 54 · buyer · price · limit 76 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 128 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival 92 P · ticks left 4
+  → COUNTER 103 P (surplus 17.0, round 3, concede) "We are getting close. 103 P works for me." [sent]
+duel 2 · buyer · price · limit 98 · rival 85 P · ticks left 4
+  → ACCEPT rival 85 P (surplus 13.0, ac-next) [sent]
+duel 9 · seller · price · limit 68 · rival - · ticks left 4
+  → COUNTER 86 P (surplus 18.0, round 2, concede) "Fair enough, I will meet you partway at 86 P." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 4
+  → COUNTER 108 P (surplus 23.0, round 2, concede) "Fair enough, I will meet you partway at 108 P." [sent]
+duel 53 · seller · price · limit 115 · rival 84 P · ticks left 8
+  → COUNTER 145 P (surplus 30.0, round 2, concede) "Fair enough, I will meet you partway at 145 P." [sent]
+duel 54 · buyer · price · limit 76 · rival 81 P · ticks left 9
+  → COUNTER 59 P (surplus 17.0, round 1, concede) "I appreciate it. Let us try to close quickly: 59 P." [sent]
+tick 129 · 6 live duel(s)
+duel 1 · seller · price · limit 86 · rival 92 P · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 9 · seller · price · limit 68 · rival - · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 53 · seller · price · limit 115 · rival 84 P · ticks left 7
+  → WAIT (waiting-for-rival) [skipped]
+duel 54 · buyer · price · limit 76 · rival 80 P · ticks left 8
+  → COUNTER 63 P (surplus 13.0, round 2, concede) "Fair enough, I will meet you partway at 63 P." [sent]
+duel 243 · seller · price · limit 63 · rival - · ticks left 12
+  → COUNTER 95 P (surplus 32.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 95 P for this one." [sent]
+tick 130 · 6 live duel(s)
+duel 9 · seller · price · limit 68 · rival - · ticks left 2
+  → WAIT (waiting-for-rival) [skipped]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 2
+  → WAIT (waiting-for-rival) [skipped]
+duel 47 · seller · price · limit 81 · rival - · ticks left 12
+  → COUNTER 122 P (surplus 41.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 122 P for this one." [sent]
+duel 53 · seller · price · limit 115 · rival 88 P · ticks left 6
+  → COUNTER 138 P (surplus 23.0, round 3, concede) "We are getting close. 138 P works for me." [sent]
+duel 54 · buyer · price · limit 76 · rival 80 P · ticks left 7
+  → WAIT (waiting-for-rival) [skipped]
+duel 243 · seller · price · limit 63 · rival 59 P · ticks left 11
+  → COUNTER 84 P (surplus 21.0, round 1, concede) "I appreciate it. Let us try to close quickly: 84 P." [sent]
+tick 131 · 6 live duel(s)
+duel 9 · seller · price · limit 68 · rival - · ticks left 1
+  → COUNTER 82 P (surplus 14.0, round 3, concede) "We are getting close. 82 P works for me." [sent]
+duel 10 · buyer · price · limit 131 · rival - · ticks left 1
+  → COUNTER 113 P (surplus 18.0, round 3, concede) "We are getting close. 113 P works for me." [sent]
+duel 47 · seller · price · limit 81 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 53 · seller · price · limit 115 · rival 94 P · ticks left 5
+  → COUNTER 133 P (surplus 18.0, round 4, concede) "Thank you for your offer. I can move to 133 P." [sent]
+duel 54 · buyer · price · limit 76 · rival 79 P · ticks left 6
+  → COUNTER 66 P (surplus 10.0, round 3, concede) "We are getting close. 66 P works for me." [sent]
+duel 243 · seller · price · limit 63 · rival 59 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 132 · 6 live duel(s)
+duel 19 · seller · price · limit 88 · rival - · ticks left 12
+  → COUNTER 132 P (surplus 44.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 132 P for this one." [sent]
+duel 20 · buyer · price · limit 100 · rival - · ticks left 12
+  → COUNTER 66 P (surplus 34.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 66 P for this one." [sent]
+duel 35 · seller · price · limit 43 · rival - · ticks left 12
+  → COUNTER 65 P (surplus 22.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 65 P for this one." [sent]
+duel 47 · seller · price · limit 81 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 54 · buyer · price · limit 76 · rival 77 P · ticks left 5
+  → COUNTER 68 P (surplus 8.0, round 4, concede) "Thank you for your offer. I can move to 68 P." [sent]
+duel 243 · seller · price · limit 63 · rival 63 P · ticks left 9
+  → COUNTER 79 P (surplus 16.0, round 2, concede) "Fair enough, I will meet you partway at 79 P." [sent]
+tick 133 · 6 live duel(s)
+duel 19 · seller · price · limit 88 · rival 103 P · ticks left 11
+  → COUNTER 117 P (surplus 29.0, round 1, concede) "I appreciate it. Let us try to close quickly: 117 P." [sent]
+duel 20 · buyer · price · limit 100 · rival 63 P · ticks left 11
+  → ACCEPT rival 63 P (surplus 37.0, ac-next) [sent]
+duel 35 · seller · price · limit 43 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 47 · seller · price · limit 81 · rival - · ticks left 9
+  → COUNTER 108 P (surplus 27.0, round 1, concede) "I appreciate it. Let us try to close quickly: 108 P." [sent]
+duel 54 · buyer · price · limit 76 · rival 75 P · ticks left 4
+  → COUNTER 68 P (surplus 8.0, round 5, concede) "I think 68 P is fair for both of us. Shall we settle?" [sent]
+duel 243 · seller · price · limit 63 · rival 66 P · ticks left 8
+  → COUNTER 76 P (surplus 13.0, round 3, concede) "We are getting close. 76 P works for me." [sent]
+tick 134 · 6 live duel(s)
+duel 35 · seller · price · limit 43 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 47 · seller · price · limit 81 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 131 · buyer · price · limit 103 · rival - · ticks left 12
+  → COUNTER 68 P (surplus 35.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 68 P for this one." [sent]
+duel 132 · seller · price · limit 48 · rival - · ticks left 12
+  → COUNTER 72 P (surplus 24.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 72 P for this one." [sent]
+duel 173 · seller · price · limit 39 · rival - · ticks left 12
+  → COUNTER 59 P (surplus 20.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 59 P for this one." [sent]
+duel 243 · seller · price · limit 63 · rival 67 P · ticks left 7
+  → COUNTER 73 P (surplus 10.0, round 4, concede) "Thank you for your offer. I can move to 73 P." [sent]
+tick 135 · 6 live duel(s)
+duel 35 · seller · price · limit 43 · rival - · ticks left 9
+  → COUNTER 57 P (surplus 14.0, round 1, concede) "I appreciate it. Let us try to close quickly: 57 P." [sent]
+duel 47 · seller · price · limit 81 · rival - · ticks left 7
+  → WAIT (waiting-for-rival) [skipped]
+duel 131 · buyer · price · limit 103 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 132 · seller · price · limit 48 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 174 · buyer · price · limit 194 · rival - · ticks left 12
+  → COUNTER 129 P (surplus 65.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 129 P for this one." [sent]
+duel 243 · seller · price · limit 63 · rival 69 P · ticks left 6
+  → COUNTER 73 P (surplus 10.0, round 5, concede) "I think 73 P is fair for both of us. Shall we settle?" [sent]
+tick 136 · 6 live duel(s)
+duel 35 · seller · price · limit 43 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 47 · seller · price · limit 81 · rival - · ticks left 6
+  → COUNTER 102 P (surplus 21.0, round 2, concede) "Fair enough, I will meet you partway at 102 P." [sent]
+duel 131 · buyer · price · limit 103 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 132 · seller · price · limit 48 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 174 · buyer · price · limit 194 · rival 154 P · ticks left 11
+  → COUNTER 151 P (surplus 43.0, round 1, concede) "I appreciate it. Let us try to close quickly: 151 P." [sent]
+duel 243 · seller · price · limit 63 · rival 71 P · ticks left 5
+  → COUNTER 73 P (surplus 10.0, round 6, concede) "Thank you. My offer stays at 73 P, and I am happy to close there." [sent]
+tick 137 · 6 live duel(s)
+duel 35 · seller · price · limit 43 · rival - · ticks left 7
+  → WAIT (waiting-for-rival) [skipped]
+duel 47 · seller · price · limit 81 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 131 · buyer · price · limit 103 · rival - · ticks left 9
+  → COUNTER 80 P (surplus 23.0, round 1, concede) "I appreciate it. Let us try to close quickly: 80 P." [sent]
+duel 132 · seller · price · limit 48 · rival - · ticks left 9
+  → COUNTER 64 P (surplus 16.0, round 1, concede) "I appreciate it. Let us try to close quickly: 64 P." [sent]
+duel 174 · buyer · price · limit 194 · rival 149 P · ticks left 10
+  → ACCEPT rival 149 P (surplus 45.0, ac-next) [sent]
+duel 244 · buyer · price · limit 186 · rival - · ticks left 12
+  → COUNTER 124 P (surplus 62.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 124 P for this one." [sent]
+tick 138 · 6 live duel(s)
+duel 35 · seller · price · limit 43 · rival - · ticks left 6
+  → COUNTER 54 P (surplus 11.0, round 2, concede) "Fair enough, I will meet you partway at 54 P." [sent]
+duel 47 · seller · price · limit 81 · rival - · ticks left 4
+  → WAIT (waiting-for-rival) [skipped]
+duel 89 · seller · price · limit 126 · rival - · ticks left 12
+  → COUNTER 189 P (surplus 63.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 189 P for this one." [sent]
+duel 131 · buyer · price · limit 103 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 132 · seller · price · limit 48 · rival - · ticks left 8
+  → WAIT (waiting-for-rival) [skipped]
+duel 244 · buyer · price · limit 186 · rival 233 P · ticks left 11
+  → COUNTER 145 P (surplus 41.0, round 1, concede) "I appreciate it. Let us try to close quickly: 145 P." [sent]
+
+[killed]

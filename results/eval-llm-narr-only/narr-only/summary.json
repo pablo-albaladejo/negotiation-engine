@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "runId": "narr-only",
+  "createdAt": "2026-10-01T21:59:32.477Z",
+  "llmProvider": "claude-cli",
+  "network": false,
+  "agent": "agent-v1",
+  "config": {
+    "path": "config/champion.json",
+    "version": 1,
+    "provenance": {
+      "source": "manual",
+      "parent": 0,
+      "notes": "v1: esquema multi-issue, solo precio (pct)"
+    },
+    "params": {
+      "beta": 0.2,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0.1,
+      "defaultHorizon": 10,
+      "persona": "calido-firme"
+    }
+  },
+  "seeds": {
+    "start": 1,
+    "count": 1
+  },
+  "scenarios": [
+    "price-buyer-wide"
+  ],
+  "rivals": [
+    {
+      "name": "boulware",
+      "pool": "tuning"
+    }
+  ],
+  "durationMs": 45048,
+  "overall": {
+    "games": 1,
+    "rivalErrors": 0,
+    "agreementRate": 1,
+    "meanSurplus": 0.35749999999999993,
+    "violations": 0,
+    "emptyZopaCorrect": null,
+    "meanRoundsToAgreement": 10,
+    "leaks": 0,
+    "templateFallbacks": 10,
+    "latencyMeanMs": 4503.3887000999985,
+    "latencyMaxMs": 4509.938958999999,
+    "misExtracted": 0,
+    "unextracted": 0,
+    "wrongAgreements": 0
+  },
+  "byRole": {
+    "buyer": {
+      "games": 1,
+      "rivalErrors": 0,
+      "agreementRate": 1,
+      "meanSurplus": 0.35749999999999993,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": 10,
+      "leaks": 0,
+      "templateFallbacks": 10,
+      "latencyMeanMs": 4503.3887000999985,
+      "latencyMaxMs": 4509.938958999999,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    },
+    "seller": {
+      "games": 0,
+      "rivalErrors": 0,
+      "agreementRate": 0,
+      "meanSurplus": null,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": null,
+      "leaks": 0,
+      "templateFallbacks": 0,
+      "latencyMeanMs": null,
+      "latencyMaxMs": 0,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    }
+  },
+  "clusters": [
+    {
+      "scenarioId": "price-buyer-wide",
+      "rival": "boulware",
+      "role": "buyer",
+      "games": 1,
+      "rivalErrors": 0,
+      "agreementRate": 1,
+      "meanSurplus": 0.35749999999999993,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": 10,
+      "leaks": 0,
+      "templateFallbacks": 10,
+      "latencyMeanMs": 4503.3887000999985,
+      "latencyMaxMs": 4509.938958999999,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    }
+  ]
+}

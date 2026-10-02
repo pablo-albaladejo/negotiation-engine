@@ -1,0 +1,12 @@
+/Users/pablo/.claude-work/hooks/guard-branch.mjs
+/Users/pablo/.claude/hooks/guard-branch.mjs
+/Users/pablo/.claude/.kaicode/base/hooks/guard-branch.mjs
+/System/Volumes/Data/Users/pablo/.claude-work/hooks/guard-branch.mjs
+/System/Volumes/Data/Users/pablo/.claude/hooks/guard-branch.mjs
+/System/Volumes/Data/Users/pablo/.claude/.kaicode/base/hooks/guard-branch.mjs
+---
+hooks/bash-guard.mjs
+hooks/english-guard.mjs
+hooks/guard-branch.mjs
+logs/bash-guard.jsonl
+[exited with code 0]

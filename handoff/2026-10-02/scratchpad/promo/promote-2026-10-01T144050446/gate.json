@@ -1,0 +1,3558 @@
+{
+  "schemaVersion": 2,
+  "candidate": "/private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/cand-beta03.json",
+  "champion": 1,
+  "criterion": "sign",
+  "gate": {
+    "pass": false,
+    "checks": [
+      {
+        "phase": "tuning",
+        "check": "effect",
+        "pass": false,
+        "detail": "diferencia media -0.37 pp (mínimo +1.00 pp)"
+      },
+      {
+        "phase": "tuning",
+        "check": "significance",
+        "pass": false,
+        "detail": "test de signos +8/−16/=84, p = 0.1516 (umbral 0.05)"
+      },
+      {
+        "phase": "tuning",
+        "check": "violations",
+        "pass": true,
+        "detail": "0 violaciones"
+      },
+      {
+        "phase": "tuning",
+        "check": "leaks",
+        "pass": true,
+        "detail": "0 fugas"
+      },
+      {
+        "phase": "revalidation",
+        "check": "effect",
+        "pass": false,
+        "detail": "diferencia media +0.23 pp (mínimo +1.00 pp)"
+      },
+      {
+        "phase": "revalidation",
+        "check": "significance",
+        "pass": false,
+        "detail": "test de signos +8/−16/=84, p = 0.1516 (umbral 0.05)"
+      },
+      {
+        "phase": "revalidation",
+        "check": "fresh-seeds",
+        "pass": true,
+        "detail": "3 semillas nuevas"
+      },
+      {
+        "phase": "revalidation",
+        "check": "violations",
+        "pass": true,
+        "detail": "0 violaciones"
+      },
+      {
+        "phase": "revalidation",
+        "check": "leaks",
+        "pass": true,
+        "detail": "0 fugas"
+      },
+      {
+        "phase": "heldOut",
+        "check": "non-negative",
+        "pass": false,
+        "detail": "diferencia media -7.19 pp (debe ser ≥ 0)"
+      },
+      {
+        "phase": "heldOut",
+        "check": "violations",
+        "pass": true,
+        "detail": "0 violaciones"
+      },
+      {
+        "phase": "heldOut",
+        "check": "leaks",
+        "pass": true,
+        "detail": "0 fugas"
+      }
+    ],
+    "failed": [
+      {
+        "phase": "tuning",
+        "check": "effect",
+        "pass": false,
+        "detail": "diferencia media -0.37 pp (mínimo +1.00 pp)"
+      },
+      {
+        "phase": "tuning",
+        "check": "significance",
+        "pass": false,
+        "detail": "test de signos +8/−16/=84, p = 0.1516 (umbral 0.05)"
+      },
+      {
+        "phase": "revalidation",
+        "check": "effect",
+        "pass": false,
+        "detail": "diferencia media +0.23 pp (mínimo +1.00 pp)"
+      },
+      {
+        "phase": "revalidation",
+        "check": "significance",
+        "pass": false,
+        "detail": "test de signos +8/−16/=84, p = 0.1516 (umbral 0.05)"
+      },
+      {
+        "phase": "heldOut",
+        "check": "non-negative",
+        "pass": false,
+        "detail": "diferencia media -7.19 pp (debe ser ≥ 0)"
+      }
+    ]
+  },
+  "reports": {
+    "tuning": {
+      "clusters": [
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.35833333333333334,
+          "candidate": 0.35833333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.8866666666666667,
+          "candidate": 0.8208333333333334,
+          "diff": -0.0658333333333333
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.35083333333333333,
+          "candidate": 0.14500000000000002,
+          "diff": -0.2058333333333333
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6858333333333334,
+          "candidate": 0.6858333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.43249999999999994,
+          "candidate": 0.43249999999999994,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.1733333333333333,
+          "candidate": 0.1733333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6849999999999999,
+          "candidate": 0.6849999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.35083333333333333,
+          "candidate": 0.14500000000000002,
+          "diff": -0.2058333333333333
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.35833333333333334,
+          "candidate": 0.35833333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8866666666666666,
+          "candidate": 0.8208333333333333,
+          "diff": -0.0658333333333333
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3558333333333334,
+          "candidate": 0.15,
+          "diff": -0.2058333333333334
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6858333333333334,
+          "candidate": 0.6858333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.43249999999999994,
+          "candidate": 0.43249999999999994,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.17333333333333334,
+          "candidate": 0.17333333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6849999999999999,
+          "candidate": 0.6849999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3558333333333334,
+          "candidate": 0.15,
+          "diff": -0.2058333333333334
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5422222222222222,
+          "candidate": 0.5422222222222222,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3866666666666667,
+          "candidate": 0.3866666666666667,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3733333333333333,
+          "candidate": 0.3733333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5422222222222222,
+          "candidate": 0.5422222222222222,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3866666666666667,
+          "candidate": 0.3866666666666667,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3733333333333333,
+          "candidate": 0.3733333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.52,
+          "candidate": 0.52,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3599999999999999,
+          "candidate": 0.3599999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.33777777777777773,
+          "candidate": 0.33777777777777773,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.52,
+          "candidate": 0.52,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3599999999999999,
+          "candidate": 0.3599999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.33777777777777773,
+          "candidate": 0.33777777777777773,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.09199999999999997,
+          "candidate": 0.09199999999999997,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.9026833333333332,
+          "candidate": 0.8461166666666666,
+          "diff": -0.05656666666666654
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.17026666666666665,
+          "candidate": 0.4062833333333333,
+          "diff": 0.23601666666666662
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.7302666666666666,
+          "candidate": 0.7302666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5130499999999999,
+          "candidate": 0.5130499999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.29183333333333333,
+          "candidate": 0.29183333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.7289,
+          "candidate": 0.7289,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.17026666666666665,
+          "candidate": 0.4062833333333333,
+          "diff": 0.23601666666666662
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3218999999999999,
+          "candidate": 0.3218999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8794166666666666,
+          "candidate": 0.8099500000000001,
+          "diff": -0.06946666666666657
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.14473333333333335,
+          "candidate": 0.2941000000000001,
+          "diff": 0.14936666666666673
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6672666666666666,
+          "candidate": 0.6672666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.4004999999999999,
+          "candidate": 0.4004999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.12616666666666668,
+          "candidate": 0.12616666666666668,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6670666666666666,
+          "candidate": 0.6670666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.14473333333333335,
+          "candidate": 0.2941000000000001,
+          "diff": 0.14936666666666673
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.7308333333333333,
+          "candidate": 0.7308333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3558333333333334,
+          "candidate": 0.15,
+          "diff": -0.2058333333333334
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.32416666666666655,
+          "candidate": 0.32416666666666655,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.07583333333333335,
+          "candidate": 0.07583333333333335,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3233333333333333,
+          "candidate": 0.3233333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3558333333333334,
+          "candidate": 0.15,
+          "diff": -0.2058333333333334
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.35833333333333334,
+          "candidate": 0.35833333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.8866666666666667,
+          "candidate": 0.8208333333333334,
+          "diff": -0.0658333333333333
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.35083333333333333,
+          "candidate": 0.14500000000000002,
+          "diff": -0.2058333333333333
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6858333333333334,
+          "candidate": 0.6858333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6366666666666666,
+          "candidate": 0.45999999999999996,
+          "diff": -0.17666666666666664
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.45999999999999996,
+          "diff": 0.45999999999999996
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6849999999999999,
+          "candidate": 0.6849999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.14500000000000002,
+          "diff": 0.14500000000000002
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.35833333333333334,
+          "candidate": 0.35833333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8866666666666666,
+          "candidate": 0.8208333333333333,
+          "diff": -0.0658333333333333
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3558333333333334,
+          "candidate": 0.15,
+          "diff": -0.2058333333333334
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6858333333333334,
+          "candidate": 0.6858333333333334,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6366666666666666,
+          "candidate": 0.45999999999999996,
+          "diff": -0.17666666666666664
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.45999999999999996,
+          "diff": 0.45999999999999996
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6849999999999999,
+          "candidate": 0.6849999999999999,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.15,
+          "diff": 0.15
+        }
+      ],
+      "meanDiffPp": -0.3737037037037036,
+      "sign": {
+        "positive": 8,
+        "negative": 16,
+        "ties": 84,
+        "pValue": 0.15158963203430176
+      },
+      "byRival": [
+        {
+          "rival": "boulware",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "conceder",
+          "meanDiffPp": -3.2447222222222196
+        },
+        {
+          "rival": "tit-for-tat",
+          "meanDiffPp": -5.364861111111113
+        },
+        {
+          "rival": "text-only",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "inject-voss",
+          "meanDiffPp": -2.9444444444444438
+        },
+        {
+          "rival": "liar",
+          "meanDiffPp": 7.666666666666666
+        },
+        {
+          "rival": "hypothetical",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "causa-prima",
+          "meanDiffPp": 0.5240277777777769
+        }
+      ],
+      "champion": {
+        "agreementRate": 0.6111111111111112,
+        "meanSurplus": 0.2706038580246916
+      },
+      "candidate": {
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.2668668209876543
+      },
+      "violations": [],
+      "leaks": [],
+      "games": 378,
+      "seeds": [
+        1,
+        2,
+        3
+      ],
+      "rivals": [
+        "boulware",
+        "conceder",
+        "tit-for-tat",
+        "text-only",
+        "inject-voss",
+        "liar",
+        "hypothetical",
+        "extreme-anchor",
+        "causa-prima"
+      ]
+    },
+    "revalidation": {
+      "clusters": [
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.32,
+          "candidate": 0.32,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.8841666666666667,
+          "candidate": 0.8216666666666667,
+          "diff": -0.0625
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3116666666666667,
+          "candidate": 0.17166666666666663,
+          "diff": -0.14000000000000007
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6825,
+          "candidate": 0.6825,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.4266666666666666,
+          "candidate": 0.4266666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.16749999999999998,
+          "candidate": 0.16749999999999998,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6808333333333333,
+          "candidate": 0.6808333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3116666666666667,
+          "candidate": 0.17166666666666663,
+          "diff": -0.14000000000000007
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.32,
+          "candidate": 0.32,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8841666666666667,
+          "candidate": 0.8216666666666667,
+          "diff": -0.0625
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.315,
+          "candidate": 0.17666666666666667,
+          "diff": -0.13833333333333334
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6825,
+          "candidate": 0.6825,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.4266666666666666,
+          "candidate": 0.4266666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.16750000000000007,
+          "candidate": 0.16750000000000007,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6808333333333333,
+          "candidate": 0.6808333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.315,
+          "candidate": 0.17666666666666667,
+          "diff": -0.13833333333333334
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5377777777777778,
+          "candidate": 0.5377777777777778,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.34666666666666673,
+          "candidate": 0.34666666666666673,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.31111111111111117,
+          "candidate": 0.31111111111111117,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5377777777777778,
+          "candidate": 0.5377777777777778,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.34666666666666673,
+          "candidate": 0.34666666666666673,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.31111111111111117,
+          "candidate": 0.31111111111111117,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.5155555555555557,
+          "candidate": 0.5155555555555557,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3155555555555559,
+          "candidate": 0.3155555555555559,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.28000000000000036,
+          "candidate": 0.28000000000000036,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.5155555555555557,
+          "candidate": 0.5155555555555557,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3155555555555559,
+          "candidate": 0.3155555555555559,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.28000000000000036,
+          "candidate": 0.28000000000000036,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.08771666666666665,
+          "candidate": 0.08771666666666665,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.9017666666666666,
+          "candidate": 0.8471333333333332,
+          "diff": -0.05463333333333342
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.18791666666666665,
+          "candidate": 0.4337333333333333,
+          "diff": 0.24581666666666666
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.7244833333333331,
+          "candidate": 0.7244833333333331,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.5094499999999998,
+          "candidate": 0.5094499999999998,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.28683333333333333,
+          "candidate": 0.28683333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.72625,
+          "candidate": 0.72625,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.18791666666666665,
+          "candidate": 0.4337333333333333,
+          "diff": 0.24581666666666666
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.28235,
+          "candidate": 0.28235,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8784666666666666,
+          "candidate": 0.8121666666666666,
+          "diff": -0.06630000000000003
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.10998333333333328,
+          "candidate": 0.26953333333333335,
+          "diff": 0.15955000000000008
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6596666666666665,
+          "candidate": 0.6596666666666665,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3950833333333333,
+          "candidate": 0.3950833333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.12003333333333333,
+          "candidate": 0.12003333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6627,
+          "candidate": 0.6627,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.10998333333333328,
+          "candidate": 0.26953333333333335,
+          "diff": 0.15955000000000008
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.7291666666666666,
+          "candidate": 0.7291666666666666,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.315,
+          "candidate": 0.17666666666666667,
+          "diff": -0.13833333333333334
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3225,
+          "candidate": 0.3225,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.0641666666666667,
+          "candidate": 0.0641666666666667,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.3208333333333333,
+          "candidate": 0.3208333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.315,
+          "candidate": 0.17666666666666667,
+          "diff": -0.13833333333333334
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "boulware",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.32,
+          "candidate": 0.32,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "conceder",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.8841666666666667,
+          "candidate": 0.8216666666666667,
+          "diff": -0.0625
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.3116666666666667,
+          "candidate": 0.17166666666666663,
+          "diff": -0.14000000000000007
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "text-only",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6825,
+          "candidate": 0.6825,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "inject-voss",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6433333333333333,
+          "candidate": 0.465,
+          "diff": -0.1783333333333333
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "liar",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.465,
+          "diff": 0.465
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "hypothetical",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6808333333333333,
+          "candidate": 0.6808333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "causa-prima",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.17166666666666663,
+          "diff": 0.17166666666666663
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "boulware",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.32,
+          "candidate": 0.32,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "conceder",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.8841666666666667,
+          "candidate": 0.8216666666666667,
+          "diff": -0.0625
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.315,
+          "candidate": 0.17666666666666667,
+          "diff": -0.13833333333333334
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "text-only",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6825,
+          "candidate": 0.6825,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "inject-voss",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6433333333333333,
+          "candidate": 0.465,
+          "diff": -0.1783333333333333
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "liar",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.465,
+          "diff": 0.465
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "hypothetical",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6808333333333333,
+          "candidate": 0.6808333333333333,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "causa-prima",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0.17666666666666667,
+          "diff": 0.17666666666666667
+        }
+      ],
+      "meanDiffPp": 0.23129629629629628,
+      "sign": {
+        "positive": 8,
+        "negative": 16,
+        "ties": 84,
+        "pValue": 0.15158963203430176
+      },
+      "byRival": [
+        {
+          "rival": "boulware",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "conceder",
+          "meanDiffPp": -3.091111111111112
+        },
+        {
+          "rival": "tit-for-tat",
+          "meanDiffPp": -2.4136111111111123
+        },
+        {
+          "rival": "text-only",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "inject-voss",
+          "meanDiffPp": -2.9722222222222214
+        },
+        {
+          "rival": "liar",
+          "meanDiffPp": 7.75
+        },
+        {
+          "rival": "hypothetical",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "meanDiffPp": 0
+        },
+        {
+          "rival": "causa-prima",
+          "meanDiffPp": 2.8086111111111105
+        }
+      ],
+      "champion": {
+        "agreementRate": 0.6111111111111112,
+        "meanSurplus": 0.2605148148148148
+      },
+      "candidate": {
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.26282777777777766
+      },
+      "violations": [],
+      "leaks": [],
+      "games": 378,
+      "seeds": [
+        100000,
+        100001,
+        100002
+      ],
+      "rivals": [
+        "boulware",
+        "conceder",
+        "tit-for-tat",
+        "text-only",
+        "inject-voss",
+        "liar",
+        "hypothetical",
+        "extreme-anchor",
+        "causa-prima"
+      ]
+    },
+    "heldOut": {
+      "clusters": [
+        {
+          "scenarioId": "price-buyer-wide",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6416666666666667,
+          "candidate": 0.4641666666666666,
+          "diff": -0.1775000000000001
+        },
+        {
+          "scenarioId": "price-seller-wide",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6416666666666667,
+          "candidate": 0.4641666666666666,
+          "diff": -0.1775000000000001
+        },
+        {
+          "scenarioId": "price-buyer-narrow",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-narrow-respond",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-narrow-respond",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-buyer-empty",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "price-seller-empty",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 0,
+          "champion": null,
+          "candidate": null,
+          "diff": null
+        },
+        {
+          "scenarioId": "pct-day-buyer-wide",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.08618333333333332,
+          "candidate": 0.08618333333333332,
+          "diff": 0
+        },
+        {
+          "scenarioId": "pct-day-seller-wide",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.5491166666666666,
+          "candidate": 0.3966,
+          "diff": -0.15251666666666658
+        },
+        {
+          "scenarioId": "price-buyer-hidden-short",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "price-seller-hidden-long",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0,
+          "candidate": 0,
+          "diff": 0
+        },
+        {
+          "scenarioId": "text-buyer-wide",
+          "rival": "champion-v1",
+          "role": "buyer",
+          "pairs": 3,
+          "champion": 0.6416666666666667,
+          "candidate": 0.4641666666666666,
+          "diff": -0.1775000000000001
+        },
+        {
+          "scenarioId": "text-seller-wide",
+          "rival": "champion-v1",
+          "role": "seller",
+          "pairs": 3,
+          "champion": 0.6416666666666667,
+          "candidate": 0.4641666666666666,
+          "diff": -0.1775000000000001
+        }
+      ],
+      "meanDiffPp": -7.187638888888892,
+      "sign": {
+        "positive": 0,
+        "negative": 5,
+        "ties": 7,
+        "pValue": 0.0625
+      },
+      "byRival": [
+        {
+          "rival": "champion-v1",
+          "meanDiffPp": -7.187638888888892
+        }
+      ],
+      "champion": {
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.2668305555555556
+      },
+      "candidate": {
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.19495416666666665
+      },
+      "violations": [],
+      "leaks": [],
+      "games": 42,
+      "seeds": [
+        100003,
+        100004,
+        100005
+      ],
+      "rivals": [
+        "champion-v1"
+      ]
+    }
+  },
+  "configs": {
+    "champion": {
+      "version": 1,
+      "issues": [
+        {
+          "name": "pct",
+          "min": 0,
+          "max": 10,
+          "direction": "higher-better",
+          "weight": 1
+        }
+      ],
+      "defaultHorizon": 10,
+      "roleWeights": {
+        "buyer": 1,
+        "seller": 1
+      },
+      "beta": 0.2,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0.1,
+      "turnSafetyMarginMs": 500,
+      "turnBudgetMs": 4500,
+      "minEffectPp": 1,
+      "persona": "calido-firme",
+      "provenance": {
+        "source": "manual",
+        "parent": 0,
+        "notes": "v1: esquema multi-issue, solo precio (pct)"
+      }
+    },
+    "candidate": {
+      "version": 1,
+      "issues": [
+        {
+          "name": "pct",
+          "min": 0,
+          "max": 10,
+          "direction": "higher-better",
+          "weight": 1
+        }
+      ],
+      "defaultHorizon": 10,
+      "roleWeights": {
+        "buyer": 1,
+        "seller": 1
+      },
+      "beta": 0.3,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0.1,
+      "turnSafetyMarginMs": 500,
+      "turnBudgetMs": 4500,
+      "minEffectPp": 1,
+      "persona": "calido-firme",
+      "provenance": {
+        "source": "tune",
+        "parent": 1
+      }
+    }
+  },
+  "summaries": {
+    "tuning": {
+      "champion": {
+        "games": 378,
+        "rivalErrors": 0,
+        "agreementRate": 0.6111111111111112,
+        "meanSurplus": 0.2706038580246916,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.597402597402597,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.45729158536345893,
+        "latencyMaxMs": 8.728583000000015,
+        "misExtracted": 0,
+        "unextracted": 162,
+        "wrongAgreements": 0
+      },
+      "candidate": {
+        "games": 378,
+        "rivalErrors": 0,
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.2668668209876543,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.395061728395062,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.41441266942964805,
+        "latencyMaxMs": 4.621874999999818,
+        "misExtracted": 0,
+        "unextracted": 150,
+        "wrongAgreements": 0
+      },
+      "candidateByRivalRole": [
+        {
+          "rival": "boulware",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.13477777777777777,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.75,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.41030198201058854,
+          "latencyMaxMs": 3.0027500000001055,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "conceder",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.5953712962962964,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 8.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.39990320846559396,
+          "latencyMaxMs": 2.8553329999999733,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.11604722222222222,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4190735904761773,
+          "latencyMaxMs": 3.018583000000035,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "text-only",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.4792111111111111,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.40558808253966516,
+          "latencyMaxMs": 3.4189580000002024,
+          "misExtracted": 0,
+          "unextracted": 6,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "inject-voss",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.23425833333333332,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.43391415873016453,
+          "latencyMaxMs": 3.1686249999997926,
+          "misExtracted": 0,
+          "unextracted": 15,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "liar",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.15419444444444444,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.41196133756612485,
+          "latencyMaxMs": 4.073624999999993,
+          "misExtracted": 0,
+          "unextracted": 24,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "hypothetical",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.4742611111111111,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.46570795714287305,
+          "latencyMaxMs": 3.297042000000147,
+          "misExtracted": 0,
+          "unextracted": 18,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.14285714285714285,
+          "meanSurplus": 0,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 10,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.3895265507936443,
+          "latencyMaxMs": 2.120083999999679,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "causa-prima",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.11604722222222222,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4265566365079536,
+          "latencyMaxMs": 3.0320419999998194,
+          "misExtracted": 0,
+          "unextracted": 12,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "boulware",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.1730944444444444,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 10.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.3668144666666721,
+          "latencyMaxMs": 0.5844999999999345,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "conceder",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.7037416666666666,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 8.5,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.47846164907408656,
+          "latencyMaxMs": 4.621874999999818,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.12401666666666664,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.3844743026454635,
+          "latencyMaxMs": 2.9730829999998605,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "text-only",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.5138499999999999,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.333333333333334,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4072715232804133,
+          "latencyMaxMs": 2.9857919999999467,
+          "misExtracted": 0,
+          "unextracted": 6,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "inject-voss",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.22813888888888886,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4015096613756627,
+          "latencyMaxMs": 2.9618749999999636,
+          "misExtracted": 0,
+          "unextracted": 15,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "liar",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.12658333333333335,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.6,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.39724087926886426,
+          "latencyMaxMs": 3.0679159999999683,
+          "misExtracted": 0,
+          "unextracted": 24,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "hypothetical",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.5059925925925924,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.333333333333334,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4403834624338586,
+          "latencyMaxMs": 3.9844169999996666,
+          "misExtracted": 0,
+          "unextracted": 18,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.2857142857142857,
+          "meanSurplus": 0,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 12,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.3864648367346983,
+          "latencyMaxMs": 3.1381670000000668,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "causa-prima",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.12401666666666664,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4342737640211543,
+          "latencyMaxMs": 3.148791000000074,
+          "misExtracted": 0,
+          "unextracted": 12,
+          "wrongAgreements": 0
+        }
+      ]
+    },
+    "revalidation": {
+      "champion": {
+        "games": 378,
+        "rivalErrors": 0,
+        "agreementRate": 0.6111111111111112,
+        "meanSurplus": 0.2605148148148148,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.597402597402597,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.41647109926169906,
+        "latencyMaxMs": 4.468124999999418,
+        "misExtracted": 0,
+        "unextracted": 168,
+        "wrongAgreements": 0
+      },
+      "candidate": {
+        "games": 378,
+        "rivalErrors": 0,
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.26282777777777766,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.395061728395062,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.41089348810240206,
+        "latencyMaxMs": 4.540332999999919,
+        "misExtracted": 0,
+        "unextracted": 156,
+        "wrongAgreements": 0
+      },
+      "candidateByRivalRole": [
+        {
+          "rival": "boulware",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.12128611111111111,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.75,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.39971597513226725,
+          "latencyMaxMs": 3.167207999999846,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "conceder",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.594337037037037,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 8.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.43047603386245503,
+          "latencyMaxMs": 4.296624999999949,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "tit-for-tat",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.1295111111111111,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.38763696507935563,
+          "latencyMaxMs": 3.755042000000685,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "text-only",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.4638027777777778,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.41316842380952407,
+          "latencyMaxMs": 3.1943750000000364,
+          "misExtracted": 0,
+          "unextracted": 9,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "inject-voss",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.23351944444444442,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4095381989417821,
+          "latencyMaxMs": 3.1160420000005615,
+          "misExtracted": 0,
+          "unextracted": 15,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "liar",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.15322222222222223,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4007033534391653,
+          "latencyMaxMs": 3.2768340000002354,
+          "misExtracted": 0,
+          "unextracted": 24,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "hypothetical",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.45168981481481485,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.44250771322754606,
+          "latencyMaxMs": 4.516208000000006,
+          "misExtracted": 0,
+          "unextracted": 18,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.14285714285714285,
+          "meanSurplus": 0,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 10,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.39424566825393753,
+          "latencyMaxMs": 3.390124999999898,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "causa-prima",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.1295111111111111,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.421261788888921,
+          "latencyMaxMs": 3.0261669999999867,
+          "misExtracted": 0,
+          "unextracted": 12,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "boulware",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.153725,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 10.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.37379241111116246,
+          "latencyMaxMs": 3.0037499999998545,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "conceder",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.7026296296296296,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 8.5,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4350053104497552,
+          "latencyMaxMs": 3.12816599999951,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "tit-for-tat",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.13325555555555557,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.3831187312169489,
+          "latencyMaxMs": 3.5571660000005068,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "text-only",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.49637962962962967,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.333333333333334,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4078748412698616,
+          "latencyMaxMs": 3.201958000000559,
+          "misExtracted": 0,
+          "unextracted": 9,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "inject-voss",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.22515277777777776,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.41265240740743925,
+          "latencyMaxMs": 3.0419580000007045,
+          "misExtracted": 0,
+          "unextracted": 15,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "liar",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.1254222222222222,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.6,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.37421477705629186,
+          "latencyMaxMs": 3.166167000000314,
+          "misExtracted": 0,
+          "unextracted": 24,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "hypothetical",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.8571428571428571,
+          "meanSurplus": 0.48420000000000013,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.333333333333334,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4420465783068461,
+          "latencyMaxMs": 3.235458000000108,
+          "misExtracted": 0,
+          "unextracted": 18,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "extreme-anchor",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.2857142857142857,
+          "meanSurplus": 0,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 12,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.373332116326498,
+          "latencyMaxMs": 3.028834000000643,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "causa-prima",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.13325555555555557,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.4,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4947914920634825,
+          "latencyMaxMs": 4.540332999999919,
+          "misExtracted": 0,
+          "unextracted": 12,
+          "wrongAgreements": 0
+        }
+      ]
+    },
+    "heldOut": {
+      "champion": {
+        "games": 42,
+        "rivalErrors": 0,
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.2668305555555556,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.555555555555555,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.41352559695767355,
+        "latencyMaxMs": 3.3241250000000946,
+        "misExtracted": 0,
+        "unextracted": 0,
+        "wrongAgreements": 0
+      },
+      "candidate": {
+        "games": 42,
+        "rivalErrors": 0,
+        "agreementRate": 0.6428571428571429,
+        "meanSurplus": 0.19495416666666665,
+        "violations": 0,
+        "emptyZopaCorrect": 1,
+        "meanRoundsToAgreement": 9.555555555555555,
+        "leaks": 0,
+        "templateFallbacks": 0,
+        "latencyMeanMs": 0.41541139722221426,
+        "latencyMaxMs": 4.171084000000519,
+        "misExtracted": 0,
+        "unextracted": 0,
+        "wrongAgreements": 0
+      },
+      "candidateByRivalRole": [
+        {
+          "rival": "champion-v1",
+          "role": "buyer",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.5714285714285714,
+          "meanSurplus": 0.16908611111111108,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.25,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.4438887566137829,
+          "latencyMaxMs": 4.171084000000519,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        },
+        {
+          "rival": "champion-v1",
+          "role": "seller",
+          "games": 21,
+          "rivalErrors": 0,
+          "agreementRate": 0.7142857142857143,
+          "meanSurplus": 0.2208222222222222,
+          "violations": 0,
+          "emptyZopaCorrect": 1,
+          "meanRoundsToAgreement": 9.8,
+          "leaks": 0,
+          "templateFallbacks": 0,
+          "latencyMeanMs": 0.38693403783064556,
+          "latencyMaxMs": 2.701000000000022,
+          "misExtracted": 0,
+          "unextracted": 0,
+          "wrongAgreements": 0
+        }
+      ]
+    }
+  },
+  "dryRun": true,
+  "promoted": false
+}

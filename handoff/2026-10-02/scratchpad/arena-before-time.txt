@@ -1,0 +1,1 @@
+pnpm arena >  2>&1  17.43s user 0.75s system 111% cpu 16.237 total

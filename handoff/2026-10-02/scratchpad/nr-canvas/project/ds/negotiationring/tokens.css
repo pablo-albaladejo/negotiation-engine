@@ -1,0 +1,18 @@
+/* Compiled from the Negotiation Ring design system's tokens.json (version 1790807702-3c44). */
+:root, [data-theme="light"] {
+  --bg: #f4f5f7; --surface: #ffffff; --ink: #15171c; --muted: #5a6070; --line: #d3d7df;
+  --us: #2a5bd7; --us-soft: #e6ecfb; --them: #b8690e; --them-soft: #f8eedf;
+  --ok: #1f7a4d; --ok-soft: #e3f2ea; --warn: #a8421e; --warn-soft: #f8e6df; --zopa: rgba(31,122,77,0.10);
+}
+[data-theme="dark"] {
+  --bg: #111318; --surface: #191c23; --ink: #e9ebf0; --muted: #9ca3b3; --line: #333844;
+  --us: #7ea2ff; --us-soft: #1d2742; --them: #f0a94a; --them-soft: #35291a;
+  --ok: #5bc48e; --ok-soft: #173327; --warn: #f08a64; --warn-soft: #3a2019; --zopa: rgba(91,196,142,0.12);
+}
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 10px; --space-4: 14px; --space-5: 18px; --gutter: 16px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 10px; --radius-pill: 999px;
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}

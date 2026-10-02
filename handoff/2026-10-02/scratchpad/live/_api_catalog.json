@@ -1,0 +1,986 @@
+{
+ "rarities": {
+  "common": {
+   "label": "Common",
+   "book": 10,
+   "print_run": 300,
+   "color": "#9AA4B8"
+  },
+  "uncommon": {
+   "label": "Uncommon",
+   "book": 25,
+   "print_run": 90,
+   "color": "#3DDC97"
+  },
+  "rare": {
+   "label": "Rare",
+   "book": 70,
+   "print_run": 30,
+   "color": "#4C8DFF"
+  },
+  "epic": {
+   "label": "Epic",
+   "book": 180,
+   "print_run": 9,
+   "color": "#B061FF"
+  },
+  "legendary": {
+   "label": "Legendary",
+   "book": 450,
+   "print_run": 3,
+   "color": "#FFC44D"
+  }
+ },
+ "sets": [
+  {
+   "id": "LAV",
+   "name": "Lavapiés",
+   "theme": "Corralas, murals and every language in one square",
+   "color": "#E4572E",
+   "released": true,
+   "release": "+0h",
+   "cards": [
+    {
+     "id": "LAV-01",
+     "name": "La Corrala",
+     "rarity": "common",
+     "flavour": "Balconies that gossip across the courtyard.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 15,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-02",
+     "name": "El Frutero de Argumosa",
+     "rarity": "common",
+     "flavour": "Three kilos of oranges and the neighbourhood news.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 14,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-03",
+     "name": "Té Moruno",
+     "rarity": "common",
+     "flavour": "Too sweet, too hot, just right.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 16,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-04",
+     "name": "Mural de la Esquina",
+     "rarity": "common",
+     "flavour": "Painted over every spring, better every time.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 15,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-05",
+     "name": "Bici de Reparto",
+     "rarity": "common",
+     "flavour": "Brakes optional.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 15,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-06",
+     "name": "La Tabacalera",
+     "rarity": "uncommon",
+     "flavour": "A factory that learned to make art.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 6,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-07",
+     "name": "Samosas de la Plaza",
+     "rarity": "uncommon",
+     "flavour": "Two for one if you know the cook.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 7,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-08",
+     "name": "Teatro Valle-Inclán",
+     "rarity": "uncommon",
+     "flavour": "Curtain at eight, argument at eleven.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 8,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-09",
+     "name": "Cine Doré",
+     "rarity": "rare",
+     "flavour": "The films are old; the queue is new.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 1,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-10",
+     "name": "Fiesta de San Cayetano",
+     "rarity": "rare",
+     "flavour": "August, 38 degrees, nobody leaves.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 2,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAV-11",
+     "name": "La Casa Encendida",
+     "rarity": "epic",
+     "flavour": "A bank building that gave itself away.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "LAV-12",
+     "name": "El Gato de Lavapiés",
+     "rarity": "legendary",
+     "flavour": "Owns every rooftop. Pays no rent.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  },
+  {
+   "id": "MAL",
+   "name": "Malasaña",
+   "theme": "Vinyl, late nights and La Movida",
+   "color": "#7B2CBF",
+   "released": true,
+   "release": "+0h",
+   "cards": [
+    {
+     "id": "MAL-01",
+     "name": "Vinilo de la Movida",
+     "rarity": "common",
+     "flavour": "Side B is the good one.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 15,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-02",
+     "name": "Plaza del Dos de Mayo",
+     "rarity": "common",
+     "flavour": "Every meeting starts here.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 18,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-03",
+     "name": "Cartel de Conciertos",
+     "rarity": "common",
+     "flavour": "Seven bands, one lamppost.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 10,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-04",
+     "name": "El Tatuador",
+     "rarity": "common",
+     "flavour": "No refunds.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 14,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-05",
+     "name": "Café de Madrugada",
+     "rarity": "common",
+     "flavour": "Open until the churros arrive.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 9,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-06",
+     "name": "Tienda de Discos",
+     "rarity": "uncommon",
+     "flavour": "Alphabetised by mood.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 11,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-07",
+     "name": "Mercado de San Ildefonso",
+     "rarity": "uncommon",
+     "flavour": "Three floors of food, one of noise.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 2,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-08",
+     "name": "La Vía Láctea",
+     "rarity": "uncommon",
+     "flavour": "Same bar stool since 1979.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 7,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-09",
+     "name": "La Heroína del Dos de Mayo",
+     "rarity": "rare",
+     "flavour": "1808. She did not step back.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 1,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-10",
+     "name": "Noche de Movida",
+     "rarity": "rare",
+     "flavour": "Nobody remembers it; everybody was there.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 2,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "MAL-11",
+     "name": "La Sala Pentagrama",
+     "rarity": "epic",
+     "flavour": "The loudest room in the city.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "MAL-12",
+     "name": "La Reina de la Movida",
+     "rarity": "legendary",
+     "flavour": "Glitter never goes out of fashion.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  },
+  {
+   "id": "LAT",
+   "name": "La Latina",
+   "theme": "Tapas, Sunday markets and chulapos",
+   "color": "#F4A259",
+   "released": true,
+   "release": "+0h",
+   "cards": [
+    {
+     "id": "LAT-01",
+     "name": "Caña en la Cava Baja",
+     "rarity": "common",
+     "flavour": "The first one is always small.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 14,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-02",
+     "name": "Puesto del Rastro",
+     "rarity": "common",
+     "flavour": "Everything is negotiable, especially the price.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 10,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-03",
+     "name": "Huevos Rotos",
+     "rarity": "common",
+     "flavour": "Broken on purpose.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 11,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-04",
+     "name": "Mercado de la Cebada",
+     "rarity": "common",
+     "flavour": "The roof looks like a wave.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 14,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-05",
+     "name": "El Organillero",
+     "rarity": "common",
+     "flavour": "One song, played forever.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 9,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-06",
+     "name": "La Chulapa",
+     "rarity": "uncommon",
+     "flavour": "Carnation behind the ear, opinion on everything.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 4,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-07",
+     "name": "Vermut del Domingo",
+     "rarity": "uncommon",
+     "flavour": "Noon is a suggestion.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 7,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-08",
+     "name": "Las Vistillas",
+     "rarity": "uncommon",
+     "flavour": "The best sunset, free of charge.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 5,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-09",
+     "name": "San Isidro",
+     "rarity": "rare",
+     "flavour": "Patron saint of farmers and long lunches.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 3,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-10",
+     "name": "El Mesón de la Cava",
+     "rarity": "rare",
+     "flavour": "Cellar of 1642, prices of today.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 2,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "LAT-11",
+     "name": "San Francisco el Grande",
+     "rarity": "epic",
+     "flavour": "A dome bigger than your plans.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "LAT-12",
+     "name": "El Rastro al Amanecer",
+     "rarity": "legendary",
+     "flavour": "Before the crowds, the real deals.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  },
+  {
+   "id": "SAL",
+   "name": "Salamanca",
+   "theme": "Serrano, galleries and old money",
+   "color": "#2E86AB",
+   "released": true,
+   "release": "+0h",
+   "cards": [
+    {
+     "id": "SAL-01",
+     "name": "Escaparate de Serrano",
+     "rarity": "common",
+     "flavour": "Look, don't touch.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 13,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-02",
+     "name": "El Portero",
+     "rarity": "common",
+     "flavour": "Knows who you are before you do.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 13,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-03",
+     "name": "Perrito con Abrigo",
+     "rarity": "common",
+     "flavour": "Better dressed than you.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 10,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-04",
+     "name": "Café en Goya",
+     "rarity": "common",
+     "flavour": "Seven euros and a view.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 12,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-05",
+     "name": "Taxi Blanco",
+     "rarity": "common",
+     "flavour": "The red stripe says it all.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 12,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-06",
+     "name": "La Galería",
+     "rarity": "uncommon",
+     "flavour": "Price on request.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 6,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-07",
+     "name": "Mercado de la Paz",
+     "rarity": "uncommon",
+     "flavour": "The only bargain in the barrio.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 7,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-08",
+     "name": "Guantería Antigua",
+     "rarity": "uncommon",
+     "flavour": "Fitted by hand since 1890.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 3,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-09",
+     "name": "El Marqués",
+     "rarity": "rare",
+     "flavour": "Title inherited, manners optional.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 3,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-10",
+     "name": "Museo Lázaro Galdiano",
+     "rarity": "rare",
+     "flavour": "One man's collection, everyone's afternoon.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 4,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "SAL-11",
+     "name": "La Puerta de Alcalá",
+     "rarity": "epic",
+     "flavour": "There she is, watching time pass.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "SAL-12",
+     "name": "La Dama de Serrano",
+     "rarity": "legendary",
+     "flavour": "Never seen buying. Always seen wearing.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  },
+  {
+   "id": "RET",
+   "name": "El Retiro",
+   "theme": "Saturday expansion: rowing boats and a crystal palace",
+   "color": "#3BB273",
+   "released": false,
+   "release": "sat+0h",
+   "cards": [
+    {
+     "id": "RET-01",
+     "name": "Barca del Estanque",
+     "rarity": "common",
+     "flavour": "Rowing in circles, happily.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-02",
+     "name": "La Castañera",
+     "rarity": "common",
+     "flavour": "Warm hands, warmer gossip.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-03",
+     "name": "El Titiritero",
+     "rarity": "common",
+     "flavour": "The puppets know more than he does.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-04",
+     "name": "Paseo de Coches",
+     "rarity": "common",
+     "flavour": "No cars, many skaters.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-05",
+     "name": "La Ardilla",
+     "rarity": "common",
+     "flavour": "Accepts nuts, rejects offers.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-06",
+     "name": "La Rosaleda",
+     "rarity": "uncommon",
+     "flavour": "Four thousand roses, one bench free.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-07",
+     "name": "Fuente de la Alcachofa",
+     "rarity": "uncommon",
+     "flavour": "Yes, it is an artichoke.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-08",
+     "name": "Palacio de Velázquez",
+     "rarity": "uncommon",
+     "flavour": "Bricks of two colours, art of every kind.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-09",
+     "name": "El Ángel Caído",
+     "rarity": "rare",
+     "flavour": "Exactly 666 metres above the sea.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-10",
+     "name": "Monumento a Alfonso XII",
+     "rarity": "rare",
+     "flavour": "A king, a lake, a lot of steps.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "RET-11",
+     "name": "Palacio de Cristal",
+     "rarity": "epic",
+     "flavour": "A greenhouse that forgot the plants.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "RET-12",
+     "name": "El Ahuehuete",
+     "rarity": "legendary",
+     "flavour": "The oldest tree in Madrid. It has seen every deal.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  },
+  {
+   "id": "CHA",
+   "name": "Chamberí",
+   "theme": "Sunday expansion: ghost stations and hidden gardens",
+   "color": "#C1666B",
+   "released": false,
+   "release": "sun+0h",
+   "cards": [
+    {
+     "id": "CHA-01",
+     "name": "Andén de Metro",
+     "rarity": "common",
+     "flavour": "Mind the gap.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-02",
+     "name": "Kiosco de Prensa",
+     "rarity": "common",
+     "flavour": "Every headline, one opinion.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-03",
+     "name": "La Churrería",
+     "rarity": "common",
+     "flavour": "Chocolate thick enough to stand a spoon.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-04",
+     "name": "Mercado de Vallehermoso",
+     "rarity": "common",
+     "flavour": "The stalls became restaurants.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-05",
+     "name": "Plaza de Olavide",
+     "rarity": "common",
+     "flavour": "An octagon of terraces.",
+     "book": 10,
+     "print_run": 300,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-06",
+     "name": "Estación de Chamberí",
+     "rarity": "uncommon",
+     "flavour": "Closed in 1966, opened again for you.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-07",
+     "name": "Club de Jazz",
+     "rarity": "uncommon",
+     "flavour": "Last set at three.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-08",
+     "name": "El Instituto",
+     "rarity": "uncommon",
+     "flavour": "Latin on the walls, football in the yard.",
+     "book": 25,
+     "print_run": 90,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-09",
+     "name": "Museo Sorolla",
+     "rarity": "rare",
+     "flavour": "Light you can almost touch.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-10",
+     "name": "Casa de las Flores",
+     "rarity": "rare",
+     "flavour": "A poet lived here. The flowers stayed.",
+     "book": 70,
+     "print_run": 30,
+     "minted": 0,
+     "hidden": false,
+     "page": true
+    },
+    {
+     "id": "CHA-11",
+     "name": "Andén 0",
+     "rarity": "epic",
+     "flavour": "The station time forgot.",
+     "book": 180,
+     "print_run": 9,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    },
+    {
+     "id": "CHA-12",
+     "name": "El Tren Fantasma",
+     "rarity": "legendary",
+     "flavour": "It stops only for collectors.",
+     "book": 450,
+     "print_run": 3,
+     "minted": 0,
+     "hidden": false,
+     "page": false
+    }
+   ]
+  }
+ ],
+ "packs": [
+  {
+   "id": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "color": "#E0A458",
+   "slots": [
+    {
+     "common": 1
+    },
+    {
+     "common": 1
+    },
+    {
+     "common": 0.75,
+     "uncommon": 0.25
+    }
+   ],
+   "expected_book": 33.8
+  },
+  {
+   "id": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "color": "#6FD3B8",
+   "slots": [
+    {
+     "common": 1
+    },
+    {
+     "uncommon": 1
+    },
+    {
+     "uncommon": 0.6,
+     "rare": 0.4
+    }
+   ],
+   "expected_book": 78
+  },
+  {
+   "id": "sobre_plata",
+   "name": "Silver pack",
+   "color": "#B8C4D6",
+   "slots": [
+    {
+     "common": 1
+    },
+    {
+     "common": 1
+    },
+    {
+     "uncommon": 1
+    },
+    {
+     "uncommon": 1
+    },
+    {
+     "rare": 0.86,
+     "epic": 0.12,
+     "legendary": 0.02
+    }
+   ],
+   "expected_book": 160.8
+  },
+  {
+   "id": "sobre_oro",
+   "name": "Gold pack",
+   "color": "#FFC44D",
+   "slots": [
+    {
+     "uncommon": 1
+    },
+    {
+     "uncommon": 1
+    },
+    {
+     "rare": 1
+    },
+    {
+     "rare": 1
+    },
+    {
+     "epic": 0.85,
+     "legendary": 0.15
+    }
+   ],
+   "expected_book": 410.5
+  }
+ ],
+ "currency": "primas",
+ "currency_symbol": "P",
+ "values": {
+  "copy_marginals": [
+   1,
+   0.25,
+   0.1
+  ],
+  "page_bonus": 0.25,
+  "master_bonus": 0.1
+ }
+}

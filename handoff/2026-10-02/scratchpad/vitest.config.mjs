@@ -1,0 +1,1 @@
+export default { test: { root: "/private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad", include: ["probe.test.ts"], testTimeout: 60000 } };

@@ -1,0 +1,422 @@
+
+> negotiation-ring@0.1.0 bazaar:duels /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/duels-main.ts
+
+bazaar:duels · LIVE · params {"anchorMargin":0.5,"beta":2,"maxRounds":4,"floorShare":0.3,"minSurplus":1,"lastMoveTicks":1,"endgameTicks":3,"assumedDaysWeight":0,"daysWeightScale":1} · state /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02/duels-state.json
+tick 148 · 4 live duel(s)
+duel 36 · buyer · price · limit 102 · rival 68 P · ticks left 8
+  → ACCEPT rival 68 P (surplus 34.0, ac-next) [error:no_offer] → match 68 P: sent
+duel 45 · seller · price · limit 142 · rival 213 P · ticks left 8
+  → ACCEPT rival 213 P (surplus 71.0, ac-next) [error:no_offer] → match 213 P: sent
+duel 46 · buyer · price · limit 97 · rival 64 P · ticks left 8
+  → ACCEPT rival 64 P (surplus 33.0, ac-next) [error:no_offer] → match 64 P: sent
+duel 48 · buyer · price · limit 97 · rival 99 P · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+tick 149 · 4 live duel(s)
+duel 36 · buyer · price · limit 102 · rival 68 P · ticks left 7
+  → ACCEPT rival 68 P (surplus 34.0, ac-next) [error:no_offer] → match 68 P: sent
+duel 45 · seller · price · limit 142 · rival 213 P · ticks left 7
+  → ACCEPT rival 213 P (surplus 71.0, ac-next) [error:no_offer] → match 213 P: sent
+duel 46 · buyer · price · limit 97 · rival 64 P · ticks left 7
+  → ACCEPT rival 64 P (surplus 33.0, ac-next) [error:no_offer] → match 64 P: sent
+duel 48 · buyer · price · limit 97 · rival 99 P · ticks left 4
+
+> negotiation-ring@0.1.0 bazaar:duels /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/duels-main.ts
+
+bazaar:duels · LIVE · params {"anchorMargin":0.5,"beta":2,"maxRounds":4,"floorShare":0.3,"minSurplus":1,"lastMoveTicks":1,"endgameTicks":3,"assumedDaysWeight":0,"daysWeightScale":1} · state /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02/duels-state.json
+tick 151 · 4 live duel(s)
+duel 36 · buyer · price · limit 102 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 45 · seller · price · limit 142 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 46 · buyer · price · limit 97 · rival - · ticks left 5
+  → WAIT (waiting-for-rival) [skipped]
+duel 48 · buyer · price · limit 97 · rival 99 P · ticks left 2
+  → COUNTER 80 P (surplus 17.0, round 2, concede) "Fair enough, I will meet you partway at 80 P." [sent]
+tick 152 · 5 live duel(s)
+duel 36 · buyer · price · limit 102 · rival - · ticks left 4
+  → WAIT (waiting-for-rival) [skipped]
+duel 45 · seller · price · limit 142 · rival - · ticks left 4
+  → WAIT (waiting-for-rival) [skipped]
+duel 46 · buyer · price · limit 97 · rival - · ticks left 4
+  → WAIT (waiting-for-rival) [skipped]
+duel 48 · buyer · price · limit 97 · rival 99 P · ticks left 1
+  → COUNTER 84 P (surplus 13.0, round 3, concede) "We are getting close. 84 P works for me." [sent]
+duel 299 · seller · price · limit 134 · rival - · ticks left 12
+  → COUNTER 201 P (surplus 67.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 201 P for this one." [sent]
+tick 153 · 4 live duel(s)
+duel 36 · buyer · price · limit 102 · rival - · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 45 · seller · price · limit 142 · rival - · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 46 · buyer · price · limit 97 · rival - · ticks left 3
+  → WAIT (waiting-for-rival) [skipped]
+duel 299 · seller · price · limit 134 · rival 105 P · ticks left 11
+  → COUNTER 178 P (surplus 44.0, round 1, concede) "I appreciate it. Let us try to close quickly: 178 P." [sent]
+tick 154 · 5 live duel(s)
+duel 36 · buyer · price · limit 102 · rival - · ticks left 2
+  → WAIT (waiting-for-rival) [skipped]
+duel 45 · seller · price · limit 142 · rival - · ticks left 2
+  → WAIT (waiting-for-rival) [skipped]
+duel 46 · buyer · price · limit 97 · rival - · ticks left 2
+  → WAIT (waiting-for-rival) [skipped]
+duel 199 · seller · price · limit 77 · rival - · ticks left 12
+  → COUNTER 116 P (surplus 39.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 116 P for this one." [sent]
+duel 299 · seller · price · limit 134 · rival 119 P · ticks left 10
+  → COUNTER 168 P (surplus 34.0, round 2, concede) "Fair enough, I will meet you partway at 168 P." [sent]
+tick 155 · 5 live duel(s)
+duel 36 · buyer · price · limit 102 · rival - · ticks left 1
+  → WAIT (waiting-for-rival) [skipped]
+duel 45 · seller · price · limit 142 · rival - · ticks left 1
+  → WAIT (waiting-for-rival) [skipped]
+duel 46 · buyer · price · limit 97 · rival - · ticks left 1
+  → WAIT (waiting-for-rival) [skipped]
+duel 199 · seller · price · limit 77 · rival 90 P · ticks left 11
+  → COUNTER 103 P (surplus 26.0, round 1, concede) "I appreciate it. Let us try to close quickly: 103 P." [sent]
+duel 299 · seller · price · limit 134 · rival 133 P · ticks left 9
+  → COUNTER 161 P (surplus 27.0, round 3, concede) "We are getting close. 161 P works for me." [sent]
+tick 156 · 5 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 12
+  → COUNTER 99 P (surplus 33.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 99 P for this one." [sent]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 12
+  → COUNTER 52 P (surplus 26.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 52 P for this one." [sent]
+duel 199 · seller · price · limit 77 · rival 96 P · ticks left 10
+  → COUNTER 97 P (surplus 20.0, round 2, concede) "Fair enough, I will meet you partway at 97 P." [sent]
+duel 200 · buyer · price · limit 131 · rival - · ticks left 12
+  → COUNTER 87 P (surplus 44.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 87 P for this one." [sent]
+duel 299 · seller · price · limit 134 · rival 147 P · ticks left 8
+  → COUNTER 155 P (surplus 21.0, round 4, concede) "Thank you for your offer. I can move to 155 P." [sent]
+tick 157 · 4 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 11
+  → WAIT (waiting-for-rival) [skipped]
+duel 200 · buyer · price · limit 131 · rival 104 P · ticks left 11
+  → COUNTER 102 P (surplus 29.0, round 1, concede) "I appreciate it. Let us try to close quickly: 102 P." [sent]
+duel 300 · buyer · price · limit 116 · rival - · ticks left 12
+  → COUNTER 77 P (surplus 39.0, round 0, opening) "Hello, and thank you for meeting me. I would propose 77 P for this one." [sent]
+tick 158 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 11
+  → COUNTER 90 P (surplus 26.0, round 1, concede) "I appreciate it. Let us try to close quickly: 90 P." [sent]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+tick 159 · 3 live duel(s)
+duel 177 · seller · price · limit 66 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 178 · buyer · price · limit 78 · rival - · ticks left 9
+  → WAIT (waiting-for-rival) [skipped]
+duel 300 · buyer · price · limit 116 · rival 119 P · ticks left 10
+  → WAIT (waiting-for-rival) [skipped]
+network: GET /api/clock: TypeError
+ ELIFECYCLE  Command failed with exit code 1.

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bazaar — our conversations</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; margin: 0; background: #f6f6f8; color: #1a1a1a; }
+  header { background: #20242b; color: #fff; padding: 10px 18px; display: flex; gap: 24px; flex-wrap: wrap; align-items: baseline; }
+  header .stat { font-size: 13px; }
+  header .stat b { font-size: 16px; display: block; }
+  header .title { font-weight: 600; font-size: 15px; margin-right: 12px; }
+  main { display: flex; }
+  #tableWrap { flex: 1; padding: 14px; overflow-x: auto; }
+  #side { width: 380px; border-left: 1px solid #ddd; padding: 14px; background: #fff; max-height: 100vh; overflow-y: auto; position: sticky; top: 0; }
+  .filters { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+  .filters select, .filters button { padding: 4px 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; background: #fff; }
+  th, td { border-bottom: 1px solid #eee; padding: 5px 7px; text-align: left; white-space: nowrap; }
+  th { background: #eef0f3; cursor: pointer; position: sticky; top: 0; }
+  tr:hover { background: #f1f6ff; cursor: pointer; }
+  tr.selected { background: #dce8ff; }
+  .good { color: #0a7a2f; font-weight: 600; }
+  .bad { color: #b0202a; font-weight: 600; }
+  .neutral { color: #777; }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 9px; background: #e7e7ee; font-size: 11px; }
+  .totals td { font-weight: 700; background: #f3f3f6; }
+  h3 { margin: 16px 0 6px; font-size: 13px; text-transform: uppercase; color: #555; }
+  .msg { border-bottom: 1px dotted #ddd; padding: 5px 0; font-size: 12.5px; }
+  .msg .meta { color: #888; font-size: 11px; }
+  .dec { background: #fbf6e6; padding: 4px 6px; margin: 3px 0; font-size: 11.5px; border-left: 3px solid #e0c200; }
+  .so { background: #eef7ff; padding: 4px 6px; margin: 3px 0; font-size: 11.5px; border-left: 3px solid #2d7fd6; }
+  .feedrow, .lbrow, .rrow { font-size: 11.5px; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+  .muted { color: #999; }
+  #closeSide { float: right; cursor: pointer; color: #888; }
+  .tooltip { cursor: help; border-bottom: 1px dotted #999; }
+</style>
+</head>
+<body>
+<header id="header">
+  <div class="title">Bazaar — our conversations</div>
+  <div class="stat">Tick <b id="h-tick">-</b></div>
+  <div class="stat">Round <b id="h-round">-</b></div>
+  <div class="stat">Next tick in <b id="h-next">-</b></div>
+  <div class="stat">Score <b id="h-score">-</b></div>
+  <div class="stat">Neg pts <b id="h-neg">-</b></div>
+  <div class="stat">Ladder pts <b id="h-ladder">-</b></div>
+  <div class="stat">Rank <b id="h-rank">-</b></div>
+  <div class="stat">Cash <b id="h-cash">-</b></div>
+  <div class="stat">Deals <b id="h-deals">-</b></div>
+</header>
+<main>
+  <div id="tableWrap">
+    <div class="filters">
+      <label>Kind <select id="f-kind"><option value="">all</option></select></label>
+      <label>Counterparty <select id="f-cp"><option value="">all</option></select></label>
+      <label>Status <select id="f-status"><option value="">all</option></select></label>
+      <label>Verdict <select id="f-verdict"><option value="">all</option></select></label>
+      <label>Sort by
+        <select id="f-sort">
+          <option value="tick">tick</option>
+          <option value="surplus">surplus</option>
+        </select>
+      </label>
+      <button id="refreshBtn">Refresh now</button>
+      <span class="muted" id="lastRefreshed"></span>
+    </div>
+    <table id="convTable">
+      <thead>
+        <tr>
+          <th>id</th><th>kind</th><th>counterparty</th><th>item</th><th>side</th>
+          <th>status</th><th>opened</th><th>settled</th><th>price</th>
+          <th>our_value</th><th>surplus</th><th>verdict</th>
+          <th>Δneg</th><th>Δladder</th>
+          <th class="tooltip" title="score is relative to all teams and updates every 5 ticks; other teams move it too">Δscore (next refresh, relative, approx.)</th>
+        </tr>
+      </thead>
+      <tbody id="convBody"></tbody>
+      <tfoot><tr class="totals" id="totalsRow"></tr></tfoot>
+    </table>
+  </div>
+  <div id="side">
+    <span id="closeSide" style="display:none" onclick="closeDetail()">close ✕</span>
+    <div id="detail"><p class="muted">Click a conversation row to see the full thread.</p></div>
+    <h3>Leaderboard (top 10 + us)</h3>
+    <div id="leaderboard"></div>
+    <h3>Last 20 feed settlements</h3>
+    <div id="feed"></div>
+    <h3>El Rastro book</h3>
+    <div id="rastro"></div>
+  </div>
+</main>
+<script>
+let DATA = null;
+let selectedId = null;
+
+function fmt(n) {
+  if (n === null || n === undefined) return "—";
+  if (typeof n === "number") return Number.isInteger(n) ? n : n.toFixed(1);
+  return n;
+}
+
+function verdictClass(v) {
+  return v === "good" ? "good" : v === "bad" ? "bad" : v === "neutral" ? "neutral" : "";
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter(v => v !== null && v !== undefined))].sort();
+}
+
+function populateFilters(conversations) {
+  const kindSel = document.getElementById("f-kind");
+  const cpSel = document.getElementById("f-cp");
+  const statusSel = document.getElementById("f-status");
+  const verdictSel = document.getElementById("f-verdict");
+  const fillOnce = (sel, values) => {
+    const current = sel.value;
+    sel.innerHTML = '<option value="">all</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
+    sel.value = current;
+  };
+  fillOnce(kindSel, uniqueSorted(conversations.map(c => c.kind)));
+  fillOnce(cpSel, uniqueSorted(conversations.map(c => c.counterparty)));
+  fillOnce(statusSel, uniqueSorted(conversations.map(c => c.status)));
+  fillOnce(verdictSel, uniqueSorted(conversations.map(c => c.verdict)));
+}
+
+function applyFiltersAndRender() {
+  if (!DATA) return;
+  let rows = DATA.conversations.slice();
+  const kind = document.getElementById("f-kind").value;
+  const cp = document.getElementById("f-cp").value;
+  const status = document.getElementById("f-status").value;
+  const verdict = document.getElementById("f-verdict").value;
+  const sortBy = document.getElementById("f-sort").value;
+  if (kind) rows = rows.filter(r => r.kind === kind);
+  if (cp) rows = rows.filter(r => r.counterparty === cp);
+  if (status) rows = rows.filter(r => r.status === status);
+  if (verdict) rows = rows.filter(r => r.verdict === verdict);
+
+  if (sortBy === "surplus") {
+    rows.sort((a, b) => (b.surplus ?? -Infinity) - (a.surplus ?? -Infinity));
+  } else {
+    rows.sort((a, b) => (a.opened_tick ?? a.settled_tick ?? 0) - (b.opened_tick ?? b.settled_tick ?? 0));
+  }
+
+  const tbody = document.getElementById("convBody");
+  tbody.innerHTML = "";
+  let totalPrice = 0, totalSurplus = 0, totalNeg = 0, totalLadder = 0, totalScore = 0;
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    if (r.id === selectedId) tr.classList.add("selected");
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td><span class="tag">${r.kind ?? "—"}</span></td>
+      <td>${r.counterparty ?? "—"}</td>
+      <td>${r.item ?? "—"}</td>
+      <td>${r.side ?? "—"}</td>
+      <td>${r.status ?? "—"}${r.closed_reason ? " / " + r.closed_reason : ""}</td>
+      <td>${fmt(r.opened_tick)}</td>
+      <td>${fmt(r.settled_tick)}</td>
+      <td>${fmt(r.price)}</td>
+      <td title="value_source: ${r.value_source ?? "n/a"}">${fmt(r.our_value)}</td>
+      <td class="${verdictClass(r.verdict)}">${fmt(r.surplus)}</td>
+      <td class="${verdictClass(r.verdict)}">${r.verdict ?? "—"}</td>
+      <td>${fmt(r.delta_neg)}</td>
+      <td>${fmt(r.delta_ladder)}</td>
+      <td>${fmt(r.delta_score)}</td>
+    `;
+    tr.addEventListener("click", () => selectRow(r.id));
+    tbody.appendChild(tr);
+    if (typeof r.price === "number") totalPrice += r.price;
+    if (typeof r.surplus === "number") totalSurplus += r.surplus;
+    if (typeof r.delta_neg === "number") totalNeg += r.delta_neg;
+    if (typeof r.delta_ladder === "number") totalLadder += r.delta_ladder;
+    if (typeof r.delta_score === "number") totalScore += r.delta_score;
+  }
+  document.getElementById("totalsRow").innerHTML = `
+    <td colspan="8">Totals (${rows.length} rows)</td>
+    <td>${totalPrice.toFixed(1)}</td>
+    <td>—</td>
+    <td>${totalSurplus.toFixed(1)}</td>
+    <td>—</td>
+    <td>${totalNeg.toFixed(1)}</td>
+    <td>${totalLadder.toFixed(3)}</td>
+    <td>${totalScore.toFixed(3)}</td>
+  `;
+}
+
+function closeDetail() {
+  selectedId = null;
+  document.getElementById("closeSide").style.display = "none";
+  document.getElementById("detail").innerHTML = '<p class="muted">Click a conversation row to see the full thread.</p>';
+  applyFiltersAndRender();
+}
+
+function selectRow(id) {
+  selectedId = id;
+  document.getElementById("closeSide").style.display = "inline";
+  const r = DATA.conversations.find(c => c.id === id);
+  if (!r) return;
+  const detail = document.getElementById("detail");
+  let html = `<h3>${r.kind} #${r.id} — ${r.counterparty ?? ""}</h3>
+    <p>${r.item ?? ""} · ${r.side ?? ""} · ${r.status ?? ""}${r.closed_reason ? " (" + r.closed_reason + ")" : ""}</p>
+    <p>price ${fmt(r.price)} · our_value ${fmt(r.our_value)} ·
+       <span class="${verdictClass(r.verdict)}">surplus ${fmt(r.surplus)} (${r.verdict ?? "n/a"})</span></p>`;
+
+  // merge messages + decisions by tick
+  const events = [];
+  for (const m of r.messages || []) {
+    events.push({ tick: m.tick, type: "msg", data: m });
+  }
+  for (const d of r.decisions || []) {
+    events.push({ tick: d.tick, type: "decision", data: d });
+  }
+  events.sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0));
+
+  html += "<h3>Conversation + decisions</h3>";
+  for (const ev of events) {
+    if (ev.type === "msg") {
+      const m = ev.data;
+      const price = m.offer ? (m.offer.give?.cash || m.offer.want?.cash || null) : m.price;
+      html += `<div class="msg"><div class="meta">t${m.tick ?? "?"} · ${m.sender ?? "?"}${price ? " · " + price + " P" : ""}</div>${m.text ?? ""}</div>`;
+    } else {
+      const d = ev.data;
+      html += `<div class="dec">t${d.tick ?? "?"} · rule=${d.rule ?? "—"} · reservation=${fmt(d.reservation)} · effRes=${fmt(d.effectiveReservation)} · ourPrice=${fmt(d.ourPrice)} · action=${d.action ?? "—"}</div>`;
+    }
+  }
+
+  if (r.standing_offers && r.standing_offers.length) {
+    html += "<h3>Standing offers</h3>";
+    for (const so of r.standing_offers) {
+      html += `<div class="so">#${so.id} ${so.maker} → ${so.status}${so.final ? " (final)" : ""} · give ${JSON.stringify(so.give)} want ${JSON.stringify(so.want)}</div>`;
+    }
+  }
+  detail.innerHTML = html;
+  applyFiltersAndRender();
+}
+
+function renderLeaderboard() {
+  const el = document.getElementById("leaderboard");
+  if (!DATA.leaderboard || !DATA.leaderboard.teams) { el.innerHTML = '<p class="muted">unavailable</p>'; return; }
+  const teams = DATA.leaderboard.teams.slice().sort((a, b) => a.rank - b.rank);
+  const our = DATA.me ? DATA.me.id : null;
+  const top10 = teams.slice(0, 10);
+  const usRow = teams.find(t => t.team === our);
+  let html = "";
+  for (const t of top10) {
+    html += `<div class="lbrow">${t.rank}. ${t.name} — ${fmt(t.score)}${t.team === our ? " (us)" : ""}</div>`;
+  }
+  if (usRow && !top10.includes(usRow)) {
+    html += `<div class="lbrow"><b>${usRow.rank}. ${usRow.name} — ${fmt(usRow.score)} (us)</b></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderFeed() {
+  const el = document.getElementById("feed");
+  if (!DATA.feed || !DATA.feed.length) { el.innerHTML = '<p class="muted">unavailable</p>'; return; }
+  el.innerHTML = DATA.feed.slice().reverse().map(e =>
+    `<div class="feedrow">t${e.tick} · ${e.type} · ${e.actor ?? ""}</div>`
+  ).join("");
+}
+
+function renderRastro() {
+  const el = document.getElementById("rastro");
+  if (!DATA.rastro || !DATA.rastro.length) { el.innerHTML = '<p class="muted">unavailable</p>'; return; }
+  el.innerHTML = DATA.rastro.map(o => {
+    const asset = (o.give.assets || [])[0];
+    return `<div class="rrow">${o.maker} offers ${asset ? asset.ref : "cash"} for ${o.want.cash ?? 0} P</div>`;
+  }).join("");
+}
+
+function renderHeader() {
+  const c = DATA.clock || {};
+  const me = DATA.me || {};
+  const score = me.score || {};
+  document.getElementById("h-tick").textContent = c.tick ?? "-";
+  document.getElementById("h-round").textContent = c.round_name ?? "-";
+  document.getElementById("h-next").textContent = c.next_tick_in ? c.next_tick_in.toFixed(1) + "s" : "-";
+  document.getElementById("h-score").textContent = fmt(score.score);
+  document.getElementById("h-neg").textContent = fmt(score.neg_points);
+  document.getElementById("h-ladder").textContent = fmt(score.ladder_points);
+  document.getElementById("h-rank").textContent = score.rank ?? "-";
+  document.getElementById("h-cash").textContent = fmt(me.cash);
+  document.getElementById("h-deals").textContent = score.deals ?? "-";
+}
+
+let refreshTimer = null;
+
+async function loadData() {
+  const resp = await fetch("/api/data");
+  DATA = await resp.json();
+  renderHeader();
+  populateFilters(DATA.conversations);
+  applyFiltersAndRender();
+  renderLeaderboard();
+  renderFeed();
+  renderRastro();
+  document.getElementById("lastRefreshed").textContent = "updated " + new Date().toLocaleTimeString();
+  scheduleNextRefresh();
+}
+
+function scheduleNextRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const nextIn = (DATA.clock && DATA.clock.next_tick_in) ? DATA.clock.next_tick_in : 10;
+  const delayMs = Math.max(3000, Math.min(60000, (nextIn + 1) * 1000));
+  refreshTimer = setTimeout(loadData, delayMs);
+}
+
+document.getElementById("refreshBtn").addEventListener("click", loadData);
+for (const id of ["f-kind", "f-cp", "f-status", "f-verdict", "f-sort"]) {
+  document.getElementById(id).addEventListener("change", applyFiltersAndRender);
+}
+
+loadData();
+</script>
+</body>
+</html>

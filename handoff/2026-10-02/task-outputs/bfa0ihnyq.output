@@ -1,0 +1,202 @@
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 0,
+  "pluginId": "excessive-agency",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 1,
+  "pluginId": "excessive-agency",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 2,
+  "pluginId": "excessive-agency",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 3,
+  "pluginId": "hijacking",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 4,
+  "pluginId": "hijacking",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 9,
+  "pluginId": "excessive-agency",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 10,
+  "pluginId": "excessive-agency",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 11,
+  "pluginId": "excessive-agency",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 12,
+  "pluginId": "hijacking",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 13,
+  "pluginId": "hijacking",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 14,
+  "pluginId": "hijacking",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 15,
+  "pluginId": "mcp",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 16,
+  "pluginId": "mcp",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+Provider call failed during eval
+{
+  "providerId": "mcp",
+  "providerLabel": "scribo-mcp",
+  "promptIdx": 0,
+  "testIdx": 17,
+  "pluginId": "mcp",
+  "strategyId": "jailbreak:meta",
+  "error": {
+    "name": "Error",
+    "message": "API key is not set. Set the OPENAI_API_KEY environment variable or add `apiKey` to the provider config."
+  }
+}
+✓ Red team complete (ID: eval-47a-2026-09-28T21:08:08)
+
+» View results: promptfoo view
+» Share with your team: https://promptfoo.app
+» Feedback: https://promptfoo.dev/feedback
+
+Total Tokens: 55,721
+  Probes: 13
+  Generation: 55,721 (52,964 prompt, 2,757 completion, 1,092 reasoning)
+
+Results:
+  0 passed (0%)
+  0 failed (0%)
+  ✗ 27 errors (100%)
+Duration: 3m 2s (concurrency: 1)
+
+Writing output to results/mcp/redteam.mcp.generated.yaml
+Total scan time: 4m 44s (generation: 1m 43s, evaluation: 3m 1s)
+
+Red team scan complete!
+To view the results, run promptfoo redteam report
+
+There were some errors during the operation. See logs for more details.
+Error log: /Users/pablo/.promptfoo/logs/promptfoo-error-2026-09-28_21-06-24-139Z.log
+Debug log: /Users/pablo/.promptfoo/logs/promptfoo-debug-2026-09-28_21-06-24-139Z.log
+
+[exited with code 0]

@@ -1,0 +1,123 @@
+═══════════════════════════════════════════════════════════════════════════════
+EL CHATO DEALER MODEL: DATA-BACKED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. MENU & OPENING PRICES
+─────────────────────────────────────────────────────────────────────────────
+Sells:                                   Source / Confidence
+  Silver pack:  list 150, opening_ask 188  /api/dealers / MEASURED
+  Uncommon:     list 26, opening ? (gap)   /api/dealers (no open_ask) / INFERRED
+  Rare:         list 77, opening ? (gap)   /api/dealers / INFERRED
+  
+Opening multiplier estimate for pack: 1.25× (188÷150)     /api/dealers / MEASURED
+Multiplier for rarity items: likely 1.15–1.30×             lessons.json (Abuela 1.15) / INFERRED
+
+Buys: uncommon, rare (no commons)         /api/dealers / MEASURED
+Deals per hour: 6 (vs Abuela 8)          /api/dealers / MEASURED
+
+2. NEGOTIATION BEHAVIOR (Thread 257: SAL-07 uncommon, selling)
+─────────────────────────────────────────────────────────────────────────────
+                                          Source / Confidence
+His opening:                    13P        thread 257 (tick 130) / MEASURED
+Our anchor:                     20P        thread 257 / MEASURED
+Gap from his opening:           35%        calc / MEASURED
+Our step:                       20→17P     3P down (15% of gap) / MEASURED
+
+Messages before walk:           2 moves    thread 257 / MEASURED
+(1) Opening: firm, brief      
+(2) Repeat: corrects us, repeats number, no movement
+
+Patience budget formula:        ⌊1 + 6×0.35⌉ = 3 messages   dealer-profile.ts / MEASURED
+Messages until patience spent:  2–3 messages (walked after 2) / INFERRED
+Holds without movement:         None observed (walked instead)  / INFERRED
+
+Concession per message:         0P observed (held at 13P)   thread 257 / MEASURED
+Reaction to our 20P:            "no"
+Reaction to our 17P:            no second chance, walks
+Reaction to holding price:      closes (no_progress walk pattern)  lessons.json (like Abuela) / INFERRED
+
+3. TRAITS & PERSONALITY (Public API)
+─────────────────────────────────────────────────────────────────────────────
+Patience:       0.35      (vs Abuela 0.85; implies ~3 message budget) / MEASURED
+Generosity:     0.25      (low payoff range; no discounts)            / MEASURED
+Shrewdness:     0.85      (drives hard bargains)                      / MEASURED
+Memory:         0.90      (remembers clever tricks; holds grudges)    / MEASURED
+Strictness:     0.85      (rule-following; no flexibility)            / MEASURED
+Chattiness:     0.30      (brief messages, no rapport-building)       / MEASURED
+
+isShortFuse: TRUE           (patience < 0.5 AND strictness ≥ 0.7)     dealer-profile.ts / MEASURED
+Bio: "long memory for people who try to be clever"                    /api/dealers / MEASURED
+
+4. QUOTAS & RATE LIMITS
+─────────────────────────────────────────────────────────────────────────────
+Per-team deals per hour:    6 (uncommon: 6, rare: likely shared)      /api/dealers / MEASURED
+Per-team silver packs:      2 per hour                                /api/dealers / MEASURED
+Errors expected:            persona_quota if >6 deals/hour             /api/dealers / INFERRED
+Cooloff behavior:           Unknown (not yet triggered)                UNKNOWN
+
+5. FLOOR & CEILING ESTIMATES (from thread 257 + inferred)
+─────────────────────────────────────────────────────────────────────────────
+When selling uncommons to us:
+  His minimum ask:            ~13P (observed on SAL-07)               thread 257 / MEASURED
+  Estimate: 26 × 0.5 = 13P    (50% of list)                           / INFERRED
+  Likely floor:               ~12–14P (half list)                     / INFERRED
+
+When buying uncommons from us:
+  His maximum bid:            Unknown (not traded yet)
+  Estimate: ~20–24P (close to list, per shrewdness)                  / INFERRED
+
+Rares: scaling from uncommon, rares likely:
+  Sell 77×0.5 ≈ 38–40P floor  / INFERRED
+  Buy ~65–75P ceiling         / INFERRED
+
+6. RECOMMENDED SETTINGS (vs current dealer-profile.ts short-fuse defaults)
+─────────────────────────────────────────────────────────────────────────────
+Current defaults for isShortFuse:   buyAnchorFrac 0.85, sellAnchorMult 1.5,
+                                     sellFloorAnchorMult 1.15, maxHolds 1
+
+Sell flow (to us):
+  Anchor: 26 × 1.5 = 39P (try starting 35–39P if he opens ~30)       / INFERRED
+  Step:   3P max per message (patience budget is 3 messages total)    / INFERRED
+  Accept: if ≤ 20P for uncommon (above our 2x value baseline)         / INFERRED
+  Close:  if he doesn't move in 2 messages                            / INFERRED
+
+Buy flow (from us):
+  Anchor: 26 × 0.85 = 22P (vs his unknown ceiling, likely ~20–24P)    / INFERRED
+  Step:   2–3P max per message                                        / INFERRED
+  Accept: if ≥ 14P for uncommon (his est. floor)                      / INFERRED
+  Close:  if no movement in 2 messages or patience budget exhausted    / INFERRED
+
+maxHolds: 1 (correct; he walks not yields)                           dealer-profile.ts / MEASURED
+fixedAfterConcessions: 1 (if he doesn't move 1×, treat as fixed)      INFERRED
+patienceBudget: 3 (not 6 like Abuela)                                dealer-profile.ts / MEASURED
+
+7. CONFIDENCE SUMMARY
+─────────────────────────────────────────────────────────────────────────────
+HIGH confidence:
+  - Opening prices for silver pack (measured)
+  - Traits & patience budget formula (public API + code)
+  - His refusal to move in thread 257 (measured)
+  - isShortFuse classification (code logic on public traits)
+  - No holds/final behavior (inferred from thread 257 + lessons.json pattern)
+
+MEDIUM confidence:
+  - List-to-opening ratio for rarity items (assumed 1.15–1.25× per Abuela)
+  - Floor prices (50% of list, inferred from Abuela pattern & shrewdness trait)
+  - Exact patience message budget (formula gives 3; observed 2 messages in 1 thread)
+
+LOW confidence:
+  - His buy prices (never observed; estimated from shrewdness)
+  - Quota cooloff/persona_quota errors (no data yet)
+  - Reaction to small vs big steps (only 1 negotiation observed)
+  - "Clever tricks" trigger specifics (bio hint, not yet tested)
+
+8. DISAGREEMENTS WITH dealer-profile.ts ASSUMPTIONS
+─────────────────────────────────────────────────────────────────────────────
+Current code assumes short-fuse dealers like Chato use these defaults:
+  buyAnchorFrac:              0.85  ← OK (reasonable for his shrewdness)
+  sellAnchorMult:             1.5   ← POSSIBLY TOO HIGH; try 1.25–1.35
+  sellFloorAnchorMult:        1.15  ← OK
+  maxHolds:                   1     ← CONFIRMED by thread 257 (he walks)
+  patienceBudget:             3     ← CONFIRMED (0.35 trait → 3 messages)
+
+Next steps: Test with silver packs (his main sell) and collect buy prices to refine floor/ceiling.

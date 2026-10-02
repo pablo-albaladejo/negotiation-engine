@@ -1,0 +1,136 @@
+» @negotiation-ring/design-system@0.1.0 → /Users/pablo/development/hackathon/negotiation-ring/design-system/ds-bundle (window.NegotiationRing)
+[DETECT] searched /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad (depth 4), found .storybook at [] → shape=package
+  source shape: package (from cfg.shape)
+  [DTS] parsed 20 .d.ts files from /private/tmp/claude-501/-Users-pablo-development-hackathon-causa-prima/4328c728-5ba0-4af5-b8fe-2a085aa33646/scratchpad/ds-nm/@negotiation-ring/design-system/dist
+  package: 22 components (17 src-matched)
+  bundle: 45 KB
+  inlined npm packages: 0
+  (decorator auto-detect skipped — cfg.provider is set)
+  css: ds-nm/@negotiation-ring/design-system/dist/styles.css (20 KB, copied)
+  exported PascalCase symbols: 22; bundle export list: 30
+  components: 22
+  (excluded 0 enum/type/context/hook exports; 22 components)
+  docs: 0/22 components matched
+  (preview override: BackLink)
+  (preview override: Card)
+  (preview override: ChatMessage)
+  (preview override: DataTable)
+  (preview override: Filters)
+  (preview override: Flag)
+  (preview override: Heatmap)
+  (preview override: KpiStrip)
+  (preview override: Legend)
+  (preview override: MatchSelector)
+  (preview override: ModeBadge)
+  (preview override: OfferChart)
+  (preview override: Pill)
+  (preview override: PrimaryButton)
+  (preview override: Root)
+  (preview override: Scatter2D)
+  (preview override: Scoreboard)
+  (preview override: SecondaryButton)
+  (preview override: StatFigure)
+  (preview override: TableLink)
+  (preview override: Tabs)
+  (preview override: WarningBanner)
+  previews: 0 generated → .design-sync/.cache/previews/ (22 user-owned)
+  [DTS] 20/22 components
+  [DTS] 22/22 components
+  styles.css: 1 @import(s) (incl. _ds_bundle.css — component styles ship to designs via this closure)
+  readmeHeader: stitching .design-sync/conventions.md
+  _ds_sync.json: 22 render hash(es) + source key(s) (verification anchor)
+✓ wrote /Users/pablo/development/hackathon/negotiation-ring/design-system/ds-bundle: _ds_bundle.js + styles.css + 22 component previews
+verify: 21 verified-by-upload (skip capture/grade), 1 changed, 0 new, 0 removed [keyed on sourceKeys]
+upload: 1 component(s), 0 delete(s), bundle, styling, docs (+ _ds_sync.json last)
+→ /Users/pablo/development/hackathon/negotiation-ring/design-system/ds-bundle/.sync-diff.json
+  .ds-build-meta.json: 22 components (package)
+  _ds_bundle.js: 51 KB, syntax OK
+  _ds_bundle.js header: window.NegotiationRing, 22 components, 0 inlined externals
+  _ds_sync.json: 22 render hash(es), anchor matches the bundle
+  _ds_sync.json render hashes match disk (22 recomputed)
+  styles.css: 1 @import(s), all resolve
+  _ds_bundle.css: 20 KB
+  tokens: 27 defined, 27 referenced
+  [FONT_REMOTE] "IBM Plex Sans", "Bricolage Grotesque", "IBM Plex Mono" — a remote font-host @import is present; assuming it serves these at runtime
+  components/: 22 previews, 22 .prompt.md
+  all .d.ts parse cleanly
+  window.NegotiationRing: 30 exports (22 fn + 0 compound)
+  render check: 22/22 previews render cleanly (screenshots in _screenshots/)
+  contact sheets: 2 sheet(s) → _screenshots/contact-sheet-1.png … contact-sheet-2.png
+
+✓ bundle is complete
+○ [CAPTURE] Legend: carried forward
+
+package-capture: 1 component(s) — 1 carried forward, 0 captured, 0 with errors
+Grade from the sheets: Read each _screenshots/review/<group>__<Name>.png, then Write verdicts to .design-sync/.cache/review/<Name>.grade.json (keys must equal the cell labels exactly).
+{
+  "version": 2,
+  "ok": true,
+  "shape": "package",
+  "anchor": "ok",
+  "learningsUnmerged": [],
+  "stages": {
+    "build": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "diff": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "validate": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "capture": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    }
+  },
+  "verification": {
+    "unchanged": [
+      "BackLink",
+      "Card",
+      "ChatMessage",
+      "DataTable",
+      "Filters",
+      "Flag",
+      "Heatmap",
+      "KpiStrip",
+      "MatchSelector",
+      "ModeBadge",
+      "OfferChart",
+      "Pill",
+      "PrimaryButton",
+      "Root",
+      "Scatter2D",
+      "Scoreboard",
+      "SecondaryButton",
+      "StatFigure",
+      "TableLink",
+      "Tabs",
+      "WarningBanner"
+    ],
+    "changed": [
+      "Legend"
+    ],
+    "added": [],
+    "removed": [],
+    "pendingGrade": [],
+    "canary": null
+  },
+  "upload": {
+    "any": true,
+    "components": [
+      "Legend"
+    ],
+    "deletePaths": [],
+    "bundle": true,
+    "styling": true,
+    "aux": true
+  }
+}

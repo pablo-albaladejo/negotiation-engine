@@ -1,0 +1,49 @@
+{
+ "tick": 47,
+ "t_hours": 0.7833,
+ "tick_seconds": 60,
+ "paused": false,
+ "next_tick_in": 6.96,
+ "round": 1,
+ "round_name": "Friday · El Rastro",
+ "min_tick_seconds": 5,
+ "max_tick_seconds": 60,
+ "limits": {
+  "accepts_per_team_per_tick": 1,
+  "messages_per_side_per_tick": 1,
+  "max_open_threads_per_team": 6,
+  "max_open_offers_per_team": 30,
+  "offers_per_team_per_tick": 12
+ },
+ "calendar": true,
+ "calendar_on": true,
+ "doors": "open",
+ "today": "fri",
+ "today_name": "Friday",
+ "closes": "2026-10-02T23:00:00+02:00",
+ "next_opens": "2026-10-03T09:00:00+02:00",
+ "next_name": "Saturday",
+ "days": [
+  {
+   "day": "fri",
+   "name": "Friday",
+   "opens": "2026-10-02T19:00:00+02:00",
+   "closes": "2026-10-02T23:00:00+02:00",
+   "tick_seconds": 60
+  },
+  {
+   "day": "sat",
+   "name": "Saturday",
+   "opens": "2026-10-03T09:00:00+02:00",
+   "closes": "2026-10-03T23:00:00+02:00",
+   "tick_seconds": 30
+  },
+  {
+   "day": "sun",
+   "name": "Sunday",
+   "opens": "2026-10-04T09:00:00+02:00",
+   "closes": "2026-10-04T15:00:00+02:00",
+   "tick_seconds": 15
+  }
+ ]
+}

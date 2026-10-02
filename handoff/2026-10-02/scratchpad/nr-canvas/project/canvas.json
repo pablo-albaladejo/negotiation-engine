@@ -1,0 +1,23 @@
+{"v":3,"createdOnFiles":{"v":1,"at":"2026-10-01T08:30:00Z"},"title":"Flujos del visor","launch":{"view":"canvas"},"pages":[],
+"boards":{
+"Main.dc.html":{"x":0,"y":0,"w":1280,"h":1000,"title":"1.1 · Resumen de la tanda","expand":"fill"},
+"F1-2-Perdidas.dc.html":{"x":1360,"y":0,"w":1280,"h":1000,"title":"1.2 · Partidas sin trato","expand":"fill"},
+"F1-3-Repeticion.dc.html":{"x":2720,"y":0,"w":1280,"h":1000,"title":"1.3 · Repetición de la partida","expand":"fill"},
+"F2-1-Comparacion.dc.html":{"x":0,"y":1440,"w":1280,"h":900,"title":"2.1 · Campeón vs candidato","expand":"fill"},
+"F2-2-Mapa.dc.html":{"x":1360,"y":1440,"w":1280,"h":900,"title":"2.2 · Dónde gana y dónde pierde","expand":"fill"},
+"F2-3-Veredicto.dc.html":{"x":2720,"y":1440,"w":1280,"h":900,"title":"2.3 · Veredicto y promoción","expand":"fill"},
+"F3-1-Directo.dc.html":{"x":0,"y":2780,"w":1280,"h":1000,"title":"3.1 · Partida en directo","expand":"fill"},
+"F3-2-Alerta.dc.html":{"x":1360,"y":2780,"w":1280,"h":1000,"title":"3.2 · Alerta: inyección y plantilla","expand":"fill"},
+"F3-3-Final.dc.html":{"x":2720,"y":2780,"w":1280,"h":900,"title":"3.3 · Fin de partida","expand":"fill"}
+},
+"order":["Main.dc.html","F1-2-Perdidas.dc.html","F1-3-Repeticion.dc.html","F2-1-Comparacion.dc.html","F2-2-Mapa.dc.html","F2-3-Veredicto.dc.html","F3-1-Directo.dc.html","F3-2-Alerta.dc.html","F3-3-Final.dc.html"],
+"notes":{
+"t1":{"x":0,"y":-280,"text":"1 · Tras una tanda de arena: ¿dónde perdemos valor?","kind":"title1","maxW":4000},
+"t2":{"x":0,"y":1160,"text":"2 · Promover un candidato: ¿pasa a campeón?","kind":"title1","maxW":4000},
+"t3":{"x":0,"y":2500,"text":"3 · Torneo en directo (domingo): ¿qué está pasando ahora?","kind":"title1","maxW":4000},
+"s1":{"x":4080,"y":0,"w":360,"maxH":520,"fill":"blue","text":"Flujo 1. Tras `pnpm arena` abrimos la tanda, filtramos las partidas sin trato y repetimos una ronda a ronda.\n\nEl caso dibujado es real: con ZOPA estrecha contra Boulware nos retiramos en la última ronda porque el motor asume que el rival no puede responder (tarea 10.10)."},
+"s2":{"x":4080,"y":1440,"w":360,"maxH":520,"fill":"green","text":"Flujo 2. La promoción sigue la puerta de la spec: efecto ≥ +1 pp, 0 violaciones, re-test con semillas nuevas y rivales reservados con diferencia media ≥ 0.\n\nEl visor no promueve: muestra el veredicto y el comando para copiar. La puerta completa (13.x) aún no está implementada."},
+"s3":{"x":4080,"y":2780,"w":360,"maxH":520,"fill":"orange","text":"Flujo 3. En torneo no hay ZOPA ni reserva del rival: solo se pinta lo registrado (nuestras ofertas, las suyas y la estimación del motor).\n\nNuestra reserva sale del fichero de escenario local; la traza del torneo no la guarda."}
+},
+"designSystems":[{"title":"Negotiation Ring","namespace":"negotiationring","artifact":"https://claude.ai/artifact/CtH1eYUEviXuyeThGE1PbL","version":"1790807702-3c44","copiedAt":"2026-10-01T08:30:00Z"}]
+}

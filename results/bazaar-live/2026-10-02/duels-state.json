@@ -1,0 +1,302 @@
+{
+  "schema": "bazaar-duels-state/v1",
+  "updated": "2026-10-02T21:01:54.728Z",
+  "duels": {
+    "35": {
+      "ourOffers": [],
+      "rivalOffers": [
+        {
+          "price": 54
+        }
+      ],
+      "rivalMovedSinceOurLast": true
+    },
+    "36": {
+      "ourOffers": [
+        {
+          "price": 68
+        }
+      ],
+      "rivalOffers": [],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 149,
+      "lastActionTick": 149
+    },
+    "45": {
+      "ourOffers": [
+        {
+          "price": 213
+        }
+      ],
+      "rivalOffers": [],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 149,
+      "lastActionTick": 149
+    },
+    "46": {
+      "ourOffers": [
+        {
+          "price": 64
+        }
+      ],
+      "rivalOffers": [],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 149,
+      "lastActionTick": 149
+    },
+    "47": {
+      "ourOffers": [
+        {
+          "price": 102
+        },
+        {
+          "price": 102
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 77,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 141,
+      "lastActionTick": 141
+    },
+    "48": {
+      "ourOffers": [
+        {
+          "price": 64
+        },
+        {
+          "price": 75
+        },
+        {
+          "price": 80
+        },
+        {
+          "price": 84
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 99,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 152,
+      "lastActionTick": 152
+    },
+    "89": {
+      "ourOffers": [
+        {
+          "price": 167
+        },
+        {
+          "price": 167
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 149,
+          "days": 0
+        },
+        {
+          "price": 160,
+          "days": 0
+        },
+        {
+          "price": 167,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 140,
+      "lastActionTick": 141
+    },
+    "90": {
+      "ourOffers": [
+        {
+          "price": 112
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 120,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 142,
+      "lastActionTick": 143
+    },
+    "131": {
+      "ourOffers": [],
+      "rivalOffers": [
+        {
+          "price": 80
+        }
+      ],
+      "rivalMovedSinceOurLast": true
+    },
+    "132": {
+      "ourOffers": [],
+      "rivalOffers": [
+        {
+          "price": 64
+        }
+      ],
+      "rivalMovedSinceOurLast": true
+    },
+    "177": {
+      "ourOffers": [
+        {
+          "price": 99
+        }
+      ],
+      "rivalOffers": [],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 156,
+      "lastActionTick": 156
+    },
+    "178": {
+      "ourOffers": [
+        {
+          "price": 52
+        }
+      ],
+      "rivalOffers": [],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 156,
+      "lastActionTick": 156
+    },
+    "199": {
+      "ourOffers": [
+        {
+          "price": 116
+        },
+        {
+          "price": 103
+        },
+        {
+          "price": 97
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 90,
+          "days": 0
+        },
+        {
+          "price": 96,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 156,
+      "lastActionTick": 156
+    },
+    "200": {
+      "ourOffers": [
+        {
+          "price": 87
+        },
+        {
+          "price": 102
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 104,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 157,
+      "lastActionTick": 157
+    },
+    "244": {
+      "ourOffers": [
+        {
+          "price": 145
+        },
+        {
+          "price": 145
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 213,
+          "days": 0
+        },
+        {
+          "price": 203,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 140,
+      "lastActionTick": 140
+    },
+    "299": {
+      "ourOffers": [
+        {
+          "price": 201
+        },
+        {
+          "price": 178
+        },
+        {
+          "price": 168
+        },
+        {
+          "price": 161
+        },
+        {
+          "price": 155
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 105,
+          "days": 0
+        },
+        {
+          "price": 119,
+          "days": 5
+        },
+        {
+          "price": 133,
+          "days": 5
+        },
+        {
+          "price": 147,
+          "days": 5
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 156,
+      "lastActionTick": 156
+    },
+    "300": {
+      "ourOffers": [
+        {
+          "price": 77
+        },
+        {
+          "price": 90
+        }
+      ],
+      "rivalOffers": [
+        {
+          "price": 119,
+          "days": 0
+        }
+      ],
+      "rivalMovedSinceOurLast": false,
+      "lastOurTick": 158,
+      "lastActionTick": 158
+    }
+  }
+}

@@ -1,0 +1,47 @@
+
+> negotiation-ring@0.1.0 typecheck /Users/pablo/development/hackathon/negotiation-ring.worktrees/finish
+> tsc --noEmit
+
+=== TEST
+
+> negotiation-ring@0.1.0 test /Users/pablo/development/hackathon/negotiation-ring.worktrees/finish
+> vitest run
+
+
+ RUN  v5.0.2 /Users/pablo/development/hackathon/negotiation-ring.worktrees/finish
+
+
+ Test Files  52 passed (52)
+      Tests  611 passed (611)
+   Start at  11:23:55
+   Duration  6.96s (tests 84%, import 13%, transform 2%)
+
+    Isolate  52 workers spawned · ~1.16s startup each (spawn + environment, per file)
+             at least ~3.49s faster with isolate: false — reuses workers across files instead of one per file
+
+=== ARENA
+price-seller-hidden-long     hypothetical    seller  21     100.0        32.2     0     9.0      0          0    0.39       0/0          0
+price-seller-hidden-long     extreme-anchor  seller  21     100.0         0.0     0    14.0      0          0    0.40       0/0          0
+price-seller-hidden-long     causa-prima     seller  21     100.0        34.6     0    10.0      0          0    0.38       0/0          0
+text-buyer-wide              boulware        buyer   21     100.0        35.4     0    10.0      0          0    0.41       0/0          0
+text-buyer-wide              conceder        buyer   21     100.0        88.5     0     9.0      0          0    0.40       0/0          0
+text-buyer-wide              tit-for-tat     buyer   21     100.0        34.3     0    10.0      0          0    0.40       0/0          0
+text-buyer-wide              text-only       buyer   21     100.0        67.6     0     9.0      0          0    0.40      0/50          0
+text-buyer-wide              inject-voss     buyer   21     100.0        64.3     0     9.0      0          0    0.40     0/105          0
+text-buyer-wide              liar            buyer   21       0.0         0.0     0       —      0          0    0.40     0/189          0
+text-buyer-wide              hypothetical    buyer   21     100.0        68.2     0     9.0      0          0    0.37     0/126          0
+text-buyer-wide              extreme-anchor  buyer   21       0.0         0.0     0       —      0          0    0.40       0/0          0
+text-buyer-wide              causa-prima     buyer   21       0.0         0.0     0       —      0          0    0.41     0/105          0
+text-seller-wide             boulware        seller  21     100.0        35.4     0    10.0      0          0    0.43       0/0          0
+text-seller-wide             conceder        seller  21     100.0        88.5     0     9.0      0          0    0.42       0/0          0
+text-seller-wide             tit-for-tat     seller  21     100.0        34.6     0    10.0      0          0    0.40       0/0          0
+text-seller-wide             text-only       seller  21     100.0        67.6     0     9.0      0          0    0.42      0/50          0
+text-seller-wide             inject-voss     seller  21     100.0        64.3     0     9.0      0          0    0.39     0/105          0
+text-seller-wide             liar            seller  21       0.0         0.0     0       —      0          0    0.41     0/189          0
+text-seller-wide             hypothetical    seller  21     100.0        68.2     0     9.0      0          0    0.43     0/126          0
+text-seller-wide             extreme-anchor  seller  21       0.0         0.0     0       —      0          0    0.41       0/0          0
+text-seller-wide             causa-prima     seller  21       0.0         0.0     0       —      0          0    0.40     0/105          0
+
+2646 partidas en 11.8 s · acuerdo 61.1 % · excedente medio 26.8 % · violaciones 0 · ZOPA vacía correcta 100 % · errores del rival 0
+fugas 0 · plantilla 0 · latencia media 0.42 ms (máx 8.2 ms) · mal extraídas 0 · sin extraer 1150 · acuerdos distintos de los reales 0
+resultados: results/arena-2026-10-01T092403397

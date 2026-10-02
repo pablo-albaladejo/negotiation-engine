@@ -1,0 +1,15 @@
+== VENUE PLAN (dry-run, no POST) ==
+would POST /api/venues {"name":"Team 2 · El Rastro Express","fee_bps":0,"fee_per_card":0,"rules":{"mechanism":"auto"},"description":"Zero fees, every card welcome. Best bid and ask cross every tick."}
+cost: 270 P (250 refundable bond + 20 fee)
+checks:
+  [FAIL] level: level 1 (needs ≥ 2)
+  [ok] cash: cash 413 P (needs ≥ 270 = 250 bond + 20 fee)
+  [ok] name: "Team 2 · El Rastro Express" is 26 chars (max 40)
+  [ok] no venue yet: we run no venue
+  [info] trading start: t = 1.05 h; team venues trade from +3 h (opening earlier only parks the bond)
+why:
+  - fee_bps 0 and fee_per_card 0: fees never count in the score, and low fees attract the flow that does (value created between other teams on our venue)
+  - mechanism auto: the engine crosses our best bid and ask every tick, so the Market Test is matched without a broker (half the bench points, same as the free stall); a board venue only matches what a broker matches, and we do not run one yet
+  - opening replaces the free starter stall; a refused opening costs nothing; the bond comes back after closing (after a cooldown)
+verdict: NOT eligible yet; it would refuse to open (needs level ≥ 2 and cash ≥ 270)
+DRY-RUN: nothing sent.

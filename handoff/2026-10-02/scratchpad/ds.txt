@@ -1,0 +1,25 @@
+
+> negotiation-ring@0.1.0 ds:test /Users/pablo/development/hackathon/negotiation-ring
+> pnpm --dir design-system test
+
+
+> @negotiation-ring/design-system@0.1.0 test /Users/pablo/development/hackathon/negotiation-ring/design-system
+> vitest run
+
+
+ RUN  v2.1.9 /Users/pablo/development/hackathon/negotiation-ring/design-system
+
+ ✓ test/render.test.tsx (22 tests) 7ms
+ ✓ test/chat-legend-scoreboard.test.tsx (9 tests) 4ms
+ ✓ test/scatter2d.test.tsx (5 tests) 4ms
+ ✓ test/offer-chart.test.ts (5 tests) 1ms
+ ✓ test/format.test.ts (3 tests) 1ms
+ ✓ test/no-dangerous-html.test.ts (1 test) 2ms
+ ✓ test/responsive.test.ts (2 tests) 1ms
+ ✓ test/heatmap.test.ts (7 tests) 4ms
+
+ Test Files  8 passed (8)
+      Tests  54 passed (54)
+   Start at  04:39:59
+   Duration  2.45s (transform 64ms, setup 0ms, collect 141ms, tests 25ms, environment 1ms, prepare 201ms)
+

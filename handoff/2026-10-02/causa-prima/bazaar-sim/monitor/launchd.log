@@ -1,0 +1,15 @@
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 26: declare: -A: invalid option
+declare: usage: declare [-afFirtx] [-p] [name[=value] ...]
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 28: clock: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 26: declare: -A: invalid option
+declare: usage: declare [-afFirtx] [-p] [name[=value] ...]
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 28: clock: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: clock: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: leaderboard: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: dealers: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: schedule: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: levels: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: feed: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 87: rastro_offers: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 139: leaderboard: unbound variable
+/Users/pablo/development/hackathon/causa-prima/bazaar-sim/monitor/sniff.sh: line 145: leaderboard: unbound variable

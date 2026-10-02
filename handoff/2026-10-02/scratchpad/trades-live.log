@@ -1,0 +1,627 @@
+
+> negotiation-ring@0.1.0 bazaar:trades /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/trades-main.ts --confirm --min-margin 3 --max-spend 40 --max-offers 8
+
+trades: LIVE · max-offers 8 · max-spend 40 P · max-bids 6 · min-margin 3 P · expires 40 ticks
+Trades plan · tick 155 · 52 offers read, 41 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=2 median 7.5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2670 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2518 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 4 · bid cash committed: 40 P
+  note: 16 bids skipped by --max-spend budget: SAL-09@8 LAV-09@8 LAV-10@21 LAT-06@12 LAT-07@12 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-03@2 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56
+Trades plan · tick 156 · 51 offers read, 38 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 8
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2551 [board] buy  MAL-02 for 5 P               value   -4.8 (cards +2.3, cash -5.0, fee -2) need ≥3.0 → below-margin
+  #2460 [board] buy  LAV-03 for 8 P               value   -5.0 (cards +5.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 4 · bid cash committed: 40 P
+  note: 16 bids skipped by --max-spend budget: SAL-09@8 LAV-09@8 LAV-10@21 LAT-06@12 LAT-07@12 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-03@2 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56
+Trades plan · tick 157 · 51 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 8
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2551 [board] buy  MAL-02 for 5 P               value   -4.8 (cards +2.3, cash -5.0, fee -2) need ≥3.0 → below-margin
+  #2460 [board] buy  LAV-03 for 8 P               value   -5.0 (cards +5.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 4 · bid cash committed: 40 P
+  note: 16 bids skipped by --max-spend budget: SAL-09@8 LAV-09@8 LAV-10@21 LAT-06@12 LAT-07@12 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-03@2 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56
+Trades plan · tick 158 · 52 offers read, 39 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 8
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2460 [board] buy  LAV-03 for 8 P               value   -5.0 (cards +5.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: 
+  SELL SAL-07 (asset 438) at 32 P · floor 14 · ref 30 (asks uncommon n=7) · value +20.9 · new
+  SELL LAT-04 (asset 393) at 9 P · floor 7 · ref 8 (settled common n=1) · value +5.2 · new
+Bids to post: 
+  BUY  SAL-09 at 8 P · cap 164 · ref 7 (best bid n=1) · value +167.1 · new
+  BUY  LAV-09 at 8 P · cap 29 · ref 7 (best bid n=1) · value +25.0 · new
+  BUY  LAT-06 at 12 P · cap 12 · ref 30 (asks uncommon n=7) · value +3.5 · new
+  BUY  LAT-03 at 2 P · cap 2 · ref 8 (settled common n=1) · value +3.0 · new
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+sent: post list SAL-07 @32
+sent: post list LAT-04 @9
+sent: post bid SAL-09 @8
+sent: post bid LAV-09 @8
+sent: post bid LAT-06 @12
+sent: post bid LAT-03 @2
+Trades plan · tick 159 · 53 offers read, 36 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2460 [board] buy  LAV-03 for 8 P               value   -5.0 (cards +5.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+Trades plan · tick 159 · 55 offers read, 40 actionable, valued at our private values (fees included)
+Settled team trades (feed): common n=1 median 5
+Top opportunities (value created if WE accept):
+  #2633 [board] buy  MAL-04 for 7 P               value   +0.0 (cards +9.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+  #2462 [board] buy  MAL-04 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2465 [board] buy  MAL-05 for 8 P               value   -1.0 (cards +9.0, cash -8.0, fee -2) need ≥3.0 → below-margin
+  #2629 [board] buy  MAL-01 for 9 P               value   -2.0 (cards +9.0, cash -9.0, fee -2) need ≥3.0 → below-margin
+  #2612 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2632 [board] buy  MAL-02 for 3 P               value   -2.8 (cards +2.3, cash -3.0, fee -2) need ≥3.0 → below-margin
+  #2655 [board] buy  MAL-01 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2656 [board] buy  MAL-05 for 10 P              value   -3.0 (cards +9.0, cash -10.0, fee -2) need ≥3.0 → below-margin
+  #2735 [board] buy  LAV-03 for 6 P               value   -3.0 (cards +5.0, cash -6.0, fee -2) need ≥3.0 → below-margin
+  #2711 [board] buy  LAV-03 for 7 P               value   -4.0 (cards +5.0, cash -7.0, fee -2) need ≥3.0 → below-margin
+Accept: none
+Cancels: none
+Listings to post: none
+Bids to post: none
+Open offers after: 6 · bid cash committed: 38 P
+  note: 14 bids skipped by --max-spend budget: LAV-10@21 LAT-07@12 LAV-06@7 LAV-08@7 MAL-06@17 MAL-07@17 MAL-08@17 LAT-09@42 LAT-10@42 MAL-01@4 MAL-04@4 MAL-05@4 MAL-09@56 MAL-10@56
+network: GET /api/clock: TypeError
+ ELIFECYCLE  Command failed with exit code 1.

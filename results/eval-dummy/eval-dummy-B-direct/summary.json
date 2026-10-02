@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "runId": "eval-dummy-B-direct",
+  "createdAt": "2026-10-01T21:34:56.057Z",
+  "llmProvider": "none",
+  "network": true,
+  "agent": "agent-http",
+  "config": {
+    "path": "config/champion.json",
+    "version": 1,
+    "provenance": {
+      "source": "manual",
+      "parent": 0,
+      "notes": "v1: esquema multi-issue, solo precio (pct)"
+    },
+    "params": {
+      "beta": 0.2,
+      "openingMargin": 0.9,
+      "acceptMargin": 0.02,
+      "acTimeThreshold": 0.9,
+      "noise": 0.1,
+      "defaultHorizon": 10,
+      "persona": "calido-firme"
+    }
+  },
+  "seeds": {
+    "start": 1,
+    "count": 5
+  },
+  "scenarios": [
+    "price-buyer-wide"
+  ],
+  "rivals": [
+    {
+      "name": "dummy-accept-first",
+      "pool": "heldOut"
+    }
+  ],
+  "durationMs": 44,
+  "overall": {
+    "games": 5,
+    "rivalErrors": 0,
+    "agreementRate": 1,
+    "meanSurplus": 1,
+    "violations": 0,
+    "emptyZopaCorrect": null,
+    "meanRoundsToAgreement": 1,
+    "leaks": 0,
+    "templateFallbacks": 0,
+    "latencyMeanMs": 6.574133399999994,
+    "latencyMaxMs": 22.53887499999999,
+    "misExtracted": 0,
+    "unextracted": 0,
+    "wrongAgreements": 0
+  },
+  "byRole": {
+    "buyer": {
+      "games": 5,
+      "rivalErrors": 0,
+      "agreementRate": 1,
+      "meanSurplus": 1,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": 1,
+      "leaks": 0,
+      "templateFallbacks": 0,
+      "latencyMeanMs": 6.574133399999994,
+      "latencyMaxMs": 22.53887499999999,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    },
+    "seller": {
+      "games": 0,
+      "rivalErrors": 0,
+      "agreementRate": 0,
+      "meanSurplus": null,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": null,
+      "leaks": 0,
+      "templateFallbacks": 0,
+      "latencyMeanMs": null,
+      "latencyMaxMs": 0,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    }
+  },
+  "clusters": [
+    {
+      "scenarioId": "price-buyer-wide",
+      "rival": "dummy-accept-first",
+      "role": "buyer",
+      "games": 5,
+      "rivalErrors": 0,
+      "agreementRate": 1,
+      "meanSurplus": 1,
+      "violations": 0,
+      "emptyZopaCorrect": null,
+      "meanRoundsToAgreement": 1,
+      "leaks": 0,
+      "templateFallbacks": 0,
+      "latencyMeanMs": 6.574133399999994,
+      "latencyMaxMs": 22.53887499999999,
+      "misExtracted": 0,
+      "unextracted": 0,
+      "wrongAgreements": 0
+    }
+  ]
+}

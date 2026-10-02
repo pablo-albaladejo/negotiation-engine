@@ -1,0 +1,38 @@
+
+> negotiation-ring@0.1.0 bazaar /Users/pablo/development/hackathon/negotiation-ring
+> tsx src/bazaar/main.ts --only buy:uncommon:SAL,buy:common:SAL --safety 1.0 --max-deals 2 --max-spend 40 --max-threads 2
+
+bazaar agent · dealer abuela · LIVE · max-spend 40 P (run and per hour) · max-deals 2 · max-threads 2 · safety 1 · only buy:uncommon:SAL,buy:common:SAL · trazas en /Users/pablo/development/hackathon/negotiation-ring/results/bazaar-live/2026-10-02
+[tick 96] · open · thread 178 · buy:SAL:uncommon
+score 4.35 (neg 0 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 97] · counter · thread 178 · buy:SAL:uncommon · her 29 · ours 22 · rule anchor
+score 4.35 (neg 0 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 98] · counter · thread 178 · buy:SAL:uncommon · her 25 · ours 23 · rule adaptive
+score 4.35 (neg 0 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 99] · outcome · thread 178 · buy:SAL:uncommon · status deal
+  patience: 2 msgs / 3 ticks until close · her replies 2 · steps: anchor 22 (her +4), step 1 → 23 (her 25, no reply yet)
+[tick 99] · open · thread 184 · buy:SAL:common
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 100] · counter · thread 184 · buy:SAL:common · her 12 · ours 8 · rule anchor
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 101] · counter · thread 184 · buy:SAL:common · her 11 · ours 9 · rule adaptive
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 102] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 103] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 104] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 105] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 16 ↓1
+[tick 106] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 16
+[tick 107] · hold · thread 184 · buy:SAL:common · her 10 · ours 9 · rule hold
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 16
+[tick 108] · outcome · thread 184 · buy:SAL:common · status walked · reason no_progress
+  patience: 8 msgs / 9 ticks until close · her replies 8 · steps: anchor 8 (her +1), step 1 → 9 (her +1), hold 9 (her +0), hold 9 (her +0), hold 9 (her +0), hold 9 (her +0), hold 9 (her +0), hold 9 (her 10, no reply yet)
+[tick 108] · idle · rule max-threads
+score 4.35 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 16
+topes alcanzados: 1 trato(s), 2 conversación(es), 0 P gastados; fin de la ejecución
+
+[exited with code 0]

@@ -1,0 +1,9 @@
+[tick 117] · accept · thread 222 · buy:SAL-06 · her 25 · ours 25 · rule ac-next
+  patience: 2 msgs / 3 ticks until close · her replies 2 · steps: anchor 22 (her +3), step 2 → 24 (her +1)
+score 4.3 (neg -14.9 · mm 0 · duel 0 · ladder 0.022) rank 15
+[tick 118] · outcome · thread 222 · buy:SAL-06 · status deal
+  patience: 2 msgs / 4 ticks until close · her replies 2 · steps: anchor 22 (her +3), step 2 → 24 (her +1)
+  copies SAL-06×0 → SAL-06×1 · deals with abuela last hour 1 · ticks 114→118 (2026-10-02T20:18:46.974Z) · patience 2 msgs / 4 ticks until close
+score 4.3 (neg -14.9 · mm 0 · duel 0 · ladder 0.035) rank 15
+
+[killed]
