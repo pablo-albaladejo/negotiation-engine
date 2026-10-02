@@ -1,9 +1,9 @@
 export type Route =
   | { screen: "runs" }
   | { screen: "matches"; runId: string; query: string }
-  | { screen: "arena-replay"; runId: string; gameId: string }
+  | { screen: "arena-replay"; runId: string; gameId: string; query: string }
   | { screen: "tournament-replay"; runId: string; session: string }
-  | { screen: "promote"; runId: string }
+  | { screen: "compare"; runId: string }
   | { screen: "states" }
   | { screen: "live" };
 
@@ -20,9 +20,9 @@ export function parseRoute(hash: string): Route {
   const [head, a, mid, b] = parts;
   if (head === "states") return { screen: "states" };
   if (head === "live") return { screen: "live" };
-  if (head === "promote" && a !== undefined) return { screen: "promote", runId: a };
+  if ((head === "compare" || head === "promote") && a !== undefined) return { screen: "compare", runId: a };
   if (head === "tournament" && a !== undefined && mid !== undefined) return { screen: "tournament-replay", runId: a, session: mid };
-  if (head === "runs" && a !== undefined && mid === "games" && b !== undefined) return { screen: "arena-replay", runId: a, gameId: b };
+  if (head === "runs" && a !== undefined && mid === "games" && b !== undefined) return { screen: "arena-replay", runId: a, gameId: b, query };
   if (head === "runs" && a !== undefined) return { screen: "matches", runId: a, query };
   return { screen: "runs" };
 }
@@ -30,8 +30,11 @@ export function parseRoute(hash: string): Route {
 export const routeTo = {
   runs: (): string => "#/runs",
   matches: (runId: string, query?: string): string => `#/runs/${encodeURIComponent(runId)}${query ? `?${query}` : ""}`,
-  arenaReplay: (runId: string, gameId: string): string => `#/runs/${encodeURIComponent(runId)}/games/${encodeURIComponent(gameId)}`,
+  arenaReplay: (runId: string, gameId: string, query?: string): string =>
+    `#/runs/${encodeURIComponent(runId)}/games/${encodeURIComponent(gameId)}${query ? `?${query}` : ""}`,
   tournamentReplay: (runId: string, session: string): string => `#/tournament/${encodeURIComponent(runId)}/${encodeURIComponent(session)}`,
+  /** Primary route (INBOX B1); `routeTo.promote` is kept only so old links/bookmarks still resolve. */
+  compare: (runId: string): string => `#/compare/${encodeURIComponent(runId)}`,
   promote: (runId: string): string => `#/promote/${encodeURIComponent(runId)}`,
   states: (): string => "#/states",
   live: (): string => "#/live",

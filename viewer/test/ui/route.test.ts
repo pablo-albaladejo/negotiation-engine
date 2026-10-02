@@ -15,6 +15,23 @@ describe("hash route query string (INBOX §2: filters persisted on reload/back)"
 
   it("other routes are unaffected by the query split", () => {
     expect(parseRoute(routeTo.runs())).toEqual({ screen: "runs" });
-    expect(parseRoute(routeTo.arenaReplay("r-1", "g-1"))).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-1" });
+    expect(parseRoute(routeTo.arenaReplay("r-1", "g-1"))).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-1", query: "" });
+  });
+
+  it("routeTo.arenaReplay carries an optional query through to parseRoute (INBOX A2)", () => {
+    const hash = routeTo.arenaReplay("r-1", "g-1", "role=buyer");
+    expect(hash).toBe("#/runs/r-1/games/g-1?role=buyer");
+    expect(parseRoute(hash)).toEqual({ screen: "arena-replay", runId: "r-1", gameId: "g-1", query: "role=buyer" });
+  });
+});
+
+describe("#/compare/:runId (INBOX B1: primary route, #/promote/:runId kept as alias)", () => {
+  it("routeTo.compare is the primary generator", () => {
+    expect(routeTo.compare("r-1")).toBe("#/compare/r-1");
+    expect(parseRoute(routeTo.compare("r-1"))).toEqual({ screen: "compare", runId: "r-1" });
+  });
+
+  it("#/promote/:runId still resolves to the same screen", () => {
+    expect(parseRoute(routeTo.promote("r-1"))).toEqual({ screen: "compare", runId: "r-1" });
   });
 });

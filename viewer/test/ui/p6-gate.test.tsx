@@ -49,6 +49,7 @@ describe("GateScreen (P6)", () => {
     render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
     fireEvent.click(screen.getByRole("tab", { name: "Held-out opponents" }));
     expect(screen.getByText(/Metrics · Held-out opponents/)).toBeTruthy();
-    expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "promote", runId: "promote-1" });
+    expect(parseRoute(routeTo.compare("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
+    expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
   });
 });

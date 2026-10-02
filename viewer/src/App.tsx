@@ -1,5 +1,5 @@
 import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
@@ -66,7 +66,7 @@ function RunsContainer() {
   if (!state) return <LoadingCard label="Reading results/" />;
   const open = (runId: string) => {
     const kind = state.entries.find((e) => e.runId === runId)?.kind;
-    navigate(kind === "promotion" ? routeTo.promote(runId) : routeTo.matches(runId));
+    navigate(kind === "promotion" ? routeTo.compare(runId) : routeTo.matches(runId));
   };
   return <RunsScreen rows={runsModel(state.entries)} errors={state.errors} onOpenRun={open} onOpenLive={() => navigate(routeTo.live())} championVersion={championVersion} />;
 }
@@ -75,6 +75,9 @@ function MatchesContainer({ runId, query }: { runId: string; query: string }) {
   const [state, setState] = useState<{ summary: Summary | null; games: TranscriptLine[] } | null>(null);
   const championVersion = useChampionVersion();
   const [initialFilters] = useState<MatchFilters>(() => queryToFilters(query));
+  /** Tracks the query currently reflected in the URL (kept in sync by onFiltersChange), so opening a
+   * game can carry it along and "← Matches" returns with the same filters applied (INBOX A2). */
+  const currentQuery = useRef(query);
   useEffect(() => {
     let cancelled = false;
     setState(null);
@@ -93,16 +96,19 @@ function MatchesContainer({ runId, query }: { runId: string; query: string }) {
       runId={runId}
       summary={state.summary}
       games={state.games}
-      onOpenGame={(gameId) => navigate(routeTo.arenaReplay(runId, gameId))}
+      onOpenGame={(gameId) => navigate(routeTo.arenaReplay(runId, gameId, currentQuery.current))}
       onBack={() => navigate(routeTo.runs())}
       initialFilters={initialFilters}
-      onFiltersChange={(filters) => window.history.replaceState(null, "", routeTo.matches(runId, filtersToQuery(filters)))}
+      onFiltersChange={(filters) => {
+        currentQuery.current = filtersToQuery(filters);
+        window.history.replaceState(null, "", routeTo.matches(runId, currentQuery.current));
+      }}
       isChampion={isChampion}
     />
   );
 }
 
-function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string }) {
+function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId: string; query: string }) {
   const [state, setState] = useState<{ line: TranscriptLine | null; trace: TraceLine[] | null; games: TranscriptLine[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -122,13 +128,13 @@ function ArenaReplayContainer({ runId, gameId }: { runId: string; gameId: string
   }, [runId, gameId]);
   if (!state) return <LoadingCard label={`Reading ${gameId}`} />;
   if (!state.line) return <LoadingCard label={`${gameId} is not available`} />;
-  const onBack = () => navigate(routeTo.matches(runId));
+  const onBack = () => navigate(routeTo.matches(runId, query));
   const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId));
   if (isTwoIssue(state.line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
   return <ArenaReplayScreen runId={runId} model={arenaReplayModel(state.line, state.trace)} onBack={onBack} games={state.games} onSelectGame={onSelectGame} />;
 }
 
-function GateContainer({ runId }: { runId: string }) {
+function CompareContainer({ runId }: { runId: string }) {
   const [state, setState] = useState<{ gate: GateFile | null; errors: ApiError[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -144,6 +150,7 @@ function GateContainer({ runId }: { runId: string }) {
   if (!state.gate) return <LoadingCard label={`results/${runId}/gate.json is not available${state.errors[0] ? `: ${state.errors[0].message}` : ""}`} />;
   return <GateScreen model={gateModel(runId, state.gate)} onBack={() => navigate(routeTo.runs())} />;
 }
+
 
 function TournamentReplayContainer({ runId, session }: { runId: string; session: string }) {
   const [state, setState] = useState<{ trace: TraceLine[]; ref: ScenarioRef | null } | null>(null);
@@ -197,9 +204,9 @@ export function App() {
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
           {route.screen === "matches" ? <MatchesContainer runId={route.runId} query={route.query} /> : null}
-          {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
+          {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
-          {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
+          {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
           {route.screen === "states" ? <StatesScreen /> : null}
         </main>
       </div>
