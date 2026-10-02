@@ -10,6 +10,7 @@ import { gameHours } from "./dealer-profile.js";
 import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
+import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./offer-structure.js";
 
 /**
  * Bucle observar → decidir → actuar contra un dealer, un hilo a la vez. Toda cifra sale de
@@ -389,7 +390,13 @@ export class BazaarAgent {
       ...(target.value !== undefined ? { privateValue: target.value } : {}),
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
     };
-    const d: Decision = decide(view, this.negotiatorParams);
+    let d: Decision = decide(view, this.negotiatorParams);
+    // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.
+    const mismatch = await this.structureProblem(thread, target, d, reservation);
+    if (mismatch) {
+      this.log(`  thread ${thread.id}: structure-mismatch (${mismatch}): closing politely, never accepting`);
+      d = { action: { kind: "close" }, rule: "structure-mismatch", effectiveReservation: d.effectiveReservation };
+    }
     active.lastRule = d.rule;
     const base = {
       thread: thread.id,
@@ -450,6 +457,34 @@ export class BazaarAgent {
     } catch (e) {
       this.onError(e, tick, ticksPerHour, target, emit, thread.id);
     }
+  }
+
+  /**
+   * Problema de forma: alguna oferta suya contradice el hilo (nos vende algo en una venta, pide otros activos...) o
+   * la que aceptaríamos no es exactamente «efectivo > 0 por nuestros activos» (venta) o «la carta pedida por efectivo
+   * ≤ límite» (compra). Devuelve el motivo para la traza, o `undefined` si todo cuadra.
+   */
+  private async structureProblem(thread: Thread, target: Target, d: Decision, reservation: number): Promise<string | undefined> {
+    const exp = expectationOf(target.topic, target.side, await this.cardMatcher(target));
+    if (!exp) return d.action.kind === "accept" ? "unknown-topic" : undefined;
+    const bad = firstMismatch(thread, this.o.dealer, exp);
+    if (bad) return `${bad.reason} in offer ${bad.offer.id}`;
+    if (d.action.kind !== "accept") return undefined;
+    const offerId = d.action.offerId;
+    const offer = dealerOffers(thread, this.o.dealer).find((o) => o.id === offerId);
+    if (!offer) return `offer ${offerId} not found`;
+    const c = checkStructure(offer, exp, { accept: true, ...(target.side === "buy" ? { maxCash: reservation } : {}) });
+    return c.ok ? undefined : `${c.reason} in offer ${offer.id}`;
+  }
+
+  /** Rareza+set: la carta que nos dé debe ser de esa rareza y set (según el catálogo). */
+  private async cardMatcher(target: Target): Promise<((ref: string) => boolean) | undefined> {
+    const rs = (target.topic as { buy?: { card?: string; rarity?: string; set?: string } }).buy;
+    if (!rs?.rarity || rs.card) return undefined;
+    this.catalog ??= await this.api.catalog();
+    const sets = rs.set ? this.catalog.sets.filter((x) => x.id === rs.set) : this.catalog.sets;
+    const ok = new Set(sets.flatMap((x) => x.cards.filter((c) => rarityOf(c) === rs.rarity).map((c) => c.id)));
+    return (ref) => ok.has(ref);
   }
 
   private finish(thread: Thread, tick: number, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void, me?: Me) {
