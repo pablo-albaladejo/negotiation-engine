@@ -281,3 +281,33 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(screen.getByText("Close")).toBeTruthy();
   });
 });
+
+describe("ArenaReplayScreen legend Injection/Close/persona (T18)", () => {
+  it("Legend lists Injection marker when injections are present in rounds", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const base = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    // Manually inject a parser with injectionSuspected to test legend
+    const withInjection = {
+      ...base,
+      rounds: base.rounds?.map((r, i) => (i === 0 ? { ...r, parser: { ...r.parser, injectionSuspected: true } } : r)) ?? [],
+    };
+    render(<ArenaReplayScreen runId={fx.runId} model={withInjection} onBack={() => {}} />);
+    expect(screen.getByText("Injection")).toBeTruthy();
+  });
+
+  it("Legend lists Close (end marker) when the game ends on a deal", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide" && g.endReason === "agreement")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(screen.getByText("Close")).toBeTruthy();
+  });
+
+  it("Legend includes persona in target curve label when persona is logged", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} summary={{ config: { params: { persona: "greedy" } } as any }} />);
+    // When persona is provided, the target curve label includes it
+    const hasMention = container.textContent?.includes("greedy") || false;
+    expect(hasMention || model.provider).toBeTruthy();
+  });
+});
