@@ -5,7 +5,6 @@ import {
   type DataTableRow,
   KpiStrip,
   Legend,
-  ModeBadge,
   OfferChart,
   Scatter2D,
   type Scatter2DRegion,
@@ -13,8 +12,8 @@ import {
 } from "@negotiation-ring/design-system";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
-import { MatchSelector } from "../ui/match-selector.js";
 import { resultLabel } from "../ui/labels.js";
+import { ReplayHeader } from "../ui/replay-header.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "r", label: "Round" },
@@ -79,25 +78,14 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-            ← Matches
-          </button>
-          <ModeBadge mode="arena" />
-          <h2 className="nr-heading">
-            {model.game.gameId} · vs {model.game.rival}
-          </h2>
-        </div>
-        {games && onSelectGame ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <button className="nr-btn nr-btn-back" type="button" onClick={onBack} style={{ alignSelf: "flex-start" }}>
-              ←
-            </button>
-            <span className="nr-muted">{model.game.gameId}</span>
-            <ModeBadge mode="arena" />
-            <MatchSelector games={games} currentGameId={model.game.gameId} onSelectGame={onSelectGame} />
-          </div>
-        ) : null}
+        <ReplayHeader
+          onBack={onBack}
+          backLabel="← Matches"
+          gameId={model.game.gameId}
+          rival={model.game.rival}
+          {...(games ? { games } : {})}
+          {...(onSelectGame ? { onSelectGame } : {})}
+        />
         <span className="nr-muted">
           {model.game.role} · {y.name} and {x.name}
           {model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}

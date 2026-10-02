@@ -120,6 +120,16 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(mockSelectGame.mock.calls[0]![0]).not.toBe(model.game.gameId);
   });
 
+  it("header único: un solo back link y un solo ModeBadge aunque haya selector de partidas", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(
+      <ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} games={fx.games} onSelectGame={() => {}} />,
+    );
+    expect(container.querySelectorAll(".nr-link-back")).toHaveLength(1);
+    expect(container.querySelectorAll(".nr-mode-badge")).toHaveLength(1);
+  });
+
   it("el selector muestra solo una ventana de partidas vecinas", () => {
     const games = Array.from({ length: 50 }, (_, i) => ({ gameId: `g-${i}`, rival: "boulware", endReason: "agreement" }));
     expect(matchWindow(games, "g-25").map((g) => g.gameId)).toEqual(["g-22", "g-23", "g-24", "g-25", "g-26", "g-27", "g-28"]);
