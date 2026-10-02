@@ -111,6 +111,38 @@ describe("ofertas del rival fuera de rango o del dominio TAE (revisión, crític
     expect(reconcile).toMatchObject({ offer: null, unconfirmed: true, invalidOffer: { pct: 15 }, reason: "out-of-range" });
   });
 
+  it("cruce apr × solo texto: cifra fuera de rango y día ≥ baseDays por texto nunca se aceptan, y el agente siempre responde", async () => {
+    // Issue por separado (mandato TAE): "15 %" fuera del rango declarado de `pct` ([0, 10]).
+    const textScenario = byId("text-buyer-wide");
+    const textSession = await createAgentParticipant({ config }).start({
+      sessionId: "cross-text",
+      scenarioId: textScenario.id,
+      issues: textScenario.issues,
+      mandate: mandateFor(textScenario, textScenario.role),
+      seed: 1,
+      mode: "text-only",
+    });
+    await textSession.respond({ sessionId: "cross-text", round: 1, roundLimit: 10, rivalAction: "message", text: "hola" });
+    const textOut = await textSession.respond({ sessionId: "cross-text", round: 2, roundLimit: 10, rivalAction: "offer", text: "Te ofrezco un 15 %, es mi última palabra." });
+    expect(textOut.action).not.toBe("accept");
+
+    // Mandato apr: una oferta de texto con día ≥ baseDays (30) no es válida en el dominio TAE.
+    const aprScenario = byId("apr-buyer-wide");
+    const aprSession = await createAgentParticipant({ config }).start({
+      sessionId: "cross-apr",
+      scenarioId: aprScenario.id,
+      issues: aprScenario.issues,
+      mandate: mandateFor(aprScenario, aprScenario.role),
+      seed: 1,
+      mode: "text-only",
+    });
+    await aprSession.respond({ sessionId: "cross-apr", round: 1, roundLimit: 10, rivalAction: "message", text: "hola" });
+    const aprOut = await aprSession.respond({ sessionId: "cross-apr", round: 2, roundLimit: 10, rivalAction: "offer", text: "Te ofrezco 2% al día 35." });
+    expect(aprOut.action).not.toBe("accept");
+    // El agente responde con una salida válida del protocolo en los dos casos, nunca lanza.
+    for (const out of [textOut, aprOut]) expect(["counter", "walk"]).toContain(out.action);
+  });
+
   it("arena: una oferta estructurada del rival fuera de rango es protocol-violation del rival", async () => {
     const scenario = byId("price-buyer-wide");
     const rival: Participant = {
