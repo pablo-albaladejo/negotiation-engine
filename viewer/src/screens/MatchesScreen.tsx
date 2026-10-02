@@ -130,9 +130,13 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
         resultOptions={[{ value: "", label: "All" }, ...model.options.results.map((v) => ({ value: v, label: resultLabel(v).label }))]}
         result={filters.result ?? ""}
         onResultChange={(v) => setFilters((f) => withFilter(f, "result", v === "" ? undefined : (v as MatchFilters["result"])))}
-        checkboxes={[{ key: "template", label: "with fallback", checked: filters.template ?? false }]}
+        checkboxes={[
+          { key: "template", label: "with fallback", checked: filters.template ?? false },
+          ...(model.hasInjectionData ? [{ key: "injection", label: "with injection", checked: filters.injection ?? false }] : []),
+        ]}
         onCheckboxChange={(key, checked) => {
           if (key === "template") setFilters((f) => withFilter(f, "template", checked ? true : undefined));
+          if (key === "injection") setFilters((f) => withFilter(f, "injection", checked ? true : undefined));
         }}
       />
       <Card>

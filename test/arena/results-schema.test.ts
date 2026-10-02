@@ -72,6 +72,20 @@ describe("esquemas de resultados v2 (src/arena/results-schema.ts)", () => {
     expect(TranscriptLineSchema.safeParse({ ...(lines[0] as object), extra: 1 }).success).toBe(false);
   });
 
+  it("metrics.injectionSuspected: la arena escribe el recuento de rondas marcadas y el esquema sigue aceptando líneas sin ese campo (v1/v2/v3)", () => {
+    for (const raw of lines) {
+      const line = TranscriptLineSchema.parse(raw);
+      expect(typeof line.metrics.injectionSuspected).toBe("number");
+      expect(line.metrics.injectionSuspected).toBeGreaterThanOrEqual(0);
+    }
+    const withoutField = { ...(lines[0] as Record<string, unknown>) };
+    const metrics = { ...(withoutField.metrics as Record<string, unknown>) };
+    delete metrics.injectionSuspected;
+    withoutField.metrics = metrics;
+    const parsed = TranscriptLineSchema.parse(withoutField);
+    expect(parsed.metrics.injectionSuspected).toBeUndefined();
+  });
+
   // Regresión: en texto completo la arena escribe `extractable` y el visor no podía leer esos runs.
   it("las líneas de un run en texto completo pasan TranscriptLineSchema", async () => {
     const out = mkdtempSync(join(tmpdir(), "arena-full-text-"));

@@ -57,13 +57,27 @@ describe("matchesModel (P2)", () => {
     expect(matchesModel(fx.summary, fx.games, { template: true }).rows.every((r) => r.templateFallbacks > 0)).toBe(true);
   });
 
+  it("hasInjectionData: true solo si alguna partida trae metrics.injectionSuspected (campo opcional)", () => {
+    const withField = { ...fx.games[0]!, metrics: { ...fx.games[0]!.metrics, injectionSuspected: 2 } };
+    const withoutField = { ...fx.games[0]!, metrics: { ...fx.games[0]!.metrics, injectionSuspected: undefined } };
+    expect(matchesModel(fx.summary, [withField]).hasInjectionData).toBe(true);
+    expect(matchesModel(fx.summary, [withoutField]).hasInjectionData).toBe(false);
+  });
+
+  it("filtro injection: solo partidas con injectionSuspected > 0", () => {
+    const flagged = { ...fx.games[0]!, gameId: "flagged", metrics: { ...fx.games[0]!.metrics, injectionSuspected: 1 } };
+    const clean = { ...fx.games[1]!, gameId: "clean", metrics: { ...fx.games[1]!.metrics, injectionSuspected: 0 } };
+    const m = matchesModel(fx.summary, [flagged, clean], { injection: true });
+    expect(m.rows.map((r) => r.gameId)).toEqual(["flagged"]);
+  });
+
   it("run vacío: overall.games = 0 ⇒ empty", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     expect(matchesModel(summary, []).empty).toBe(true);
   });
 
   it("filtersToQuery/queryToFilters: round-trip para persistir en la URL (INBOX §2)", () => {
-    const filters = { rival: "boulware", role: "buyer" as const, result: "agreement" as const, template: true };
+    const filters = { rival: "boulware", role: "buyer" as const, result: "agreement" as const, template: true, injection: true };
     expect(queryToFilters(filtersToQuery(filters))).toEqual(filters);
     expect(filtersToQuery({})).toBe("");
     expect(queryToFilters("")).toEqual({});

@@ -45,6 +45,8 @@ export interface GameMetrics {
   language?: string;
   /** Lado que rompió el protocolo (`endReason: "protocol-violation"`); null si nadie. */
   protocolViolation?: "agent" | "rival" | null;
+  /** Rondas con el parser marcando `injectionSuspected` (registro `parser`); opcional (no en v1/v2). */
+  injectionSuspected?: number;
 }
 
 /**
@@ -163,6 +165,7 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
     wrongAgreement: game.wrongAgreement,
     ...(game.textMode === "full" ? textRates(game) : {}),
     protocolViolation: game.protocolViolation?.by ?? null,
+    injectionSuspected: game.records.filter((r) => r.box === "parser" && (r.output as { injectionSuspected?: boolean } | null)?.injectionSuspected === true).length,
   };
 }
 

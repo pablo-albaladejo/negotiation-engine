@@ -54,6 +54,8 @@ const GameMetricsSchema = z
     language: z.string().optional(),
     /** v3: lado que rompió el protocolo, o null. */
     protocolViolation: z.enum(["agent", "rival"]).nullable().optional(),
+    /** Opcional (añadido tras v3): rondas con el parser marcando `injectionSuspected`. */
+    injectionSuspected: z.number().int().min(0).optional(),
   })
   .strict();
 

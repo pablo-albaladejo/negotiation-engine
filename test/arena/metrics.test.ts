@@ -59,6 +59,17 @@ describe("fracción de excedente de la ZOPA", () => {
 describe("métricas por partida y resumen", () => {
   const agentOffer = (pct: number): TranscriptEntry => ({ round: 1, from: "agent", action: "counter", offer: { pct }, text: "" });
 
+  it("injectionSuspected: cuenta las rondas con el parser marcando injectionSuspected (registros parser)", () => {
+    const s = scenario("price-buyer-wide");
+    const record = (round: number, injectionSuspected: boolean) =>
+      ({ sessionId: "s", round, box: "parser", input: null, output: { intent: "offer", injectionSuspected }, result: "ok" as const, latencyMs: 1 });
+    const m = computeMetrics(
+      s,
+      game(s, { records: [record(1, true), record(2, false), record(3, true)] }, [agentOffer(5)]),
+    );
+    expect(m.injectionSuspected).toBe(2);
+  });
+
   it("cuenta violaciones de nuestras ofertas fuera del mandato", () => {
     const s = scenario("price-buyer-wide");
     const m = computeMetrics(s, game(s, {}, [agentOffer(4), agentOffer(2.5), agentOffer(2)]));

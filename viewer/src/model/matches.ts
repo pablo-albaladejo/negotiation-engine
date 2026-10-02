@@ -9,6 +9,8 @@ export interface MatchFilters {
   result?: EndReason;
   /** Solo partidas con algún mensaje propio por plantilla. */
   template?: boolean;
+  /** Solo partidas con alguna ronda marcada `injectionSuspected`; solo tiene sentido si `hasInjectionData`. */
+  injection?: boolean;
 }
 
 export interface MatchRow {
@@ -36,6 +38,8 @@ export interface MatchesModel {
   rows: MatchRow[];
   /** Partidas que pasan los filtros (conteo de filas). */
   shownCount: number;
+  /** Al menos una partida del run trae `metrics.injectionSuspected` (campo opcional, runs antiguos no lo tienen). */
+  hasInjectionData: boolean;
 }
 
 const distinct = <T extends string>(values: readonly T[]): T[] => [...new Set(values)].sort();
@@ -49,7 +53,8 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
         (filters.rival === undefined || line.rival === filters.rival) &&
         (filters.role === undefined || line.role === filters.role) &&
         (filters.result === undefined || line.endReason === filters.result) &&
-        (!filters.template || line.metrics.templateFallbacks > 0),
+        (!filters.template || line.metrics.templateFallbacks > 0) &&
+        (!filters.injection || (line.metrics.injectionSuspected ?? 0) > 0),
     )
     .map(
       (line): MatchRow => ({
@@ -78,6 +83,7 @@ export function matchesModel(summary: Summary, games: readonly TranscriptLine[],
     },
     rows,
     shownCount: rows.length,
+    hasInjectionData: games.some((l) => l.metrics.injectionSuspected !== undefined),
   };
 }
 
@@ -88,6 +94,7 @@ export function filtersToQuery(filters: MatchFilters): string {
   if (filters.role !== undefined) params.set("role", filters.role);
   if (filters.result !== undefined) params.set("result", filters.result);
   if (filters.template) params.set("template", "1");
+  if (filters.injection) params.set("injection", "1");
   return params.toString();
 }
 
@@ -102,5 +109,6 @@ export function queryToFilters(query: string): MatchFilters {
   const result = params.get("result");
   if (result) filters.result = result as EndReason;
   if (params.get("template") === "1") filters.template = true;
+  if (params.get("injection") === "1") filters.injection = true;
   return filters;
 }
