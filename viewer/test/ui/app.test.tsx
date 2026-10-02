@@ -343,3 +343,25 @@ describe("App Runs: a rejecting /api/champion fetch (T5)", () => {
     expect(screen.queryByText("champion")).toBeNull();
   });
 });
+
+describe("App top-level error boundary (C11)", () => {
+  it("renders the DS warning banner instead of a blank page when a screen throws while rendering", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        // A tournament trace with no header: tournamentReplayModel throws synchronously (a real
+        // production code path, not a test-only stub) instead of returning a model.
+        if (url.includes("/api/tournament/")) return new Response(JSON.stringify({ data: [], errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = "#/tournament/run-x/session-y";
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+    expect(screen.getByText("Something went wrong rendering this screen")).toBeTruthy();
+    expect(screen.queryByText("Arena viewer")).toBeNull();
+    consoleError.mockRestore();
+  });
+});

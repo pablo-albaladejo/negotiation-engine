@@ -1,5 +1,5 @@
-import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
-import { useEffect, useRef, useState } from "react";
+import { ModeBadge, Root, Tabs, WarningBanner } from "@negotiation-ring/design-system";
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { SecondaryButton } from "./ui/buttons.js";
 import { initialTheme, storeTheme, watchSystemTheme, type Theme } from "./theme.js";
 import { requestPageFocus } from "./focus.js";
@@ -272,7 +272,7 @@ function LiveContainer() {
   );
 }
 
-export function App() {
+function AppContent() {
   const { route, replaceRoute, navKey } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const isFirstNav = useRef(true);
@@ -329,5 +329,44 @@ export function App() {
         </main>
       </div>
     </Root>
+  );
+}
+
+/**
+ * C11: a render error anywhere below (a screen throwing on malformed data the API layer didn't
+ * already turn into an `ApiError`, a future regression, etc.) used to blank the whole page -- React
+ * unmounts the tree above the nearest boundary. Catches it and renders the DS error state instead,
+ * with enough theme/layout to not look broken itself.
+ */
+class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error): { error: Error } {
+    return { error };
+  }
+
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error("Arena viewer crashed while rendering", error, info.componentStack);
+  }
+
+  override render(): ReactNode {
+    if (!this.state.error) return this.props.children;
+    return (
+      <Root theme="dark">
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)" }}>
+          <WarningBanner tone="warn" title="Something went wrong rendering this screen">
+            <span className="nr-muted">{this.state.error.message || "not logged"}</span>
+          </WarningBanner>
+        </div>
+      </Root>
+    );
+  }
+}
+
+export function App() {
+  return (
+    <AppErrorBoundary>
+      <AppContent />
+    </AppErrorBoundary>
   );
 }
