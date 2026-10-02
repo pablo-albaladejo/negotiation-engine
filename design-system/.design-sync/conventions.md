@@ -12,9 +12,9 @@ const { Root, Card, KpiStrip, OfferChart, Legend, ChatMessage, Flag } = window.N
   <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
     <h1 className="nr-title">Arena viewer</h1>
     <KpiStrip items={[{ label: "Result", value: "Deal", tone: "deal" }, { label: "Surplus / ZOPA", value: "0.64" }]} />
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(0,1fr)", gap: "var(--space-4)" }}>
+    <div className="nr-grid" style={{ "--nr-grid-cols": "minmax(0,1.55fr) minmax(320px,1fr)" }}>
       <Card title="Offers by round">{/* <OfferChart …/> + <Legend>…</Legend> */}</Card>
-      <Card title="Messages"><div className="nr-chat"><ChatMessage side="them" round={2} offer={81} text="How about 81?" /></div></Card>
+      <Card title="Messages"><div className="nr-chat nr-chat-scroll"><ChatMessage side="them" round={2} offer={81} text="How about 81?" /></div></Card>
     </div>
   </div>
 </Root>
@@ -27,7 +27,9 @@ const { Root, Card, KpiStrip, OfferChart, Legend, ChatMessage, Flag } = window.N
   - Spacing: `--space-1`…`--space-5` (4, 8, 10, 14, 18 px) and `--gutter` (16 px)
   - Radius: `--radius-sm` `--radius-md` `--radius-lg` `--radius-pill`
   - Fonts: `--font-display` `--font-body` `--font-mono`
-- **Helper classes for your own text:** `nr-title` (page title), `nr-heading` (card heading), `nr-muted` (caption), `nr-cfg` (mono config line). Wrap a list of `ChatMessage` in `<div className="nr-chat">` so bubbles align right for us and left for the rival.
+- **Helper classes for your own text:** `nr-title` (26px app-shell title), `nr-heading-lg` (22px, a screen's own `<h2>`), `nr-heading` (18px, used by `Card`'s own title — keep screen content under it at `nr-heading-lg` or lower), `nr-heading-sm` (16px), `nr-muted` (caption), `nr-cfg` (mono config line). Wrap a list of `ChatMessage` in `<div className="nr-chat">` so bubbles align right for us and left for the rival; add `nr-chat-scroll` (560px max-height; `is-tall` for 820px) to cap that list's height instead of an inline `maxHeight`.
+- **Layout grids:** `nr-grid` is a responsive grid that reads its column ratio from the `--nr-grid-cols` custom property on the same element (e.g. `style={{ "--nr-grid-cols": "minmax(0,1.55fr) minmax(320px,1fr)" }}`), defaulting to a single `minmax(0,1fr)` column; below 900px it always collapses to `minmax(0,1fr)` regardless of `--nr-grid-cols`, so content that can't wrap (a `nr-code-box`, a wide table) still shrinks instead of overflowing the page. Never set `gridTemplateColumns` inline on a `.nr-grid` element.
+- **Literal snippets:** `nr-code-box` for a copy-command or similar literal text the user may select (monospace, horizontal scroll, no wrap). `nr-diff` (with `nr-diff-row`/`nr-diff-sign`) for a parameter diff list — a bordered box with one row per changed parameter and a muted sign column.
 - **Colour meaning is fixed:**
   - `--us` (blue) is always our side and `--them` (amber) is always the rival. Never swap them or use them as decoration.
   - `--ok` means a deal, an accept or a better value. `--warn` means a walk, an injection or a worse value.
@@ -36,17 +38,19 @@ const { Root, Card, KpiStrip, OfferChart, Legend, ChatMessage, Flag } = window.N
 - **The rival's negotiation text is shown verbatim**, whatever language it is written in — it is never translated or altered. Config identifiers such as `calido-firme` are also shown verbatim, never translated.
 - **The UI displays values and never computes them.** Every offer, decision and verdict is a value the engine logged, passed in as props.
 - **Rival text goes only in `ChatMessage`'s `text` prop**, which renders as text. Never inject it as HTML.
-- There are no icons and no emoji. State is shown with `Flag` (`neutral` `injection` `decision` `walk` `fallback`) and `Pill` (`verdict` `rejected` `sample`).
+- There are no icons and no emoji. State is shown with `Flag` (`neutral` `injection` `decision` `walk` `fallback`) and `Pill` (`verdict` `rejected` `sample` `champion` — `champion` reads green, like `verdict`, never blue).
 
 ## Components
 
-`Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart` + `Legend`, and five more for filtering, mode, two-issue offers, the live scoreboard and inline warnings:
+`Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart` + `Legend`, `StatFigure`, four button components, and five more for filtering, mode, two-issue offers, the live scoreboard and inline warnings:
 
 - `Filters`: the filter bar above a match list — opponent select, role/outcome tabs, and checkboxes (`with injection`, `with fallback`). Controlled: every value and its `onChange` come from the host.
 - `ModeBadge`: a one-word badge, `ARENA` or `TOURNAMENT`, from the `mode` prop.
-- `Scatter2D`: hand-written SVG for offers on two issues (e.g. discount % × payment day). It draws exactly the points, iso-utility curves and mandate polygon it is given — like `OfferChart`, it never computes a utility or a scale on its own beyond the linear pixel mapping.
-- `Scoreboard`: the large-type live header for the projector view — badge, `us vs rival`, round counter, attacks-blocked counter.
+- `Scatter2D`: hand-written SVG for offers on two issues (e.g. discount % × payment day). It draws exactly the points, iso-utility curves and mandate polygon it is given — like `OfferChart`, it never computes a utility or a scale on its own beyond the linear pixel mapping. An optional `onPointClick({ side, round })` makes every offer point a roving, keyboard-reachable control.
+- `Scoreboard`: the large-type live header for the projector view — badge, `us vs rival`, round counter, attacks-blocked counter. `rivalPending` mutes the rival's name while waiting for the next match.
 - `WarningBanner`: an alert block with a `tone` (`warn` or `info`), a `title` and arbitrary children.
+- `StatFigure`: one large headline number (`value`, already formatted by the caller) with an accent `tone` (`us`/`them`) and an optional muted `caption` on the same row. Pass a caption only when the log actually has the comparison value to show — never invent one.
+- `PrimaryButton`, `SecondaryButton`, `BackLink`, `TableLink`: the only `<button>` elements in the system (`components/Button.tsx`) — every interactive control in a consuming app should use one of these instead of a raw `<button>`. `BackLink` is the low-key "go back" link, `SecondaryButton` is a bordered action (e.g. "Copy", "show all"), `PrimaryButton` is reserved for the one most important action in a panel, and `TableLink` is a link-styled `<button>` for a table cell that still needs click/keyboard semantics. `.nr-btn` and `.nr-btn-back` remain as deprecated aliases of `.nr-btn-secondary`/`.nr-link-back` for old consumers.
 
 ## Where the truth lives
 

@@ -52,6 +52,14 @@ export function WaitingForNextMatch() {
   );
 }
 
+export function RivalPending() {
+  return (
+    <ProjectorFrame>
+      <Scoreboard badge="WAITING" us="Team 2" rival="next opponent" rivalPending round={null} rounds={10} attacksBlocked={null} />
+    </ProjectorFrame>
+  );
+}
+
 export function NoAttacksBlockedYet() {
   return (
     <ProjectorFrame>

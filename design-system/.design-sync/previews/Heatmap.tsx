@@ -14,6 +14,19 @@ export function ComparisonByOpponent() {
   );
 }
 
+export function CustomRowHeader() {
+  return (
+    <Heatmap
+      rowHeader="Opponent"
+      columns={["as seller", "as buyer"]}
+      rows={[
+        { rival: "Boulware", cells: [{ label: "0.71", value: 0.71 }, { label: "0.52", value: 0.52 }] },
+        { rival: "Conceder", cells: [{ label: "0.83", value: 0.83 }, { label: "0.77", value: 0.77 }] },
+      ]}
+    />
+  );
+}
+
 export function GoodBand() {
   return (
     <Heatmap

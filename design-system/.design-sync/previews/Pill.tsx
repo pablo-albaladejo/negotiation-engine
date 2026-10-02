@@ -11,3 +11,7 @@ export function Rejected() {
 export function Sample() {
   return <Pill kind="sample">mock-up · sample data</Pill>;
 }
+
+export function Champion() {
+  return <Pill kind="champion">champion</Pill>;
+}

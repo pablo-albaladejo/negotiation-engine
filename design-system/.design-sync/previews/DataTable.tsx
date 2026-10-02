@@ -36,3 +36,22 @@ export function MetricsByOpponent() {
     />
   );
 }
+
+export function ClickableWithSelectedRow() {
+  return (
+    <DataTable
+      columns={[
+        { key: "r", label: "Round" },
+        { key: "us", label: "Our offer", numeric: true },
+        { key: "th", label: "Their offer", numeric: true },
+      ]}
+      rows={[
+        { r: "R1", us: "128", th: "70" },
+        { r: "R2", us: "124", th: "81" },
+        { r: "R3", us: "121", th: "90" },
+      ]}
+      onRowClick={() => {}}
+      selectedRowIndex={1}
+    />
+  );
+}

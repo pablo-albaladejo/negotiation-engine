@@ -9,7 +9,7 @@ La carpeta `.design-sync/` contiene la configuración de sync con Claude Design:
 - **`config.json`** — metadatos y contrato de sincronización.
 - **`conventions.md`** — README en inglés que lee el agente Claude Design (cómo construir pantallas con la librería).
 - **`NOTES.md`** — gotchas de sincronización, bugs reportados (no parchados), riesgos de re-sync.
-- **`previews/*.tsx`** — celdas de vista previa autorizadas (una por componente: `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`).
+- **`previews/*.tsx`** — celdas de vista previa autorizadas (una por componente: `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`, `StatFigure`, `PrimaryButton`/`SecondaryButton`/`BackLink`/`TableLink` (one source file, `design-system/src/components/Button.tsx`)).
 
 ## Archivos clave
 
@@ -50,7 +50,7 @@ README de construcción en inglés. Temas:
 - **Números**: formato inglés (`0.64`, `84%`), usar `formatNumber(v, {locale:"en"})`.
 - **Rival text**: verbatim (nunca traducido ni alterado).
 - **UI display-only**: no computa métricas, solo muestra valores.
-- **17 componentes**: `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`.
+- **22 componentes**: `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`, `StatFigure`, `PrimaryButton`, `SecondaryButton`, `BackLink`, `TableLink`.
 
 ### `NOTES.md`
 

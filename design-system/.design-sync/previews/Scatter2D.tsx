@@ -37,6 +37,26 @@ export function OffersWithMandateAndIso() {
   );
 }
 
+export function ClickableOffers() {
+  return (
+    <Scatter2D
+      xDomain={[0, 60]}
+      yDomain={[0, 10]}
+      xLabel="payment day"
+      yLabel="discount %"
+      ourOffers={[
+        { round: 1, x: 10, y: 1 },
+        { round: 2, x: 20, y: 2 },
+      ]}
+      theirOffers={[
+        { round: 1, x: 55, y: 8 },
+        { round: 2, x: 48, y: 6.5 },
+      ]}
+      onPointClick={() => {}}
+    />
+  );
+}
+
 export function NoDealYet() {
   return (
     <Scatter2D
