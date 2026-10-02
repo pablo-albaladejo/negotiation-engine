@@ -1,0 +1,63 @@
+{
+  "schema": "bazaar-lessons/v1",
+  "description": "Lessons learned per Bazaar conversation (dealers, duels, trades). One entry per closed conversation; global lessons and open hypotheses at the end. Values are our private values from /api/me/value; prices in primas (P).",
+  "updated": "2026-10-02",
+  "conversations": [
+    {
+      "thread": 56, "dealer": "abuela", "kind": "sell", "item": "MAL-02 (common, duplicate)",
+      "our_value": 2.2, "our_limit": 3, "her_opening": 13, "her_final": 13, "final_flag": true,
+      "our_prices": [21, 21, 21, 18, 16, 15, 14], "her_prices": [13, 13, 13, 13, 13, 13, 13],
+      "messages_until_final": 7, "ticks_until_final": 10,
+      "outcome": "deal", "price": 13, "value_created": 10.8, "ladder_points_after": 0.022,
+      "notes": "First 3 messages at 21 were repeated by a client bug (bad_response). Accepted her final offer.",
+      "lessons": [
+        "She did not move at all on this sale (fixed price, 13 above her own common list of 10).",
+        "'Let's meet in the middle' was words only; the structured offer never changed.",
+        "A deal at her opening price still counted as a deal (deals 0→1) and gave a small ladder score (0.022).",
+        "Never repeat a price: it earns nothing and spends patience."
+      ]
+    },
+    {
+      "thread": 125, "dealer": "abuela", "kind": "sell", "item": "MAL-02 (common, only copy)",
+      "our_value": 9, "our_limit": 10, "her_opening": 5, "her_final": 6, "final_flag": true,
+      "our_prices": [20, 19, 18, 17, 16, 15], "her_prices": [5, 5, 6, 6, 6, 6],
+      "messages_until_final": 6, "ticks_until_final": 7,
+      "outcome": "closed_no_deal", "price": null, "value_created": 0,
+      "notes": "Anchor 20 came from 2 × our minimum (rule later replaced). She gifted us a card (Mercado de la Cebada).",
+      "lessons": [
+        "Her buy price for the same card ref varied between conversations (13 vs 5–6): not a fixed price per rarity.",
+        "Selling an only copy is rarely worth it: our value (9) far above her bid (5–6).",
+        "A far anchor only burned patience; she conceded 1 point while we conceded 5.",
+        "Patience looked like ~6 of our messages, not ticks."
+      ]
+    },
+    {
+      "thread": 178, "dealer": "abuela", "kind": "buy", "item": "uncommon SAL (random card of that rarity+set)",
+      "our_value": 24.4, "our_limit": 24, "her_opening": 29, "her_final": null, "final_flag": false,
+      "our_prices": [22, 23], "her_prices": [29, 25],
+      "messages_until_final": null, "ticks_until_close": 3,
+      "outcome": "deal", "price": 23, "received": "SAL-07 (duplicate, value 8.1)", "value_created": -14.9,
+      "lessons": [
+        "When she SELLS she has real range: opened 29 (list 25 × 1.16) and accepted 23, below her list, in 2 messages.",
+        "Moderate anchor (75% of her opening) plus a small step closed fast.",
+        "Buying by rarity+set is a lottery: we got a duplicate (2/3 chance of a new card). Account for duplicate risk or buy specific cards.",
+        "Her accepting message came without a 'final' flag: she accepted our counter directly."
+      ]
+    }
+  ],
+  "global_lessons": [
+    "Score = value created, never activity; but top teams have 8–13 deals (score 20–28) vs our 2: volume of good deals matters too.",
+    "Abuela's opening ask ≈ list × 1.15 (pack 30/26, uncommon 29/25).",
+    "Abuela buys low and barely moves; she sells with range. Prefer buying from her where she has range.",
+    "Patience seems spent per exchange (~6–7 of our messages), not per tick; waiting between messages seems free.",
+    "Only the structured offer binds; dealer text is flavour (and gifts don't score).",
+    "El Chato (level 2) is the opposite of Abuela: patience 0.35, generosity 0.25, shrewdness 0.85, memory 0.9, strictness 0.85 — short, careful negotiations, no tricks."
+  ],
+  "open_hypotheses": [
+    "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
+    "Whether kindness extends patience.",
+    "Whether a repeated price spends extra patience.",
+    "Whether bigger concession steps earn proportionally bigger replies.",
+    "Whether she accepts requests for a specific card ({buy:{card}}) instead of rarity+set."
+  ]
+}
