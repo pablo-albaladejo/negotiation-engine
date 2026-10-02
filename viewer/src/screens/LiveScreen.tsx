@@ -61,7 +61,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
   const rounds = model.status === "waiting" ? model.roundLimit : chartRounds;
   const playing = model.status === "live" || model.status === "finished";
   const waiting = model.status === "waiting";
-  const rival = waiting ? "next opponent" : (model.sessionId ?? "—");
+  const rival = waiting ? "next opponent" : (model.rival ?? "not logged");
   const flags = (b: LiveModel["lastMessages"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),

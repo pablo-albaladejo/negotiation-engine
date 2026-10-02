@@ -34,10 +34,9 @@ function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplu
   const row = (k: string, f: (v: number | null) => string, pick: (p: PhaseMetrics) => number | null) => ({ k, a: f(pick(m.champion)), b: f(pick(m.candidate)), d: NL });
   const change = m.surplusChangePp;
   return [
-    {
-      ...row("Avg. surplus / ZOPA", pct, (p) => p.meanSurplus),
-      d: change === null ? NL : { value: formatPp(change), ...(change !== 0 ? { tone: change > 0 ? ("better" as const) : ("worse" as const) } : {}) },
-    },
+    // gate.json never logs a direction for this change; showing a hard-coded better/worse tone from
+    // the sign would be the UI inventing a judgement the engine never made, so it is plain text (L12).
+    { ...row("Avg. surplus / ZOPA", pct, (p) => p.meanSurplus), d: formatPp(change) },
     row("Agreement", pct, (p) => p.agreementRate),
     row("Violations", int, (p) => p.violations),
     row("Leaks", int, (p) => p.leaks),

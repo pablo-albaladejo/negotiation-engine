@@ -40,6 +40,8 @@ export interface LiveModel {
   status: LiveStatus;
   badge: "LIVE" | "FINISHED" | "WAITING";
   sessionId: string | null;
+  /** Opponent name, only logged on an arena header (`header.rival`); tournament headers never carry it. */
+  rival: string | null;
   role: "buyer" | "seller" | null;
   round: number;
   /** Del registro `input` (lo da el ring); `null` si no lo dio. */
@@ -92,6 +94,7 @@ export function liveModel(feed: LiveFeed): LiveModel {
     status,
     badge: status === "live" ? "LIVE" : status === "finished" ? "FINISHED" : "WAITING",
     sessionId: header?.sessionId ?? records[0]?.sessionId ?? null,
+    rival: header?.mode === "arena" ? header.rival : null,
     role: header?.mode === "tournament" ? (header.role ?? null) : null,
     round: panels.at(-1)?.round ?? 0,
     roundLimit,

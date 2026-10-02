@@ -32,6 +32,8 @@ describe("GateScreen (P6)", () => {
     await screen.findByRole("button", { name: "Copied" });
     expect(writeText).toHaveBeenCalledWith(`pnpm promote ${gx.candidatePath}`);
     expect(screen.getAllByText("+2.30 pp")).toHaveLength(3);
+    // gate.json never logs a direction for the surplus change: no hard-coded better/worse tone (L12).
+    expect(container.querySelectorAll(".nr-better, .nr-worse")).toHaveLength(0);
   });
 
   it("rechazada: píldora de rechazo con la comprobación fallida y su valor registrado, Flag walk, sin comando", () => {

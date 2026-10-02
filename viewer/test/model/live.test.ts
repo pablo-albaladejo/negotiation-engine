@@ -18,6 +18,13 @@ describe("liveModel (P7)", () => {
     expect(m).toMatchObject({ status: "waiting", badge: "WAITING", sessionId: null, round: 0, attacksBlocked: 0, outcome: null, last: null, lastMessages: [] });
   });
 
+  it("torneo: sin rival (nunca se registra); arena: rival de la cabecera (L13)", () => {
+    expect(liveModel(feed(fx.tournament.trace)).rival).toBeNull();
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const arenaTrace = fx.traces.get(line.gameId)!;
+    expect(liveModel(feed(arenaTrace)).rival).toBe(line.rival);
+  });
+
   it("en curso: LIVE con ronda, límite del registro input, utilidades de explain × 100 y últimas burbujas", () => {
     const m = liveModel(feed(fx.tournament.trace));
     expect(m).toMatchObject({ status: "live", badge: "LIVE", sessionId: "ring-session-1", role: "buyer", round: 3, roundLimit: 10, outcome: null });
