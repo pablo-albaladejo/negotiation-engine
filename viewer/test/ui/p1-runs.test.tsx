@@ -24,11 +24,65 @@ describe("RunsScreen (P1)", () => {
     expect(screen.getByText("No runs yet")).toBeTruthy();
   });
 
-  it("marca la fila del champion con Pill y muestra \'Arena run\' en vez del id crudo", () => {
+  it("marca la fila del champion con un Pill en la columna Status", () => {
     const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
     render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} championVersion={fx.summary.config.version} />);
-    expect(screen.getByText("Arena run")).toBeTruthy();
     expect(screen.getByText("champion")).toBeTruthy();
+  });
+
+  it("fecha en ingles, hora local, p. ej. 'Oct 1, 2026 09:42'", () => {
+    const summary = { ...fx.summary, createdAt: "2026-10-01T09:42:00.000Z" };
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} />);
+    const expected = (() => {
+      const d = new Date(summary.createdAt);
+      const month = d.toLocaleString("en-US", { month: "short" });
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${month} ${d.getDate()}, ${d.getFullYear()} ${hh}:${mm}`;
+    })();
+    expect(screen.getByText(expected)).toBeTruthy();
+  });
+
+  it("Leaks > 0 se muestra en tono warn (var(--warn))", () => {
+    const summary = { ...fx.summary, overall: { ...fx.summary.overall, leaks: 3 } };
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} />);
+    expect(screen.getByText("3").className).toContain("nr-worse");
+  });
+
+  it("Leaks = 0 no lleva tono warn", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: { ...fx.summary, overall: { ...fx.summary.overall, leaks: 0 } } }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} />);
+    for (const cell of screen.getAllByText("0")) expect(cell.className).not.toContain("nr-worse");
+  });
+
+  it("el boton 'Compare with champion' solo aparece cuando el run tiene gate.json (kind: promotion)", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "promotion", summary: fx.summary }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} onCompareRun={() => {}} />);
+    expect(screen.getByText("Compare with champion")).toBeTruthy();
+  });
+
+  it("sin gate.json (kind: arena) no se ofrece 'Compare with champion'", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} onCompareRun={() => {}} />);
+    expect(screen.queryByText("Compare with champion")).toBeNull();
+  });
+
+  it("'Compare with champion' llama a onCompareRun con el runId", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "promotion", summary: fx.summary }]);
+    let compared = "";
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={() => {}} onCompareRun={(id) => (compared = id)} />);
+    fireEvent.click(screen.getByText("Compare with champion"));
+    expect(compared).toBe(fx.runId);
+  });
+
+  it("el boton 'Open' de la fila llama a onOpenRun", () => {
+    const rows = runsModel([{ runId: fx.runId, kind: "arena", summary: fx.summary }]);
+    let opened = "";
+    render(<RunsScreen rows={rows} errors={[]} onOpenRun={(id) => (opened = id)} />);
+    fireEvent.click(screen.getByText("Open"));
+    expect(opened).toBe(fx.runId);
   });
 
   it("sin champion.json (championVersion null) no muestra ningún Pill", () => {

@@ -120,16 +120,13 @@ function RunsContainer() {
     };
   }, []);
   if (!state) return <LoadingCard label="Reading results/" />;
-  const open = (runId: string) => {
-    const kind = state.entries.find((e) => e.runId === runId)?.kind;
-    navigate(kind === "promotion" ? routeTo.compare(runId) : routeTo.matches(runId));
-  };
   return (
     <RunsScreen
       rows={runsModel(state.entries)}
       errors={[...state.errors, ...champion.errors]}
-      onOpenRun={open}
+      onOpenRun={(runId) => navigate(routeTo.matches(runId))}
       onOpenLive={() => navigate(routeTo.live())}
+      onCompareRun={(runId) => navigate(routeTo.compare(runId))}
       championVersion={champion.version}
     />
   );

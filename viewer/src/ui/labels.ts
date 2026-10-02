@@ -71,6 +71,21 @@ export function runKindLabel(kind: RunKind): string {
   }
 }
 
+/**
+ * English, local-time formatting of a logged ISO date (e.g. "2026-10-01T09:42:00.000Z" ->
+ * "Oct 1, 2026 09:42"), used by the Runs table "Date" column. No value is computed here, only
+ * formatted; an unparsable date falls back to "not logged".
+ */
+export function formatRunDate(iso: string | null): string {
+  if (!iso) return "not logged";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "not logged";
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${month} ${d.getDate()}, ${d.getFullYear()} ${hh}:${mm}`;
+}
+
 /** English label for the logged `role` ("buyer"/"seller"), used in Filters (INBOX §2). */
 export function roleLabel(role: string): string {
   return role === "buyer" ? "Buyer" : role === "seller" ? "Seller" : role;
