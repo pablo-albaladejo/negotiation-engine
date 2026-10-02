@@ -37,10 +37,61 @@ function me(assets: Me["assets"], cash = 413): Me {
 }
 const asset = (id: number, ref: string, rarity: string, your_value: number) => ({ id, kind: "card", ref, rarity, set: ref.slice(0, 3), your_value });
 
+describe("plan: riesgo de repetida, carta concreta y puja desconocida", () => {
+  it("rareza+set con P(repetida) > 0,34 y pérdida en el peor caso > 3 P: se descarta aunque el valor esperado supere su lista", async () => {
+    // AAA uncommon: tenemos AAA-06 (vale 8 como repetida), AAA-07 vale 60 → media 34, límite 34 > lista 25, pero P(rep) 0,5 y peor caso 34 − 8 = 26.
+    const values: Record<string, number> = { "AAA-01": 1, "AAA-02": 1, "AAA-06": 8, "AAA-07": 60, "BBB-01": 1, "BBB-02": 1, "BBB-06": 1 };
+    const cands = await rankCandidates({ me: me([asset(1, "AAA-06", "uncommon", 8)]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 60, cardTopic: false });
+    const aaa = cands.find((c) => c.key === "buy:AAA:uncommon")!;
+    expect(aaa.duplicateP).toBe(0.5);
+    expect(aaa.worstCaseLoss).toBe(26);
+    expect(aaa.room).toBe(false);
+    expect(aaa.why).toContain("SKIP: duplicate risk");
+    expect(selectCandidates(cands, { maxThreads: 2, maxSpend: 60 }).some((s) => s.candidate.key === "buy:AAA:uncommon")).toBe(false);
+  });
+
+  it("rareza+set sin repetidas pero con valor esperado justo por encima de la lista: exige el margen (≥ 2 P o 10 %)", async () => {
+    const values: Record<string, number> = { "AAA-01": 11, "AAA-02": 11, "AAA-06": 26, "AAA-07": 26, "BBB-01": 1, "BBB-02": 1, "BBB-06": 1 };
+    const cands = await rankCandidates({ me: me([]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 60, cardTopic: false });
+    const unc = cands.find((c) => c.key === "buy:AAA:uncommon")!;
+    expect(unc.duplicateP).toBe(0);
+    expect(unc.room).toBe(false);
+    expect(unc.why).toContain("margin");
+  });
+
+  it("propone cartas concretas que nos faltan sobre su entrada de rareza+set (topic {buy:{card}}, sin probar) y las ordena primero", async () => {
+    const values: Record<string, number> = { "AAA-01": 1, "AAA-02": 1, "AAA-06": 8, "AAA-07": 40, "BBB-01": 1, "BBB-02": 1, "BBB-06": 1 };
+    const cands = await rankCandidates({ me: me([asset(1, "AAA-06", "uncommon", 8)]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 60 });
+    const first = cands[0]!;
+    expect(first.key).toBe("buy:AAA-07");
+    expect(first.topic).toEqual({ buy: { card: "AAA-07" } });
+    expect(first.cardTopicUntested).toBe(true);
+    expect(first.room).toBe(true);
+    expect(cands.some((c) => c.key === "buy:AAA-06")).toBe(false);
+    const text = formatPlan(me([]), ABUELA, cands, selectCandidates(cands, { maxThreads: 1, maxSpend: 60 }), { maxDeals: 1, maxSpend: 60, maxThreads: 1, safety: 1 }).join("\n");
+    expect(text).toContain('card topic: {buy:{card:"AAA-07"}} not yet tried live');
+  });
+
+  it("venta: su puja es desconocida; solo se abre si su techo plausible (lista × 1,3) alcanza nuestro mínimo", async () => {
+    const assets = [asset(1, "AAA-01", "common", 12), asset(2, "BBB-01", "common", 14), asset(3, "BBB-01", "common", 2)];
+    const cands = await rankCandidates({ me: me(assets), catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, safety: 1, budget: 50, cardTopic: false });
+    const sells = cands.filter((c) => c.side === "sell");
+    expect(sells.every((c) => c.bidUnknown)).toBe(true);
+    expect(sells.find((c) => c.key === "sell:1")!.room).toBe(true);
+    expect(sells.find((c) => c.key === "sell:3")!.room).toBe(true);
+    // Repetida BBB-01 de 2 se ofrece; la copia de 14 se queda (y 14 > 13 no sería plausible).
+    expect(sells.some((c) => c.key === "sell:2")).toBe(false);
+    const hi = await rankCandidates({ me: me([asset(9, "AAA-02", "common", 14)]), catalog: CATALOG, dealer: ABUELA, valueOf: async () => 1, safety: 1, budget: 50, cardTopic: false });
+    const s = hi.find((c) => c.key === "sell:9")!;
+    expect(s.room).toBe(false);
+    expect(s.why).toContain("not opened");
+  });
+});
+
 describe("plan: candidatos por menú", () => {
   it("rareza+set: valor esperado sobre las cartas de esa rareza y set (repetidas valen poco); reserva = valor × 0,9; margen solo si supera su lista", async () => {
     const values: Record<string, number> = { "AAA-01": 14, "AAA-02": 14, "AAA-06": 40, "AAA-07": 30, "BBB-01": 3, "BBB-02": 13, "BBB-06": 20, "ZZZ-01": 99 };
-    const cands = await rankCandidates({ me: me([asset(1, "BBB-01", "common", 13)]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, budget: 50 });
+    const cands = await rankCandidates({ me: me([asset(1, "BBB-01", "common", 13)]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, budget: 50, cardTopic: false });
     const buys = cands.filter((c) => c.side === "buy");
     expect(buys.map((c) => [c.key, c.reservation, c.room])).toEqual([
       ["buy:AAA:uncommon", 31, true],
@@ -117,7 +168,7 @@ describe("plan: candidatos por menú", () => {
     ]);
     expect(() => parseOnly("swap:common:AAA")).toThrow(/buy: o sell:/);
     expect(() => parseOnly("buy")).toThrow();
-    const ranked = await rankCandidates({ me: me([]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40 });
+    const ranked = await rankCandidates({ me: me([]), catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40, cardTopic: false });
     const cands = applyOnly(ranked, only);
     expect(cands.map((c) => [c.key, c.reservation, c.room])).toEqual([
       ["buy:AAA:uncommon", 24, false],
@@ -138,7 +189,7 @@ describe("plan: candidatos por menú", () => {
   it("formatPlan con --only: valor, límite, lista/apertura, ancla, camino en la paciencia y primer mensaje", async () => {
     const values: Record<string, number> = { "AAA-01": 9, "AAA-02": 9.4, "AAA-06": 24, "AAA-07": 24.8, "BBB-01": 3, "BBB-02": 3, "BBB-06": 3 };
     const m = me([]);
-    const ranked = await rankCandidates({ me: m, catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40 });
+    const ranked = await rankCandidates({ me: m, catalog: CATALOG, dealer: ABUELA, valueOf: async (c) => values[c]!, safety: 1, budget: 40, cardTopic: false });
     const cands = applyOnly(ranked, parseOnly("buy:uncommon:AAA,buy:common:AAA"));
     const chosen = selectCandidates(cands, { maxThreads: 2, maxSpend: 40, only: true });
     const text = formatPlan(m, ABUELA, cands, chosen, { maxDeals: 2, maxSpend: 40, maxThreads: 2, safety: 1 }).join("\n");

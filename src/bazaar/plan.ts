@@ -9,13 +9,23 @@ import type { Catalog, DealerInfo, Me } from "./schemas.js";
  * ninguna compra deja margen, qué venderle (lo que compra, a la puja aprendida). Puro salvo `valueOf`.
  */
 
-/** Pujas aprendidas en vivo cuando el dealer nos compra: precio fijo, sin reciprocidad. */
-export const LEARNED_BIDS: Record<string, Record<string, { price: number; fixed: boolean; source: string }>> = {
-  abuela: { common: { price: 13, fixed: true, source: "learned live (thread 56): fixed, never moved" } },
-};
-/** ASSUMPTION (sim): apertura de su venta sin opening_ask = list × 1,15; su puja sin dato = list × 0,4. */
+/**
+ * Su puja cuando nos compra es DESCONOCIDA hasta su primer precio en el hilo (hilos 56 y 125: la misma común
+ * MAL-02 a 13 una vez y a 5–6 otra, sin causa conocida). El plan solo usa un techo plausible para decidir si
+ * abrir: su lista de venta de esa rareza × 1,3 (13 sobre su lista 10 de comunes, lo más alto visto).
+ */
+export const PLAUSIBLE_BID_FRAC = 1.3;
+/** ASSUMPTION (sim): apertura de su venta sin opening_ask = list × 1,15 (Abuela, confirmado en vivo). */
 const ASSUMED_OPENING_MARKUP = 1.15;
-const ASSUMED_BID_FRAC = 0.4;
+/**
+ * Riesgo de repetida al comprar por rareza+set (la carta la elige ella; se supone uniforme entre las de esa
+ * rareza y set): se descarta si P(repetida) > 0,34 y la pérdida en el peor caso (pagar el límite por la repetida
+ * de menor valor) supera 3 P, porque cada trato puntúa a nuestro valor privado (SAL-07 a 23: neg_points −14,9).
+ * Además el valor esperado debe superar su lista en `RARITY_SET_MARGIN` (al menos 2 P o el 10 % de la lista).
+ */
+export const MAX_DUPLICATE_P = 0.34;
+export const MAX_WORST_CASE_LOSS = 3;
+export const RARITY_SET_MARGIN = { min: 2, frac: 0.1 };
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
 
 export type CandidateKind = "buy-card" | "buy-rarity-set" | "sell";
@@ -45,6 +55,13 @@ export interface Candidate extends Target {
   room: boolean;
   why: string;
   cards?: { id: string; value: number; held: boolean }[];
+  /** Rareza+set: probabilidad de recibir una repetida y pérdida si nos toca la peor repetida pagando el límite. */
+  duplicateP?: number;
+  worstCaseLoss?: number;
+  /** Compra de carta concreta sobre una entrada de rareza+set: el dealer aún no ha aceptado `{buy: {card}}`. */
+  cardTopicUntested?: boolean;
+  /** Venta: su puja es desconocida hasta su primer precio en el hilo (`herOpening` es solo el techo plausible). */
+  bidUnknown?: boolean;
   copy?: "duplicate" | "only";
   page?: PageImpact;
 }
@@ -58,9 +75,12 @@ export interface RankInput {
   safety?: number;
   /** Lo que queda para gastar (tope de la ejecución y de la hora). */
   budget: number;
+  /** Proponer cartas concretas (`{buy: {card}}`) sobre entradas de rareza+set; falso si el dealer ya lo rechazó. */
+  cardTopic?: boolean;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
+const round2 = (x: number) => Math.round(x * 100) / 100;
 
 function setsOf(entry: { sets?: string | string[] | null | undefined }, catalog: Catalog): Set<string> {
   const released = catalog.sets.filter((s) => (s as { released?: unknown }).released !== false).map((s) => s.id ?? "");
@@ -126,22 +146,41 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       const value = vals.reduce((s, v) => s + v.value, 0) / vals.length;
       const fresh = vals.filter((v) => !v.held).length;
       const page = pages.get(setId);
-      buys.push(
-        finish(
-          {
-            kind: "buy-rarity-set",
-            key: `buy:${setId}:${rarity}`,
-            topic: { buy: { rarity, set: setId } },
-            label: `buy ${rarity} ${setId}`,
-            rarity,
-            set: setId,
-            value,
-            cards: vals,
-            ...(page ? { page: { set: setId, ...page, after: round1(page.have + fresh / vals.length) } } : {}),
-          },
-          `; ${fresh}/${vals.length} would be new${page ? ` (${setId} page ${page.have}/${page.of})` : ""}`,
-        ),
+      const heldVals = vals.filter((v) => v.held).map((v) => v.value);
+      const duplicateP = round2(heldVals.length / vals.length);
+      const limit = Math.min(cap, Math.floor(value * safety));
+      const worstCaseLoss = heldVals.length ? round1(Math.max(0, limit - Math.min(...heldVals))) : 0;
+      const margin = Math.max(RARITY_SET_MARGIN.min, Math.ceil(ref * RARITY_SET_MARGIN.frac));
+      const risky = duplicateP > MAX_DUPLICATE_P && worstCaseLoss > MAX_WORST_CASE_LOSS;
+      const c = finish(
+        {
+          kind: "buy-rarity-set",
+          key: `buy:${setId}:${rarity}`,
+          topic: { buy: { rarity, set: setId } },
+          label: `buy ${rarity} ${setId}`,
+          rarity,
+          set: setId,
+          value,
+          cards: vals,
+          duplicateP,
+          worstCaseLoss,
+          ...(page ? { page: { set: setId, ...page, after: round1(page.have + fresh / vals.length) } } : {}),
+        },
+        `; ${fresh}/${vals.length} would be new${page ? ` (${setId} page ${page.have}/${page.of})` : ""}; P(duplicate) ${duplicateP}, worst-case loss ${worstCaseLoss} P`,
       );
+      if (c.room && risky) buys.push({ ...c, room: false, why: `${c.why}; SKIP: duplicate risk (P ${duplicateP} > ${MAX_DUPLICATE_P} and worst case −${worstCaseLoss} P > ${MAX_WORST_CASE_LOSS} P)` });
+      else if (c.room && c.reservation < ref + margin) buys.push({ ...c, room: false, why: `${c.why}; SKIP: expected value does not clear her list by the ${margin} P margin a random card needs` });
+      else buys.push(c);
+      if (input.cardTopic === false) continue;
+      for (const v of vals) {
+        if (v.held) continue;
+        buys.push(
+          finish(
+            { kind: "buy-card", key: `buy:${v.id}`, topic: { buy: { card: v.id } }, label: `buy ${v.id}`, rarity, set: setId, card: v.id, value: v.value, cardTopicUntested: true, ...(page ? { page: { set: setId, ...page, after: page.have + 1 } } : {}) },
+            `; new for us; specific card on her ${rarity} entry (topic {buy:{card}} untested: if she refuses it, the agent falls back to rarity+set)`,
+          ),
+        );
+      }
     }
   }
   buys.sort((a, b) => Number(b.room) - Number(a.room) || b.surplus - a.surplus || b.value - a.value);
@@ -160,10 +199,9 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const rarity = rarityOf(top);
     const set = setOfCard(ref, top as { set?: unknown });
     if (!rarity || !buyRarities.get(rarity)?.has(set)) continue;
-    const learned = LEARNED_BIDS[dealer.id]?.[rarity];
     const sellList = dealer.menu.sells.find((s) => s.rarity?.toLowerCase() === rarity)?.list_price ?? undefined;
-    const bid = learned ?? (sellList !== undefined ? { price: Math.max(1, Math.round(sellList * ASSUMED_BID_FRAC)), fixed: false, source: `bid assumed her ${rarity} list × ${ASSUMED_BID_FRAC}` } : undefined);
-    if (!bid) continue;
+    if (sellList === undefined) continue;
+    const bid = { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` };
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
     for (const { a, copy } of offered) {
       if (typeof a.your_value !== "number") continue;
@@ -189,9 +227,10 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
         herOpeningSource: bid.source,
         surplus: round1(bid.price - value),
         room,
+        bidUnknown: true,
         copy,
         ...(page ? { page } : {}),
-        why: `she buys ${rarity} at ${bid.price}; our value ${round1(value)} → min ${reservation}; ${room ? `+${round1(bid.price - value)} P` : "no room"}; ${impact}`,
+        why: `her bid is unknown (could reach ${bid.price}); our value ${round1(value)} → min ${reservation}; ${room ? `plausible: up to +${round1(bid.price - value)} P; if her first bid < ${DEFAULT_NEGOTIATOR_PARAMS.lowballFrac} × ${reservation} we close after one counter` : "her plausible ceiling does not reach our minimum: not opened"}; ${impact}`,
       });
     }
   }
@@ -276,7 +315,7 @@ export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: n
   for (const c of cands) {
     if (out.length >= o.maxThreads) break;
     if (c.side !== "sell" || !c.room) continue;
-    const base = bought ? "sell with room after the buys" : "fallback: no buy has room; sell what she buys at her learned price";
+    const base = bought ? "sell with room after the buys" : "fallback: no buy has room; sell what she buys if her first bid can reach our minimum";
     out.push({ candidate: c, reason: `${base} (${c.copy === "duplicate" ? "duplicate first" : "lowest page impact, then most value created"})` });
   }
   return out;
@@ -349,7 +388,7 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
   cands.forEach((c, i) => {
     const what = c.kind === "buy-rarity-set" ? `BUY ${c.rarity} ${c.set} (any card of that rarity+set)` : c.kind === "buy-card" ? `BUY ${c.card}` : `SELL ${c.card} (${c.rarity}, ${c.copy === "duplicate" ? "DUPLICATE" : "ONLY copy"})`;
     L.push(`${String(i + 1).padStart(2)}. [${c.room ? "ROOM" : "no room"}] ${what}`);
-    const her = c.side === "buy" ? `her list ${c.herList ?? "?"}, opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ${c.herOpening} (${c.herOpeningSource})`;
+    const her = c.side === "buy" ? `her list ${c.herList ?? "?"}, opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ? (${c.herOpeningSource})`;
     L.push(`      value gain ${c.side === "buy" ? round1(c.value) : `${c.surplus >= 0 ? "+" : ""}${c.surplus}`} P · reservation ${c.reservation} · ${her} · value created at her price ${c.surplus >= 0 ? "+" : ""}${c.surplus} P`);
     if (c.cards) L.push(`      cards: ${c.cards.map((x) => `${x.id}=${round1(x.value)}${x.held ? "(held)" : ""}`).join(" ")}`);
     L.push(`      why: ${c.why}`);
@@ -367,10 +406,11 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
     const limitWhy = c.side === "buy" ? `value × ${caps.safety ?? "safety"}, capped by spend/cash` : `value ÷ ${caps.safety ?? "safety"}`;
     L.push(`  #${i + 1} ${c.label} · topic ${JSON.stringify(c.topic)}`);
     L.push(`      why chosen: ${s.reason}`);
-    const her = c.side === "buy" ? `her list ${c.herList ?? "?"} · her opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ${c.herOpening} (${c.herOpeningSource})`;
+    const her = c.side === "buy" ? `her list ${c.herList ?? "?"} · her opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ? (${c.herOpeningSource})`;
     L.push(`      our value ${round1(c.value)} · our limit ${c.reservation} (${limitWhy}) · ${her}`);
     L.push(`      anchor ${planned[0] ?? "-"} · planned path within ${params.patienceBudget} exchanges (step mode ${params.stepMode}, max step ${params.maxStep}): ${planned.join(" → ") || "-"}`);
-    L.push(`      if she does not move from ${c.herOpening}: ${path.prices.join(" → ") || "-"} → ${path.outcome}`);
+    if (c.cardTopicUntested) L.push(`      card topic: {buy:{card:"${c.card}"}} not yet tried live with this dealer; on a 400/422 refusal the agent switches to rarity+set for the rest of the run`);
+    L.push(`      if she ${c.bidUnknown ? "bids her plausible ceiling" : "does not move from"} ${c.herOpening}: ${path.prices.join(" → ") || "-"} → ${path.outcome}`);
     L.push(`      first message (price ${path.prices[0] ?? "-"}): "${path.firstText ?? "(none)"}"`);
   });
   return L;
