@@ -109,6 +109,15 @@ describe("component rendering", () => {
     expect(html).not.toContain("tabindex");
   });
 
+  it("DataTable highlights the row at selectedRowIndex", () => {
+    const html = renderToString(
+      <DataTable columns={[{ key: "id", label: "Id" }]} rows={[{ id: "r-1" }, { id: "r-2" }]} selectedRowIndex={1} />,
+    );
+    const bodyRows = html.split("<tbody>")[1]!.split("<tr").slice(1);
+    expect(bodyRows[0]).not.toContain("is-selected");
+    expect(bodyRows[1]).toContain("is-selected");
+  });
+
   it("renders DataTable without throwing", () => {
     expect(() =>
       renderToString(

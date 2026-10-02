@@ -18,13 +18,15 @@ export interface DataTableProps {
   rows: DataTableRow[];
   /** Makes the whole row clickable (mouse and keyboard, Enter/Space), in addition to any link inside a cell. */
   onRowClick?: (rowIndex: number) => void;
+  /** Row index visually highlighted as "selected" (e.g. the round picked on a chart). */
+  selectedRowIndex?: number;
 }
 
 function isCell(value: ReactNode | DataTableCell): value is DataTableCell {
   return typeof value === "object" && value !== null && "value" in (value as object);
 }
 
-export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataTableProps) {
   return (
     <div className="nr-table-wrap">
       <table className="nr-table">
@@ -41,7 +43,7 @@ export function DataTable({ columns, rows, onRowClick }: DataTableProps) {
           {rows.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={onRowClick ? "nr-table-row-clickable" : undefined}
+              className={[onRowClick ? "nr-table-row-clickable" : "", rowIndex === selectedRowIndex ? "is-selected" : ""].filter(Boolean).join(" ") || undefined}
               {...(onRowClick
                 ? {
                     tabIndex: 0,

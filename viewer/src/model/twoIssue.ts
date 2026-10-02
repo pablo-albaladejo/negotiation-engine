@@ -19,6 +19,8 @@ export interface PlanePoint {
 
 export interface TwoIssueModel {
   game: ArenaReplayModel["game"];
+  /** `configVersion` de la cabecera de la traza; `null` sin traza ("not logged"). */
+  configVersion: number | null;
   /** Eje Y = primer issue, eje X = segundo (como en el diseño: descuento × día). */
   axes: { x: { name: string; issue: LoggedIssue | null }; y: { name: string; issue: LoggedIssue | null } };
   /** Mandato de la cabecera de arena; `null` sin traza. `region` son los límites de cada issue que cumple la reserva. */
@@ -79,6 +81,7 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
 
   return {
     game: base.game,
+    configVersion: header?.configVersion ?? null,
     axes: { x: { name: xName, issue: issue(xName) }, y: { name: yName, issue: issue(yName) } },
     mandate,
     offers: { ours: toPoints(base.offers.ours), rival: toPoints(base.offers.rival) },

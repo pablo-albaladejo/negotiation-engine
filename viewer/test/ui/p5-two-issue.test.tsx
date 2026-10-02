@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { twoIssueModel } from "../../src/model/index.js";
 import { TwoIssueScreen } from "../../src/screens/TwoIssueScreen.js";
@@ -14,6 +14,24 @@ afterEach(cleanup);
 const pctDay = () => fx.games.find((g) => g.scenarioId === "pct-day-buyer-wide")!;
 
 describe("TwoIssueScreen (P5)", () => {
+  it("Surplus / ZOPA KPI se muestra como decimal, nunca como porcentaje", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    expect(screen.getByText("Surplus / ZOPA")).toBeTruthy();
+    expect(screen.queryByText(/%$/)).toBeNull();
+  });
+
+  it("clicar un punto del plano selecciona la ronda y resalta la fila de la tabla", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const firstDot = container.querySelector("circle.dot-us, circle.dot-them")! as HTMLElement;
+    expect(firstDot.getAttribute("role")).toBe("button");
+    fireEvent.click(firstDot);
+    expect(container.querySelector(".nr-table tr.is-selected")).toBeTruthy();
+  });
+
   it("un punto por oferta en el plano día × pct, mandato, utilidades registradas y tabla; sin isoutilidades", () => {
     const line = pctDay();
     const model = twoIssueModel(line, fx.traces.get(line.gameId)!);

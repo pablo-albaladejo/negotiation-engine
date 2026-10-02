@@ -10,6 +10,7 @@ import {
   type Scatter2DRegion,
   formatNumber,
 } from "@negotiation-ring/design-system";
+import { useState } from "react";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
 import { resultLabel } from "../ui/labels.js";
@@ -25,7 +26,7 @@ const COLUMNS: DataTableColumn[] = [
 
 const num = (v: number): string => formatNumber(v, { locale: "en" });
 const utility = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
-const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
+const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
 
 export interface TwoIssueScreenProps {
   runId: string;
@@ -38,6 +39,8 @@ export interface TwoIssueScreenProps {
 /** P5: partida de 2 issues en el plano, utilidades por ronda tal como las registró el motor y tabla de ofertas. */
 export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: TwoIssueScreenProps) {
   const { x, y } = model.axes;
+  const [selectedRound, setSelectedRound] = useState(model.game.rounds || 1);
+  const selectPoint = (point: { round: number }) => setSelectedRound(point.round);
   const value = (offer: Offer, key: string): string => (offer[key] === undefined ? "—" : num(offer[key]!));
   const fmtOffer = (offer: Offer | null): string => (offer ? `${y.name} ${value(offer, y.name)} · ${x.name} ${value(offer, x.name)}` : "—");
   const all = [...model.offers.ours, ...model.offers.rival];
@@ -91,11 +94,17 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
           {model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}
         </span>
         <span className="nr-cfg">
-          {model.mandate
-            ? `mandate: ${Object.entries(model.mandate.reservation)
-                .map(([k, v]) => `${k} ${num(v)}`)
-                .join(" · ")}`
-            : "mandate: not logged"}
+          <span>config v{model.configVersion !== null ? model.configVersion : "not logged"}</span>
+          {" · "}
+          <span>utility: not logged</span>
+          {" · "}
+          <span>
+            {model.mandate
+              ? `mandate: ${Object.entries(model.mandate.reservation)
+                  .map(([k, v]) => `${k} ${num(v)}`)
+                  .join(" · ")}`
+              : "mandate: not logged"}
+          </span>
         </span>
       </div>
       <KpiStrip
@@ -106,7 +115,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             ...(resultLabel(model.game.endReason).tone ? { tone: resultLabel(model.game.endReason).tone! } : {}),
           },
           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "none" },
-          { label: "Surplus", value: pct(model.game.surplusShare) },
+          { label: "Surplus / ZOPA", value: dec(model.game.surplusShare) },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds} / ${model.game.roundLimit}` : String(model.game.rounds) },
           { label: "Role", value: model.game.role },
         ]}
@@ -122,6 +131,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             theirOffers={model.offers.rival}
             {...(mandate ? { mandate } : {})}
             {...(deal ? { deal } : {})}
+            onPointClick={selectPoint}
           />
           <Legend>
             <span>Our offers</span>
@@ -139,6 +149,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
                 ourOffers={model.utilities.map((u) => ({ round: u.round, value: u.uOffer * 100 }))}
                 theirOffers={model.utilities.flatMap((u) => (u.uRival === null ? [] : [{ round: u.round, value: u.uRival * 100 }]))}
                 {...(end ? { end } : {})}
+                onPointClick={selectPoint}
               />
             ) : (
               <p className="nr-muted">Utilities not logged (trace without engine explain).</p>
@@ -146,7 +157,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
           </Card>
           <Card title="Logged offers">
             {model.hasTrace ? (
-              <DataTable columns={COLUMNS} rows={rows} />
+              <DataTable columns={COLUMNS} rows={rows} selectedRowIndex={(model.rows ?? []).findIndex((r) => r.round === selectedRound)} />
             ) : (
               <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
             )}

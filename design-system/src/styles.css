@@ -65,6 +65,7 @@
 .nr-table-row-clickable{cursor:pointer}
 .nr-table-row-clickable:hover{background:var(--us-soft)}
 .nr-table-row-clickable:focus-visible{outline:2px solid var(--us);outline-offset:-2px}
+.nr-table tr.is-selected{background:var(--us-soft)}
 .nr-better{color:var(--ok);font-weight:600} .nr-worse{color:var(--warn);font-weight:600}
 
 /* Heatmap */
