@@ -49,19 +49,28 @@ const distinct = <T extends string>(values: readonly T[]): T[] => [...new Set(va
 /** The finite set of `endReason` values the engine can log (`results-schema.ts`'s `EndReasonSchema`); anything else from the URL is dropped. */
 const KNOWN_END_REASONS: readonly EndReason[] = ["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error", "protocol-violation"];
 
+/**
+ * Same predicate `matchesModel` uses for its rows, exposed so other views of the same run (the
+ * MatchSelector in a replay screen) can filter by the carried Matches filters instead of showing
+ * every game in the run (L14).
+ */
+export function filterGames(games: readonly TranscriptLine[], filters: MatchFilters = {}): TranscriptLine[] {
+  const hasInjectionData = games.some((l) => l.metrics.injectionSuspected !== undefined);
+  return games.filter(
+    (line) =>
+      (filters.rival === undefined || line.rival === filters.rival) &&
+      (filters.role === undefined || line.role === filters.role) &&
+      (filters.result === undefined || line.endReason === filters.result) &&
+      (!filters.template || line.metrics.templateFallbacks > 0) &&
+      (!hasInjectionData || !filters.injection || (line.metrics.injectionSuspected ?? 0) > 0),
+  );
+}
+
 /** P2: KPIs de `summary.overall` y tabla de `transcripts.jsonl` filtrada. */
 export function matchesModel(summary: Summary, games: readonly TranscriptLine[], filters: MatchFilters = {}): MatchesModel {
   const { games: g, agreementRate, meanSurplus, violations, leaks, templateFallbacks, rivalErrors } = summary.overall;
   const hasInjectionData = games.some((l) => l.metrics.injectionSuspected !== undefined);
-  const rows = games
-    .filter(
-      (line) =>
-        (filters.rival === undefined || line.rival === filters.rival) &&
-        (filters.role === undefined || line.role === filters.role) &&
-        (filters.result === undefined || line.endReason === filters.result) &&
-        (!filters.template || line.metrics.templateFallbacks > 0) &&
-        (!hasInjectionData || !filters.injection || (line.metrics.injectionSuspected ?? 0) > 0),
-    )
+  const rows = filterGames(games, filters)
     .map(
       (line): MatchRow => ({
         gameId: line.gameId,

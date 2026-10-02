@@ -5,7 +5,7 @@ import { initialTheme, storeTheme, type Theme } from "./theme.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
-import { arenaReplayModel, filtersToQuery, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
+import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
 import { parseRoute, routeTo } from "./route.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
@@ -131,7 +131,8 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
     ]).then(([run, trace]) => {
       if (cancelled) return;
       const line = run.data?.games.find((g) => g.gameId === gameId) ?? null;
-      const games = run.data?.games ?? [];
+      // MatchSelector shows the same games Matches would, under the filters carried in `query` (L14).
+      const games = filterGames(run.data?.games ?? [], queryToFilters(query));
       setState({ line, trace: trace.data && trace.data.length > 0 ? trace.data : null, games });
     });
     return () => {

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { arenaReplayModel, filtersToQuery, gateModel, isTwoIssue, matchesModel, queryToFilters, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
+import { arenaReplayModel, filterGames, filtersToQuery, gateModel, isTwoIssue, matchesModel, queryToFilters, runsModel, tournamentReplayModel, twoIssueModel } from "../../src/model/index.js";
 import { asV1Trace, generateFixtures, generateGateFixtures, RIVAL_HTML, type ViewerFixtures } from "../fixtures.js";
 
 let fx: ViewerFixtures;
@@ -90,6 +90,13 @@ describe("matchesModel (P2)", () => {
   it("run vacío: overall.games = 0 ⇒ empty", () => {
     const summary = { ...fx.summary, overall: { ...fx.summary.overall, games: 0 } };
     expect(matchesModel(summary, []).empty).toBe(true);
+  });
+
+  it("filterGames: mismo predicado que matchesModel, reutilizable fuera de P2 (L14)", () => {
+    const rival = fx.games[0]!.rival;
+    const byRival = filterGames(fx.games, { rival });
+    expect(byRival.every((g) => g.rival === rival)).toBe(true);
+    expect(byRival.map((g) => g.gameId)).toEqual(matchesModel(fx.summary, fx.games, { rival }).rows.map((r) => r.gameId));
   });
 
   it("filtersToQuery/queryToFilters: round-trip para persistir en la URL (INBOX §2)", () => {
