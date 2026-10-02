@@ -17,7 +17,6 @@ describe("labels utilities (T12)", () => {
 
     it("formats valid ISO dates as 'Mon D, YYYY HH:mm'", () => {
       const result = formatRunDate("2026-10-01T09:42:00.000Z");
-      // Oct 1, 2026 09:42 (in UTC/local time depending on timezone)
       expect(result).toMatch(/\w{3} \d{1,2}, \d{4} \d{2}:\d{2}/);
       expect(result).not.toContain("not logged");
     });
@@ -40,7 +39,8 @@ describe("labels utilities (T12)", () => {
         acTimeThreshold: 2000,
         noise: 0.01,
         defaultHorizon: 100,
-      };
+        persona: "greedy",
+      } as any;
       const result = configParamsLine(params);
       expect(result).toContain("β=0.2");
       expect(result).toContain("openingMargin 0.1");
@@ -60,7 +60,7 @@ describe("labels utilities (T12)", () => {
     });
 
     it("formats params, persona, and provider separated by ' · '", () => {
-      const params = { beta: 0.2, openingMargin: 0.1, acceptMargin: 0.05, acTimeThreshold: 2000, noise: 0.01, defaultHorizon: 100 };
+      const params = { beta: 0.2, openingMargin: 0.1, acceptMargin: 0.05, acTimeThreshold: 2000, noise: 0.01, defaultHorizon: 100, persona: "greedy" } as any;
       const result = matchConfigLine(params, "greedy", "openai");
       expect(result).toContain("β=0.2");
       expect(result).toContain("persona greedy");
@@ -68,7 +68,7 @@ describe("labels utilities (T12)", () => {
     });
 
     it("shows 'not logged' only for missing fields when some are present", () => {
-      const params = { beta: 0.2, openingMargin: 0.1, acceptMargin: 0.05, acTimeThreshold: 2000, noise: 0.01, defaultHorizon: 100 };
+      const params = { beta: 0.2, openingMargin: 0.1, acceptMargin: 0.05, acTimeThreshold: 2000, noise: 0.01, defaultHorizon: 100, persona: "greedy" } as any;
       const result = matchConfigLine(params, null, "openai");
       expect(result).toContain("β=0.2");
       expect(result).toContain("persona not logged");

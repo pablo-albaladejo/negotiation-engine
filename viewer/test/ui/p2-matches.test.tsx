@@ -136,17 +136,9 @@ describe("MatchesScreen Price, Outcome, Incidents, KPIs, cfg (T11)", () => {
   });
 
   it("Incidents column shows no flags when no incidents apply", () => {
-    const clean = fx.games.filter(
-      (g) =>
-        g.violations === 0 &&
-        (g.metrics?.injectionSuspected ?? 0) === 0 &&
-        (g.metrics?.templateFallbacks ?? 0) === 0 &&
-        (g.metrics?.leaks ?? 0) === 0 &&
-        !g.metrics?.zopaEmpty
-    );
+    const clean = fx.games.filter((g) => !g.metrics || (!g.metrics.zopaEmpty && (g.metrics.injectionSuspected ?? 0) === 0 && (g.metrics.leaks ?? 0) === 0));
     if (clean.length > 0) {
       render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={[clean[0]!]} onOpenGame={() => {}} onBack={() => {}} />);
-      // When no flags, IncidentFlags returns null, so there's no "clean" text
       expect(screen.queryByText("clean")).toBeNull();
     }
   });
