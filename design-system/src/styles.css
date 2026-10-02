@@ -7,6 +7,7 @@
 .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}
 .nr-heading{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
 .nr-heading-sm{font-family:var(--font-display);font-size:16px;font-weight:700;margin:0}
+.nr-heading-lg{font-family:var(--font-display);font-size:22px;font-weight:700;margin:0}
 .nr-muted{color:var(--muted);font-size:13.5px}
 .nr-cfg{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .nr-stat-figure-wrap{display:flex;flex-direction:column;gap:var(--space-1)}
@@ -108,12 +109,12 @@
 
 .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 
-/* Button variants used by viewer/src/ui/buttons.tsx, styled through tokens only */
-.nr-link-back{background:transparent;border:none;font:500 13px var(--font-body);color:var(--muted);padding:0;align-self:flex-start;cursor:pointer}
-.nr-btn-secondary{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:5px 12px;font:600 13px var(--font-body);color:var(--ink);cursor:pointer}
+/* Button variants, styled through tokens only (components/Button.tsx) */
+.nr-link-back,.nr-btn-back{background:transparent;border:none;font:500 13px var(--font-body);color:var(--muted);padding:0;align-self:flex-start;cursor:pointer}
+.nr-btn-secondary,.nr-btn{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:5px 12px;font:600 13px var(--font-body);color:var(--ink);cursor:pointer}
 .nr-btn-primary{background:var(--ink);color:var(--bg);border:1px solid var(--ink);border-radius:var(--radius-md);padding:7px 14px;font:600 13px var(--font-body);cursor:pointer}
-.nr-btn-secondary:disabled,.nr-btn-primary:disabled{opacity:0.5;cursor:not-allowed}
-.nr-link-back:focus-visible,.nr-btn-secondary:focus-visible,.nr-btn-primary:focus-visible{outline:2px solid var(--us);outline-offset:2px}
+.nr-btn-secondary:disabled,.nr-btn:disabled,.nr-btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.nr-link-back:focus-visible,.nr-btn-back:focus-visible,.nr-btn-secondary:focus-visible,.nr-btn:focus-visible,.nr-btn-primary:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 .nr-link-table{background:transparent;border:none;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
 .nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 

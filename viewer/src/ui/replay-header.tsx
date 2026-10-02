@@ -23,7 +23,7 @@ export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena",
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
         <BackLink onClick={onBack}>{backLabel}</BackLink>
         <ModeBadge mode={mode} />
-        <h2 className="nr-heading">
+        <h2 className="nr-heading-lg">
           {gameId} · vs {rival}
         </h2>
       </div>

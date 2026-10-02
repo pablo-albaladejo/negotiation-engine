@@ -98,7 +98,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
           <BackLink onClick={onBack}>← Runs</BackLink>
           <ModeBadge mode="tournament" />
-          <h2 className="nr-heading">{model.sessionId}</h2>
+          <h2 className="nr-heading-lg">{model.sessionId}</h2>
         </div>
         <span className="nr-muted">
           {model.role ?? "not logged"} · scenario {model.scenario.id}

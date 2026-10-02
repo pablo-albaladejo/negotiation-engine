@@ -57,7 +57,7 @@ export function RunsScreen({ rows, errors, onOpenRun, onOpenLive, championVersio
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-          <h2 className="nr-heading">Runs</h2>
+          <h2 className="nr-heading-lg">Runs</h2>
           <span className="nr-muted">Each run is a batch of test-arena matches with a fixed agent configuration.</span>
         </div>
         {onOpenLive ? <PrimaryButton onClick={onOpenLive}>Open live view</PrimaryButton> : null}

@@ -133,7 +133,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
       <BackLink onClick={onBack}>← Runs</BackLink>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-          <h2 className="nr-heading">
+          <h2 className="nr-heading-lg">
             Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
           </h2>
           <span className="nr-cfg">

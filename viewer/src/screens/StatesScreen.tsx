@@ -12,7 +12,7 @@ export function StatesScreen() {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <h2 className="nr-heading">States and edge cases</h2>
+        <h2 className="nr-heading-lg">States and edge cases</h2>
         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
       </div>
       <div className="nr-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>

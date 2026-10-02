@@ -29,3 +29,21 @@ describe("Button variants", () => {
     expect(html).toContain('class="nr-btn-primary extra"');
   });
 });
+
+describe("deprecated button aliases", () => {
+  it("keeps .nr-btn as an alias of .nr-btn-secondary in styles.css", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toMatch(/\.nr-btn-secondary,\.nr-btn\{/);
+  });
+
+  it("keeps .nr-btn-back as an alias of .nr-link-back in styles.css", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
+    expect(css).toMatch(/\.nr-link-back,\.nr-btn-back\{/);
+  });
+});

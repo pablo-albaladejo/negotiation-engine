@@ -35,6 +35,20 @@ describe("component rendering", () => {
     ).not.toThrow();
   });
 
+  it("Card titles default to an h3 so page h2 stays the only top-level heading", () => {
+    const html = renderToString(<Card title="Offers by round">Contenido</Card>);
+    expect(html).toContain('<h3 class="nr-heading">Offers by round</h3>');
+  });
+
+  it("Card accepts a level override for the title heading", () => {
+    const html = renderToString(
+      <Card title="Section" level={2}>
+        Contenido
+      </Card>,
+    );
+    expect(html).toContain('<h2 class="nr-heading">Section</h2>');
+  });
+
   it("renders Tabs without throwing", () => {
     expect(() =>
       renderToString(
