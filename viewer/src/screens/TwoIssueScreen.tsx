@@ -90,9 +90,13 @@ export function TwoIssueScreen({ runId, model, onBack, summary, games, onSelectG
   }));
 
   const sub = `${roleLabel(model.game.role)} · ${y.name} and ${x.name}${model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}`;
-  const cfg = `${matchConfigLine(summary?.config.params, summary?.config.params?.persona ?? null, model.provider)} · ${
-    model.mandateLine ? `mandate: ${model.mandateLine}` : "mandate: not logged"
-  }`;
+  const cfg = [
+    matchConfigLine(summary?.config.params, summary?.config.params?.persona ?? null, model.provider),
+    model.mandateLine ? `mandate: ${model.mandateLine}` : "mandate: not logged",
+    model.weightsLine ? `w: ${model.weightsLine}` : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" · ");
   const withinMandateValue = model.withinMandate === null ? "not logged" : model.withinMandate ? "Yes" : "No";
 
   return (

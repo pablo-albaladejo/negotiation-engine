@@ -229,6 +229,13 @@ describe("twoIssueModel (P5)", () => {
     expect(m.hasExplain).toBe(true);
     expect(m.utilities.length).toBe(m.rows!.length);
     expect(m.rows![0]!.uOffer).toBe(m.utilities[0]!.uOffer);
+    expect(m.weightsLine).toBe("pct 0.7 \u00b7 day 0.3");
+  });
+
+  it("weightsLine is null when the trace doesn't log per-issue weights", () => {
+    const line = pctDay();
+    const none = twoIssueModel(line, null);
+    expect(none.weightsLine).toBeNull();
   });
 
   it("traza v1 sin explain: utilidades not logged; sin traza: sin mandato ni tabla", () => {

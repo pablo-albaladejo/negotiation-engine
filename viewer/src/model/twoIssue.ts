@@ -9,6 +9,7 @@ export interface LoggedIssue {
   min: number;
   max: number;
   direction: "higher-better" | "lower-better";
+  weight?: number;
 }
 
 export interface PlanePoint {
@@ -41,6 +42,8 @@ export interface TwoIssueModel {
   lastUtility: number | null;
   /** X3: acceptance rule logged for the round that closed the deal; `null` when the rival accepted our offer or not logged. */
   dealRule: string | null;
+  /** Per-issue weights as logged by the engine ("discount 0.6 · payment 0.4"); `null` when weights weren't logged for either issue. */
+  weightsLine: string | null;
 }
 
 /** Nombres de issue de las ofertas del transcript (en orden de aparición). */
@@ -105,6 +108,10 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
       : null;
   const lastUtility = base.game.endReason === "agreement" ? dealUtility(base.rounds ?? []) : null;
   const lastDealRule = base.rounds ? dealRule(base.rounds) : null;
+  const weightsLine =
+    [issue(yName), issue(xName)].filter((i): i is LoggedIssue => i !== null && i.weight !== undefined).length === 2
+      ? [issue(yName)!, issue(xName)!].map((i) => `${i.name} ${i.weight}`).join(" \u00b7 ")
+      : null;
 
   return {
     game: base.game,
@@ -128,5 +135,6 @@ export function twoIssueModel(line: TranscriptLine, trace: readonly TraceLine[] 
     withinMandate,
     lastUtility,
     dealRule: lastDealRule,
+    weightsLine,
   };
 }

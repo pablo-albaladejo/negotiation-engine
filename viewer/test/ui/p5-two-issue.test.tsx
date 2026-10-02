@@ -122,6 +122,18 @@ describe("TwoIssueScreen Within mandate / region / deal / cfg (T9)", () => {
     }
   });
 
+  it("cfg line shows per-issue weights as logged, no invented 'utility: not logged' field", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const cfg = container.querySelector(".nr-cfg");
+    expect(cfg).toBeTruthy();
+    expect(cfg!.textContent).not.toContain("utility: not logged");
+    if (model.weightsLine) {
+      expect(cfg!.textContent).toContain(`w: ${model.weightsLine}`);
+    }
+  });
+
   it("cfg line shows mandate field with mandateLine or 'not logged'", () => {
     const line = pctDay();
     const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
