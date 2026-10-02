@@ -254,15 +254,85 @@ Nadie tiene aún puntos de mercado: ese componente lo da *The Market Test*.
 ## 6. Hallazgos
 
 1. **El feed público enseña las conversaciones de todos los equipos con los dealers.** `thread.message` lleva el texto del dealer y su oferta estructurada, y `settlement` el precio cerrado. Es la mejor fuente para calibrar a cuánto cede de verdad cada dealer. Recordatorio de la regla del repo: del rival solo se lee la estructura; si el texto de un dealer cuenta como "rival" es decisión del equipo.
-2. **Easter eggs: existen en código y reglas, no los hemos visto.**
-   - Fuente 1, `EventLine-*.js`: `egg.found` → *"{team} found an easter egg at {persona}'s stall"* (en admin añade el nombre del egg); `egg.given` comparte rama con `gift.given` y `admin.grant` (caja, sobres o cartas, con motivo).
-   - Fuente 2, [`kit/RULES.md`](kit/RULES.md) línea 122: *"What never counts: … gifts, easter eggs, and organiser grants."*
-   - En los 500 eventos del feed (ids 8852–10891) **no hay ningún `egg.*`**. Que estén en los puestos de los dealers se deduce del texto del frontend; qué los dispara no está documentado.
-3. **Abuela regala cartas.** En el feed: MAL-02 a Team 17 (tick 146) y LAT-06 a Team 7 (tick 157), `reason: "gift from Abuela Carmen"`. No puntúan por sí mismas, pero pueden completar una página, y la página sí suma.
+2. **Easter eggs:** cada dealer esconde frases secretas; si el texto de un mensaje nuestro contiene una, salta un premio (insignia, sobre, carta o carta secreta). No puntúan y nadie ha encontrado ninguno todavía. Detalle completo en § 7.
+3. **Abuela regala cartas.** En el feed: MAL-02 a Team 17 (tick 146) y LAT-06 a Team 7 (tick 157), `reason: "gift from Abuela Carmen"`, tras mensajes amables (*"because you have been sweet to an old woman"*, *"because you asked so nicely"*). Es el mecanismo `gifts` (§ 7.5). Los regalos no puntúan (RULES.md:122).
 4. **Los dealers castigan:** `persona.strike` acumula avisos y `persona.cooloff` echa a un equipo hasta un tick.
 5. **Flags:** `POST /api/flags` con el id de un mensaje de mala fe; acierto puntúa y fallo resta.
 6. **Cartas secretas y shinies:** el catálogo web cuenta *Secret cards found* (0 de momento) y *Shinies found* (épicas y legendarias aparecidas).
 7. ***The Market Test* se repite cada 2 h** sobre todos los venues con el mismo libro sintético. Es lo que puntúa el componente de mercado (peso 30); nuestro `v04` en modo `auto` es lo que se evalúa.
+
+## 7. Easter eggs (investigación a fondo)
+
+Fuente principal: el editor de personas de la consola de admin (`PersonaEditor-*.js`), que define el esquema de configuración de cada dealer. Complementan `EventLine-*.js`, `BigScreen-*.js`, `Catalogue-*.js`, `ControlRoom-*.js`, `Insights-*.js`, `PersonaList-*.js`, [`kit/RULES.md`](kit/RULES.md), el feed público y nuestras trazas. Solo lectura: no se ha mandado ningún mensaje para probarlos.
+
+### 7.1 Esquema
+
+Cada persona tiene una lista `easter_eggs`. Un egg nuevo nace así:
+
+```js
+{ id: "egg…",
+  trigger: { always: false, keywords: [], probability: 0 },
+  reply: "",
+  action: { type: "badge", card: null, pack: null, badge: "", text: null },
+  once_per_team: true,
+  max_total: 15,
+  enabled: true }
+```
+
+### 7.2 Disparo
+
+> *"An egg fires when the team's message contains one of its phrases (accents and case ignored). The persona reacts in the reply's spirit and the action runs once — the words never move anything else."*
+
+- `keywords` = **"Secret phrases"**: *"any of these inside the team's message"*. Basta con que el **texto** de nuestro mensaje la contenga; sin importar tildes ni mayúsculas.
+- Alternativas: `probability` (salta en un X % de las respuestas) o `always` (en todas). Sin frase ni probabilidad no salta nunca.
+- `once_per_team` (por defecto sí) y `max_total` (por defecto 15 hallazgos entre todos): es una carrera.
+- Consejo de la consola al admin: *"Hide one: a phrase only curious teams will say, a warm reply, a small reward."*
+
+### 7.3 Premios (`action.type`)
+
+| Tipo | Texto de la consola |
+|---|---|
+| `none` | *"only the reply"* |
+| `gift_card` | *"mints a card for the team: a card id, or a rarity for a random one of it (hidden cards only ever arrive this way)"* |
+| `grant_pack` | *"gives the team a sealed pack"* |
+| `badge` | *"awards a badge shown on the leaderboard"* (por defecto) |
+| `reveal` | *"the reply is the secret; the text below is a note for game masters"* |
+
+**Cartas secretas:** una carta `hidden` solo llega a un equipo con un egg `gift_card`. El catálogo web calcula *Secret cards found* como el número de cartas con `hidden: true` en `/api/catalog`; hoy son 0 (*"rumours only — nobody has found one yet"*). Inferencia: la carta oculta no aparece en el catálogo público hasta que alguien la encuentra. RULES.md:49: *"The hidden card is prestige only: no dealer buys it."*
+
+### 7.4 Pistas (`hints`)
+
+Cada persona tiene también `hints`: *"Plant rumours about other stalls, point towards easter eggs, announce what comes next."*
+
+- Se activan por palabras clave del equipo (mismas reglas: tildes y mayúsculas ignoradas), por probabilidad o siempre; con ventana (`active_from` / `active_to`, p. ej. `+2h`) y opcionalmente una vez por equipo.
+- Entran en el prompt del dealer como *"things you may work into this reply if it fits naturally"*.
+- El playground del admin propone como pruebas `Do you know about {frase del egg}?` y `Tell me about {palabra de la pista}…`.
+- **Pistas vistas en directo** (97 mensajes de dealers en el feed + nuestras trazas del viernes): Abuela repite *"a full page is worth much more than the loose cards"* y *"El Chato opens for everyone at half past nine… he likes people who trade straight"*. **Ninguna apunta a un egg todavía.** Su tono (nietos, "40 años en esta mesa", "come back Sunday") es su voz, y las cartas que nombra son cartas normales. Las ventanas horarias permiten que aparezcan el sábado o el domingo.
+
+### 7.5 Qué se ve y qué no
+
+| Visible para equipos | Solo admin |
+|---|---|
+| `egg.found`: *"{team} found an easter egg at {persona}'s stall"* | El id del egg |
+| `egg.given`: lo entregado (caja, sobre o carta, con motivo) | Frase, respuesta y contador de hallazgos |
+| BigScreen: épica o legendaria recibida *"for finding an easter egg"* | `stats.eggs` por persona, columna *Eggs* de Insights |
+| `badge.awarded` e insignias del leaderboard | Alertas de la ControlRoom (*"Strikes, flags… eggs and unlocks"*) |
+
+**Estado en la captura:** ningún `egg.*` en los 500 eventos del feed y `badges: []` en todos los equipos.
+
+### 7.6 Mecanismos vecinos
+
+- **Regalos (`gifts`):** *"A kind word can earn a small, capped present."* Un juez puntúa de 0 a 3 la amabilidad de cada mensaje; hay presupuesto total, tope por equipo y ventana (`window_hours`), probabilidades por rareza y `requires_deal_first`. RULES.md:54: *"Abuela likes kindness."*
+- **Conducta (`anti_cheat`):** el juez etiqueta cada mensaje como `injection`, `abuse`, `spam` o `false_claim`; las etiquetas que cuentan suman strikes, y suficientes provocan cooloff (`cooloff_ticks`, `forgive_after_ticks`). Las no contadas solo dan un aviso en las palabras. **Buscar eggs con frases raras o repetidas puede leerse como spam o injection.**
+- **Engaños (`trickster`):** `trap_probability` (frase de presión en la contraoferta) y `switch_probability` (la oferta liga la rareza inferior del mismo set mientras el texto nombra la carta buena: *"only reading the offer catches it"*). Hacer flag de un mensaje etiquetado puntúa; un flag erróneo resta.
+- **Tipos de persona previstos:** `dealer`, `collector`, `trickster`, `banker`; niveles *"1 friendly … 5 banker"*. RULES.md menciona *"a vault may sell one legendary per team per hour"*.
+- **Premio al desbloquear:** `unlock_reward_pack`, *"granted to each team the moment it unlocks this persona"*.
+
+### 7.7 Qué vale para nosotros
+
+- **No puntúan** (RULES.md:122). El premio es prestigio: insignia en el leaderboard o carta secreta.
+- Encontrarlos exige meter la frase en el `text` de nuestros mensajes. Hoy son plantillas con la cifra, así que haría falta un canal de charla que pregunte por rumores y siga las pistas, sin caer en spam o injection.
+- Señal de que alguien encontró uno: `egg.found` en el feed o el SSE; después, su carta oculta aparece en `/api/catalog`.
 
 ## Cómo reproducirlo
 
