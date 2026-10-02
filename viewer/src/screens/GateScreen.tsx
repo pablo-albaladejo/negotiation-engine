@@ -11,7 +11,7 @@ import {
 } from "@negotiation-ring/design-system";
 import { useEffect, useRef, useState } from "react";
 import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
-import { BackLink, PrimaryButton } from "../ui/buttons.js";
+import { PrimaryButton } from "../ui/buttons.js";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 
@@ -43,19 +43,18 @@ function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplu
     // C8: champion/candidate are a decimal share (surplusDec), the change a percentage-point delta
     // (formatPp) -- naming both units in the label instead of converting either value (L12's "no
     // invented judgement" extends to not inventing a shared unit either).
-    { ...row("Avg. surplus / ZOPA (share; change in pp)", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
+    { ...row("Avg. surplus / ZOPA", surplusDec, (p) => p.meanSurplus), d: formatPp(change) },
     row("Agreement", pct, (p) => p.agreementRate),
     row("Violations", int, (p) => p.violations),
     row("Leaks", int, (p) => p.leaks),
-    row("Avg. rounds to agreement", dec, (p) => p.meanRoundsToAgreement),
-    row("Empty ZOPA handled correctly", pct, (p) => p.emptyZopaCorrect),
-    row("Games", int, (p) => p.games),
+    row("Avg. rounds", dec, (p) => p.meanRoundsToAgreement),
+    row("Empty ZOPA detected", pct, (p) => p.emptyZopaCorrect),
   ];
 }
 
 function Verdict({ model }: { model: GateModel }) {
   const v = model.verdict;
-  if (v.promoted && v.promotedVersion !== null) return <Pill kind="verdict">promoted to champion v{v.promotedVersion}</Pill>;
+  if (v.promoted && v.promotedVersion !== null) return <Pill kind="verdict">candidate v{v.promotedVersion} becomes champion</Pill>;
   if (v.pass) return <Pill kind="verdict">gate passed{v.dryRun ? " · dry run" : ""}</Pill>;
   const [first, ...rest] = v.failed;
   return (
@@ -127,6 +126,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
   const metrics = model.metrics[phase];
   const heat = model.heatmap[phase];
   const changed = model.params?.filter((p) => p.changed && p.key !== "version") ?? [];
+  const gameCount = model.metrics[model.phases[0] as GatePhase]?.champion.games ?? null;
   const checkRows: DataTableRow[] = model.checks.map((c) => ({
     k: c.label,
     v: c.pass ? c.logged : { value: c.logged, tone: "worse" },
@@ -136,15 +136,14 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-        <BackLink onClick={onBack}>← Runs</BackLink>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
             <PageTitle>
               Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
             </PageTitle>
             <span className="nr-cfg">
-              {model.runId} · {model.candidatePath} · criterion: {model.criterion}
-              {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
+              {model.runId} vs {model.candidatePath} · {gameCount !== null ? `${gameCount} matches each` : "not logged"} · same seeds · only change:{" "}
+              {model.params ? (changed.length === 0 ? "no parameter changes" : changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")) : "not logged"}
             </span>
           </div>
           <Verdict model={model} />
@@ -152,7 +151,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
       </div>
       <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} aria-label="Gate phase" />
       <div className="nr-grid" style={gridCols("minmax(0, 1.2fr) minmax(0, 1fr)")}>
-        <Card title={`Metrics · ${PHASE_LABEL[phase]}`} caption="Change is the logged paired, role-weighted surplus difference; other rows have no logged change.">
+        <Card title="Metrics" caption="Share values; Change is in percentage points (pp).">
           {metrics ? <DataTable columns={METRIC_COLUMNS(model)} rows={metricRows(metrics)} /> : <p className="nr-muted">Phase not logged.</p>}
         </Card>
         <Card title="Promotion gate">
@@ -160,7 +159,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         </Card>
       </div>
       <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
-        <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption="Candidate · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor">
+        <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption={`${model.candidateVersion !== null ? `Candidate v${model.candidateVersion}` : "Candidate"} · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor`}>
           {heat ? (
             <Heatmap
               rowHeader="Opponent"
@@ -182,7 +181,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
                   p.changed
                     ? [
                         <div key={`${p.key}-a`} className="nr-diff-row">
-                          <span className="nr-diff-sign">-</span>
+                          <span className="nr-diff-sign">−</span>
                           <span>{p.key}: {p.champion}</span>
                         </div>,
                         <div key={`${p.key}-b`} className="nr-diff-row">

@@ -48,14 +48,15 @@ describe("GateScreen (P6)", () => {
 
   it("ya promovida: promoted to champion v2 y sin comando", () => {
     const { container } = render(<GateScreen model={gateModel("promote-x", gx.promoted.gate)} onBack={() => {}} />);
-    expect(container.querySelector(".nr-pill.verdict")?.textContent).toBe("promoted to champion v2");
+    expect(container.querySelector(".nr-pill.verdict")?.textContent).toBe("candidate v2 becomes champion");
     expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
   });
 
   it("cambiar de fase cambia las métricas y el heatmap; ruta #/promote/<runId>", () => {
     render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Held-out opponents" }));
-    expect(screen.getByText(/Metrics · Held-out opponents/)).toBeTruthy();
+    expect(screen.getByText("Metrics")).toBeTruthy();
+    expect(screen.getByText("Held-out opponents")).toBeTruthy();
     expect(parseRoute(routeTo.compare("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
     expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
   });
@@ -124,10 +125,43 @@ describe("GateScreen (P6)", () => {
     void table;
   });
 
-  it("names both units on the surplus/ZOPA row instead of mixing a decimal share and a pp change unlabelled (C8)", () => {
+  it("surplus/ZOPA row label matches the design (G4g), with the unit note moved to the Card caption", () => {
+    const model = gateModel("promote-x", gx.passed.gate);
+    const { container } = render(<GateScreen model={model} onBack={() => {}} />);
+    expect(screen.getByText("Avg. surplus / ZOPA")).toBeTruthy();
+    expect(screen.queryByText("Avg. surplus / ZOPA (share; change in pp)")).toBeNull();
+    expect(container.textContent).toContain("Change is in percentage points");
+  });
+
+  it("no 'Games' row, and the metric labels match the design exactly (G4g)", () => {
     const model = gateModel("promote-x", gx.passed.gate);
     render(<GateScreen model={model} onBack={() => {}} />);
-    expect(screen.getByText("Avg. surplus / ZOPA (share; change in pp)")).toBeTruthy();
-    expect(screen.queryByText("Avg. surplus / ZOPA")).toBeNull();
+    expect(screen.getByText("Avg. rounds")).toBeTruthy();
+    expect(screen.getByText("Empty ZOPA detected")).toBeTruthy();
+    expect(screen.queryByText("Games")).toBeNull();
+    expect(screen.queryByText("Avg. rounds to agreement")).toBeNull();
+    expect(screen.queryByText("Empty ZOPA handled correctly")).toBeNull();
+  });
+
+  it("no '← Runs' back link: the Tabs already cover navigation (G1g)", () => {
+    const { container } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    expect(container.querySelector(".nr-link-back")).toBeNull();
+  });
+
+  it("config line names champion/candidate run ids, matches each and the changed params (G2g)", () => {
+    const model = gateModel("promote-x", gx.passed.gate);
+    const { container } = render(<GateScreen model={model} onBack={() => {}} />);
+    const cfg = container.querySelector(".nr-cfg")!.textContent!;
+    expect(cfg).toContain("vs");
+    expect(cfg).toContain("matches each");
+    expect(cfg).toContain("same seeds");
+    expect(cfg).toContain("only change:");
+  });
+
+  it("parameter diff uses the true minus sign U+2212, not an ASCII hyphen (G5g)", () => {
+    const { container } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    const signs = [...container.querySelectorAll(".nr-diff-sign")].map((s) => s.textContent);
+    expect(signs).toContain("−");
+    expect(signs).not.toContain("-");
   });
 });
