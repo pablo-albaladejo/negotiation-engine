@@ -1,6 +1,7 @@
 import { BazaarClient } from "./client.js";
 import { loadBazaarEnv } from "./env.js";
 import { rarityOf, spareTargets } from "./planner.js";
+import { extractScoreFields, formatScoreBreakdown } from "./score.js";
 
 /** `pnpm bazaar:status`: resumen de solo lectura (equipo, reloj, dealers, niveles, hilos). Nunca imprime la clave. */
 async function main() {
@@ -14,10 +15,11 @@ async function main() {
   const cards = me.assets.filter((a) => a.kind === "card");
   const byRarity = new Map<string, number>();
   for (const a of cards) byRarity.set(rarityOf(a) ?? "?", (byRarity.get(rarityOf(a) ?? "?") ?? 0) + 1);
-  const score = me.score && typeof me.score === "object" ? (me.score as Record<string, unknown>) : {};
   console.log(`team ${me.name ?? "?"} · cash ${me.cash} P · level ${me.level ?? "?"} · unlocked ${(me.unlocked ?? me.unlocked_dealers ?? []).join(", ") || "-"}`);
   console.log(`assets: ${cards.length} cards (${[...byRarity].map(([r, n]) => `${r} ${n}`).join(", ")}), ${me.assets.length - cards.length} packs · spares ${spareTargets(me).length}`);
-  console.log(`score: ${score.score ?? "?"} · rank ${score.rank ?? "?"}`);
+  const score = extractScoreFields(me);
+  if (score) for (const line of formatScoreBreakdown(score)) console.log(line);
+  else console.log("score: not logged");
   console.log(`clock: tick ${clock.tick} · ${clock.tick_seconds ?? "?"} s · ${clock.paused ? "PAUSED" : "running"} · next in ${clock.next_tick_in ?? "?"} s`);
   if (clock.limits) console.log(`limits: ${Object.entries(clock.limits).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")}`);
   for (const d of dealers.dealers) console.log(`dealer ${d.id} · ${d.name ?? ""} · level ${d.level ?? "-"} · ${d.status ?? ""}`);

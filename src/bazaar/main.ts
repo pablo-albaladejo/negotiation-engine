@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { BazaarAgent } from "./agent.js";
 import { BazaarClient } from "./client.js";
 import { loadBazaarEnv } from "./env.js";
+import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
 import { FileTrace, liveTraceDir } from "./trace.js";
 
 /**
@@ -30,6 +31,8 @@ async function main() {
   const info = dealers.dealers.find((d) => d.id === dealerId);
   const aliases = [...(info?.name ? [info.name] : []), "persona", "dealer"];
   const trace = new FileTrace(liveTraceDir(process.cwd()));
+  const scoreTracker = new ScoreTracker(new FileScoreTrace(trace.dir));
+  let lastRank: number | undefined;
   const agent = new BazaarAgent(client, {
     dealer: { id: dealerId, aliases },
     dryRun: values["dry-run"],
@@ -54,7 +57,17 @@ async function main() {
         wait = Math.min(60_000, Math.max(5_000, (clock.next_tick_in ?? 30) * 1000));
       } else {
         if (clock.paused) console.log(`[tick ${clock.tick}] reloj en pausa (dry-run: se observa igualmente)`);
-        await agent.step(clock);
+        const records = await agent.step(clock);
+        // Cifra que maximizamos: un GET /api/me más por tick (reutilizando el cliente/su limitador de
+        // tasa), aparte del que ya hace el agente para decidir. `records` del propio tick sirve de causa.
+        const me = await client.me().catch(() => undefined);
+        if (me) {
+          const snapshot = scoreTracker.record(me, clock.tick, records);
+          if (snapshot) {
+            console.log(formatScoreSummary(snapshot, lastRank));
+            lastRank = snapshot.rank;
+          }
+        }
         const after = await client.clock();
         wait = after.tick === clock.tick ? Math.max(200, (after.next_tick_in ?? 1) * 1000 + 300) : 200;
       }
