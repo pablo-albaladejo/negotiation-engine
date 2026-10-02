@@ -17,6 +17,8 @@ import { LiveScreen } from "./screens/LiveScreen.js";
 import { MatchesScreen } from "./screens/MatchesScreen.js";
 import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
+import { BazaarScreen } from "./screens/BazaarScreen.js";
+import { useBazaarData } from "./bazaarLive.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
 import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "./ui/states.js";
@@ -31,6 +33,7 @@ const TABS = [
   { id: "compare", label: "Champion vs candidate" },
   { id: "live", label: "Live" },
   { id: "states", label: "States" },
+  { id: "bazaar", label: "Bazaar" },
 ];
 
 /** Human label per `FindTab`, for the resolver screen's `PageTitle`/document title (spec item 1). */
@@ -74,6 +77,7 @@ const SCREEN_TITLE: Record<Exclude<Route["screen"], "find">, string> = {
   "tournament-replay": "Tournament replay",
   compare: "Compare",
   states: "States",
+  bazaar: "Bazaar",
   live: "Live",
 };
 
@@ -122,6 +126,11 @@ function useResultsFolder(): string | null {
     };
   }, []);
   return folder;
+}
+
+function BazaarContainer() {
+  const { model, live } = useBazaarData();
+  return <BazaarScreen model={model} live={live} />;
 }
 
 function RunsContainer() {
@@ -446,7 +455,15 @@ function AppContent() {
             selectedId={activeTab}
             onSelect={(id) =>
               navigate(
-                id === "runs" ? routeTo.runs() : id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.find(id as FindTab),
+                id === "runs"
+                  ? routeTo.runs()
+                  : id === "states"
+                    ? routeTo.states()
+                    : id === "bazaar"
+                      ? routeTo.bazaar()
+                      : id === "live"
+                        ? routeTo.live()
+                        : routeTo.find(id as FindTab),
               )
             }
           />
@@ -460,6 +477,7 @@ function AppContent() {
         {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
         {route.screen === "find" ? <FindContainer tab={route.tab} replaceRoute={replaceRoute} /> : null}
         {route.screen === "states" ? <StatesScreen /> : null}
+        {route.screen === "bazaar" ? <BazaarContainer /> : null}
       </main>
     </Root>
   );

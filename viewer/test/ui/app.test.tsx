@@ -427,14 +427,14 @@ describe("App header + tabs (spec item 1/2)", () => {
     expect(headerInner.getAttribute("style")).toContain("max-width: 1400px");
   });
 
-  it("renders the 8 tabs in order, Runs marked current on #/runs", async () => {
+  it("renders the 9 tabs in order, Runs marked current on #/runs", async () => {
     mockRuns([]);
     window.location.hash = "#/runs";
     render(<App />);
     await screen.findByText("No runs yet");
     const nav = screen.getByRole("navigation", { name: "Viewer" });
     const labels = Array.from(nav.querySelectorAll("button")).map((b) => b.textContent);
-    expect(labels).toEqual(["Runs", "Matches", "Replay · arena", "Replay · tournament", "Two dimensions", "Champion vs candidate", "Live", "States"]);
+    expect(labels).toEqual(["Runs", "Matches", "Replay · arena", "Replay · tournament", "Two dimensions", "Champion vs candidate", "Live", "States", "Bazaar"]);
     expect(screen.getByRole("button", { name: "Runs" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("button", { name: "Matches" }).getAttribute("aria-current")).toBeNull();
   });

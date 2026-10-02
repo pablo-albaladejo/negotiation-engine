@@ -7,3 +7,4 @@ export type { Offer, RoundPanel } from "./rounds.js";
 export { isTwoIssue, offerIssues, twoIssueModel, type LoggedIssue, type PlanePoint, type TwoIssueModel } from "./twoIssue.js";
 export { checkLabel, formatPp, gateModel, PHASE_LABEL, PHASES, type GateCheckRow, type GateModel, type GatePhase, type PhaseMetrics } from "./gate.js";
 export { emptyLiveFeed, liveModel, type LiveBubble, type LiveFeed, type LiveModel, type LiveOutcome, type LiveStatus } from "./live.js";
+export { bazaarModel, type BazaarLiveInfo, type BazaarModel, type MovedRow, type ScoreCause, type ScorePoint, type ScoreSnapshot } from "./bazaar.js";
