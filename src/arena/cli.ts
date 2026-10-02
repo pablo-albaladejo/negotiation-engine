@@ -3,18 +3,21 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { parseArgs } from "node:util";
 import { createBotByName, BOTS } from "../bots/index.js";
+import { NL_LANGUAGES, type NlLanguage } from "../bots/nl-renderer.js";
 import { loadConfig, type AgentConfig } from "../engine/config.js";
 import { createAgentParticipant } from "./agent-participant.js";
 import { pairByCluster, runArena, type ArenaReport } from "./arena.js";
-import { createHttpParticipant } from "./external.js";
+import { createA2AParticipant, createHttpParticipant, createMcpParticipant } from "./external.js";
 import type { Participant } from "./participant.js";
 import { comparePaired, type PairedReport } from "./paired.js";
 import { clusterTable, pairedSummaryLine, pairedTable } from "./report.js";
 import { writeJsonlTrace } from "../pipeline/trace.js";
 import { DEFAULT_CATALOG, loadCatalog, mandateFor, rivalRole } from "./scenario.js";
+import { createLlmBot } from "../bots/llm-bot.js";
 import { createLlmNarrator } from "../llm/llm-narrator.js";
 import { createLlmParser } from "../llm/llm-parser.js";
-import { createProviderClient, LlmProviderSchema } from "../llm/provider.js";
+import { createBoxClient, LlmProviderSchema } from "../llm/provider.js";
+import { loadRuntimeConfig, type RuntimeOverrides } from "../pipeline/runtime-config.js";
 
 export interface ArenaCliResult {
   runDir: string;
@@ -75,9 +78,24 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
       "rival-url": { type: "string" },
       "rival-name": { type: "string", default: "external" },
       "agent-url": { type: "string" },
+      "rival-a2a": { type: "string" },
+      "rival-mcp": { type: "string" },
+      "agent-a2a": { type: "string" },
+      "agent-mcp": { type: "string" },
       "timeout-ms": { type: "string", default: "5000" },
       "llm-provider": { type: "string", default: process.env.LLM_PROVIDER ?? "none" },
       "no-narrator": { type: "boolean", default: false },
+      "runtime-config": { type: "string" },
+      "ring-mode": { type: "string" },
+      "parser-policy": { type: "string" },
+      "acceptance-signal": { type: "string" },
+      "narrator-language": { type: "string" },
+      "parser-provider": { type: "string" },
+      "narrator-provider": { type: "string" },
+      "text-mode": { type: "string" },
+      languages: { type: "string" },
+      "llm-bot-provider": { type: "string" },
+      "llm-bot-persona": { type: "string", default: "negociador duro pero razonable, directo" },
     },
     strict: true,
   });
@@ -86,25 +104,52 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const seedStart = Number(values["seed-start"]);
   if (!Number.isInteger(seedCount) || seedCount < 1 || !Number.isInteger(seedStart)) throw new Error("--seeds y --seed-start deben ser enteros");
   const seeds = Array.from({ length: seedCount }, (_, k) => seedStart + k);
-  const scenarios = pick(loadCatalog(values.catalog), list(values.scenarios), "Escenario");
+  const scenarios = pick(loadCatalog(values.catalog, { includeOptIn: Boolean(values.scenarios) }), list(values.scenarios), "Escenario");
   const timeoutMs = Number(values["timeout-ms"]);
-  const rivalNames = list(values.rivals) ?? (values["rival-url"] ? [] : Object.keys(BOTS));
+  const externalRival = Boolean(values["rival-url"] || values["rival-a2a"] || values["rival-mcp"]);
+  const rivalNames = list(values.rivals) ?? (externalRival ? [] : Object.keys(BOTS));
   const rivals: Participant[] = rivalNames.map((name) => createBotByName(name));
   if (values["rival-url"]) rivals.push(createHttpParticipant({ name: values["rival-name"], baseUrl: values["rival-url"], timeoutMs }));
+  if (values["rival-a2a"]) rivals.push(createA2AParticipant({ name: `${values["rival-name"]}-a2a`, baseUrl: values["rival-a2a"], timeoutMs }));
+  if (values["rival-mcp"]) rivals.push(createMcpParticipant({ name: `${values["rival-name"]}-mcp`, baseUrl: values["rival-mcp"], timeoutMs }));
+  // Bot LLM opt-in (llamadas reales): en `--text-mode full` lee y escribe solo lenguaje natural en el idioma de la partida.
+  const llmBotProvider = values["llm-bot-provider"] === undefined ? "none" : LlmProviderSchema.parse(values["llm-bot-provider"]);
+  const llmBotClient = createBoxClient({ provider: llmBotProvider });
+  if (llmBotClient) rivals.push(createLlmBot({ client: llmBotClient, persona: values["llm-bot-persona"], ...(values["text-mode"] === "full" ? { textMode: "full" as const } : {}) }));
   const config = loadConfig(values.config);
   // Proveedor LLM opcional (por defecto `none`, sin red): `--llm-provider claude-cli` activa el
   // parser en cuarentena y, salvo `--no-narrator`, el narrador LLM (plantilla si no).
   const llmProvider = LlmProviderSchema.parse(values["llm-provider"]);
-  const llmClient = createProviderClient(llmProvider);
-  const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator> } = {};
-  if (llmClient) {
-    agentDeps.parser = createLlmParser(llmClient);
-    if (!values["no-narrator"]) agentDeps.narrator = createLlmNarrator(llmClient);
-  }
-  // Con --agent-url el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
+  // Configuración de ejecución (config/runtime.json o --runtime-config) con sobrescrituras de CLI;
+  // `--llm-provider` es el proveedor por defecto de cada caja.
+  const overrides: RuntimeOverrides = {};
+  const flag = (name: string) => values[name as keyof typeof values] as string | undefined;
+  const setIf = (key: keyof typeof overrides, name: string) => {
+    const v = flag(name);
+    if (v !== undefined) overrides[key] = v;
+  };
+  setIf("ringMode", "ring-mode");
+  setIf("parserPolicy", "parser-policy");
+  setIf("acceptanceSignal", "acceptance-signal");
+  setIf("narratorLanguage", "narrator-language");
+  setIf("parserProvider", "parser-provider");
+  setIf("narratorProvider", "narrator-provider");
+  const runtime = loadRuntimeConfig({ ...(values["runtime-config"] ? { path: values["runtime-config"] } : {}), env: { ...process.env, LLM_PROVIDER: llmProvider }, overrides });
+  const parserClient = createBoxClient(runtime.llm.parser);
+  const narratorClient = values["no-narrator"] ? undefined : createBoxClient(runtime.llm.narrator);
+  const agentDeps: { parser?: ReturnType<typeof createLlmParser>; narrator?: ReturnType<typeof createLlmNarrator>; runtime: typeof runtime } = { runtime };
+  if (parserClient) agentDeps.parser = createLlmParser(parserClient, { timeoutMs: runtime.llm.parser.timeoutMs });
+  if (narratorClient) agentDeps.narrator = createLlmNarrator(narratorClient, { timeoutMs: runtime.llm.narrator.timeoutMs });
+  // Con --agent-url/--agent-a2a/--agent-mcp el agente es externo (p. ej. `pnpm agent`): su mandato es el de su escenario.
+  const agentTransports = (["agent-url", "agent-a2a", "agent-mcp"] as const).filter((k) => values[k]);
+  if (agentTransports.length > 1) throw new Error(`Solo un transporte de agente: ${agentTransports.join(", ")}`);
   const agent = values["agent-url"]
     ? createHttpParticipant({ name: "agent-http", baseUrl: values["agent-url"], kind: "agent", timeoutMs })
-    : createAgentParticipant({ config, provider: llmProvider, ...agentDeps });
+    : values["agent-a2a"]
+      ? createA2AParticipant({ name: "agent-a2a", baseUrl: values["agent-a2a"], kind: "agent", timeoutMs })
+      : values["agent-mcp"]
+        ? createMcpParticipant({ name: "agent-mcp", baseUrl: values["agent-mcp"], kind: "agent", timeoutMs })
+        : createAgentParticipant({ config, provider: llmProvider, ...agentDeps });
 
   const runId = values["run-id"] ?? `arena-${new Date().toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
   const runDir = join(values.out, runId);
@@ -112,15 +157,21 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   const transcripts = createWriteStream(join(runDir, "transcripts.jsonl"));
 
   const t0 = performance.now();
+  const textMode = values["text-mode"];
+  if (textMode !== undefined && textMode !== "full" && textMode !== "agent-side") throw new Error("--text-mode debe ser full o agent-side");
+  const languages = list(values.languages) ?? ["es", "en"];
+  for (const l of languages) if (!(NL_LANGUAGES as readonly string[]).includes(l)) throw new Error(`--languages: idioma sin renderizador: ${l} (admitidos: ${NL_LANGUAGES.join(", ")})`);
   const report = await runArena({
     scenarios,
     rivals,
     agent,
     seeds,
+    ...(textMode ? { textMode } : {}),
+    languages: languages as NlLanguage[],
     onGame: (game, metrics, scenario) => {
       const { records, ...rest } = game;
       const reserves = { ours: mandateFor(scenario, scenario.role).reservation, rival: mandateFor(scenario, rivalRole(scenario.role)).reservation };
-      transcripts.write(`${JSON.stringify({ schemaVersion: 2, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
+      transcripts.write(`${JSON.stringify({ schemaVersion: 3, ...rest, metrics, roundLimit: scenario.rounds, reserves })}\n`);
       if (values["no-traces"] || records.length === 0) return;
       writeJsonlTrace(join(runDir, "traces", `${game.gameId}.jsonl`), {
         kind: "header",
@@ -132,7 +183,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         seed: game.seed,
         configVersion: config.version,
         createdAt: new Date().toISOString(),
-        traceVersion: 2,
+        traceVersion: scenario.mandateUnit === "apr" ? 3 : 2,
         mandate: mandateFor(scenario, scenario.role),
       }, records);
     },
@@ -145,7 +196,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
   let candidateSummary: Record<string, unknown> | undefined;
   if (values.candidate) {
     const candidateConfig = loadConfig(values.candidate);
-    const candidate = await runArena({ scenarios, rivals, agent: createAgentParticipant({ config: candidateConfig, name: "candidate" }), seeds });
+    const candidate = await runArena({ scenarios, rivals, agent: createAgentParticipant({ config: candidateConfig, name: "candidate", runtime }), seeds });
     paired = pairByCluster(report.games, candidate.games);
     comparison = comparePaired({ championGames: report.games, candidateGames: candidate.games }, { roleWeights: config.roleWeights, bootstrap: {} });
     candidateSummary = { path: values.candidate, version: candidateConfig.version, overall: candidate.overall };
@@ -156,7 +207,7 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
     runId,
     createdAt: new Date().toISOString(),
     llmProvider,
-    network: Boolean(values["rival-url"] || values["agent-url"]),
+    network: Boolean(externalRival || agentTransports.length > 0),
     agent: agent.name,
     config: { path: values.config, version: config.version, provenance: config.provenance, params: configParams(config) },
     seeds: { start: seedStart, count: seedCount },
@@ -181,6 +232,14 @@ export async function runArenaCli(argv: string[], log: (line: string) => void = 
         `fugas ${o.leaks} · plantilla ${o.templateFallbacks} · latencia media ${o.latencyMeanMs === null ? "—" : `${o.latencyMeanMs.toFixed(2)} ms`} (máx ${o.latencyMaxMs.toFixed(1)} ms) · ` +
         `mal extraídas ${o.misExtracted} · sin extraer ${o.unextracted} · acuerdos distintos de los reales ${o.wrongAgreements}`,
     );
+    if (textMode === "full") {
+      const pct = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `${(v * 100).toFixed(1)} %`);
+      log(
+        `texto completo (${languages.join(",")}) · falsas aceptaciones ${o.falseAccepts ?? 0} · aceptaciones no detectadas ${o.missedAccepts ?? 0} · ` +
+          `confirmación ${pct(o.confirmRate)} · plantilla ${pct(o.templateRate)} · latencia p50 ${o.latencyP50Ms?.toFixed(2) ?? "—"} ms p95 ${o.latencyP95Ms?.toFixed(2) ?? "—"} ms`,
+      );
+    }
+    if (o.protocolViolations > 0) log(`violaciones de protocolo ${o.protocolViolations} (nuestro agente ${o.protocolViolationsByAgent})`);
     log(`resultados: ${runDir}`);
   }
   return { runDir, report, summary };

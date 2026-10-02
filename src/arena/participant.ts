@@ -13,6 +13,10 @@ export interface GameSetup {
   /** Semilla propia del participante, derivada de la semilla de la partida. */
   seed: number;
   mode: "structured" | "text-only";
+  /** Arena `--text-mode full`: los participantes de lenguaje natural (bot LLM) leen y escriben solo texto. */
+  textMode?: "agent-side" | "full";
+  /** Idioma de la partida en texto completo (BCP-47). */
+  language?: string;
 }
 
 /** Una partida desde el punto de vista de un participante: turnos canónicos de entrada y salida. */

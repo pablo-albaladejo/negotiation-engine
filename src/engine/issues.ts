@@ -12,6 +12,19 @@ export type Offer = Record<string, number>;
 export interface OfferMandate {
   role: Role;
   reservation: Offer;
+  /** Banda opcional en % TAE (`src/engine/apr.ts`); si está, manda sobre la reserva por issue. */
+  apr?: AprBand;
+}
+
+/**
+ * Mandato en % TAE para ofertas `{ pct, day }`: límites duros `[min, max]`, plazo original
+ * `baseDays` (net 30/60) y día de pago de referencia de nuestras ofertas.
+ */
+export interface AprBand {
+  min: number;
+  max: number;
+  baseDays: number;
+  day: number;
 }
 
 /** Precisión de nuestras ofertas (decimales). */
@@ -90,6 +103,17 @@ export function withinOfferMandate(issues: readonly Issue[], mandate: OfferManda
     const value = valueOf(offer, issue);
     const limit = valueOf(mandate.reservation, issue);
     return issue.direction === "higher-better" ? value >= limit : value <= limit;
+  });
+}
+
+/**
+ * Cada issue declarado tiene un valor finito dentro de su rango `[min, max]`. Una oferta del rival
+ * que no lo cumple no es una oferta válida: ni se acepta ni alimenta el modelo del rival.
+ */
+export function withinIssueRanges(issues: readonly Issue[], offer: Offer): boolean {
+  return issues.every((issue) => {
+    const value = offer[issue.name];
+    return value !== undefined && Number.isFinite(value) && value >= issue.min && value <= issue.max;
   });
 }
 

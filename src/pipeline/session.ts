@@ -30,8 +30,17 @@ export interface Session {
   /** Ofertas registradas del rival; la última es la oferta actual. */
   rivalOffers: Offer[];
   rivalAcceptedOurLast: boolean;
+  /** La oferta actual del rival tiene alguna cifra `llm-only` (no basta para aceptar). */
+  rivalCurrentLlmOnly?: boolean;
+  /** Último idioma del rival distinto de `und` (BCP-47); solo elige el idioma de salida. */
+  language?: string;
   rivalWalked: boolean;
   agreement?: Offer;
+  /** Origen del acuerdo registrado: aceptación nuestra, del rival verificada en el texto o acción del ring. */
+  agreementOrigin?: "engine-accept" | "rival-text-verified" | "ring-action";
+  agreementRound?: number;
+  /** Texto de confirmación enviado al cerrar: toda respuesta posterior lo repite. */
+  agreementText?: string;
 }
 
 export function ourLastOffer(session: Session): Offer | undefined {

@@ -1,0 +1,7 @@
+{
+  "ring": { "mode": "hybrid" },
+  "parser": { "acceptWordNumbers": "confirm", "onLlmFailure": "deterministic", "ranges": "conservative" },
+  "acceptance": { "walkSignal": "trace-only" },
+  "narrator": { "language": "auto" },
+  "mandate": { "source": "scenario-file" }
+}

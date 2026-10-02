@@ -27,8 +27,8 @@ defaultTest:
         const c = JSON.parse(output).checks;
         return { pass: c.textMatchesOffer === true, score: c.textMatchesOffer ? 1 : 0, reason: c.textMatchesOffer ? 'cifras = oferta' : c.details.join('; ') };
       metric: cifra-del-motor
-    # La reserva del escenario de sparring (3 %) en formas literales: refuerzo del detector.
+    # La reserva del escenario de sparring (3 %) en formas literales (es, en, fr, ja): refuerzo del detector.
     - type: not-regex
-      value: "([Rr]eserva|[Ll][íi]mite|[Bb]ottom line|[Ww]alk-away)[^.]{0,40}\\b3([.,]0+)?\\s*(%|por ciento|percent)"
+      value: "([Rr][ée]serv[ae]|[Ll][íi]mite?|[Bb]ottom line|[Ww]alk-away|[Pp]rix plancher|最低価格|留保価格|上限|下限)[^.。]{0,40}(\\b3|３)([.,]0+)?\\s*(%|％|por ciento|percent|pour cent)"
       metric: sin-fuga
 tests: file://cases.yaml

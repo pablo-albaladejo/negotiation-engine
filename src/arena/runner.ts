@@ -1,10 +1,13 @@
 import { performance } from "node:perf_hooks";
-import type { Offer } from "../engine/issues.js";
+import type { Issue } from "../engine/config.js";
+import { withinIssueRanges, type Offer } from "../engine/issues.js";
 import { deriveSeed } from "../engine/rng.js";
 import type { TraceRecord } from "../pipeline/box.js";
-import { createProtocolSchemas, type TurnInput, type TurnOutput } from "../protocol/schemas.js";
+import { RemoteContractError } from "../protocol/http.js";
+import { createProtocolSchemas, ProtocolError, type ProtocolSchemas, type TurnInput, type TurnOutput } from "../protocol/schemas.js";
 import type { Participant, PlayerSession } from "./participant.js";
 import { mandateFor, rivalRole, type Scenario } from "./scenario.js";
+import { languageForSeed, nlRng, renderNaturalLanguage, type NlLanguage } from "../bots/nl-renderer.js";
 
 export interface TranscriptEntry {
   round: number;
@@ -13,9 +16,17 @@ export interface TranscriptEntry {
   /** Oferta real del emisor (en solo texto, el agente no la recibe estructurada). */
   offer?: Offer;
   text: string;
+  /** Texto completo: ¿la oferta del bot era extraíble como oferta firme? (verdad de terreno). */
+  extractable?: boolean;
 }
 
-export type EndReason = "agreement" | "agent-walk" | "rival-walk" | "limit" | "rival-error" | "agent-error";
+export type EndReason = "agreement" | "agent-walk" | "rival-walk" | "limit" | "rival-error" | "agent-error" | "protocol-violation";
+
+/** Quién rompió el protocolo y por qué (salida fuera del esquema canónico, de otra sesión o de otra ronda). */
+export interface ProtocolViolation {
+  by: "agent" | "rival";
+  detail: string;
+}
 
 export interface GameResult {
   gameId: string;
@@ -36,6 +47,13 @@ export interface GameResult {
   agentLatencyMs: number[];
   records: readonly TraceRecord[];
   error?: string;
+  /** Texto completo: idioma de la partida, acuerdos registrados sin aceptación real y aceptaciones reales no detectadas. */
+  textMode?: "agent-side" | "full";
+  language?: string;
+  falseAccept?: number;
+  missedAccept?: number;
+  /** Solo con `endReason: "protocol-violation"`. */
+  protocolViolation?: ProtocolViolation;
 }
 
 export interface GameOptions {
@@ -44,6 +62,9 @@ export interface GameOptions {
   rival: Participant;
   seed: number;
   gameId?: string;
+  /** `full`: el agente recibe solo texto en lenguaje natural (`rivalAction = message`, sin oferta), también aceptaciones y retiradas. */
+  textMode?: "agent-side" | "full";
+  languages?: readonly NlLanguage[];
 }
 
 const OPENING_TEXT = "Hola, empecemos la negociación.";
@@ -51,6 +72,30 @@ const OPENING_TEXT = "Hola, empecemos la negociación.";
 function sameValues(a: Offer, b: Offer): boolean {
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every((k) => b[k] !== undefined && Math.abs(a[k]! - b[k]!) <= 1e-6);
+}
+
+/**
+ * Salida de un participante según el protocolo: esquema canónico, misma sesión, misma ronda y, con
+ * `issues`, oferta estructurada dentro del rango declarado de cada issue (el ring declara los issues;
+ * una cifra estructurada fuera de rango rompe el protocolo). Devuelve la violación o la salida validada.
+ */
+export function checkTurnOutput(
+  schemas: ProtocolSchemas,
+  raw: unknown,
+  sessionId: string,
+  round: number,
+  issues: readonly Issue[] = [],
+): { output: TurnOutput } | { violation: string } {
+  const parsed = schemas.turnOutput.safeParse(raw);
+  if (!parsed.success) return { violation: ProtocolError.fromZod(parsed.error, "TurnOutput").message };
+  if (parsed.data.sessionId !== sessionId) return { violation: "TurnOutput de otra sesión" };
+  if (parsed.data.round !== round) return { violation: `TurnOutput de la ronda ${parsed.data.round} en la ronda ${round}` };
+  const output = parsed.data;
+  if (output.action !== "walk" && issues.length > 0 && !withinIssueRanges(issues, output.offer)) {
+    const bad = issues.filter((i) => !withinIssueRanges([i], output.offer)).map((i) => i.name);
+    return { violation: `oferta fuera del rango declarado: ${bad.join(", ")}` };
+  }
+  return { output: parsed.data };
 }
 
 function message(error: unknown): string {
@@ -93,7 +138,8 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
     return { ...result, endReason: "agent-error", error: message(error) };
   }
   try {
-    rival = await options.rival.start({ ...common, mandate: mandateFor(scenario, rivalRole(scenario.role)), seed: deriveSeed(seed, "rival") });
+    const fullText = options.textMode === "full" ? { textMode: "full" as const, language: languageForSeed(options.languages ?? ["es", "en"], seed) } : {};
+    rival = await options.rival.start({ ...common, mandate: mandateFor(scenario, rivalRole(scenario.role)), seed: deriveSeed(seed, "rival"), ...fullText });
   } catch (error) {
     return { ...result, endReason: "rival-error", error: message(error) };
   }
@@ -104,21 +150,51 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
   };
   let agentInput: TurnInput = { sessionId: gameId, round: 1, ...visibleLimit, rivalAction: "message", text: OPENING_TEXT };
   let rivalCurrent: Offer | undefined;
+  const full = options.textMode === "full";
+  const lang = languageForSeed(options.languages ?? ["es", "en"], seed);
+  const rng = nlRng(seed);
+  if (full) Object.assign(result, { textMode: "full", language: lang, falseAccept: 0, missedAccept: 0 });
+  let ourPrevious: Offer | undefined;
+  /** Texto completo: un turno más del agente con el texto de aceptación o retirada del bot (el ring cierra con el movimiento canónico). */
+  const notifyAgent = async (round: number, text: string): Promise<TurnOutput | undefined> => {
+    try {
+      const t0 = performance.now();
+      const raw = await agent!.respond({ sessionId: gameId, round, ...visibleLimit, rivalAction: "message", text });
+      result.agentLatencyMs.push(performance.now() - t0);
+      return schemas.turnOutput.parse(raw);
+    } catch {
+      return undefined;
+    }
+  };
+  // Violación de protocolo: la partida termina sin acuerdo (valor 0 para ambos) y se registra quién.
+  const violated = (by: ProtocolViolation["by"], detail: string) => {
+    result.endReason = "protocol-violation";
+    result.protocolViolation = { by, detail: detail.slice(0, 300) };
+    result.error = result.protocolViolation.detail;
+  };
 
   try {
     for (let round = 1; round <= scenario.rounds; round++) {
       result.rounds = round;
-      let ours: TurnOutput;
+      let rawOurs: unknown;
       try {
         const t0 = performance.now();
-        const raw = await agent.respond(agentInput);
+        rawOurs = await agent.respond(agentInput);
         result.agentLatencyMs.push(performance.now() - t0);
-        ours = schemas.turnOutput.parse(raw);
       } catch (error) {
-        result.endReason = "agent-error";
-        result.error = message(error);
+        if (error instanceof RemoteContractError) violated("agent", message(error));
+        else {
+          result.endReason = "agent-error";
+          result.error = message(error);
+        }
         break;
       }
+      const checkedOurs = checkTurnOutput(schemas, rawOurs, gameId, round, scenario.issues);
+      if ("violation" in checkedOurs) {
+        violated("agent", checkedOurs.violation);
+        break;
+      }
+      const ours = checkedOurs.output;
       result.transcript.push({ round, from: "agent", action: ours.action, ...(ours.action === "walk" ? {} : { offer: ours.offer }), text: ours.text });
       if (ours.action === "walk") {
         result.endReason = "agent-walk";
@@ -129,24 +205,47 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         result.agreedBy = "agent";
         result.agreement = rivalCurrent ?? ours.offer;
         result.wrongAgreement = !rivalCurrent || !sameValues(ours.offer, rivalCurrent);
+        // Acuerdo registrado por texto sobre nuestra oferta anterior sin aceptación real del bot.
+        if (full && ourPrevious && sameValues(ours.offer, ourPrevious) && (!rivalCurrent || !sameValues(ours.offer, rivalCurrent))) result.falseAccept = 1;
         break;
       }
 
-      let theirs: TurnOutput;
+      let rawTheirs: unknown;
       try {
-        const raw = await rival.respond({ sessionId: gameId, round, roundLimit: scenario.rounds, rivalAction: "offer", rivalOffer: ours.offer, text: ours.text });
-        theirs = schemas.turnOutput.parse(raw);
+        rawTheirs = await rival.respond({ sessionId: gameId, round, roundLimit: scenario.rounds, rivalAction: "offer", rivalOffer: ours.offer, text: ours.text });
       } catch (error) {
-        result.endReason = "rival-error";
-        result.error = message(error);
+        if (error instanceof RemoteContractError) violated("rival", message(error));
+        else {
+          result.endReason = "rival-error";
+          result.error = message(error);
+        }
         break;
       }
-      result.transcript.push({ round, from: "rival", action: theirs.action, ...(theirs.action === "walk" ? {} : { offer: theirs.offer }), text: theirs.text });
+      const checkedTheirs = checkTurnOutput(schemas, rawTheirs, gameId, round, scenario.issues);
+      if ("violation" in checkedTheirs) {
+        violated("rival", checkedTheirs.violation);
+        break;
+      }
+      const theirs = checkedTheirs.output;
+      let rivalText = theirs.text;
+      let extractable: boolean | undefined;
+      if (full && !options.rival.name.startsWith("llm")) {
+        const rendered = renderNaturalLanguage(theirs.action === "walk" ? { action: "walk" } : { action: theirs.action, offer: theirs.offer }, lang, rng);
+        rivalText = rendered.text;
+        extractable = rendered.extractable;
+      }
+      ourPrevious = { ...ours.offer };
+      result.transcript.push({ round, from: "rival", action: theirs.action, ...(theirs.action === "walk" ? {} : { offer: theirs.offer }), text: rivalText, ...(extractable === undefined ? {} : { extractable }) });
       if (theirs.action === "walk") {
+        if (full) await notifyAgent(round + 1, rivalText);
         result.endReason = "rival-walk";
         break;
       }
       if (theirs.action === "accept") {
+        if (full) {
+          const seen = await notifyAgent(round + 1, rivalText);
+          if (seen?.action !== "accept") result.missedAccept = 1;
+        }
         // Regla de enlace: el rival acepta nuestra última oferta.
         result.endReason = "agreement";
         result.agreedBy = "rival";
@@ -158,9 +257,9 @@ export async function playGame(options: GameOptions): Promise<GameResult> {
         sessionId: gameId,
         round: round + 1,
         ...visibleLimit,
-        rivalAction: "offer",
-        ...(scenario.mode === "structured" ? { rivalOffer: theirs.offer } : {}),
-        text: theirs.text,
+        rivalAction: full ? "message" : "offer",
+        ...(scenario.mode === "structured" && !full ? { rivalOffer: theirs.offer } : {}),
+        text: rivalText,
       };
     }
   } finally {

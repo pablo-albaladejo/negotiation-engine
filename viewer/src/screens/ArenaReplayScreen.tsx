@@ -156,10 +156,10 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
           { label: "ZOPA", value: zopaKpi(model.game.zopaEmpty) },
         ]}
       />
-      {model.game.endReason === "rival-error" ? (
+      {model.game.endReason === "rival-error" || model.game.endReason === "protocol-violation" ? (
         <ProtocolBreakBanner
           round={model.game.rounds}
-          detail={model.game.error ?? "rival-error (no detail logged)"}
+          detail={model.game.error ?? `${model.game.endReason} (no detail logged)`}
           rivalText={errorRoundPanel?.rivalText ?? null}
           decision={errorRoundPanel?.decision ? { kind: errorRoundPanel.decision.action === "walk" ? "walk" : "fallback", label: errorRoundPanel.decision.action } : null}
         />

@@ -1,9 +1,49 @@
 /**
- * Normalizador numérico compartido (parser determinista, validador y detector de fugas).
- * Convierte texto en ES/EN en lecturas numéricas: cifras y palabras, coma o punto decimal,
- * %, "por ciento", "percent", puntos básicos (100 pb = 1 %), rangos y fracciones ambiguas.
- * Los valores con unidad % o pb se expresan en puntos porcentuales.
+ * Normalizador numérico compartido (parser determinista, verificación de evidencias, validador
+ * y detector de fugas). Convierte texto en lecturas numéricas: dígitos de cualquier escritura
+ * (`\p{Nd}`, tras NFKC y sin caracteres de formato), palabras en ES/EN, coma o punto decimal,
+ * separadores locales, %, "por ciento", "percent", puntos básicos (100 pb = 1 %), rangos y
+ * fracciones ambiguas. Los valores con unidad % o pb se expresan en puntos porcentuales.
+ * Las posiciones de las menciones se refieren al texto plegado (`foldText`).
  */
+
+const ND_RE = /\p{Nd}/u;
+const digitCache = new Map<number, number>();
+
+/**
+ * Valor 0–9 de un dígito de cualquier escritura. Unicode garantiza que los `\p{Nd}` van en
+ * tramos contiguos de 10 empezando por el cero, así que basta con el inicio del tramo.
+ */
+export function digitValue(ch: string): number | undefined {
+  const cp = ch.codePointAt(0);
+  if (cp === undefined || !ND_RE.test(ch)) return undefined;
+  const cached = digitCache.get(cp);
+  if (cached !== undefined) return cached;
+  let start = cp;
+  while (start > 0 && ND_RE.test(String.fromCodePoint(start - 1))) start--;
+  const value = (cp - start) % 10;
+  digitCache.set(cp, value);
+  return value;
+}
+
+/** Separador de miles explícito entre dígitos (antes de NFKC, que convierte los espacios especiales en espacio normal). */
+const GROUP_SEP_RE = /(?<=\p{Nd})['’\u2009\u202F\u00A0](?=\p{Nd}{3}(?!\p{Nd}))/gu;
+
+/**
+ * Pliegue previo común: quita `\p{Cf}` (ancho cero), quita separadores de miles explícitos
+ * (apóstrofo, espacio fino, espacios de no separación), NFKC (ancho completo → ASCII), dígitos de
+ * cualquier escritura → ASCII y signos árabes (`٪` → %, `٫` → ., `٬` → ,). Idempotente.
+ */
+export function foldText(text: string): string {
+  return text
+    .replace(/\p{Cf}/gu, "")
+    .replace(GROUP_SEP_RE, "")
+    .normalize("NFKC")
+    .replace(/\p{Nd}/gu, (d) => (d >= "0" && d <= "9" ? d : String(digitValue(d))))
+    .replace(/٪/g, "%")
+    .replace(/٫/g, ".")
+    .replace(/٬/g, ",");
+}
 
 export type Unit = "percent" | "bps" | "none";
 
@@ -110,6 +150,12 @@ function parseDigits(raw: string): { value: number; readings: number[]; separato
   const last = seps.at(-1)!;
   const groupsOk = parts.slice(1, -1).every((p) => p.length === 3);
   if (seps.every((s) => s === last) && groupsOk && parts.at(-1)!.length === 3) {
+    const value = Number(parts.join(""));
+    return { value, readings: [value], separatorAmbiguous: false };
+  }
+  // Agrupación india: "1,00,000" (primer grupo de 1–2 cifras, grupos de 2 y el último de 3).
+  const indian = parts[0]!.length <= 2 && parts.slice(1, -1).every((p) => p.length === 2) && parts.at(-1)!.length === 3;
+  if (seps.every((s) => s === last) && indian) {
     const value = Number(parts.join(""));
     return { value, readings: [value], separatorAmbiguous: false };
   }
@@ -245,7 +291,7 @@ function parseNumberAt(tokens: Token[], i: number, text: string): Parsed | null 
 }
 
 /** Unidad tras el número (solo separada por espacios); devuelve la unidad y el índice siguiente. */
-function parseUnit(tokens: Token[], i: number, text: string): { unit: Unit; next: number } {
+function parseUnit(tokens: Token[], i: number, text: string, extraBps: readonly string[] = []): { unit: Unit; next: number } {
   const at = (k: number) => {
     const t = tokens[k];
     if (!t || !gapIsSpace(text, tokens[k - 1]!, t)) return undefined;
@@ -265,6 +311,11 @@ function parseUnit(tokens: Token[], i: number, text: string): { unit: Unit; next
     return { unit: "bps", next: i + 2 };
   }
   if (a === "basis" && (b === "points" || b === "point")) return { unit: "bps", next: i + 2 };
+  // Unidades de puntos básicos adicionales por idioma (`parser.units.bps`); siempre explícitas.
+  for (const phrase of extraBps) {
+    const words = foldText(phrase).split(/\s+/).filter(Boolean);
+    if (words.length > 0 && words.every((w, k) => at(i + k) === w)) return { unit: "bps", next: i + words.length };
+  }
   return { unit: "none", next: i };
 }
 
@@ -278,7 +329,7 @@ interface RawNumber {
   lastToken: number;
 }
 
-function scanNumbers(text: string, tokens: Token[]): RawNumber[] {
+function scanNumbers(text: string, tokens: Token[], extraBps: readonly string[] = []): RawNumber[] {
   const found: RawNumber[] = [];
   let i = 0;
   while (i < tokens.length) {
@@ -287,7 +338,7 @@ function scanNumbers(text: string, tokens: Token[]): RawNumber[] {
       i++;
       continue;
     }
-    const { unit, next } = parseUnit(tokens, parsed.next, text);
+    const { unit, next } = parseUnit(tokens, parsed.next, text, extraBps);
     const prev = tokens[i - 1];
     const afterDay = prev !== undefined && DAY_WORDS.has(prev.text);
     if (!parsed.qualified && unit === "none" && !afterDay) {
@@ -328,9 +379,15 @@ const RANGE_OPENERS: Record<string, Set<string>> = {
   to: new Set(["from"]),
 };
 
-export function normalizeNumbers(text: string): Mention[] {
+export interface NormalizeOptions {
+  /** Palabras de unidad de puntos básicos además de las integradas (pb, bps, bp, p.b., puntos básicos, basis points). */
+  bpsUnits?: readonly string[];
+}
+
+export function normalizeNumbers(raw: string, options: NormalizeOptions = {}): Mention[] {
+  const text = foldText(raw);
   const tokens = tokenize(text);
-  const numbers = scanNumbers(text, tokens);
+  const numbers = scanNumbers(text, tokens, options.bpsUnits);
   const mentions: Mention[] = [];
   for (let k = 0; k < numbers.length; k++) {
     const a = numbers[k]!;

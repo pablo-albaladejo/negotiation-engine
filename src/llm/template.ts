@@ -1,32 +1,48 @@
 import { z } from "zod";
 import type { Offer } from "../engine/issues.js";
 import { defineBox, registerBox } from "../pipeline/box.js";
+import { en } from "./templates/en.js";
+import { es } from "./templates/es.js";
+import type { Echo, TemplatePack } from "./templates/types.js";
 
-/**
- * Cifra con dígitos, coma decimal y sin separador de miles. Con exactamente tres decimales se
- * añade un cero ("2,3450") para que no se lea como miles ("2,345" ≈ 2345).
- */
-export function formatNumber(value: number): string {
-  const fixed = value.toFixed(6).replace(/\.?0+$/, "");
-  const [int, frac] = fixed.split(".");
-  if (!frac) return int!;
-  return `${int},${frac.length === 3 ? `${frac}0` : frac}`;
+export type { Echo } from "./templates/types.js";
+
+/** Cifra en la forma española (coma decimal); la usan también los bots. */
+export const formatNumber = es.formatNumber;
+export const formatOffer = es.formatOffer;
+
+/** Plantillas por idioma (subetiqueta principal BCP-47). */
+export const TEMPLATE_PACKS: Readonly<Record<string, TemplatePack>> = { en, es };
+
+/** Opciones de idioma de la plantilla (claves `template.*` de la configuración de ejecución). */
+export interface TemplateLanguageOptions {
+  languages: readonly string[];
+  fallbackLanguage: string;
+  uncovered: "neutral" | "fallback-language";
 }
 
-function formatIssue(name: string, value: number): string {
-  if (name === "pct") return `un ${formatNumber(value)} %`;
-  if (name === "day") return `pago el día ${formatNumber(value)}`;
-  return `${name} ${formatNumber(value)}`;
+export const DEFAULT_TEMPLATE_OPTIONS: TemplateLanguageOptions = { languages: ["en", "es"], fallbackLanguage: "en", uncovered: "neutral" };
+
+export function primaryLanguage(tag: string | undefined): string | undefined {
+  return tag?.split("-")[0]?.toLowerCase() || undefined;
 }
 
-export function formatOffer(offer: Offer): string {
-  return Object.entries(offer)
-    .map(([name, value]) => formatIssue(name, value))
-    .join(", con ");
+/** Plantilla para un idioma: la suya si está en `languages`; si no, la de `fallbackLanguage`. */
+function packFor(language: string, options: TemplateLanguageOptions): { pack: TemplatePack; covered: boolean } {
+  const covered = options.languages.some((l) => primaryLanguage(l) === language) && TEMPLATE_PACKS[language] !== undefined;
+  if (covered) return { pack: TEMPLATE_PACKS[language]!, covered };
+  return { pack: TEMPLATE_PACKS[primaryLanguage(options.fallbackLanguage) ?? "en"] ?? en, covered: false };
+}
+
+/** Idioma en que queda escrita la plantilla (el de la forma neutral es `fallbackLanguage`). */
+export function templateLanguage(language: string | undefined, options: TemplateLanguageOptions = DEFAULT_TEMPLATE_OPTIONS): string {
+  const lang = primaryLanguage(language) ?? "es";
+  const { covered } = packFor(lang, options);
+  return covered ? lang : (primaryLanguage(options.fallbackLanguage) ?? "en");
 }
 
 /** Petición al rival que acompaña a la contraoferta (solo enums). */
-export const AskSchema = z.enum(["confirm-figures"]);
+export const AskSchema = z.enum(["confirm-figures", "confirm-acceptance"]);
 export type Ask = z.infer<typeof AskSchema>;
 
 export interface TemplateDecision {
@@ -34,20 +50,58 @@ export interface TemplateDecision {
   offer?: Offer;
   /** Solo texto sin oferta confirmada: la contraoferta pide que el rival repita sus cifras. */
   ask?: Ask;
+  /** Formulación (rotación determinista por sesión y ronda); por defecto la primera. */
+  variant?: number;
+  /** Con `ask`: cifras DEL RIVAL que la petición repite (rango o lectura dudosa). Nunca nuestras. */
+  echo?: Echo;
 }
 
-/** Plantilla determinista de la persona "cálido-firme": escribe exactamente las cifras decididas. */
-export function renderTemplate(decision: TemplateDecision): string {
+/** Variante de una sesión y ronda: rondas consecutivas nunca repiten formulación. */
+export function templateVariant(sessionId: string, round: number): number {
+  let h = 2166136261;
+  for (const ch of sessionId) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return (h % 997) + round;
+}
+
+const pick = <T>(items: readonly T[], variant: number | undefined): T => items[(((variant ?? 0) % items.length) + items.length) % items.length]!;
+
+/** Forma neutral: marca breve de la acción en `fallbackLanguage` y las cifras con su issue y unidad. */
+function renderNeutral(decision: TemplateDecision, pack: TemplatePack): string {
+  const figures = Object.entries(decision.offer ?? {})
+    .map(([name, value]) => `${name} ${pack.formatNumber(value)}${name === "pct" ? "%" : ""}`)
+    .join(", ");
   switch (decision.action) {
     case "accept":
-      return `¡Trato hecho! Aceptamos ${formatOffer(decision.offer ?? {})}. Gracias por la negociación.`;
-    case "counter":
-      if (decision.ask === "confirm-figures") {
-        return `No he podido confirmar tus cifras: ¿me las repites con dígitos? Mientras tanto, te propongo ${formatOffer(decision.offer ?? {})}.`;
-      }
-      return `Gracias por tu propuesta. Te propongo ${formatOffer(decision.offer ?? {})}. Creo que es una propuesta justa para ambos.`;
+      return `${pack.marks.accept}: ${figures}.`;
     case "walk":
-      return "Gracias por tu tiempo, pero así no podemos seguir. Lo dejamos aquí.";
+      return `${pack.marks.walk}.`;
+    case "counter": {
+      const ask = decision.ask === "confirm-figures" ? `${pack.marks.confirmFigures}. ` : decision.ask === "confirm-acceptance" ? `${pack.marks.confirmAcceptance}. ` : "";
+      return `${ask}${pack.marks.counter}: ${figures}.`;
+    }
+  }
+}
+
+/**
+ * Plantilla determinista de la persona "cálido-firme" en el idioma dado (por defecto español):
+ * escribe exactamente las cifras decididas con dígitos ASCII. Un idioma sin plantilla usa la forma
+ * neutral o la plantilla completa de `fallbackLanguage`, según `uncovered`.
+ */
+export function renderTemplate(decision: TemplateDecision, language?: string, options: TemplateLanguageOptions = DEFAULT_TEMPLATE_OPTIONS): string {
+  const lang = primaryLanguage(language) ?? "es";
+  const { pack, covered } = packFor(lang, options);
+  if (!covered && options.uncovered === "neutral") return renderNeutral(decision, pack);
+  const offer = pack.formatOffer(decision.offer ?? {});
+  const v = decision.variant;
+  switch (decision.action) {
+    case "accept":
+      return pick(pack.accept, v)(offer);
+    case "counter":
+      if (decision.ask === "confirm-acceptance") return pick(pack.confirmAcceptance, v)(offer);
+      if (decision.ask === "confirm-figures") return decision.echo ? pack.echo(decision.echo, offer) : pick(pack.confirmFigures, v)(offer);
+      return pick(pack.counter, v)(offer);
+    case "walk":
+      return pick(pack.walk, v);
   }
 }
 

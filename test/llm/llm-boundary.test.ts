@@ -8,8 +8,9 @@ import { parseDeterministic } from "../../src/llm/deterministic-parser.js";
 import { createLlmNarrator } from "../../src/llm/llm-narrator.js";
 import { createLlmParser, delimitRivalText } from "../../src/llm/llm-parser.js";
 import { NarratorInputSchema } from "../../src/llm/narrator.js";
+import { resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 import { createLlmClient, type LlmClient } from "../../src/llm/provider.js";
-import { renderTemplate } from "../../src/llm/template.js";
+import { renderTemplate, templateVariant } from "../../src/llm/template.js";
 import { champion, makeBrain, turn } from "../pipeline/helpers.js";
 
 const injection = JSON.parse(readFileSync("test/fixtures/llm/injection.json", "utf8"));
@@ -66,24 +67,27 @@ describe("parser LLM en cuarentena (11.4)", () => {
     for (const r of trace.records.filter((r) => r.box === "narrator")) expect(JSON.stringify(r.input)).not.toMatch(/reserva|0,5/);
   });
 
+  // Estas reglas describen la política `dual-strict` (la anterior); `llm-primary-verified` se prueba en test/pipeline/parser-policies.test.ts.
+  const dualStrict = resolveRuntimeConfig({ parser: { policy: "dual-strict" } });
+
   it("solo texto: si ambos parsers coinciden la oferta se registra", async () => {
-    const { brain, store } = makeBrain({ parser: readingParser() });
+    const { brain, store } = makeBrain({ parser: readingParser(), runtime: dualStrict });
     await brain.turn(turn(1, { rivalAction: "offer", text: "Te ofrezco un 2,5 %" }));
     expect(store.get("s1")!.rivalOffers).toEqual([{ pct: 2.5 }]);
   });
 
   it("solo texto: si discrepan no hay oferta y la contraoferta pide confirmar las cifras", async () => {
-    const { brain, store, trace } = makeBrain({ parser: readingParser(1) });
+    const { brain, store, trace } = makeBrain({ parser: readingParser(1), runtime: dualStrict });
     const out = await brain.turn(turn(1, { rivalAction: "offer", text: "Te ofrezco un 2,5 %" }));
     expect(store.get("s1")!.rivalOffers).toEqual([]);
     expect(trace.records.find((r) => r.box === "reconcile")!.output).toMatchObject({ offer: null, unconfirmed: true });
-    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, ask: "confirm-figures" }));
+    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, ask: "confirm-figures", variant: templateVariant("s1", 1) }));
   });
 
   it("contra el bot de solo texto: 0 acuerdos distintos de los reales, coincidan o no los parsers", async () => {
     const scenario = loadCatalog().find((s) => s.id === "text-buyer-wide")!;
     for (const [skew, expectDeals] of [[0, true], [1, false]] as const) {
-      const agent = createAgentParticipant({ config: champion, parser: readingParser(skew) });
+      const agent = createAgentParticipant({ config: champion, parser: readingParser(skew), runtime: dualStrict });
       let deals = 0;
       for (const seed of [1, 2, 3, 4, 5]) {
         const game = await playGame({ scenario, agent, rival: createBotByName("text-only"), seed });
@@ -120,10 +124,11 @@ describe("narrador LLM (11.5)", () => {
 
   it("una cifra narrada distinta de la decidida la rechaza el validador: 2 intentos y plantilla", async () => {
     const { client, sent } = narratorSaying(0.5);
-    const { brain, trace } = makeBrain({ mandate, narrator: createLlmNarrator(client) });
+    const { brain, trace } = makeBrain({ mandate, narrator: createLlmNarrator(client), attempts: 2 });
     const out = await brain.turn(turn(1, { rivalAction: "offer", rivalOffer: { pct: 1 } }));
     expect(sent).toHaveLength(2);
     expect(trace.records.filter((r) => r.box === "validator").map((r) => (r.output as { ok: boolean }).ok)).toEqual([false, false]);
-    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer }));
+    // Sin texto del rival el idioma de la sesión es desconocido: plantilla en `template.fallbackLanguage` (en).
+    expect(out.action === "counter" && out.text).toBe(renderTemplate({ action: "counter", offer: (out as { offer: Record<string, number> }).offer, variant: templateVariant("s1", 1) }, "en"));
   });
 });

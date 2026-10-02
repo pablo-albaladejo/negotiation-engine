@@ -17,9 +17,22 @@ export type Tactic = z.infer<typeof TacticSchema>;
 export const IntentSchema = z.enum(["offer", "accept", "walk", "other"]);
 export type Intent = z.infer<typeof IntentSchema>;
 
+/** Cifra propuesta por el parser LLM con el fragmento LITERAL del texto del rival que la respalda. */
+export interface ParserFigure {
+  issue: string;
+  value: number;
+  evidence: string;
+}
+
 export interface ParserOutput {
   offer?: Offer;
+  /** Cifras con evidencia literal: el código las verifica (`src/llm/verify.ts`) antes de usarlas. */
+  figures?: ParserFigure[];
   intent: Intent;
+  /** Fragmento literal que respalda la intención (aceptación o retirada). */
+  intentEvidence?: string;
+  /** Idioma del texto (BCP-47); se canoniza en código y, si no vale, se detecta por escritura. */
+  language?: string;
   claims: string[];
   tactics: Tactic[];
   injectionSuspected: boolean;
@@ -33,7 +46,21 @@ export function parserOutputSchema(issueNames: readonly string[]): z.ZodType<Par
   return z
     .object({
       offer: offerSchema(issueNames).optional(),
+      figures: z
+        .array(
+          z
+            .object({
+              issue: z.string().refine((name) => issueNames.includes(name), { message: "issue no declarado" }),
+              value: z.number().finite(),
+              evidence: z.string().min(1).max(200),
+            })
+            .strict(),
+        )
+        .max(20)
+        .optional(),
       intent: IntentSchema,
+      intentEvidence: z.string().min(1).max(200).optional(),
+      language: z.string().min(1).max(35).optional(),
       claims: z.array(z.string().max(500)).max(20),
       tactics: z.array(TacticSchema).max(20),
       injectionSuspected: z.boolean(),

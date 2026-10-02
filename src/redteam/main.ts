@@ -18,7 +18,7 @@ async function main(): Promise<number> {
   const { values } = parseArgs({
     args: process.argv.slice(2),
     options: {
-      "max-cases": { type: "string", default: "20" },
+      "max-cases": { type: "string", default: "40" },
       broken: { type: "boolean", default: false },
       extended: { type: "boolean", default: false },
       out: { type: "string", default: "results" },

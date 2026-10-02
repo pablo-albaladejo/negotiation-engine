@@ -14,6 +14,11 @@ export function resultKpi(endReason: TranscriptLine["endReason"]): { label: stri
       return { label: "Rival error" };
     case "agent-error":
       return { label: "Agent error" };
+    case "protocol-violation":
+      return { label: "Protocol violation", tone: "walk" };
+    default:
+      // Motivo de fin que esta versión del visor no conoce: se muestra literal, sin tono.
+      return { label: String(endReason) };
   }
 }
 

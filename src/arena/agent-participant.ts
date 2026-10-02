@@ -3,6 +3,7 @@ import type { Narrator } from "../llm/narrator.js";
 import type { TextParser } from "../llm/parser.js";
 import { MemoryTrace, type Logger } from "../pipeline/box.js";
 import { createPipeline } from "../pipeline/pipeline.js";
+import type { RuntimeConfig } from "../pipeline/runtime-config.js";
 import { SessionStore } from "../pipeline/session.js";
 import { createInMemoryAdapter } from "../protocol/adapter.js";
 import type { GameSetup, Participant, PlayerSession } from "./participant.js";
@@ -25,6 +26,8 @@ export interface AgentParticipantOptions {
   narrator?: Narrator;
   /** Proveedor para las trazas (solo informativo); por defecto `none`. */
   provider?: string;
+  /** Configuración de ejecución efectiva; por defecto la de `hybrid`. */
+  runtime?: RuntimeConfig;
 }
 
 /**
@@ -58,6 +61,7 @@ export function createAgentParticipant(options: AgentParticipantOptions): Partic
       const deps: Parameters<typeof createPipeline>[0] = { store, trace, provider: options.provider ?? "none" };
       if (options.logger) deps.logger = options.logger;
       if (options.parser) deps.parser = options.parser;
+      if (options.runtime) deps.runtime = options.runtime;
       if (options.narrator) deps.narrator = options.narrator;
       const brain = createPipeline(deps);
       const issueNames = config.issues.map((i) => i.name);

@@ -6,7 +6,7 @@ import { REDACT_PATHS } from "./log.js";
 const REDACT_KEYS = new Set([...REDACT_PATHS.map((p) => p.split(".").at(-1)!), "explain"]);
 
 /** Cajas solo locales (results/*.jsonl): el texto crudo del rival y su ruptura de protocolo. */
-const LOCAL_ONLY_BOXES = new Set(["rivalText", "protocol"]);
+const LOCAL_ONLY_BOXES = new Set(["rivalText", "protocol", "evidence"]);
 
 export function redactForExport(value: unknown, depth = 0): unknown {
   if (depth > 8 || value === null) return value;

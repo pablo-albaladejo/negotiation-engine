@@ -7,6 +7,11 @@ import { z } from "zod";
  */
 
 const Offer = z.record(z.string(), z.number());
+/** v3 añade `protocol-violation`; el literal antiguo `protocol_violation` (escrito antes de unificar) se lee como el nuevo. */
+const EndReasonSchema = z.preprocess(
+  (value) => (value === "protocol_violation" ? "protocol-violation" : value),
+  z.enum(["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error", "protocol-violation"]),
+);
 
 const TranscriptEntrySchema = z
   .object({
@@ -25,7 +30,7 @@ const GameMetricsSchema = z
     rival: z.string(),
     role: z.enum(["buyer", "seller"]),
     seed: z.number().int(),
-    endReason: z.enum(["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error"]),
+    endReason: EndReasonSchema,
     agreement: z.boolean(),
     zopaEmpty: z.boolean(),
     surplusShare: z.number().nullable(),
@@ -40,6 +45,13 @@ const GameMetricsSchema = z
     misExtracted: z.number().int().nonnegative(),
     unextracted: z.number().int().nonnegative(),
     wrongAgreement: z.boolean(),
+    falseAccept: z.number().int().optional(),
+    missedAccept: z.number().int().optional(),
+    confirmRate: z.number().optional(),
+    templateRate: z.number().optional(),
+    language: z.string().optional(),
+    /** v3: lado que rompió el protocolo, o null. */
+    protocolViolation: z.enum(["agent", "rival"]).nullable().optional(),
   })
   .strict();
 
@@ -47,6 +59,8 @@ const GameMetricsSchema = z
  * Línea de `transcripts.jsonl`: v1 (sin `schemaVersion`) sigue siendo válida. v2 añade
  * `schemaVersion: 2`, `roundLimit` (o `null` sin límite declarado) y `reserves: { ours, rival }`
  * con las reservas por issue del escenario de arena; solo en modo arena, nunca en torneo.
+ * v3 añade `schemaVersion: 3`, `endReason: "protocol-violation"`, `protocolViolation { by, detail }`
+ * y `metrics.protocolViolation`; v1 y v2 siguen validando.
  */
 export const TranscriptLineSchema = z
   .object({
@@ -57,7 +71,7 @@ export const TranscriptLineSchema = z
     role: z.enum(["buyer", "seller"]),
     mode: z.enum(["structured", "text-only"]),
     seed: z.number().int(),
-    endReason: z.enum(["agreement", "agent-walk", "rival-walk", "limit", "rival-error", "agent-error"]),
+    endReason: EndReasonSchema,
     agreement: Offer.optional(),
     agreedBy: z.enum(["agent", "rival"]).optional(),
     wrongAgreement: z.boolean(),
@@ -66,8 +80,10 @@ export const TranscriptLineSchema = z
     agentLatencyMs: z.array(z.number()),
     error: z.string().optional(),
     metrics: GameMetricsSchema,
-    schemaVersion: z.literal(2).optional(),
+    schemaVersion: z.union([z.literal(2), z.literal(3)]).optional(),
     roundLimit: z.number().int().min(1).nullable().optional(),
+    /** v3: quién rompió el protocolo y por qué (solo con `endReason: "protocol-violation"`). */
+    protocolViolation: z.object({ by: z.enum(["agent", "rival"]), detail: z.string() }).strict().optional(),
     reserves: z.object({ ours: Offer, rival: Offer }).strict().optional(),
   })
   .strict();

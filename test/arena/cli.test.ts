@@ -1,23 +1,38 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runArenaCli } from "../../src/arena/cli.js";
+import { applyOverrides, resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("pnpm arena", () => {
-  it("juega sin red, imprime la tabla y guarda resumen y una transcripción por partida", async () => {
+  it("--parser-policy dual-strict: cada entrada de la traza lleva la huella y la política configurada", async () => {
+    const out = mkdtempSync(join(tmpdir(), "arena-"));
+    const { runDir } = await runArenaCli(["--seeds", "1", "--scenarios", "text-seller-wide", "--rivals", "text-only", "--parser-policy", "dual-strict", "--out", out, "--run-id", "rc", "--quiet"]);
+    const expected = resolveRuntimeConfig(applyOverrides(JSON.parse(readFileSync("config/runtime.json", "utf8")), { parserPolicy: "dual-strict" }), { LLM_PROVIDER: "none" });
+    const file = readdirSync(join(runDir, "traces"))[0]!;
+    const records = readFileSync(join(runDir, "traces", file), "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.kind === "box");
+    expect(records.length).toBeGreaterThan(3);
+    for (const r of records) expect(r.runtimeConfig).toBe(expected.fingerprint);
+    expect(records.find((r) => r.box === "reconcile").input).toMatchObject({ configuredPolicy: "dual-strict", policy: "deterministic-only" });
+    await expect(runArenaCli(["--seeds", "1", "--parser-policy", "llm-only", "--out", out, "--quiet"])).rejects.toThrow(/parser\.policy/);
+  }, 20_000);
+
+  // Carga reducida (1 semilla, 2 escenarios, todos los bots) y tiempo holgado: bajo la suite completa
+  // en paralelo, 3 semillas sobre todo el catálogo superaban los 5 s por defecto.
+  it("juega sin red, imprime la tabla y guarda resumen y una transcripción por partida", { timeout: 30_000 }, async () => {
     const fetchSpy = vi.fn(() => Promise.reject(new Error("red prohibida en la arena")));
     vi.stubGlobal("fetch", fetchSpy);
     const out = mkdtempSync(join(tmpdir(), "arena-"));
     const lines: string[] = [];
-    const { runDir, report } = await runArenaCli(["--seeds", "3", "--out", out, "--run-id", "t"], (l) => lines.push(l));
+    const { runDir, report } = await runArenaCli(["--seeds", "1", "--scenarios", "price-buyer-wide,price-seller-narrow", "--out", out, "--run-id", "t"], (l) => lines.push(l));
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(existsSync(join(runDir, "summary.json"))).toBe(true);
     const summary = JSON.parse(readFileSync(join(runDir, "summary.json"), "utf8"));
-    expect(summary).toMatchObject({ runId: "t", llmProvider: "none", network: false, seeds: { start: 1, count: 3 } });
+    expect(summary).toMatchObject({ runId: "t", llmProvider: "none", network: false, seeds: { start: 1, count: 1 } });
     expect(summary.overall.games).toBe(report.games.length);
     const transcripts = readFileSync(join(runDir, "transcripts.jsonl"), "utf8").trim().split("\n");
     expect(transcripts).toHaveLength(report.games.length);
@@ -41,7 +56,7 @@ describe("pnpm arena", () => {
     const paired = summary.paired as { diffPp: number | null }[];
     expect(paired.length).toBeGreaterThan(0);
     for (const p of paired) expect(p.diffPp === null || p.diffPp === 0).toBe(true);
-  });
+  }, 30_000);
 
   it("rechaza un escenario o rival desconocido", async () => {
     await expect(runArenaCli(["--scenarios", "nope", "--quiet"])).rejects.toThrow(/Escenario desconocido/);

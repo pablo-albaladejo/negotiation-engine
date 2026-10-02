@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { decide } from "../../src/engine/engine.js";
 import type { Narrator } from "../../src/llm/narrator.js";
 import type { TextParser } from "../../src/llm/parser.js";
-import { renderTemplate } from "../../src/llm/template.js";
+import { renderTemplate, templateVariant } from "../../src/llm/template.js";
 import { turnBudgetMs } from "../../src/pipeline/pipeline.js";
+import { resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 import { ProtocolError } from "../../src/protocol/schemas.js";
 import { champion, makeBrain, schemas, turn } from "./helpers.js";
 
@@ -24,7 +25,10 @@ const fastConfig = { ...champion, turnBudgetMs: 80 };
 const rivalTurn = (round: number) => turn(round, { rivalAction: "offer", rivalOffer: { pct: 1 }, text: "te ofrezco 1 %" });
 
 async function playWith(deps: Parameters<typeof makeBrain>[0]) {
-  const { brain, trace, store } = makeBrain({ config: fastConfig, ...deps });
+  // Dos intentos por caja (los de `structured`; hybrid usa 1): la inyección de fallos recorre el reintento.
+  // Presupuesto de 80 ms: sin omitir el narrador por tiempo (`minRemainingMs = 0`) para probar sus fallos.
+  const runtime = resolveRuntimeConfig({ llm: { narrator: { minRemainingMs: 0 } } });
+  const { brain, trace, store } = makeBrain({ config: fastConfig, attempts: 2, runtime, ...deps });
   const outputs = [];
   for (let round = 1; round <= 3; round++) outputs.push(await brain.turn(rivalTurn(round)));
   return { outputs, trace, store };
@@ -148,7 +152,7 @@ describe("inyección de fallos: cada turno produce salida válida", () => {
     outputs.forEach((out, k) => {
       expect(out.action).toBe(ref[k]!.action);
       expect(out.action !== "walk" && out.offer).toEqual(ref[k]!.action !== "walk" && ref[k]!.offer);
-      expect(out.text).toBe(renderTemplate(out.action === "walk" ? { action: "walk" } : { action: out.action, offer: out.offer }));
+      expect(out.text).toBe(renderTemplate(out.action === "walk" ? { action: "walk", variant: templateVariant("s1", k + 1) } : { action: out.action, offer: out.offer, variant: templateVariant("s1", k + 1) }));
     });
     expect(calls).toBe(fault === "timeout" ? calls : 6);
     expect(trace.records.filter((r) => r.box === "template")).toHaveLength(3);

@@ -19,7 +19,7 @@ const { values, positionals } = parseArgs({
 try {
   const name = positionals[0];
   if (!name) throw new Error("uso: pnpm bot:serve <bot> [--port N] [--scenario id] [--seed N]");
-  const scenario = loadCatalog(values.catalog).find((s) => s.id === values.scenario);
+  const scenario = loadCatalog(values.catalog, { includeOptIn: true }).find((s) => s.id === values.scenario);
   if (!scenario) throw new Error(`Escenario desconocido: ${values.scenario}`);
   const app = createBotApp({ bot: createBotByName(name), scenario, seed: Number(values.seed) });
   serve({ fetch: app.fetch, port: Number(values.port) }, (info) => {

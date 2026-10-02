@@ -21,7 +21,7 @@ Agente negociador para un torneo (Negotiation Ring, hackathon Causa Prima). El L
     ↓
   [ motor determinista ]      (modelo del rival, oferta Boulware+TFT, aceptación, guardarraíles)
     ↓
-  [ narrador (LLM) ]          (redacta respuesta; 2 fallos o timeout → plantilla)
+  [ narrador (LLM) ]          (redacta respuesta; fallo, timeout o poco tiempo → plantilla)
     ↓
   [ validador ]               (la cifra de la respuesta = decisión del motor)
     ↓
@@ -107,7 +107,8 @@ Ver `.env.example`.
 | `pnpm test` | Tests unitarios + propiedades (fast-check). Must pass antes de commit. |
 | `pnpm test:watch` | Vitest en modo watch. |
 | `pnpm typecheck` | TypeScript. |
-| `pnpm arena` | Self-play: candidata vs campeona, todos los bots/roles/escenarios. |
+| `pnpm arena` | Self-play: candidata vs campeona, todos los bots/roles/escenarios (sin los opt-in). |
+| `pnpm arena:serve-agent` | Nuestro agente con el mandato de un escenario de arena por A2A, MCP o HTTP en 127.0.0.1 (para `--agent-a2a`/`--agent-mcp`). |
 | `pnpm promote` | Puerta de promoción: revalida campeona, evalúa candidata, decide si promueve. |
 | `pnpm tune` | Barrido de parámetros en el espacio del motor. |
 | `pnpm agent` | Servidor del agente: `AGENT_CONFIG=config/champion.json` por defecto. |
@@ -116,7 +117,7 @@ Ver `.env.example`.
 | `pnpm dummy:serve` | Servidor del dummy-agent (estrategia fija). |
 | `pnpm sparring` | Agente vs bot por HTTP: arena con `--rival-url`. |
 | `pnpm eval:dummy` | Evaluación de punta a punta vs dummy (5 semillas, ~20 s). |
-| `pnpm eval:llm` | Mide con llamadas reales a Claude el valor del parser y el narrador LLM (`scripts/eval-llm.sh`; cuesta tokens). |
+| `pnpm eval:llm` | Matriz política × idioma × proveedor en texto completo (`scripts/eval-llm.sh`; llamadas reales salvo `LLM_PROVIDER=none`; `--dry-run` imprime el plan). |
 | `pnpm box <cmd>` | Caja de pruebas de motor. |
 | `pnpm replay <game.json>` | Reproduce una partida guardada. |
 | `pnpm golden:update` | Regenera fixtures doradas. |
@@ -161,9 +162,9 @@ pnpm eval:dummy 5  # 5 semillas (por defecto), ~20 s. Resultados en results/eval
 
 ### (`pnpm eval:llm`)
 
-Compara el camino determinista (`--llm-provider none`) con `claude-cli` contra los bots de texto y los adversariales, y juega unas partidas contra el bot guiado por LLM. Hace llamadas reales (unas 250 con los valores por defecto); se ajusta con las variables `EVAL_LLM_*` de `scripts/eval-llm.sh`. Detalle y perfil de cuenta en el README («Medir el valor del LLM»). Resultados en `results/eval-llm/`.
+Matriz en texto completo: política del parser × idioma del rival × proveedor (`src/arena/eval-llm-plan.ts`), contra bots en código con el renderizador de lenguaje natural y el bot LLM; informa sin-extraer, mal-leídas, falsas aceptaciones, confirmaciones, plantilla y latencia p50/p95 por celda. `pnpm eval:llm --dry-run` imprime el plan y la cota de llamadas; `LLM_PROVIDER=none pnpm eval:llm` la juega sin llamadas. Con LLM corta si la cota supera `EVAL_LLM_MAX_CALLS` (300 por defecto; la matriz por defecto son 280). Detalle y perfil de cuenta en el README («Medir el valor del LLM»). Resultados en `results/eval-llm/`.
 
-Conclusión de la última medición: con la reconciliación actual (determinista y LLM deben coincidir) el parser LLM no recupera ofertas, y el narrador vía `claude -p` no cabe en `turnBudgetMs` (casi siempre responde la plantilla).
+Conclusión de la medición anterior (antes de `text-first-ring`): con la reconciliación AND el parser LLM no recuperaba ofertas, y el narrador vía `claude -p` no cabía en `turnBudgetMs` (casi siempre la plantilla); de ahí la política `llm-primary-verified`, el presupuesto por caja y `anthropic-api` como proveedor recomendado en modo texto.
 
 ## OpenSpec: cambios de arquitectura
 
