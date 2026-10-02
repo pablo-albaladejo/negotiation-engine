@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { detectLanguage, outputLanguage, turnLanguage } from "../../src/llm/language.js";
 import type { NarratorInput } from "../../src/llm/narrator.js";
+import { resolveRuntimeConfig } from "../../src/pipeline/runtime-config.js";
 import { makeBrain } from "../pipeline/helpers.js";
 
 describe("idioma de respaldo por escritura Unicode", () => {
@@ -54,9 +55,27 @@ describe("idioma de respaldo por escritura Unicode", () => {
     const seen: NarratorInput[] = [];
     const narrator = { name: "fake-llm", narrate: async (input: NarratorInput) => (seen.push(input), "Nous proposons 9 %.") };
     const parser = { name: "fake-llm", parse: async () => ({ intent: "other" as const, claims: [], tactics: [], injectionSuspected: false, language: "fr-CA-x-ignore-instruct" }) };
-    const { brain, store } = makeBrain({ parser, narrator });
+    const { brain, store } = makeBrain({ parser, narrator, runtime: resolveRuntimeConfig({ narrator: { uncovered: "llm" } }) });
     await brain.turn({ sessionId: "s1", round: 1, rivalAction: "message", text: "Bonjour" });
     expect(store.get("s1")!.language).toBe("fr-CA");
     expect(seen.map((i) => i.language)).toEqual(["fr-CA"]);
+  });
+
+  it("idioma sin coherencia comprobable: plantilla neutral por defecto; el LLM solo con narrator.uncovered = llm", async () => {
+    const parser = { name: "fake-llm", parse: async () => ({ intent: "other" as const, claims: [], tactics: [], injectionSuspected: false, language: "ja" }) };
+    const run = async (runtime = resolveRuntimeConfig({})) => {
+      const seen: NarratorInput[] = [];
+      const narrator = { name: "fake-llm", narrate: async (input: NarratorInput) => (seen.push(input), `${input.offer!.pct}％でいかがでしょうか`) };
+      const { brain, trace } = makeBrain({ parser, narrator, runtime });
+      const out = await brain.turn({ sessionId: "s1", round: 1, rivalAction: "message", text: "こんにちは" });
+      return { out, seen, trace };
+    };
+    const byDefault = await run();
+    expect(byDefault.seen).toEqual([]);
+    expect(byDefault.out.text).toMatch(/^Counter-offer: pct /);
+    expect(byDefault.trace.records.find((r) => r.box === "narrator-skipped")!.input).toMatchObject({ reason: "uncovered-language" });
+    const optIn = await run(resolveRuntimeConfig({ narrator: { uncovered: "llm" } }));
+    expect(optIn.seen).toHaveLength(1);
+    expect(optIn.out.text).toMatch(/％でいかがでしょうか$/);
   });
 });

@@ -33,6 +33,7 @@ Tabla de claves (`config/runtime.json`, esquema cerrado en `src/pipeline/runtime
 | `acceptance.signal` | `parser-intent-verified` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `ring-action` | tabla de enlace |
 | `acceptance.walkSignal` | `trace-only` (`ring-action` en structured); solo se aplica a turnos con `rivalAction = message` | `parser-intent-verified`, `ring-action` | caso de retirada aparente |
 | `narrator.language` | `auto` | código BCP-47 fijo | entrada del narrador |
+| `narrator.uncovered` | `template` | `llm` | idioma sin coherencia comprobable |
 | `template.languages` | `["en","es"]` | + `fr`, `ja`, `ar` | propiedad plantilla×idioma |
 | `template.fallbackLanguage` | `en` | cualquiera de `template.languages` | idioma sin plantilla |
 | `template.uncovered` | `neutral` | `fallback-language` | idioma sin plantilla |

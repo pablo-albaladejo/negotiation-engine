@@ -10,8 +10,8 @@ import { spanAppears } from "../llm/verify.js";
 import { outputLanguage, turnLanguage } from "../llm/language.js";
 import { normalizeNumbers } from "../llm/numbers.js";
 import { EMPTY_PARSE, parserOutputSchema, type ParserOutput, type TextParser } from "../llm/parser.js";
-import { renderTemplate, templateLanguage, templateVariant, type Ask, type Echo } from "../llm/template.js";
-import { CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
+import { primaryLanguage, renderTemplate, templateLanguage, templateVariant, type Ask, type Echo } from "../llm/template.js";
+import { COHERENCE, CheckResultSchema, validateText, type TextCheck } from "../llm/validator.js";
 import {
   createProtocolSchemas,
   GenericTurnInputSchema,
@@ -578,6 +578,11 @@ export function createPipeline(deps: PipelineDeps): Brain {
     const { minRemainingMs } = runtime.llm.narrator;
     for (let attempt = 1; attempt <= narratorAttempts && remaining() > 0 && !text; attempt++) {
       // Sin tiempo para una llamada útil (también antes de un reintento): plantilla directamente.
+      // Idioma sin coherencia comprobable (ni palabras numéricas legibles): plantilla salvo que la configuración opte por el LLM.
+      if (llmNarrator && runtime.narrator.uncovered === "template" && !COHERENCE[primaryLanguage(outLanguage) ?? ""]) {
+        record("narrator-skipped", { attempt, reason: "uncovered-language" }, null, "fallback", now());
+        break;
+      }
       if (llmNarrator && remaining() < minRemainingMs) {
         record("narrator-skipped", { attempt, remainingMs: Math.round(remaining()), minRemainingMs }, null, "fallback", now());
         break;

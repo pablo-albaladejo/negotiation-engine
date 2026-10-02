@@ -63,3 +63,11 @@ Orden = camino crítico del minuto 0 (grupos 1–7: configuración, normalizador
 - [x] 11.1 Casos de inyección es/en/fr/ja en `redteam/cases.yaml` y test de aserciones deterministas
 - [ ] 11.2 Casos adversariales de evidencia (ancho cero, dígitos mezclados, etiquetas falsas, aceptaciones negadas o condicionales multilingües, cita de nuestra oferta) [aplazada: sábado]
 - [ ] 11.3 Suite extendida de red team en ar y otros idiomas con el bot LLM como atacante [si hay tiempo]
+
+## 12. Revisión 1
+
+- [x] 12.1 Eco de la petición de confirmar sin oráculo de la reserva: eco siempre de las cifras del rival leídas en dígitos, exentas en el detector de fugas; oferta no firme como oferta no actual para el motor; test de barrido
+- [x] 12.2 Aceptación por texto: toda cifra del texto normalizada debe ser de nuestra última oferta (`figures-extra`)
+- [x] 12.3 `spanAppears` en límites de cifra (cualquier escritura)
+- [x] 12.4 Tiempos explícitos en los tests pesados (`pnpm test` estable)
+- [x] 12.5 Idioma del narrador reducido a subetiqueta principal y región; `narrator.uncovered = template` por defecto y dígitos solo decididos con `coherence-unchecked`

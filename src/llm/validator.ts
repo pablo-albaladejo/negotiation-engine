@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Offer } from "../engine/issues.js";
 import { defineBox, registerBox } from "../pipeline/box.js";
-import { normalizeNumbers } from "./numbers.js";
+import { foldText, normalizeNumbers } from "./numbers.js";
 
 const EPS = 1e-6;
 
@@ -97,6 +97,18 @@ export function validateText(check: TextCheck): CheckResult {
     if (check.action === "accept" && (!own.accept.test(text) || saysWalkAny)) reasons.push("texto incoherente con accept");
     if (check.action === "counter" && (saysAcceptAny || saysWalkAny)) reasons.push("texto incoherente con counter");
     if (check.action === "walk" && (!own.walk.test(text) || saysAcceptAny)) reasons.push("texto incoherente con walk");
+  }
+
+  // Idioma no cubierto: además, todo dígito del texto pertenece a una cifra igual a una decidida
+  // (ni siquiera las repetidas del rival), porque ahí no podemos leer el resto del texto.
+  if (unchecked) {
+    const decidedSpans = mentions.filter((m) => m.kind === "number" && matches(m.value));
+    for (const digit of foldText(text).matchAll(/\p{Nd}/gu)) {
+      if (!decidedSpans.some((m) => digit.index >= m.start && digit.index < m.end)) {
+        reasons.push("dígitos que no son una cifra decidida (idioma no cubierto)");
+        break;
+      }
+    }
   }
 
   if (reasons.length) return { ok: false, reasons };

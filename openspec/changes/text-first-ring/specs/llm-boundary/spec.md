@@ -107,15 +107,23 @@ Con `narrator.language = auto`, el narrador SHALL redactar en el idioma de la se
 - **THEN** la sesión y el narrador usan `fr-CA`
 
 ### Requirement: Validador independiente del idioma
-El validador SHALL extraer las cifras del texto saliente con el normalizador compartido para cualquier escritura y SHALL seguir exigiendo que toda cifra coincida con la decisión y que `accept` y `counter` repitan cada valor decidido. La coherencia entre texto y acción SHALL comprobarse con listas de expresiones por idioma para los idiomas cubiertos (al menos `en` y `es`); con `validator.coherence = known-languages`, un texto en un idioma no cubierto SHALL aprobarse si cumple las reglas de cifras y la traza SHALL marcar `coherence-unchecked`; con `strict` SHALL rechazarse y usarse la plantilla.
+El validador SHALL extraer las cifras del texto saliente con el normalizador compartido para cualquier escritura y SHALL seguir exigiendo que toda cifra coincida con la decisión y que `accept` y `counter` repitan cada valor decidido. La coherencia entre texto y acción SHALL comprobarse con listas de expresiones por idioma para los idiomas cubiertos (al menos `en` y `es`); con `validator.coherence = known-languages`, un texto en un idioma no cubierto SHALL aprobarse si cumple las reglas de cifras y la traza SHALL marcar `coherence-unchecked`; con `strict` SHALL rechazarse y usarse la plantilla. Con `coherence-unchecked`, además, todo dígito del texto (cualquier escritura) MUST pertenecer a una cifra igual a una decidida, sin la exención de las cifras repetidas del rival. Como en esos idiomas no se pueden leer las palabras numéricas, con `narrator.uncovered = template` (por defecto) el narrador LLM no se llama y responde la plantilla (forma neutral con `template.uncovered = neutral`), registrando `narrator-skipped` con motivo `uncovered-language`; `narrator.uncovered = llm` permite el texto libre del LLM con las reglas anteriores.
 
 #### Scenario: Cifra de otra escritura no decidida
 - **WHEN** el motor decide 2 % y el texto saliente contiene "２．８％"
 - **THEN** el validador rechaza el texto por cifra no decidida
 
 #### Scenario: Idioma no cubierto
-- **WHEN** con `known-languages` el narrador redacta una contraoferta en japonés que contiene exactamente la cifra decidida
+- **WHEN** con `known-languages` y `narrator.uncovered = llm` el narrador redacta una contraoferta en japonés que contiene exactamente la cifra decidida
 - **THEN** el texto se aprueba y la traza marca `coherence-unchecked`
+
+#### Scenario: Idioma no cubierto por defecto
+- **WHEN** el idioma de la sesión es `ja`, hay narrador LLM y `narrator.uncovered` no se configura
+- **THEN** el narrador no se llama, responde la forma neutral de la plantilla y la traza registra `narrator-skipped` con motivo `uncovered-language`
+
+#### Scenario: Dígito no decidido en idioma no cubierto
+- **WHEN** el motor decide 2 % y un texto en japonés contiene "第３四半期に２％" o repite cifras del rival
+- **THEN** el validador lo rechaza
 
 ### Requirement: Proveedor y tiempos por caja
 El parser y el narrador SHALL tener cada uno su proveedor (`none` | `claude-cli` | `anthropic-api`, por defecto `LLM_PROVIDER`), modelo (por defecto `ANTHROPIC_MODEL` o el del CLI), tiempo máximo por llamada (por defecto 1800 ms el parser y 1500 ms el narrador) e intentos (por defecto 1 en `hybrid` y `text-only`, 2 en `structured`). El proveedor `anthropic-api` SHALL reutilizar conexiones HTTP y SHALL hacer una llamada de calentamiento al arrancar sin datos de ninguna partida. `claude-cli` SHALL seguir disponible para desarrollo.

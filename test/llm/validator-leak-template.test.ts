@@ -153,6 +153,15 @@ describe("plantilla determinista", () => {
     expect(validateText({ action: "counter", offer: { pct: 2 }, text, language: "ja" })).toEqual({ ok: true, coherence: "unchecked" });
     expect(validateText({ action: "counter", offer: { pct: 2 }, text, language: "ja", coherence: "strict" })).toMatchObject({ ok: false });
   });
+  it("idioma no cubierto: todo dígito pertenece a una cifra decidida (ni las repetidas del rival)", () => {
+    const base = { action: "counter" as const, offer: { pct: 2 }, language: "ja" };
+    expect(validateText({ ...base, text: "２％でいかがでしょうか" })).toEqual({ ok: true, coherence: "unchecked" });
+    expect(validateText({ ...base, text: "３か４％ですか？２％でいかがでしょうか", echoed: [3, 4] })).toMatchObject({ ok: false });
+    expect(validateText({ ...base, text: "第３四半期に２％でいかがでしょうか" })).toMatchObject({ ok: false });
+    expect(validateText({ ...base, text: "٢٪ و ٣ أيام", language: "ar" })).toMatchObject({ ok: false });
+    // En un idioma cubierto la cifra repetida del rival sigue admitida.
+    expect(validateText({ action: "counter", offer: { pct: 2 }, text: "¿Es un 3 o un 4 %? Te propongo un 2 %.", language: "es", echoed: [3, 4] })).toEqual({ ok: true });
+  });
   it("coherencia por idioma: un accept en inglés con palabras en inglés pasa; con solo palabras españolas, no", () => {
     expect(validateText({ action: "accept", offer: { pct: 2 }, text: "Agreed: 2%", language: "en" })).toEqual({ ok: true });
     expect(validateText({ action: "accept", offer: { pct: 2 }, text: "Acepto 2 %", language: "en" })).toMatchObject({ ok: false });

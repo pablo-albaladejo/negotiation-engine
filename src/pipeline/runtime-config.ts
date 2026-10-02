@@ -46,7 +46,7 @@ export const RuntimeConfigSchema = z
       .strict()
       .optional(),
     acceptance: z.object({ signal: z.enum(ACCEPTANCE_SIGNALS).optional(), walkSignal: z.enum(WALK_SIGNALS).optional() }).strict().optional(),
-    narrator: z.object({ language: z.union([z.literal("auto"), LanguageTag]).optional() }).strict().optional(),
+    narrator: z.object({ language: z.union([z.literal("auto"), LanguageTag]).optional(), uncovered: z.enum(["template", "llm"]).optional() }).strict().optional(),
     template: z
       .object({
         languages: z.array(LanguageTag).min(1).max(20).optional(),
@@ -91,7 +91,8 @@ export interface RuntimeConfig {
     units: { bps: Record<string, string[]> };
   };
   acceptance: { signal: AcceptanceSignal; walkSignal: WalkSignal };
-  narrator: { language: string };
+  /** `uncovered`: en un idioma sin coherencia comprobable, `template` (por defecto) usa la plantilla y `llm` deja redactar al LLM. */
+  narrator: { language: string; uncovered: "template" | "llm" };
   template: { languages: string[]; fallbackLanguage: string; uncovered: "neutral" | "fallback-language" };
   validator: { coherence: "known-languages" | "strict" };
   llm: {
@@ -180,7 +181,7 @@ export function resolveRuntimeConfig(raw: unknown = {}, env: NodeJS.ProcessEnv =
       units: { bps: file.parser?.units?.bps ?? {} },
     },
     acceptance: { signal: file.acceptance?.signal ?? defaults.signal, walkSignal: file.acceptance?.walkSignal ?? defaults.walkSignal },
-    narrator: { language: file.narrator?.language ?? "auto" },
+    narrator: { language: file.narrator?.language ?? "auto", uncovered: file.narrator?.uncovered ?? "template" },
     template: { languages, fallbackLanguage, uncovered: file.template?.uncovered ?? "neutral" },
     validator: { coherence: file.validator?.coherence ?? "known-languages" },
     llm: {
