@@ -15,6 +15,7 @@
     "viewer:test": "pnpm --dir viewer test",
     "viewer:typecheck": "pnpm --dir viewer typecheck",
     "arena": "tsx src/arena/index.ts",
+    "arena:serve-agent": "tsx src/arena/serve-agent.ts",
     "promote": "tsx src/arena/promote-main.ts",
     "tune": "tsx src/tune/tune-main.ts",
     "redteam": "tsx src/redteam/main.ts",

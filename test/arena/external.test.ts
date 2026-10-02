@@ -51,13 +51,14 @@ describe("sparring externo por HTTP JSON", () => {
     expect(summary).toMatchObject({ rivalErrors: 1, meanSurplus: null, agreementRate: 0 });
   });
 
-  it("un bot que responde fuera de contrato también es error del rival", async () => {
+  it("un bot que responde fuera de contrato rompe el protocolo (protocol-violation del rival)", async () => {
     const rival = createHttpParticipant({
       name: "garbage",
       baseUrl: "http://bot",
       fetch: async () => new Response(JSON.stringify({ hello: "world" }), { status: 200, headers: { "content-type": "application/json" } }),
     });
     const game = await playGame({ scenario, agent: httpAgent(), rival, seed: 3 });
-    expect(game.endReason).toBe("rival-error");
+    expect(game.endReason).toBe("protocol-violation");
+    expect(game.protocolViolation?.by).toBe("rival");
   });
 });

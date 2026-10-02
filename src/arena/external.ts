@@ -49,11 +49,11 @@ function sessionFrom(call: (turn: unknown) => Promise<AdapterResult>, close?: ()
 }
 
 /** Agente externo por A2A (JSON-RPC `SendMessage` en `<baseUrl>/a2a`); conjunto reservado. */
-export function createA2AParticipant(options: { name: string; baseUrl: string; timeoutMs?: number; fetch?: FetchLike }): Participant {
+export function createA2AParticipant(options: { name: string; baseUrl: string; kind?: "agent" | "external"; timeoutMs?: number; fetch?: FetchLike }): Participant {
   const doFetch = options.fetch ?? ((url: string, init?: RequestInit) => fetch(url, init));
   return {
     name: options.name,
-    kind: "external",
+    kind: options.kind ?? "external",
     pool: "heldOut",
     start(): PlayerSession {
       const call = createA2AClient((path, init) => doFetch(new URL(path, options.baseUrl).toString(), { ...init, signal: AbortSignal.timeout(options.timeoutMs ?? 5000) }));
@@ -63,10 +63,10 @@ export function createA2AParticipant(options: { name: string; baseUrl: string; t
 }
 
 /** Agente externo por MCP (`negotiate_turn` sobre Streamable HTTP en `<baseUrl>/mcp`); conjunto reservado. */
-export function createMcpParticipant(options: { name: string; baseUrl: string; timeoutMs?: number; fetch?: McpFetch }): Participant {
+export function createMcpParticipant(options: { name: string; baseUrl: string; kind?: "agent" | "external"; timeoutMs?: number; fetch?: McpFetch }): Participant {
   return {
     name: options.name,
-    kind: "external",
+    kind: options.kind ?? "external",
     pool: "heldOut",
     start(): PlayerSession {
       const client = createMcpClient({ baseUrl: options.baseUrl, ...(options.fetch ? { fetch: options.fetch } : {}), timeoutMs: options.timeoutMs ?? 5000 });

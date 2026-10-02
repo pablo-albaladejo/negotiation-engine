@@ -16,7 +16,7 @@ export interface TournamentReplayModel {
   sessionId: string;
   role: "buyer" | "seller" | null;
   scenario: { id: string; hash: string };
-  traceVersion: 1 | 2;
+  traceVersion: 1 | 2 | 3;
   ourReserve: Offer | null;
   offers: { ours: { round: number; offer: Offer }[]; rival: { round: number; offer: Offer }[] };
   rounds: RoundPanel[];

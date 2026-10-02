@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { AprBandSchema } from "../engine/apr.js";
 import type { TraceRecord, TraceSink } from "./box.js";
 
 const OfferRecord = z.record(z.string(), z.number());
@@ -29,8 +30,8 @@ const headerCommon = {
   sessionId: z.string().min(1),
   configVersion: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
-  /** v1 no lo lleva (undefined); v2 añade campos aditivos (role en torneo, nunca mandato). */
-  traceVersion: z.literal(2).optional(),
+  /** v1 no lo lleva (undefined); v2 añade campos aditivos (role en torneo, nunca mandato); v3, `mandate.apr` en arena. */
+  traceVersion: z.union([z.literal(2), z.literal(3)]).optional(),
 };
 
 /**
@@ -46,7 +47,8 @@ export const TraceHeaderSchema = z.discriminatedUnion("mode", [
       scenarioId: z.string().min(1),
       rival: z.string().min(1),
       seed: z.number().int(),
-      mandate: z.object({ role: z.enum(["buyer", "seller"]), reservation: OfferRecord }).strict(),
+      /** v3: banda `apr` opcional (solo arena; el torneo nunca lleva mandato). */
+      mandate: z.object({ role: z.enum(["buyer", "seller"]), reservation: OfferRecord, apr: AprBandSchema.optional() }).strict(),
     })
     .strict(),
   z

@@ -98,7 +98,9 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
           { label: "ZOPA", value: model.game.zopaEmpty ? "empty" : "open" },
         ]}
       />
-      {model.game.endReason === "rival-error" ? <ProtocolBreakBanner round={model.game.rounds} detail={model.game.error ?? "rival-error (no detail logged)"} /> : null}
+      {model.game.endReason === "rival-error" || model.game.endReason === "protocol-violation" ? (
+        <ProtocolBreakBanner round={model.game.rounds} detail={model.game.error ?? `${model.game.endReason} (no detail logged)`} />
+      ) : null}
       {model.game.zopaEmpty && model.reserves ? (
         <EmptyZopaBanner ours={offerLabel(model.reserves.ours)} rival={offerLabel(model.reserves.rival)} walked={model.game.endReason === "agent-walk"} />
       ) : null}

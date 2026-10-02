@@ -438,5 +438,205 @@
         }
       }
     }
+  },
+  {
+    "id": "apr-buyer-wide",
+    "description": "Mandato en % TAE (net 30, día de referencia 10): banda comprador [15, 45], vendedor [8, 30]. Opt-in (estilo Causa Prima).",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 5,
+        "direction": "higher-better",
+        "weight": 0.5
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 25,
+        "direction": "higher-better",
+        "weight": 0.5
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "wide",
+    "optIn": true,
+    "mandateUnit": "apr",
+    "baseDays": 30,
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 0.82,
+          "day": 10
+        },
+        "apr": {
+          "min": 15,
+          "max": 45
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 1.61,
+          "day": 10
+        },
+        "apr": {
+          "min": 8,
+          "max": 30
+        }
+      }
+    }
+  },
+  {
+    "id": "apr-seller-wide",
+    "description": "Mandato en % TAE (net 30, día de referencia 10): banda comprador [15, 45], vendedor [8, 30]. Opt-in (estilo Causa Prima).",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 5,
+        "direction": "higher-better",
+        "weight": 0.5
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 25,
+        "direction": "higher-better",
+        "weight": 0.5
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "wide",
+    "optIn": true,
+    "mandateUnit": "apr",
+    "baseDays": 30,
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 0.82,
+          "day": 10
+        },
+        "apr": {
+          "min": 15,
+          "max": 45
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 1.61,
+          "day": 10
+        },
+        "apr": {
+          "min": 8,
+          "max": 30
+        }
+      }
+    }
+  },
+  {
+    "id": "apr-buyer-narrow",
+    "description": "Mandato en % TAE (net 30, día de referencia 10): banda comprador [20, 45], vendedor [8, 23]. Opt-in (estilo Causa Prima).",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 5,
+        "direction": "higher-better",
+        "weight": 0.5
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 25,
+        "direction": "higher-better",
+        "weight": 0.5
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "buyer",
+    "zopa": "narrow",
+    "optIn": true,
+    "mandateUnit": "apr",
+    "baseDays": 30,
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 1.09,
+          "day": 10
+        },
+        "apr": {
+          "min": 20,
+          "max": 45
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 1.24,
+          "day": 10
+        },
+        "apr": {
+          "min": 8,
+          "max": 23
+        }
+      }
+    }
+  },
+  {
+    "id": "apr-seller-narrow",
+    "description": "Mandato en % TAE (net 30, día de referencia 10): banda comprador [20, 45], vendedor [8, 23]. Opt-in (estilo Causa Prima).",
+    "issues": [
+      {
+        "name": "pct",
+        "min": 0,
+        "max": 5,
+        "direction": "higher-better",
+        "weight": 0.5
+      },
+      {
+        "name": "day",
+        "min": 0,
+        "max": 25,
+        "direction": "higher-better",
+        "weight": 0.5
+      }
+    ],
+    "rounds": 10,
+    "limitVisible": true,
+    "mode": "structured",
+    "role": "seller",
+    "zopa": "narrow",
+    "optIn": true,
+    "mandateUnit": "apr",
+    "baseDays": 30,
+    "mandates": {
+      "buyer": {
+        "reservation": {
+          "pct": 1.09,
+          "day": 10
+        },
+        "apr": {
+          "min": 20,
+          "max": 45
+        }
+      },
+      "seller": {
+        "reservation": {
+          "pct": 1.24,
+          "day": 10
+        },
+        "apr": {
+          "min": 8,
+          "max": 23
+        }
+      }
+    }
   }
 ]

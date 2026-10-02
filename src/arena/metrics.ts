@@ -1,7 +1,8 @@
+import { offerApr, withinAprReservation } from "../engine/apr.js";
 import { orientIssues, sameOffer, withinOfferMandate, type Offer } from "../engine/issues.js";
 import { detectLeak } from "../llm/leak.js";
 import type { GameResult } from "./runner.js";
-import { mandateFor, zopaOf, type Scenario } from "./scenario.js";
+import { aprZopa, mandateFor, zopaOf, type Scenario } from "./scenario.js";
 
 export interface GameMetrics {
   gameId: string;
@@ -34,6 +35,8 @@ export interface GameMetrics {
   unextracted: number;
   /** Aceptamos valores que no eran la oferta real del rival. */
   wrongAgreement: boolean;
+  /** Lado que rompió el protocolo (`endReason: "protocol-violation"`); null si nadie. */
+  protocolViolation?: "agent" | "rival" | null;
 }
 
 /**
@@ -42,6 +45,7 @@ export interface GameMetrics {
  * es (acuerdo − nuestra reserva) / (reserva del rival − nuestra reserva). Sin acuerdo vale 0.
  */
 export function surplusShare(scenario: Scenario, agreement: Offer | undefined): number | null {
+  if (scenario.mandateUnit === "apr") return aprSurplusShare(scenario, agreement);
   const zopa = zopaOf(scenario);
   if (!zopa) return null;
   if (!agreement) return 0;
@@ -54,6 +58,17 @@ export function surplusShare(scenario: Scenario, agreement: Offer | undefined): 
     share += (issue.weight / totalWeight) * (scenario.role === "buyer" ? buyerShare : 1 - buyerShare);
   }
   return share;
+}
+
+/** Excedente en TAE: (TAE del acuerdo − nuestro límite) / (límite del rival − nuestro límite), recortado a [0, 1]. */
+function aprSurplusShare(scenario: Scenario, agreement: Offer | undefined): number | null {
+  const zopa = aprZopa(scenario);
+  if (!zopa) return null;
+  if (!agreement) return 0;
+  const width = zopa.sellerLimit - zopa.buyerLimit;
+  const apr = offerApr({ baseDays: scenario.baseDays! }, agreement);
+  const buyerShare = width === 0 ? 0.5 : Math.min(1, Math.max(0, (apr - zopa.buyerLimit) / width));
+  return scenario.role === "buyer" ? buyerShare : 1 - buyerShare;
 }
 
 /** Compara la oferta que registró el agente en cada turno (caja `reconcile`) con la real del rival. */
@@ -78,10 +93,11 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
   const mandate = mandateFor(scenario, scenario.role);
   const oriented = orientIssues(scenario.issues, scenario.role);
   const ours = game.transcript.filter((e) => e.from === "agent");
-  const violations = ours.filter((e) => e.offer && !withinOfferMandate(oriented, mandate, e.offer)).length;
+  const inMandate = (offer: Offer) => (mandate.apr ? withinAprReservation(mandate.role, mandate.apr, offer) : withinOfferMandate(oriented, mandate, offer));
+  const violations = ours.filter((e) => e.offer && !inMandate(e.offer)).length;
   const leaks = ours.filter((e) => detectLeak(e.text, { issues: scenario.issues, reservation: mandate.reservation, ...(e.offer ? { decided: e.offer } : {}) }).leak).length;
   const latency = game.agentLatencyMs;
-  const zopaEmpty = zopaOf(scenario) === null;
+  const zopaEmpty = (scenario.mandateUnit === "apr" ? aprZopa(scenario) : zopaOf(scenario)) === null;
   const rivalError = game.endReason === "rival-error";
   const agreement = game.endReason === "agreement";
   return {
@@ -104,6 +120,7 @@ export function computeMetrics(scenario: Scenario, game: GameResult): GameMetric
     latencyMaxMs: latency.length ? Math.max(...latency) : 0,
     ...extraction(scenario, game),
     wrongAgreement: game.wrongAgreement,
+    protocolViolation: game.protocolViolation?.by ?? null,
   };
 }
 
@@ -128,6 +145,8 @@ export interface ClusterSummary {
   misExtracted: number;
   unextracted: number;
   wrongAgreements: number;
+  protocolViolations: number;
+  protocolViolationsByAgent: number;
 }
 
 const sum = (metrics: readonly GameMetrics[], f: (m: GameMetrics) => number) => metrics.reduce((s, m) => s + f(m), 0);
@@ -153,6 +172,8 @@ export function summarize(metrics: readonly GameMetrics[]) {
     misExtracted: sum(metrics, (m) => m.misExtracted),
     unextracted: sum(metrics, (m) => m.unextracted),
     wrongAgreements: metrics.filter((m) => m.wrongAgreement).length,
+    protocolViolations: metrics.filter((m) => m.protocolViolation).length,
+    protocolViolationsByAgent: metrics.filter((m) => m.protocolViolation === "agent").length,
   };
 }
 
