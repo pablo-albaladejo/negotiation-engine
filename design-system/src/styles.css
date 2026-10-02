@@ -9,6 +9,12 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 [data-theme="light"]{color-scheme:light}
 [data-theme="dark"]{color-scheme:dark}
 
+/* F1 (WCAG 2.4.11): a sticky header must not hide an element scrolled into view via keyboard focus
+   (e.g. skip link, anchor jump). `--header-height` is measured by the app (its sticky header can
+   wrap to a second line on narrow screens, changing height); 64px is a safe default for apps/tests
+   that never set it. */
+html{scroll-padding-top:calc(var(--header-height,64px) + var(--space-2))}
+
 .nr-root{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
 .nr-root h1,.nr-root h2,.nr-root h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
 .nr-title{font-family:var(--font-display);font-size:26px;font-weight:800;margin:0}

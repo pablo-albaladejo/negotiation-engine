@@ -400,6 +400,26 @@ function AppContent() {
   /** D9: once the user picks a theme explicitly, OS changes stop overriding it (watchSystemTheme
    * checks for a stored choice on every change event). */
   useEffect(() => watchSystemTheme(setTheme), []);
+  /**
+   * F1 (WCAG 2.4.11): the sticky header's real height -- it can wrap to a second line on narrow
+   * screens -- drives `--header-height` (read by DS's `html{scroll-padding-top}`) so a keyboard
+   * jump to an anchor/skip-link target never lands underneath it.
+   */
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const update = () => document.documentElement.style.setProperty("--header-height", `${header.offsetHeight}px`);
+    update();
+    window.addEventListener("resize", update);
+    // jsdom (tests) has no ResizeObserver; window resize still covers real narrow-screen wrapping.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(header);
+    return () => {
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  });
   const resultsFolder = useResultsFolder();
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "find" ? route.tab : route.screen === "arena-replay" ? arenaReplayView : route.screen;
@@ -410,7 +430,7 @@ function AppContent() {
   };
   return (
     <Root theme={theme}>
-      <header style={{ position: "sticky", top: 0, zIndex: 5, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
+      <header ref={headerRef} style={{ position: "sticky", top: 0, zIndex: 5, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "var(--space-4) var(--gutter) 0", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>

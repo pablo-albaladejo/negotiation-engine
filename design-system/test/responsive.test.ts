@@ -43,3 +43,10 @@ describe("finding 11: .nr-chat-scroll replaces inline maxHeight: 80vh chat panel
     expect(css).toContain(".nr-chat-scroll.is-tall{max-height:820px}");
   });
 });
+
+describe("F1 (WCAG 2.4.11): sticky header never hides a keyboard-focused/jumped-to element", () => {
+  it("html scroll-padding-top covers the measured header height + a space-2 gap", () => {
+    const css = readFileSync(stylesPath, "utf8");
+    expect(css).toContain("html{scroll-padding-top:calc(var(--header-height,64px) + var(--space-2))}");
+  });
+});
