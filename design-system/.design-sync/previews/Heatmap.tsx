@@ -54,6 +54,15 @@ export function LowBand() {
   );
 }
 
+export function LabelAlias() {
+  return (
+    <Heatmap
+      columns={["as seller", "as buyer"]}
+      rows={[{ label: "Boulware", cells: [{ label: "0.71", value: 0.71 }, { label: "0.52", value: 0.52 }] }]}
+    />
+  );
+}
+
 export function MissingData() {
   return (
     <Heatmap

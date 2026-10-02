@@ -86,7 +86,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     <div style={{ position: "fixed", inset: 0, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
       <BackLink
         className="nr-live-corner-back"
-        style={{ position: "fixed", top: 16, left: 16, color: "var(--muted)" }}
+        style={{ position: "fixed", top: 16, left: 16 }}
         onClick={() => {
           window.location.hash = routeTo.runs();
         }}
