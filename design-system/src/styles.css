@@ -8,6 +8,10 @@
 .nr-heading{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0}
 .nr-muted{color:var(--muted);font-size:13.5px}
 .nr-cfg{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.nr-stat-figure-wrap{display:flex;flex-direction:column;gap:var(--space-1)}
+.nr-stat-figure{font:800 44px/1 var(--font-display)}
+.nr-stat-figure-us{color:var(--us)}
+.nr-stat-figure-them{color:var(--them)}
 
 /* Tabs */
 .nr-tabs{display:flex;gap:var(--space-1);border-bottom:1px solid var(--line);overflow-x:auto}
@@ -168,6 +172,8 @@
 .nr-scatter .point-label.them{fill:var(--them)}
 .nr-scatter .deal-ring{fill:none;stroke:var(--ok);stroke-width:2.5}
 .nr-scatter .deal-label{font:600 11px var(--font-mono);fill:var(--ok)}
+.nr-scatter circle[role="button"]{cursor:pointer}
+.nr-scatter circle[role="button"]:focus-visible{outline:2px solid var(--us);outline-offset:1px}
 
 /* Loading progress: determinate fill or an indeterminate 30% slider (P8) */
 .nr-progress-track{height:6px;background:var(--line);border-radius:var(--radius-pill);overflow:hidden;position:relative}

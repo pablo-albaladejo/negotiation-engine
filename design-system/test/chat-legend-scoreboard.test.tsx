@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
-import { ChatMessage, Legend, Scoreboard } from "../src/index";
+import { ChatMessage, Legend, Scoreboard, StatFigure } from "../src/index";
 
 describe("ChatMessage highlighted", () => {
   it("uses the us side class when highlighted on our side", () => {
@@ -55,5 +55,19 @@ describe("Scoreboard with null round/attacksBlocked", () => {
     const html = renderToString(<Scoreboard badge="WAITING" us="us" rival="next opponent" round={null} rounds={null} attacksBlocked={null} />);
     const stat = /<span class="nr-scoreboard-value">(.*?)<\/span>/.exec(html)?.[1];
     expect(stat).toBe("—<!-- -->/<!-- -->—");
+  });
+});
+
+describe("StatFigure", () => {
+  it("renders the them tone by default with the 44px display font", () => {
+    const html = renderToString(<StatFigure value="12.4" />);
+    expect(html).toContain("nr-stat-figure nr-stat-figure-them");
+    expect(html).toContain("12.4");
+  });
+
+  it("renders the us tone and an optional caption", () => {
+    const html = renderToString(<StatFigure value="7.1" tone="us" caption="vs final close" />);
+    expect(html).toContain("nr-stat-figure nr-stat-figure-us");
+    expect(html).toContain("vs final close");
   });
 });

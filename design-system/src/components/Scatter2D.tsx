@@ -1,3 +1,5 @@
+import type { KeyboardEvent } from "react";
+
 export interface Scatter2DPoint {
   round: number;
   x: number;
@@ -30,6 +32,8 @@ export interface Scatter2DProps {
   isoLines?: Scatter2DCurve[];
   mandate?: Scatter2DRegion;
   deal?: Scatter2DDeal;
+  /** Selects the round of the clicked (or keyboard-activated) point; points become focusable buttons. */
+  onPointClick?: (point: { side: "us" | "them"; round: number }) => void;
 }
 
 const WIDTH = 640;
@@ -62,7 +66,7 @@ function ticksFor(domain: [number, number]): number[] {
   return Array.from({ length: TICK_COUNT + 1 }, (_, index) => min + ((max - min) * index) / TICK_COUNT);
 }
 
-export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal }: Scatter2DProps) {
+export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOffers, isoLines, mandate, deal, onPointClick }: Scatter2DProps) {
   const sortedOurs = [...ourOffers].sort(byRound);
   const sortedTheirs = [...theirOffers].sort(byRound);
   const rounds = Array.from(new Set([...ourOffers, ...theirOffers].map((point) => point.round)));
@@ -162,7 +166,22 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
 
       {sortedOurs.map((point) => (
         <g key={`us-${point.round}`}>
-          <circle className="dot-us" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
+          <circle
+            className="dot-us"
+            cx={scatter2DXScale(point.x, xDomain)}
+            cy={scatter2DYScale(point.y, yDomain)}
+            r={4.5}
+            {...(onPointClick
+              ? {
+                  role: "button" as const,
+                  tabIndex: 0,
+                  onClick: () => onPointClick({ side: "us" as const, round: point.round }),
+                  onKeyDown: (e: KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") onPointClick({ side: "us" as const, round: point.round });
+                  },
+                }
+              : {})}
+          />
           <text className="point-label us" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
             R{point.round}
           </text>
@@ -170,7 +189,22 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
       ))}
       {sortedTheirs.map((point) => (
         <g key={`them-${point.round}`}>
-          <circle className="dot-them" cx={scatter2DXScale(point.x, xDomain)} cy={scatter2DYScale(point.y, yDomain)} r={4.5} />
+          <circle
+            className="dot-them"
+            cx={scatter2DXScale(point.x, xDomain)}
+            cy={scatter2DYScale(point.y, yDomain)}
+            r={4.5}
+            {...(onPointClick
+              ? {
+                  role: "button" as const,
+                  tabIndex: 0,
+                  onClick: () => onPointClick({ side: "them" as const, round: point.round }),
+                  onKeyDown: (e: KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") onPointClick({ side: "them" as const, round: point.round });
+                  },
+                }
+              : {})}
+          />
           <text className="point-label them" x={scatter2DXScale(point.x, xDomain)} y={scatter2DYScale(point.y, yDomain) - 8}>
             R{point.round}
           </text>

@@ -47,5 +47,8 @@ export type { ScoreboardProps } from "./components/Scoreboard";
 export { WarningBanner } from "./components/WarningBanner";
 export type { WarningBannerProps } from "./components/WarningBanner";
 
+export { StatFigure } from "./components/StatFigure";
+export type { StatFigureProps } from "./components/StatFigure";
+
 export { formatEsNumber, formatNumber } from "./format";
 export type { FormatNumberOptions } from "./format";
