@@ -9,9 +9,9 @@ import {
   Tabs,
   formatNumber,
 } from "@negotiation-ring/design-system";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
-import { BackLink, SecondaryButton } from "../ui/buttons.js";
+import { BackLink, PrimaryButton } from "../ui/buttons.js";
 
 const METRIC_COLUMNS = (model: GateModel): DataTableColumn[] => [
   { key: "k", label: "Metric" },
@@ -31,7 +31,7 @@ const int = (v: number | null): string => (v === null ? NL : formatNumber(v, { l
 const dec = (v: number | null): string => (v === null ? NL : formatNumber(v, { locale: "en", decimals: 1 }));
 
 function metricRows(m: { champion: PhaseMetrics; candidate: PhaseMetrics; surplusChangePp: number | null }): DataTableRow[] {
-  const row = (k: string, f: (v: number | null) => string, pick: (p: PhaseMetrics) => number | null) => ({ k, a: f(pick(m.champion)), b: f(pick(m.candidate)), d: "—" });
+  const row = (k: string, f: (v: number | null) => string, pick: (p: PhaseMetrics) => number | null) => ({ k, a: f(pick(m.champion)), b: f(pick(m.candidate)), d: NL });
   const change = m.surplusChangePp;
   return [
     {
@@ -60,21 +60,28 @@ function Verdict({ model }: { model: GateModel }) {
   );
 }
 
+/** B2: label flips to "Copied" and resets after 1.5 s; the timer is cleared on unmount. */
 function CopyCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+  }, []);
   return (
     <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "stretch", margin: "var(--space-3) 0 var(--space-2)" }}>
-      <code className="nr-cfg" style={{ flex: 1, minWidth: 0, overflowX: "auto", whiteSpace: "nowrap" }}>
+      <code className="nr-code-box" style={{ flex: 1, minWidth: 0 }}>
         {command}
       </code>
-      <SecondaryButton
+      <PrimaryButton
         onClick={() => {
           void navigator.clipboard?.writeText(command).catch(() => {});
           setCopied(true);
+          if (timer.current !== null) clearTimeout(timer.current);
+          timer.current = setTimeout(() => setCopied(false), 1500);
         }}
       >
         {copied ? "Copied" : "Copy"}
-      </SecondaryButton>
+      </PrimaryButton>
     </div>
   );
 }
@@ -124,6 +131,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption="Candidate · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor">
           {heat ? (
             <Heatmap
+              rowHeader="Opponent"
               columns={heat.roles}
               rows={heat.rows.map((r) => ({
                 rival: r.rival,
@@ -137,14 +145,25 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <Card title="Parameter diff">
             {model.params ? (
-              <div className="nr-cfg" style={{ display: "flex", flexDirection: "column" }}>
+              <div className="nr-diff">
                 {model.params.flatMap((p) =>
                   p.changed
                     ? [
-                        <div key={`${p.key}-a`}>− {p.key}: {p.champion}</div>,
-                        <div key={`${p.key}-b`}>+ {p.key}: {p.candidate}</div>,
+                        <div key={`${p.key}-a`} className="nr-diff-row">
+                          <span className="nr-diff-sign">−</span>
+                          <span>{p.key}: {p.champion}</span>
+                        </div>,
+                        <div key={`${p.key}-b`} className="nr-diff-row">
+                          <span className="nr-diff-sign">+</span>
+                          <span>{p.key}: {p.candidate}</span>
+                        </div>,
                       ]
-                    : [<div key={p.key}>  {p.key}: {p.champion}</div>],
+                    : [
+                        <div key={p.key} className="nr-diff-row">
+                          <span className="nr-diff-sign"> </span>
+                          <span>{p.key}: {p.champion}</span>
+                        </div>,
+                      ],
                 )}
               </div>
             ) : (

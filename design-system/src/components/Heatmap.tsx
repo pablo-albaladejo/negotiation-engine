@@ -12,6 +12,8 @@ export interface HeatmapRow {
 export interface HeatmapProps {
   rows: HeatmapRow[];
   columns: string[];
+  /** Header for the leftmost column (the row label); defaults to "Opponent". */
+  rowHeader?: string;
 }
 
 export function heatmapBand(value: number | null | undefined): "good" | "mid" | "bad" | "none" {
@@ -21,13 +23,13 @@ export function heatmapBand(value: number | null | undefined): "good" | "mid" | 
   return "bad";
 }
 
-export function Heatmap({ rows, columns }: HeatmapProps) {
+export function Heatmap({ rows, columns, rowHeader = "Opponent" }: HeatmapProps) {
   return (
     <div className="nr-table-wrap">
       <table className="nr-table">
         <thead>
           <tr>
-            <th>Rival</th>
+            <th>{rowHeader}</th>
             {columns.map((column) => (
               <th key={column} style={{ textAlign: "center" }}>
                 {column}

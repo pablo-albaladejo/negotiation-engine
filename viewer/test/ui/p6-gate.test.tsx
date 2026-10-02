@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { gateModel } from "../../src/model/index.js";
 import { parseRoute, routeTo } from "../../src/route.js";
 import { GateScreen } from "../../src/screens/GateScreen.js";
@@ -21,10 +21,12 @@ describe("GateScreen (P6)", () => {
     expect(container.querySelector(".nr-flag.walk")).toBeNull();
     expect(container.querySelectorAll(".nr-heat-cell")).toHaveLength(4);
     for (const cell of container.querySelectorAll(".nr-heat-cell")) expect(cell.classList.contains("none")).toBe(cell.textContent === "n/a");
-    expect(screen.getByText("− beta: 0.2")).toBeTruthy();
-    expect(screen.getByText("+ beta: 0.3")).toBeTruthy();
+    expect(screen.getByText("beta: 0.2")).toBeTruthy();
+    expect(screen.getByText("beta: 0.3")).toBeTruthy();
     expect(screen.getByText(`pnpm promote ${gx.candidatePath}`)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const copyButton = screen.getByRole("button", { name: "Copy" });
+    expect(copyButton.className).toContain("nr-btn-primary");
+    fireEvent.click(copyButton);
     expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
     expect(screen.getAllByText("+2.30 pp")).toHaveLength(3);
   });
@@ -51,5 +53,39 @@ describe("GateScreen (P6)", () => {
     expect(screen.getByText(/Metrics · Held-out opponents/)).toBeTruthy();
     expect(parseRoute(routeTo.compare("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
     expect(parseRoute(routeTo.promote("promote-1"))).toEqual({ screen: "compare", runId: "promote-1" });
+  });
+
+  it("Copy label resets to 'Copy' after 1.5s, and the timer is cleared on unmount (B2)", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+      expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+      expect(screen.getByRole("button", { name: "Copy" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+      expect(() => unmount()).not.toThrow();
+      expect(() => act(() => vi.advanceTimersByTime(5000))).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("parameter diff uses the 22px sign-column DS classes (B3)", () => {
+    const { container } = render(<GateScreen model={gateModel("promote-x", gx.passed.gate)} onBack={() => {}} />);
+    const rows = container.querySelectorAll(".nr-diff-row");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.querySelector(".nr-diff-sign")).toBeTruthy();
+  });
+
+  it("Change column: 'not logged' for metrics without a logged delta, a real value for surplus (B5)", () => {
+    const model = gateModel("promote-x", gx.passed.gate);
+    render(<GateScreen model={model} onBack={() => {}} />);
+    const table = screen.getByText("Agreement").closest("table")!;
+    const agreementRow = screen.getByText("Agreement").closest("tr")!;
+    expect(agreementRow.textContent).toContain("not logged");
+    void table;
   });
 });

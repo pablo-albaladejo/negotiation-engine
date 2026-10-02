@@ -138,6 +138,7 @@ describe("component rendering", () => {
         <Heatmap
           columns={["como vendedor", "como comprador"]}
           rows={[{ rival: "Boulware", cells: [{ label: "0,71", value: 0.71 }, { label: "0,52", value: 0.52 }] }]}
+          rowHeader="Opponent"
         />,
       ),
     ).not.toThrow();

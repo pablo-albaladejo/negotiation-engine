@@ -177,6 +177,15 @@
 .nr-scatter circle[role="button"]{cursor:pointer}
 .nr-scatter circle[role="button"]:focus-visible{outline:2px solid var(--us);outline-offset:1px}
 
+/* Code box: copy-command and similar literal snippets (B2) */
+.nr-code-box{font:13px var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px 10px;overflow-x:auto;white-space:nowrap;color:var(--ink)}
+
+/* Parameter diff (B3): 22px sign column, muted sign, bordered lines */
+.nr-diff{margin-top:var(--space-3);font:13px/1.7 var(--font-mono);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+.nr-diff-row{display:grid;grid-template-columns:22px minmax(0,1fr);padding:0 var(--space-3);border-bottom:1px solid var(--line)}
+.nr-diff-row:last-child{border-bottom:none}
+.nr-diff-sign{color:var(--muted)}
+
 /* Loading progress: determinate fill or an indeterminate 30% slider (P8) */
 .nr-progress-track{height:6px;background:var(--line);border-radius:var(--radius-pill);overflow:hidden;position:relative}
 .nr-progress-fill{height:100%;background:var(--ink);border-radius:var(--radius-pill)}
