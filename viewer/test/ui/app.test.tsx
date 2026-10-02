@@ -365,3 +365,70 @@ describe("App top-level error boundary (C11)", () => {
     consoleError.mockRestore();
   });
 });
+
+
+describe("App header + tabs (spec item 1/2)", () => {
+  function mockRuns(entries: unknown[]) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/runs")) return new Response(JSON.stringify({ data: entries, errors: [] }));
+        if (url.includes("/api/info")) return new Response(JSON.stringify({ data: { resultsFolder: "team2" }, errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+  }
+
+  afterEach(() => window.sessionStorage.clear());
+
+  it("renders the 8 tabs in order, Runs marked current on #/runs", async () => {
+    mockRuns([]);
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("No runs yet");
+    const nav = screen.getByRole("navigation", { name: "Viewer" });
+    const labels = Array.from(nav.querySelectorAll("button")).map((b) => b.textContent);
+    expect(labels).toEqual(["Runs", "Matches", "Replay · arena", "Replay · tournament", "Two dimensions", "Champion vs candidate", "Live", "States"]);
+    expect(screen.getByRole("button", { name: "Runs" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("button", { name: "Matches" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("header subtitle shows the results folder from the server, never hardcoded", async () => {
+    mockRuns([]);
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("pnpm viewer · results/team2");
+  });
+
+  it("Champion vs candidate tab with no gate.json anywhere: empty state naming gate.json, aria-current on that tab", async () => {
+    mockRuns([{ runId: "r-1", kind: "arena", summary: null }]);
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("r-1");
+    fireEvent.click(screen.getByRole("button", { name: "Champion vs candidate" }));
+    await screen.findByText("No gate.json in results/ — run the promotion gate first");
+    expect(screen.getByRole("button", { name: "Champion vs candidate" }).getAttribute("aria-current")).toBe("page");
+  });
+
+  it("Champion vs candidate tab redirects to #/compare/:runId when a promotion run exists", async () => {
+    mockRuns([
+      { runId: "r-1", kind: "arena", summary: null },
+      { runId: "r-2", kind: "promotion", summary: null },
+    ]);
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("r-1");
+    fireEvent.click(screen.getByRole("button", { name: "Champion vs candidate" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/compare/r-2"));
+  });
+
+  it("Replay · tournament tab with no tournament log: empty state names what's missing", async () => {
+    mockRuns([{ runId: "r-1", kind: "arena", summary: null }]);
+    window.location.hash = "#/runs";
+    render(<App />);
+    await screen.findByText("r-1");
+    fireEvent.click(screen.getByRole("button", { name: "Replay · tournament" }));
+    await screen.findByText("No tournament log in results/");
+  });
+});

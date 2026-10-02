@@ -7,7 +7,9 @@ import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
 import { arenaReplayModel, filterGames, gateModel, isChampionRun, isTwoIssue, liveModel, queryToFilters, queryToPage, queryWithPage, runsModel, splitTrace, tournamentReplayModel, twoIssueModel, type MatchFilters, type RunEntry, type ScenarioRef } from "./model/index.js";
-import { parseRoute, routeTo, type Route } from "./route.js";
+import { parseRoute, routeTo, type FindTab, type Route } from "./route.js";
+import { resolveFindTab } from "./find.js";
+import { lastViewed } from "./last-viewed.js";
 import { ArenaReplayScreen } from "./screens/ArenaReplayScreen.js";
 import { useLiveFeed } from "./live.js";
 import { GateScreen } from "./screens/GateScreen.js";
@@ -18,12 +20,27 @@ import { StatesScreen } from "./screens/StatesScreen.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
 import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "./ui/states.js";
+import { PageTitle } from "./ui/page-title.js";
 
 const TABS = [
   { id: "runs", label: "Runs" },
-  { id: "states", label: "States" },
+  { id: "matches", label: "Matches" },
+  { id: "arena-replay", label: "Replay · arena" },
+  { id: "tournament-replay", label: "Replay · tournament" },
+  { id: "two-issue", label: "Two dimensions" },
+  { id: "compare", label: "Champion vs candidate" },
   { id: "live", label: "Live" },
+  { id: "states", label: "States" },
 ];
+
+/** Human label per `FindTab`, for the resolver screen's `PageTitle`/document title (spec item 1). */
+const FIND_TAB_LABEL: Record<FindTab, string> = {
+  matches: "Matches",
+  "arena-replay": "Replay · arena",
+  "tournament-replay": "Replay · tournament",
+  "two-issue": "Two dimensions",
+  compare: "Champion vs candidate",
+};
 
 function useHashRoute(): { route: Route; hash: string; replaceRoute: (hash: string) => void; navKey: number } {
   const [hash, setHash] = useState(() => window.location.hash);
@@ -50,7 +67,7 @@ function useHashRoute(): { route: Route; hash: string; replaceRoute: (hash: stri
 }
 
 /** L27: document title per screen, English, suffixed with the app name. */
-const SCREEN_TITLE: Record<Route["screen"], string> = {
+const SCREEN_TITLE: Record<Exclude<Route["screen"], "find">, string> = {
   runs: "Runs",
   matches: "Matches",
   "arena-replay": "Replay",
@@ -166,6 +183,9 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
   useEffect(() => {
     if (currentQuery.current !== query) replaceRoute(routeTo.matches(runId, currentQuery.current));
   }, [state]);
+  useEffect(() => {
+    if (state?.summary) lastViewed.rememberRun(runId);
+  }, [runId, state?.summary]);
   if (!state) return <LoadingCard label={`Reading results/${runId}`} />;
   if (!state.summary) return <EmptyStateCard title={`results/${runId}/summary.json is not available`} />;
   const isChampion = isChampionRun(state.summary.config, championVersion);
@@ -219,6 +239,14 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
       cancelled = true;
     };
   }, [runId, gameId]);
+  useEffect(() => {
+    if (!games || games.runId !== runId) return;
+    const found = games.data.find((g) => g.gameId === gameId);
+    if (!found) return;
+    const hash = routeTo.arenaReplay(runId, gameId, query);
+    lastViewed.rememberArenaMatch(hash);
+    if (isTwoIssue(found)) lastViewed.rememberTwoIssueMatch(hash);
+  }, [games, runId, gameId, query]);
   if (!games || games.runId !== runId || !trace || trace.gameId !== gameId) return <LoadingCard label={`Reading ${gameId}`} />;
   const line = games.data.find((g) => g.gameId === gameId) ?? null;
   if (!line) return <EmptyStateCard title={`${gameId} is not available`} />;
@@ -289,6 +317,33 @@ function LiveContainer() {
   );
 }
 
+/** Resolver screen for the 5 tabs with no route of their own (L1): fetches `/api/runs`, resolves
+ * last-viewed / most-recent / empty, then swaps itself for the real route in place (`replaceRoute`,
+ * same mechanism `MatchesContainer` uses for filters) so back/forward never stops on this screen. */
+function FindContainer({ tab, replaceRoute }: { tab: FindTab; replaceRoute: (hash: string) => void }) {
+  const [emptyTitle, setEmptyTitle] = useState<{ tab: FindTab; title: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setEmptyTitle(null);
+    fetchApi<RunEntry[]>("runs").then(async (res) => {
+      const result = await resolveFindTab(tab, res.data ?? []);
+      if (cancelled) return;
+      if (result.target) replaceRoute(result.target);
+      else setEmptyTitle({ tab, title: result.empty ?? "Not available" });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+  if (!emptyTitle || emptyTitle.tab !== tab) return <LoadingCard label="Reading results/" />;
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <PageTitle>{FIND_TAB_LABEL[tab]}</PageTitle>
+      <EmptyStateCard title={emptyTitle.title} />
+    </section>
+  );
+}
+
 function AppContent() {
   const { route, replaceRoute, navKey } = useHashRoute();
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -296,8 +351,8 @@ function AppContent() {
    * filter/page change (which only touches the query via `replaceRoute`) never re-triggers it.
    * Runs before the `live` early return so this hook is called on every render (rules of hooks). */
   useEffect(() => {
-    document.title = `${SCREEN_TITLE[route.screen]} · Arena viewer`;
-  }, [route.screen]);
+    document.title = `${route.screen === "find" ? FIND_TAB_LABEL[route.tab] : SCREEN_TITLE[route.screen]} · Arena viewer`;
+  }, [route.screen, route.screen === "find" ? route.tab : null]);
   /** C1: flags a real navigation (`navKey`, bumped only by an actual `hashchange`, never by
    * `replaceRoute`) so the screen's own `PageTitle` heading focuses itself once it has actually
    * rendered — it may still be behind a `LoadingCard` right after this fires. Not on the very
@@ -316,7 +371,7 @@ function AppContent() {
    * checks for a stored choice on every change event). */
   useEffect(() => watchSystemTheme(setTheme), []);
   if (route.screen === "live") return <LiveContainer />;
-  const activeTab = route.screen === "states" ? "states" : "runs";
+  const activeTab = route.screen === "find" ? route.tab : route.screen;
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -337,7 +392,11 @@ function AppContent() {
               aria-label="Viewer"
               items={TABS}
               selectedId={activeTab}
-              onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())}
+              onSelect={(id) =>
+                navigate(
+                  id === "runs" ? routeTo.runs() : id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.find(id as FindTab),
+                )
+              }
             />
           </div>
           <SecondaryButton onClick={toggleTheme} aria-pressed={theme === "dark"}>{theme === "dark" ? "Theme: dark" : "Theme: light"}</SecondaryButton>
@@ -348,6 +407,7 @@ function AppContent() {
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
           {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
+          {route.screen === "find" ? <FindContainer tab={route.tab} replaceRoute={replaceRoute} /> : null}
           {route.screen === "states" ? <StatesScreen /> : null}
         </main>
       </div>
