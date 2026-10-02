@@ -79,7 +79,7 @@ export function TwoIssueScreen({ runId, model, onBack }: TwoIssueScreenProps) {
           <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
             ← Matches
           </button>
-          <ModeBadge mode={model.game.mode} />
+          <ModeBadge mode="arena" />
           <h2 className="nr-heading">
             {model.game.gameId} · vs {model.game.rival}
           </h2>

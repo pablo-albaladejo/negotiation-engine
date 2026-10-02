@@ -38,7 +38,7 @@ export interface LiveBubble {
  */
 export interface LiveModel {
   status: LiveStatus;
-  badge: "LIVE" | "FINAL" | "BREAK";
+  badge: "LIVE" | "FINISHED" | "WAITING";
   sessionId: string | null;
   role: "buyer" | "seller" | null;
   round: number;

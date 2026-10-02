@@ -47,8 +47,10 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
-  const rounds = model.roundLimit ?? model.round;
+  const HORIZON = 10; // Default horizon from config
+  const rounds = model.status === "waiting" ? HORIZON : (model.roundLimit ?? model.round);
   const playing = model.status === "live" || model.status === "finished";
+  const rival = model.status === "waiting" ? "next opponent" : (model.sessionId ?? "—");
   const flags = (b: LiveModel["last3"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
@@ -80,7 +82,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-              <Scoreboard badge={model.badge} us={US} rival={model.sessionId ?? "—"} round={model.status === "waiting" ? null : model.round} rounds={rounds} attacksBlocked={model.status === "waiting" ? null : model.attacksBlocked} />
+              <Scoreboard badge={model.badge} us={US} rival={rival} round={model.status === "waiting" ? null : model.round} rounds={rounds} attacksBlocked={model.status === "waiting" ? null : model.attacksBlocked} />
               <ModeBadge mode="tournament" />
             </div>
             <button style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", font: "500 14px var(--font-body)" }} onClick={() => setProjectorMode(!projectorMode)}>
@@ -91,7 +93,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 24 }}>
-                  <span style={{ font: "800 64px/1 var(--font-display)", color: model.status === "final" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
+                  <span style={{ font: "800 64px/1 var(--font-display)", color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
                   <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
