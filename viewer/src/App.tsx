@@ -146,10 +146,10 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
 
 /** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */
 function LiveContainer() {
-  const { feed, errors, now } = useLiveFeed();
+  const { feed, errors } = useLiveFeed();
   return (
     <>
-      <LiveScreen model={liveModel(feed, now)} />
+      <LiveScreen model={liveModel(feed)} />
       {errors.length > 0 ? (
         <Root theme="dark">
           <InvalidLogBanner errors={errors} validCount={feed.lines.length} />

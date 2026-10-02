@@ -1,4 +1,4 @@
-import { Card, ChatMessage, Flag, WarningBanner } from "@negotiation-ring/design-system";
+import { Card, ChatMessage, Flag, Legend, WarningBanner } from "@negotiation-ring/design-system";
 import type { ReactNode } from "react";
 import type { ApiError } from "../api.js";
 
@@ -11,18 +11,19 @@ function BannerBody({ children }: { children: ReactNode }) {
  * P8: carga en curso. Sin un conteo real de líneas/partidas leídas (la API no lo reporta hoy),
  * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`.
  */
-export function LoadingCard({ label }: { label: string }) {
+export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
+  const isDeterminate = current !== undefined && total !== undefined && total > 0;
+  const percentage = isDeterminate ? (current / total) * 100 : 0;
   return (
     <Card title="Loading">
       <div style={{ marginTop: "var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <span className="nr-cfg">{label}</span>
         <div
           role="progressbar"
-          aria-busy="true"
-          aria-valuemax={100}
+          {...(isDeterminate ? { "aria-valuenow": percentage, "aria-valuemin": 0, "aria-valuemax": 100 } : { "aria-busy": true })}
           style={{ height: 6, background: "var(--line)", borderRadius: "var(--radius-pill)", overflow: "hidden" }}
         >
-          <div style={{ width: "40%", height: "100%", background: "var(--ink)", borderRadius: "var(--radius-pill)" }} />
+          <div style={{ width: `${isDeterminate ? percentage : 100}%`, height: "100%", background: "var(--ink)", borderRadius: "var(--radius-pill)" }} />
         </div>
       </div>
     </Card>
@@ -93,8 +94,10 @@ export function ProtocolBreakBanner({
       ) : null}
       <WarningBanner tone="warn" title={bannerTitle}>
         <BannerBody>
-          <span style={{ font: "13px var(--font-mono)", color: "var(--ink)" }}>{detail}</span>
-          {decision ? <Flag kind={decision.kind}>{decision.label}</Flag> : <span className="nr-muted">not logged</span>}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "var(--space-2)" }}>
+            <span className="nr-cfg">{detail}</span>
+            {decision ? <Flag kind={decision.kind}>{decision.label}</Flag> : <span className="nr-muted">not logged</span>}
+          </div>
         </BannerBody>
       </WarningBanner>
     </>

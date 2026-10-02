@@ -1,4 +1,4 @@
-import { ChatMessage, type ChatMessageFlag, OfferChart, Root, Scoreboard, formatNumber } from "@negotiation-ring/design-system";
+import { ChatMessage, type ChatMessageFlag, ModeBadge, OfferChart, Root, Scoreboard, formatNumber } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
 import type { LiveModel, LiveOutcome } from "../model/index.js";
 import { offerLabel } from "../ui/offer.js";
@@ -37,19 +37,29 @@ function useProjectorScale(): number {
 /** P7: proyector, siempre oscuro. Privacidad de torneo: sin ZOPA ni reserva del rival. */
 export function LiveScreen({ model }: { model: LiveModel }) {
   const scale = useProjectorScale();
+  const [projectorMode, setProjectorMode] = useState(false);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProjectorMode(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
+
   const rounds = model.roundLimit ?? model.round;
-  const playing = model.status !== "break";
+  const playing = model.status === "live" || model.status === "finished";
   const flags = (b: LiveModel["last3"][number]): ChatMessageFlag[] => [
     ...(b.injection ? [{ kind: "injection" as const, label: "injection blocked" }] : []),
     ...(b.template ? [{ kind: "fallback" as const, label: "template" }] : []),
   ];
   const stats =
-    model.status === "final" && model.outcome
+    model.status === "finished" && model.outcome
       ? [
           { value: model.outcome.action === "accept" ? "deal" : "walk", label: "outcome", color: model.outcome.action === "accept" ? "var(--ok)" : "var(--warn)" },
           { value: `${model.round}/${model.roundLimit ?? "—"}`, label: "rounds", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
-          { value: num(model.attacksBlocked), label: "attacks blocked", color: "var(--warn)" },
+          { value: num(model.attacksBlocked), label: "attacks blocked", color: model.attacksBlocked > 0 ? "var(--warn)" : "var(--muted)" },
         ]
       : [
           { value: offerLabel(model.latest.theirOffer), label: "their latest offer", color: "var(--them)" },
@@ -57,8 +67,8 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           { value: model.latest.uRival === null ? "—" : num(model.latest.uRival, 2), label: "utility of their offer", color: "var(--ink)" },
           { value: `${model.templateCount} of ${model.ourMessageCount}`, label: "template messages", color: "var(--ink)" },
         ];
-  const headline = model.status === "final" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "—"}${model.role ? ` · ${model.role}` : ""}`;
-  const end = model.status === "final" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
+  const headline = model.status === "finished" && model.outcome ? outcomeLabel(model.outcome) : `Session ${model.sessionId ?? "—"}${model.role ? ` · ${model.role}` : ""}`;
+  const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
   return (
     <div style={{ width: PROJECTOR.width * scale, height: PROJECTOR.height * scale, overflow: "hidden" }}>
@@ -68,7 +78,15 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           data-screen="p7"
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
-          <Scoreboard badge={model.badge} us={US} rival={model.sessionId ?? "—"} round={model.round} rounds={rounds} attacksBlocked={model.attacksBlocked} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+              <Scoreboard badge={model.badge} us={US} rival={model.sessionId ?? "—"} round={model.status === "waiting" ? null : model.round} rounds={rounds} attacksBlocked={model.status === "waiting" ? null : model.attacksBlocked} />
+              <ModeBadge mode="tournament" />
+            </div>
+            <button style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", font: "500 14px var(--font-body)" }} onClick={() => setProjectorMode(!projectorMode)}>
+              {projectorMode ? "exit" : "projector mode"}
+            </button>
+          </div>
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
