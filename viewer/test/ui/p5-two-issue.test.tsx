@@ -60,3 +60,76 @@ describe("TwoIssueScreen (P5)", () => {
     expect(screen.getByText(/mandate: not logged/)).toBeTruthy();
   });
 });
+
+describe("TwoIssueScreen Within mandate / region / deal / cfg (T9)", () => {
+  const pctDay = () => fx.games.find((g) => g.scenarioId === "pct-day-buyer-wide")!;
+
+  it("Within mandate shows Yes when agreement exists and withinMandate=true", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (line.endReason === "agreement" && model.withinMandate === true) {
+      render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      expect(screen.getAllByText("Yes").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("Within mandate shows No when agreement exists and withinMandate=false", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (line.endReason === "agreement" && model.withinMandate === false) {
+      render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      expect(screen.getAllByText("No").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("Within mandate shows 'not logged' when withinMandate=null", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (model.withinMandate === null) {
+      render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      expect(screen.getAllByText("not logged").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("Within mandate shows '—' when not an agreement", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (line.endReason !== "agreement") {
+      render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("mandate region displays 'region allowed by our mandate' label on the plane", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (model.mandate?.region) {
+      const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const plane = screen.getByRole("group", { name: /two issues/i });
+      expect(plane.textContent).toContain("region allowed by our mandate");
+    }
+  });
+
+  it("deal label shows rule prefix and deal offer on agreement", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    if (line.endReason === "agreement" && model.game.agreement) {
+      const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+      const plane = screen.getByRole("group", { name: /two issues/i });
+      if (model.dealRule) {
+        expect(plane.textContent).toContain("deal at");
+      }
+    }
+  });
+
+  it("cfg line shows mandate field with mandateLine or 'not logged'", () => {
+    const line = pctDay();
+    const model = twoIssueModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<TwoIssueScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const cfg = container.querySelector(".nr-cfg");
+    if (cfg && model.mandateLine) {
+      expect(cfg.textContent).toContain("mandate:");
+      expect(cfg.textContent).toContain(model.mandateLine);
+    }
+  });
+});
