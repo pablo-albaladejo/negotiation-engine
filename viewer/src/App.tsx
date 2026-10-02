@@ -165,7 +165,7 @@ function TournamentReplayContainer({ runId, session }: { runId: string; session:
     };
   }, [runId, session]);
   if (!state) return <LoadingCard label={`Reading tournament session ${session}`} />;
-  return <TournamentReplayScreen model={tournamentReplayModel(state.trace, state.ref)} />;
+  return <TournamentReplayScreen model={tournamentReplayModel(state.trace, state.ref)} onBack={() => navigate(routeTo.runs())} />;
 }
 
 /** P7 a pantalla completa (sin cabecera del visor): el proyector solo ve el lienzo oscuro. */

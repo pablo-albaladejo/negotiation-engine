@@ -25,7 +25,7 @@ describe("P8 sobre datos reales: P4 (torneo) y P3 (arena)", () => {
     ];
     const model = tournamentReplayModel(trace, fx.tournament.ref);
     expect(model.protocol).toEqual([{ round: 4, issues: [{ path: "rivalOffer.pct", code: "invalid_type" }] }]);
-    const { container } = render(<TournamentReplayScreen model={model} />);
+    const { container } = render(<TournamentReplayScreen model={model} onBack={() => {}} />);
     expect(screen.getByText("Opponent breaks protocol · R4")).toBeTruthy();
     expect(screen.getByText("rivalOffer.pct (invalid_type)")).toBeTruthy();
     expect(screen.getByText(/LLM down · LLM_PROVIDER claude-cli · everything on template/)).toBeTruthy();
@@ -34,7 +34,7 @@ describe("P8 sobre datos reales: P4 (torneo) y P3 (arena)", () => {
   });
 
   it("P4 sin protocol ni plantilla: sin banners", () => {
-    const { container } = render(<TournamentReplayScreen model={tournamentReplayModel(fx.tournament.trace, fx.tournament.ref)} />);
+    const { container } = render(<TournamentReplayScreen model={tournamentReplayModel(fx.tournament.trace, fx.tournament.ref)} onBack={() => {}} />);
     expect(container.querySelector(".nr-warning-banner")).toBeNull();
   });
 

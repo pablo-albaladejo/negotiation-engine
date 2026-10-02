@@ -17,6 +17,8 @@ export interface TournamentReplayModel {
   role: "buyer" | "seller" | null;
   scenario: { id: string; hash: string };
   traceVersion: 1 | 2 | 3;
+  /** `configVersion` de la cabecera: el único dato de configuración que registra el torneo (sin `summary.json`). */
+  configVersion: number;
   ourReserve: Offer | null;
   offers: { ours: { round: number; offer: Offer }[]; rival: { round: number; offer: Offer }[] };
   rounds: RoundPanel[];
@@ -39,6 +41,7 @@ export function tournamentReplayModel(trace: readonly TraceLine[], scenarioRef: 
     role: header.role ?? null,
     scenario: { id: header.scenario.id, hash: header.scenario.hash },
     traceVersion: header.traceVersion ?? 1,
+    configVersion: header.configVersion,
     ourReserve: matches ? { ...scenarioRef.mandate.reservation } : null,
     offers: {
       ours: rounds.flatMap((p) => (p.ourOffer ? [{ round: p.round, offer: p.ourOffer }] : [])),

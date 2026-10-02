@@ -7,6 +7,7 @@ export interface ReplayHeaderProps {
   backLabel: string;
   gameId: string;
   rival: string;
+  mode?: "arena" | "tournament";
   games?: Array<MatchSelectorGame>;
   onSelectGame?: (gameId: string) => void;
 }
@@ -16,12 +17,12 @@ export interface ReplayHeaderProps {
  * ModeBadge and one "id · vs rival" heading, with the match selector below (INBOX finding:
  * ArenaReplayScreen/TwoIssueScreen used to duplicate this row).
  */
-export function ReplayHeader({ onBack, backLabel, gameId, rival, games, onSelectGame }: ReplayHeaderProps) {
+export function ReplayHeader({ onBack, backLabel, gameId, rival, mode = "arena", games, onSelectGame }: ReplayHeaderProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
         <BackLink onClick={onBack}>{backLabel}</BackLink>
-        <ModeBadge mode="arena" />
+        <ModeBadge mode={mode} />
         <h2 className="nr-heading">
           {gameId} · vs {rival}
         </h2>
