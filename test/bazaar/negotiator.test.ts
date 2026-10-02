@@ -106,9 +106,14 @@ describe("negotiator: compra", () => {
     expect(decide({ ...base, ourPrices: [26, 25, 24] }, { ...DEFAULT_NEGOTIATOR_PARAMS, fixedAfterConcessions: 0 }).action.kind).toBe("counter");
   });
 
-  it("precio fijo al comprar: acepta su precio inmóvil dentro de la reserva", () => {
-    const d = decide(view({ side: "buy", reservation: 22, privateValue: 24, herOpening: 20, herPrices: [20, 20], herCurrent: { offerId: 3, price: 20, final: false }, ourPrices: [9, 10, 11] }));
-    expect(d.action).toEqual({ kind: "accept", offerId: 3, price: 20 });
+  it("al comprar no hay precio fijo: aunque no se mueva, seguimos negociando hasta su oferta final", () => {
+    const still = view({ side: "buy", reservation: 22, privateValue: 24, herOpening: 20, herPrices: [20, 20], herCurrent: { offerId: 3, price: 20, final: false }, ourPrices: [9, 10, 11] });
+    const d = decide(still);
+    expect(d.action.kind).toBe("counter");
+    expect(d.rule).not.toBe("fixed-price");
+    const final = decide({ ...still, herCurrent: { offerId: 4, price: 20, final: true } });
+    expect(final.action).toEqual({ kind: "accept", offerId: 4, price: 20 });
+    expect(final.rule).toBe("final-above-reservation");
   });
 
   it("acepta su oferta final dentro del límite tras aguantar, y nunca su precio de apertura", () => {
@@ -142,7 +147,7 @@ describe("negotiator: compra", () => {
         if (last.action.kind === "accept") {
           expect(last.action.price).toBeLessThanOrEqual(res);
           // A su apertura solo por la regla de precio fijo (no se movió tras nuestras concesiones).
-          if (last.action.price === open) expect(last.rule).toBe("fixed-price");
+          if (last.action.price === open) expect(last.rule).toBe("final-above-reservation");
         }
       }),
       { numRuns: 300 },

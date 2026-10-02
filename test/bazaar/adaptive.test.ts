@@ -91,17 +91,31 @@ describe("anclas moderadas", () => {
     expect(anchor({ side: "sell", reservation: 6, herOpening: 20 }, { ...P, maxStep: 2 })).toBe(31);
   });
 
-  it("hilo 125 con el negociador nuevo: 13 → 12 → 11 → 10 y aguanta; nunca baja de 10 y cierra ante su final 6", () => {
+  it("hilo 125 con el negociador nuevo: puja 5 < 0,7 × mínimo 10 ⇒ una contraoferta (13) y cierre educado (lowball-bid)", () => {
+    const base = { side: "sell" as const, reservation: 10, privateValue: 9, herOpening: 5 };
+    const first = decide(view({ ...base, herPrices: [5], herCurrent: { offerId: 1, price: 5, final: false }, ourPrices: [] }));
+    expect(first.action).toEqual({ kind: "counter", price: 13 });
+    const second = decide(view({ ...base, herPrices: [5, 5], herCurrent: { offerId: 2, price: 5, final: false }, ourPrices: [13] }));
+    expect(second.action.kind).toBe("close");
+    expect(second.rule).toBe("lowball-bid");
+    // Si tras la contraoferta sube hasta ≥ 0,7 × mínimo, se sigue negociando.
+    expect(decide(view({ ...base, herPrices: [5, 7], herCurrent: { offerId: 3, price: 7, final: false }, ourPrices: [13] })).action.kind).toBe("counter");
+    // Una puja inicial plausible (≥ 7) nunca dispara la regla.
+    expect(decide(view({ ...base, herOpening: 8, herPrices: [8, 8], herCurrent: { offerId: 4, price: 8, final: false }, ourPrices: [13] })).rule).not.toBe("lowball-bid");
+  });
+
+  it("hilo 125 sin la regla lowball (lowballFrac 0): 13 → 12 → 11 → 10 y aguanta; nunca baja de 10 y cierra ante su final 6", () => {
+    const p = { ...P, lowballFrac: 0 };
     const her = [5, 5, 6, 6, 6, 6];
     const ours: number[] = [];
     let holdsUsed = 0;
     for (let i = 0; i < her.length; i++) {
-      const d = decide(view({ side: "sell", reservation: 10, privateValue: 9, herOpening: 5, herPrices: her.slice(0, i + 1), herCurrent: { offerId: i, price: her[i]!, final: false }, ourPrices: [...ours], holdsUsed }));
+      const d = decide(view({ side: "sell", reservation: 10, privateValue: 9, herOpening: 5, herPrices: her.slice(0, i + 1), herCurrent: { offerId: i, price: her[i]!, final: false }, ourPrices: [...ours], holdsUsed }), p);
       if (d.action.kind === "counter") ours.push(d.action.price);
       else if (d.action.kind === "hold") holdsUsed += 1;
     }
     expect(ours).toEqual([13, 12, 11, 10]);
-    const last = decide(view({ side: "sell", reservation: 10, privateValue: 9, herOpening: 5, herPrices: her, herCurrent: { offerId: 9, price: 6, final: true }, ourPrices: ours, holdsUsed }));
+    const last = decide(view({ side: "sell", reservation: 10, privateValue: 9, herOpening: 5, herPrices: her, herCurrent: { offerId: 9, price: 6, final: true }, ourPrices: ours, holdsUsed }), p);
     expect(last.action.kind).toBe("close");
   });
 });

@@ -42,6 +42,11 @@ export interface NegotiatorParams {
    * (aceptar si cabe en la reserva y crea valor, aunque sea su apertura; si no, cerrar). 0 lo desactiva.
    */
   fixedAfterConcessions: number;
+  /**
+   * Venta con su primera puja < esto × nuestro mínimo: tras una contraoferta, si sigue por debajo, se cierra
+   * educadamente para no gastar su paciencia ni la cuota de tratos (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
+   */
+  lowballFrac: number;
 }
 
 export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
@@ -57,6 +62,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   reciprocity: 0.6,
   maxHolds: 3,
   fixedAfterConcessions: 2,
+  lowballFrac: 0.7,
 };
 
 /** Negociador anterior a la evidencia de los hilos 56 y 125 (ancla lejana + Boulware), para comparar en el simulador. */
@@ -112,6 +118,7 @@ export type Rule =
   | "final-below-reservation"
   | "fixed-price"
   | "fixed-price-out-of-range"
+  | "lowball-bid"
   | "stuck-at-reservation"
   | "hold"
   | "holds-exhausted"
@@ -178,9 +185,12 @@ export function ourConcessions(side: Side, ourPrices: readonly number[]): number
   return n;
 }
 
-/** Su precio no se ha movido tras `fixedAfterConcessions` concesiones nuestras (Abuela comprando comunes, hilo 56). */
+/**
+ * Su precio no se ha movido tras `fixedAfterConcessions` concesiones nuestras (Abuela comprando comunes, hilo 56).
+ * Solo cuando el dealer nos compra (vendemos): cuando nos vende, sí concede (hilo 178: 29→25), así que se negocia hasta su final.
+ */
 export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "ourPrices" | "herCurrent">, p: Pick<NegotiatorParams, "fixedAfterConcessions">): boolean {
-  if (p.fixedAfterConcessions <= 0 || !view.herCurrent || view.herPrices.length === 0) return false;
+  if (view.side !== "sell" || p.fixedAfterConcessions <= 0 || !view.herCurrent || view.herPrices.length === 0) return false;
   const first = view.herPrices[0]!;
   if (view.herCurrent.price !== first || view.herPrices.some((x) => x !== first)) return false;
   return ourConcessions(view.side, view.ourPrices) >= p.fixedAfterConcessions;
@@ -291,6 +301,14 @@ export function holdsAllowed(pricedSent: number, p: Pick<NegotiatorParams, "step
   return Math.max(p.maxHolds, p.patienceBudget + p.maxHolds - pricedSent);
 }
 
+/** Venta: su primera puja y la vigente quedan por debajo de `lowballFrac` × nuestro mínimo tras una contraoferta nuestra. */
+export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herCurrent" | "ourPrices">, p: Pick<NegotiatorParams, "lowballFrac">): boolean {
+  if (view.side !== "sell" || p.lowballFrac <= 0 || view.ourPrices.length < 1 || !view.herCurrent) return false;
+  const first = view.herOpening ?? view.herCurrent.price;
+  const floor = p.lowballFrac * view.reservation;
+  return first < floor && view.herCurrent.price < floor;
+}
+
 export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): Decision {
   const effRes = effectiveReservation(view);
   if (effRes < 1) return { action: { kind: "close" }, rule: "no-zone", effectiveReservation: effRes };
@@ -316,6 +334,7 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
       return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule, effectiveReservation: effRes, ...(next ? { ourNext: next.price } : {}) };
     }
     if (her.final) return { action: { kind: "close" }, rule: "final-below-reservation", effectiveReservation: effRes };
+    if (isLowball(view, p)) return { action: { kind: "close" }, rule: "lowball-bid", effectiveReservation: effRes };
   }
 
   // Atascados: nuestra siguiente contraoferta cruzaría la reserva efectiva (no mejora su oferta, o no hay
