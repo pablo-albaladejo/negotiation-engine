@@ -52,8 +52,9 @@ async function validArenaRoute(hash: string, entries: readonly RunEntry[]): Prom
 /** Matches tab: last viewed run (if it still exists), else the most recent run, else empty. */
 export async function resolveMatches(entries: readonly RunEntry[]): Promise<FindResult> {
   const last = lastViewed.run();
-  if (last && entries.some((e) => e.runId === last)) return found(routeTo.matches(last));
-  const first = newestFirst(entries)[0];
+  if (last && entries.some((e) => e.runId === last && e.kind !== "tournament" && e.summary)) return found(routeTo.matches(last));
+  // X8: Skip tournament runs and runs without summary
+  const first = newestFirst(entries.filter((e) => e.kind !== "tournament" && e.summary))[0];
   if (first) return found(routeTo.matches(first.runId));
   return empty("No runs in results/");
 }
@@ -63,7 +64,15 @@ export async function resolveArenaReplay(entries: readonly RunEntry[]): Promise<
   const last = lastViewed.arenaMatch();
   const valid = last ? await validArenaRoute(last, entries) : null;
   if (valid) return found(valid);
-  for (const run of newestFirst(entries)) {
+  // X7: Try lastViewed.run() first (if it has matches), then cap to last 5 runs
+  const lastRun = lastViewed.run();
+  if (lastRun && entries.some((e) => e.runId === lastRun)) {
+    const games = await runGames(lastRun);
+    const first = games[0];
+    if (first) return found(routeTo.arenaReplay(lastRun, first.gameId));
+  }
+  const MAX_RUNS = 5;
+  for (const run of newestFirst(entries).slice(0, MAX_RUNS)) {
     const games = await runGames(run.runId);
     const first = games[0];
     if (first) return found(routeTo.arenaReplay(run.runId, first.gameId));
@@ -77,7 +86,14 @@ export async function resolveTournamentReplay(entries: readonly RunEntry[]): Pro
   for (const run of tournamentRuns) {
     const res = await fetchApi<string[]>(`tournament/${encodeURIComponent(run.runId)}`);
     const sessions = res.data ?? [];
-    const session = sessions[sessions.length - 1];
+    // X9: Numeric-aware sort (s-10 > s-9) or by header timestamp
+    const sortedSessions = sessions.sort((a, b) => {
+      const aNum = parseInt(a.replace(/^s-/, ""), 10);
+      const bNum = parseInt(b.replace(/^s-/, ""), 10);
+      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      return a.localeCompare(b);
+    });
+    const session = sortedSessions[sortedSessions.length - 1];
     if (session) return found(routeTo.tournamentReplay(run.runId, session));
   }
   return empty("No tournament log in results/");
@@ -88,7 +104,15 @@ export async function resolveTwoIssue(entries: readonly RunEntry[]): Promise<Fin
   const last = lastViewed.twoIssueMatch();
   const valid = last ? await validArenaRoute(last, entries) : null;
   if (valid) return found(withView(valid, "two-issue"));
-  for (const run of newestFirst(entries)) {
+  // X7: Try lastViewed.run() first (if it has two-issue matches), then cap to last 5 runs
+  const lastRun = lastViewed.run();
+  if (lastRun && entries.some((e) => e.runId === lastRun)) {
+    const games = await runGames(lastRun);
+    const match = games.find((g) => isTwoIssue(g));
+    if (match) return found(withView(routeTo.arenaReplay(lastRun, match.gameId), "two-issue"));
+  }
+  const MAX_RUNS = 5;
+  for (const run of newestFirst(entries).slice(0, MAX_RUNS)) {
     const games = await runGames(run.runId);
     const match = games.find((g) => isTwoIssue(g));
     if (match) return found(withView(routeTo.arenaReplay(run.runId, match.gameId), "two-issue"));

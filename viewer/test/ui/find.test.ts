@@ -51,6 +51,24 @@ describe("resolveMatches", () => {
     const res = await resolveMatches([]);
     expect(res.empty).toBe("No runs in results/");
   });
+
+  // X8: Skip tournament runs and runs without summary
+  it("skips tournament runs when finding matches (X8)", async () => {
+    const res = await resolveMatches([
+      entry("r-1", "arena", "2026-01-01"),
+      entry("r-2", "tournament", "2026-01-02"),
+      entry("r-3", "arena", "2026-01-03"),
+    ]);
+    expect(res.target).toBe("#/runs/r-3");
+  });
+
+  it("skips runs without summary when finding matches (X8)", async () => {
+    const res = await resolveMatches([
+      entry("r-1", "arena", null),
+      entry("r-2", "arena", "2026-01-02"),
+    ]);
+    expect(res.target).toBe("#/runs/r-2");
+  });
 });
 
 describe("resolveArenaReplay", () => {
@@ -87,6 +105,34 @@ describe("resolveArenaReplay", () => {
     const res = await resolveArenaReplay([entry("r-1", "arena", "2026-01-01")]);
     expect(res.target).toBe("#/runs/r-1/games/g-2");
   });
+
+  // X7: Try lastViewed.run() first
+  it("tries lastViewed.run() first before other runs (X7)", async () => {
+    lastViewedMock.run.mockReturnValue("r-2");
+    fetchApiMock.mockResolvedValue({ data: { games: [game("g-2", 1)] }, errors: [] });
+    const res = await resolveArenaReplay([
+      entry("r-1", "arena", "2026-01-01"),
+      entry("r-2", "arena", "2026-01-02"),
+      entry("r-3", "arena", "2026-01-03"),
+    ]);
+    expect(res.target).toBe("#/runs/r-2/games/g-2");
+    expect(fetchApiMock).toHaveBeenCalledTimes(1);
+    expect(fetchApiMock).toHaveBeenCalledWith("runs/r-2");
+  });
+
+  // X7: Cap number of runs checked
+  it("caps the number of runs checked to MAX_RUNS (X7)", async () => {
+    lastViewedMock.run.mockReturnValue(null);
+    const runs = Array.from({ length: 10 }, (_, i) => entry(`r-${i}`, "arena", `2026-01-${String(i).padStart(2, "0")}`));
+    fetchApiMock.mockImplementation((url) => {
+      const runId = url.split("/")[1];
+      if (runId === "r-5" || runId === "r-6") return Promise.resolve({ data: { games: [game("g-1", 1)] }, errors: [] });
+      return Promise.resolve({ data: { games: [] }, errors: [] });
+    });
+    const res = await resolveArenaReplay(runs);
+    expect(res.target).toBe("#/runs/r-6/games/g-1");
+    expect(fetchApiMock.mock.calls.length).toBeLessThanOrEqual(5);
+  });
 });
 
 describe("resolveTournamentReplay", () => {
@@ -100,6 +146,13 @@ describe("resolveTournamentReplay", () => {
     const res = await resolveTournamentReplay([entry("r-1", "arena", "2026-01-01")]);
     expect(res.empty).toBe("No tournament log in results/");
   });
+
+  // X9: Numeric-aware session sort
+  it("sorts sessions numerically (s-10 > s-9) not lexicographically (X9)", async () => {
+    fetchApiMock.mockResolvedValue({ data: ["s-2", "s-10", "s-1", "s-20", "s-3"], errors: [] });
+    const res = await resolveTournamentReplay([entry("agent-1", "tournament", "2026-01-01")]);
+    expect(res.target).toBe("#/tournament/agent-1/s-20");
+  });
 });
 
 describe("resolveTwoIssue", () => {
@@ -107,7 +160,7 @@ describe("resolveTwoIssue", () => {
     lastViewedMock.twoIssueMatch.mockReturnValue("#/runs/r-1/games/g-2");
     fetchApiMock.mockResolvedValue({ data: { games: [game("g-2", 2)] }, errors: [] });
     const res = await resolveTwoIssue([entry("r-1", "arena", "2026-01-01")]);
-    expect(res.target).toBe("#/runs/r-1/games/g-2");
+    expect(res.target).toBe("#/runs/r-1/games/g-2?view=two-issue");
   });
 
   // X4
@@ -115,13 +168,13 @@ describe("resolveTwoIssue", () => {
     lastViewedMock.twoIssueMatch.mockReturnValue("#/runs/r-gone/games/g-2");
     fetchApiMock.mockResolvedValue({ data: { games: [game("g-1", 1), game("g-3", 2)] }, errors: [] });
     const res = await resolveTwoIssue([entry("r-1", "arena", "2026-01-01")]);
-    expect(res.target).toBe("#/runs/r-1/games/g-3");
+    expect(res.target).toBe("#/runs/r-1/games/g-3?view=two-issue");
   });
 
   it("finds the first two-issue match across runs", async () => {
     fetchApiMock.mockResolvedValue({ data: { games: [game("g-1", 1), game("g-2", 2)] }, errors: [] });
     const res = await resolveTwoIssue([entry("r-1", "arena", "2026-01-01")]);
-    expect(res.target).toBe("#/runs/r-1/games/g-2");
+    expect(res.target).toBe("#/runs/r-1/games/g-2?view=two-issue");
   });
 
   it("empty state when no run has a two-issue match", async () => {
