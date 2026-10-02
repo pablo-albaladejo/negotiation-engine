@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { BazaarError } from "../../src/bazaar/client.js";
 import { textMatchesOffer } from "../../src/bazaar/duels.js";
-import { DuelsAgent, formatDuelEntry, formatNextDuels, ticksLeft } from "../../src/bazaar/duels-agent.js";
-import { DuelsSchema, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
+import { DuelsAgent, formatDuelEntry, formatNextDuels, loadDuelsMemory, ticksLeft } from "../../src/bazaar/duels-agent.js";
+import { DuelSchema, DuelsSchema, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
 
 interface FakeDuel {
   id: number | string;
@@ -58,6 +61,11 @@ function fakeServer(duels: FakeDuel[], opts: { failSay?: string } = {}) {
 }
 
 describe("DuelsAgent (bucle con API de mentira)", () => {
+  const cleanupDirs: string[] = [];
+  afterEach(() => {
+    for (const dir of cleanupDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
   it("dry-run: ningún POST y abre con el ancla", async () => {
     const s = fakeServer([{ id: 1, role: "seller", limit: 40, rivalLimit: 100, issues: ["price"], deadline: 116 }]);
     const agent = new DuelsAgent(s.api, { dryRun: true });
@@ -118,6 +126,95 @@ describe("DuelsAgent (bucle con API de mentira)", () => {
     s.advance();
     const again = await agent.step();
     expect(again.entries[0]!.decision.round).toBe(0);
+  });
+
+  it("rival silencioso: abre una vez y luego espera sin ceder, por muchos tics que pasen (sin rival_offer nunca)", async () => {
+    let tick = 100;
+    const posts: { tick: number; kind: "say" | "accept" }[] = [];
+    const api: DuelsApi = {
+      clock: async () => ({ tick, tick_seconds: 30, next_tick_in: 10 }),
+      duels: async () => DuelsSchema.parse({ duels: [{ id: 1, role: "seller", your_limit: 40, rival_offer: null, deadline: 500, issues: ["price"] }] }),
+      schedule: async () => ScheduleSchema.parse({ now_hours: 1, upcoming: [] }),
+      say: async (id, text, offer) => {
+        posts.push({ tick, kind: "say" });
+        return {};
+      },
+      accept: async (id) => {
+        posts.push({ tick, kind: "accept" });
+        return {};
+      },
+    };
+    const agent = new DuelsAgent(api, { dryRun: false });
+    const rounds: number[] = [];
+    for (let k = 0; k < 10; k++) {
+      const r = await agent.step();
+      rounds.push(r.entries[0]!.decision.round);
+      tick += 1;
+    }
+    expect(posts).toHaveLength(1); // solo la apertura: sin contraoferta del rival, nunca se concede más
+    expect(rounds.slice(1).every((round) => round === 1)).toBe(true); // ronda 1 (apertura ya enviada) estancada
+  });
+
+  it("rival que sí contesta: concede en la siguiente ronda en vez de quedarse atascado", async () => {
+    const duels: FakeDuel[] = [{ id: 1, role: "seller", limit: 40, rivalLimit: 60, issues: ["price"], deadline: 116 }];
+    const s = fakeServer(duels);
+    const agent = new DuelsAgent(s.api, { dryRun: false });
+    const first = await agent.step();
+    s.advance();
+    const second = await agent.step();
+    expect(second.entries[0]!.decision.action).toBe("counter");
+    expect(second.entries[0]!.decision.offer!.price).toBeLessThan(first.entries[0]!.decision.offer!.price);
+    expect(s.posts.filter((p) => p.kind === "say")).toHaveLength(2);
+  });
+
+  it("reinicio con fichero de estado: no reabre ni repite la oferta tras recrear el agente", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "duels-state-"));
+    const stateFile = join(dir, "duels-state.json");
+    cleanupDirs.push(dir);
+    const duels: FakeDuel[] = [{ id: 1, role: "seller", limit: 40, rivalLimit: 60, issues: ["price"], deadline: 116 }];
+    const s = fakeServer(duels);
+    const agent1 = new DuelsAgent(s.api, { dryRun: false, stateFile });
+    const r1 = await agent1.step();
+    expect(r1.entries[0]!.decision.round).toBe(0);
+    expect(s.posts).toHaveLength(1);
+    s.advance();
+
+    // "Reinicio": un agente nuevo, memoria en proceso vacía, pero recupera el fichero persistido.
+    const loaded = loadDuelsMemory(stateFile);
+    expect(loaded.get("1")?.ourOffers).toHaveLength(1);
+    const agent2 = new DuelsAgent(s.api, { dryRun: false, stateFile });
+    const r2 = await agent2.step();
+    expect(r2.entries[0]!.decision.round).toBe(1); // sigue donde lo dejó: no reabre (ronda 0 otra vez)
+    expect(s.posts.filter((p) => p.kind === "say")).toHaveLength(2); // y no repite el mismo mensaje
+  });
+
+  it("reinicio sin fichero de estado: stateOf lee nuestra última oferta de your_offer y la del rival del último mensaje suyo", () => {
+    const duel = DuelSchema.parse({
+      id: 7,
+      role: "seller",
+      your_limit: 40,
+      rival_offer: null,
+      your_offer: { id: 1, price: 60, tick: 95 },
+      messages: [
+        { sender: "you", price: 60, text: "60 P" },
+        { sender: "Rival Luna", price: 50, text: "50 P" },
+      ],
+      deadline: 200,
+      issues: ["price"],
+    });
+    const api: DuelsApi = {
+      clock: async () => ({ tick: 100, tick_seconds: 30 }),
+      duels: async () => DuelsSchema.parse({ duels: [] }),
+      schedule: async () => ScheduleSchema.parse({ upcoming: [] }),
+      say: async () => ({}),
+      accept: async () => ({}),
+    };
+    const agent = new DuelsAgent(api, { dryRun: true });
+    const { state, rival } = agent.stateOf(duel, { tick: 100, tick_seconds: 30, next_tick_in: 10 });
+    expect(rival).toEqual({ price: 50 }); // leído del último mensaje suyo, no de rival_offer (null)
+    expect(state.ourOffers).toEqual([{ price: 60 }]); // nuestra oferta ya enviada, sin reabrir desde cero
+    expect(state.rivalMovedSinceOurLast).toBe(true);
+    expect(state.ticksSinceOurLast).toBe(5);
   });
 });
 

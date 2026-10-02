@@ -32,10 +32,8 @@ export interface DuelParams {
   minSurplus: number;
   /** Tics restantes en los que ya es el último movimiento: aceptar todo lo aceptable. */
   lastMoveTicks: number;
-  /** Tics restantes desde los que, si el rival no llega al suelo, se parte la diferencia. */
+  /** Tics restantes desde los que, si el rival ha ofertado alguna vez, se mueve hacia un trato (parte la diferencia; nunca bajo el suelo). */
   endgameTicks: number;
-  /** Sin respuesta del rival, se vuelve a mover tras estos tics (si no, se espera). */
-  staleTicks: number;
   /** P por día de entrega si el duelo no trae `your_days_weight` (supuesto; 0 = indiferente). */
   assumedDaysWeight: number;
   /** Multiplicador de `your_days_weight` (por si llega en otra escala que P por día). */
@@ -50,7 +48,6 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   minSurplus: 1,
   lastMoveTicks: 1,
   endgameTicks: 3,
-  staleTicks: 3,
   assumedDaysWeight: 0,
   daysWeightScale: 1,
 };
@@ -252,17 +249,21 @@ function surplusIssue(state: DuelState): Issue {
 export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_PARAMS): DuelDecision {
   const round = state.ourOffers.length;
   const rival = state.rivalOffers.at(-1);
+  const rivalHasOffered = state.rivalOffers.length > 0;
   const lastMove = state.ticksLeft !== undefined && state.ticksLeft <= params.lastMoveTicks;
   const endgame = state.ticksLeft !== undefined && state.ticksLeft <= params.endgameTicks;
   const previous = state.ourOffers.at(-1);
   const prevSurplus = previous ? surplusOf(state, previous) : undefined;
+  // En el final, solo se mueve hacia un trato si el rival ha ofertado alguna vez; si nunca ha
+  // hablado no hay nada que partir y conviene mantener la oferta vigente en vez de ceder solo.
+  const endgameWithRival = endgame && rivalHasOffered;
 
   // Siguiente excedente objetivo: curva del motor, en el final partir la diferencia con el rival.
   let target = targetSurplus(state, params, round);
   let rule: DuelDecision["rule"] = round === 0 ? "opening" : "concede";
   const rivalSurplus = rival && withinLimit(state, rival) ? surplusOf(state, rival) : undefined;
-  if (endgame && round > 0 && rivalSurplus !== undefined && rivalSurplus < target) {
-    target = Math.max(params.minSurplus, (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
+  if (endgameWithRival && round > 0 && rivalSurplus !== undefined && rivalSurplus < target) {
+    target = Math.max(floorSurplus(state, params), (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
     rule = "endgame";
   }
   // Guardarraíl del motor sobre el excedente: nunca sube respecto a la oferta anterior ni baja del mínimo.
@@ -290,8 +291,9 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     if (verdict.verdict === "accept") return { action: "accept", rule: verdict.rule, surplus: rivalSurplus, round };
   }
 
-  // Un movimiento por respuesta del rival: si no ha contestado, esperar (salvo silencio largo o final).
-  if (previous && !state.rivalMovedSinceOurLast && !lastMove && (state.ticksSinceOurLast ?? 0) < params.staleTicks) {
+  // Nunca se concede sin una oferta nueva del rival desde la nuestra: sin ella, se espera (sin mensaje),
+  // salvo en el final si el rival ha ofertado alguna vez (entonces se mueve hacia un trato, arriba).
+  if (previous && !state.rivalMovedSinceOurLast && !endgameWithRival) {
     return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
   }
 

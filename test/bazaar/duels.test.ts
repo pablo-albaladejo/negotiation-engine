@@ -16,7 +16,7 @@ import {
   withinLimit,
   type DuelState,
 } from "../../src/bazaar/duels.js";
-import { duelMessageBody, normalizeRivalOffer, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
+import { duelMessageBody, normalizeRivalOffer, ourOfferFrom, rivalOfferFrom, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
 
 const flat = Array.from({ length: 11 }, () => 0);
 
@@ -154,18 +154,47 @@ describe("decideDuel: precio", () => {
     expect(closedAt!).toBeLessThanOrEqual(5);
   });
 
-  it("espera si el rival no ha contestado a nuestro último mensaje (hasta staleTicks)", () => {
-    const base = priceState({ ourOffers: [{ price: 75 }], rivalOffers: [{ price: 40 }], ticksLeft: 10 });
+  it("nunca concede sin una oferta nueva del rival: si el rival calla, espera sin mensaje, pasen los tics que pasen", () => {
+    const base = priceState({ ourOffers: [{ price: 75 }], rivalOffers: [{ price: 40 }], rivalMovedSinceOurLast: false, ticksLeft: 10 });
     expect(decideDuel({ ...base, ticksSinceOurLast: 1 }).action).toBe("wait");
-    expect(decideDuel({ ...base, ticksSinceOurLast: DEFAULT_DUEL_PARAMS.staleTicks }).action).toBe("counter");
+    expect(decideDuel({ ...base, ticksSinceOurLast: 3 }).action).toBe("wait");
+    expect(decideDuel({ ...base, ticksSinceOurLast: 50 }).action).toBe("wait");
   });
 
-  it("en el final parte la diferencia con el rival si no llega al suelo", () => {
+  it("en el final se mueve hacia el rival sin cruzar el suelo del excedente de apertura", () => {
+    const state = priceState({ ourOffers: [{ price: 75 }], rivalOffers: [{ price: 52 }], rivalMovedSinceOurLast: true, ticksLeft: 3 });
+    const d = decideDuel(state);
+    expect(d.rule).toBe("endgame");
+    expect(d.offer!.price).toBeLessThan(75);
+    expect(d.offer!.price).toBeGreaterThanOrEqual(50 + floorSurplus(state, DEFAULT_DUEL_PARAMS));
+  });
+
+  it("en el final ya en el suelo no cede más, aunque el rival ofrezca menos del suelo", () => {
     const state = priceState({ ourOffers: [{ price: 75 }, { price: 63 }, { price: 60 }, { price: 58 }, { price: 58 }], rivalOffers: [{ price: 51 }], rivalMovedSinceOurLast: true, ticksLeft: 3 });
     const d = decideDuel(state);
     expect(d.rule).toBe("endgame");
-    expect(d.offer!.price).toBeLessThan(58);
+    expect(d.offer!.price).toBeLessThanOrEqual(58);
     expect(d.offer!.price).toBeGreaterThanOrEqual(51);
+  });
+
+  it("en el final sigue moviendose hacia un trato si el rival oferto antes, aunque no se haya movido desde nuestra ultima oferta", () => {
+    const state = priceState({
+      ourOffers: [{ price: 75 }, { price: 63 }, { price: 60 }, { price: 58 }, { price: 58 }],
+      rivalOffers: [{ price: 51 }],
+      rivalMovedSinceOurLast: false,
+      ticksLeft: 2,
+    });
+    const d = decideDuel(state);
+    expect(d.action).toBe("counter");
+    expect(d.rule).toBe("endgame");
+    expect(d.offer!.price).toBeLessThanOrEqual(58);
+    expect(d.offer!.price).toBeGreaterThanOrEqual(51);
+  });
+
+  it("en el final, si el rival nunca oferto, mantiene la oferta vigente en vez de ceder solo", () => {
+    const state = priceState({ ourOffers: [{ price: 75 }, { price: 63 }], rivalOffers: [], rivalMovedSinceOurLast: false, ticksLeft: 2 });
+    const d = decideDuel(state);
+    expect(d.action).toBe("wait");
   });
 });
 
@@ -225,6 +254,21 @@ describe("piezas", () => {
     expect(normalizeRivalOffer({ price: 60, days: 3 })).toEqual({ price: 60, days: 3 });
     expect(normalizeRivalOffer({ price: null })).toBeUndefined();
     expect(normalizeRivalOffer(null)).toBeUndefined();
+  });
+
+  it("rivalOfferFrom: usa rival_offer si lo trae, si no el precio del último mensaje suyo (nunca el nuestro ni su texto)", () => {
+    expect(rivalOfferFrom({ rival_offer: { price: 70 }, messages: [{ sender: "Rival Plata", price: 60, text: "60 P" }] })).toEqual({ price: 70 });
+    expect(rivalOfferFrom({ rival_offer: null, messages: [{ sender: "you", price: 90, text: "90 P" }, { sender: "Rival Plata", price: 60, text: "60 P" }] })).toEqual({ price: 60 });
+    expect(rivalOfferFrom({ rival_offer: null, messages: [{ sender: "Rival Plata", price: 60, days: 4, text: "60 P day 4" }, { sender: "you", price: 50, text: "50 P" }] })).toEqual({ price: 60, days: 4 });
+    expect(rivalOfferFrom({ rival_offer: null, messages: [{ sender: "you", price: 90, text: "90 P" }] })).toBeUndefined();
+    expect(rivalOfferFrom({ rival_offer: null, messages: [] })).toBeUndefined();
+  });
+
+  it("ourOfferFrom: nuestra última oferta según el servidor, para no reabrir tras un reinicio sin memoria", () => {
+    expect(ourOfferFrom({ your_offer: { id: 1, price: 75, tick: 100 } })).toEqual({ price: 75 });
+    expect(ourOfferFrom({ your_offer: { id: 1, price: 75, days: 3, tick: 100 } })).toEqual({ price: 75, days: 3 });
+    expect(ourOfferFrom({ your_offer: null })).toBeUndefined();
+    expect(ourOfferFrom({ your_offer: undefined })).toBeUndefined();
   });
 
   it("duelMessageBody: precio solo, o precio y días también dentro de offer", () => {

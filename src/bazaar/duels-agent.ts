@@ -1,13 +1,21 @@
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { BazaarError } from "./client.js";
 import { DEFAULT_DUEL_PARAMS, daysValueFrom, decideDuel, type DuelDecision, type DuelParams, type DuelState } from "./duels.js";
-import { normalizeRivalOffer, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./duels-schemas.js";
+import { ourOfferFrom, rivalOfferFrom, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./duels-schemas.js";
 import type { Clock } from "./schemas.js";
+import { liveTraceDir } from "./trace.js";
 
 /**
  * Bucle de duelos: un paso por tick. Lee `/api/duels`, decide cada duelo con `decideDuel` y envía
  * como mucho un mensaje por duelo y tick y una aceptación por equipo y tick (la de más excedente;
  * las demás esperan al tick siguiente). La memoria por duelo (nuestras ofertas y las del rival) vive
- * en el proceso. En `dryRun` no hay ningún POST ni se toca la memoria.
+ * en el proceso y, si se da `stateFile`, también en disco (escritura atómica tras cada tick con POSTs)
+ * para que un reinicio la recupere en vez de reabrir o volver a conceder desde cero. La oferta del
+ * rival se lee de `rival_offer` o, si falta, del último mensaje suyo (`rivalOfferFrom`); la nuestra,
+ * de la memoria o, si no hay memoria para ese duelo (reinicio sin fichero), de `your_offer`
+ * (`ourOfferFrom`), para no reabrir con un ancla nueva ni repetir el primer mensaje. En `dryRun` no
+ * hay ningún POST ni se toca la memoria (ni el fichero).
  */
 
 interface Memory {
@@ -16,6 +24,44 @@ interface Memory {
   lastOurTick?: number;
   rivalMovedSinceOurLast: boolean;
   lastActionTick?: number;
+}
+
+const DUELS_STATE_SCHEMA = "bazaar-duels-state/v1";
+
+interface PersistedDuelsState {
+  schema?: string;
+  updated?: string;
+  duels?: Record<string, Memory>;
+}
+
+/** `results/bazaar-live/<fecha>/duels-state.json`: dónde persiste la memoria si no se indica otro fichero. */
+export function defaultDuelsStateFile(root: string, now: Date = new Date()): string {
+  return join(liveTraceDir(root, now), "duels-state.json");
+}
+
+/** Carga la memoria persistida; vacía si el fichero no existe o no es válido (nunca lanza). */
+export function loadDuelsMemory(file: string): Map<string, Memory> {
+  const map = new Map<string, Memory>();
+  if (!existsSync(file)) return map;
+  try {
+    const data = JSON.parse(readFileSync(file, "utf8")) as PersistedDuelsState;
+    if (data.schema !== DUELS_STATE_SCHEMA || !data.duels) return map;
+    for (const [id, mem] of Object.entries(data.duels)) map.set(id, mem);
+  } catch {
+    // Fichero corrupto o ilegible: se arranca sin memoria (el payload del servidor sigue dando rival_offer/your_offer).
+  }
+  return map;
+}
+
+/** Guarda toda la memoria con rename atómico (fichero temporal + rename), como `lessons.ts`. */
+export function saveDuelsMemory(file: string, memory: ReadonlyMap<string, Memory>): void {
+  mkdirSync(dirname(file), { recursive: true });
+  const duels: Record<string, Memory> = {};
+  for (const [id, mem] of memory) duels[id] = mem;
+  const text = `${JSON.stringify({ schema: DUELS_STATE_SCHEMA, updated: new Date().toISOString(), duels }, null, 2)}\n`;
+  const tmp = `${file}.tmp-${process.pid}`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, file);
 }
 
 export interface DuelStepEntry {
@@ -40,6 +86,8 @@ export interface DuelsAgentOptions {
   dryRun: boolean;
   params?: Partial<DuelParams>;
   now?: () => number;
+  /** Fichero de memoria persistida (rename atómico); si se da, se carga al construir y se reescribe tras cada tick con POSTs. */
+  stateFile?: string;
 }
 
 /** Tics hasta `deadline`: número de tick (o epoch en s/ms) o fecha ISO; `undefined` si no se entiende. */
@@ -62,7 +110,7 @@ const FINISHED = new Set(["done", "settled", "closed", "expired", "deal", "no_de
 const sameOffer = (a: StructuredOffer | undefined, b: StructuredOffer | undefined) => !!a && !!b && a.price === b.price && a.days === b.days;
 
 export class DuelsAgent {
-  private readonly memory = new Map<number | string, Memory>();
+  private readonly memory: Map<string, Memory>;
   private readonly params: DuelParams;
   private readonly now: () => number;
 
@@ -72,30 +120,39 @@ export class DuelsAgent {
   ) {
     this.params = { ...DEFAULT_DUEL_PARAMS, ...options.params };
     this.now = options.now ?? Date.now;
+    this.memory = options.stateFile ? loadDuelsMemory(options.stateFile) : new Map();
+  }
+
+  private key(duelId: number | string): string {
+    return String(duelId);
   }
 
   /** Estado puro de un duelo a partir de la respuesta del servidor y de la memoria (sin mutarla en dry-run). */
   stateOf(duel: Duel, clock: Clock): { state: DuelState; rival?: StructuredOffer; assumption?: string } {
-    const mem = this.memory.get(duel.id) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
+    const mem = this.memory.get(this.key(duel.id)) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
     const withDays = duel.issues.includes("days");
     const days = withDays ? daysValueFrom(duel.your_days_weight, this.params) : { table: [] as number[] };
-    const rival = normalizeRivalOffer(duel.rival_offer);
+    const rival = rivalOfferFrom(duel);
     const rivalOffers = [...mem.rivalOffers];
     let moved = mem.rivalMovedSinceOurLast;
     if (rival && !sameOffer(rival, rivalOffers.at(-1))) {
       rivalOffers.push(rival);
       moved = true;
     }
+    // Sin memoria para este duelo (duelo nuevo o reinicio sin fichero de estado): se lee `your_offer`
+    // del servidor como nuestra última oferta, para no reabrir con un ancla nueva ni repetir el primer mensaje.
+    const ourOffers = mem.ourOffers.length === 0 ? [...(ourOfferFrom(duel) ? [ourOfferFrom(duel)!] : [])] : mem.ourOffers;
+    const lastOurTick = mem.lastOurTick ?? (ourOffers.length > 0 ? (duel.your_offer?.tick ?? undefined) : undefined);
     const left = ticksLeft(duel.deadline, clock, this.now());
     const state: DuelState = {
       role: duel.role,
       limit: duel.your_limit,
       withDays,
       daysValue: withDays ? days.table : Array.from({ length: 11 }, () => 0),
-      ourOffers: mem.ourOffers,
+      ourOffers,
       rivalOffers,
       rivalMovedSinceOurLast: moved,
-      ...(mem.lastOurTick !== undefined ? { ticksSinceOurLast: clock.tick - mem.lastOurTick } : {}),
+      ...(lastOurTick !== undefined ? { ticksSinceOurLast: clock.tick - lastOurTick } : {}),
       ...(left !== undefined ? { ticksLeft: left } : {}),
     };
     return { state, ...(rival ? { rival } : {}), ...("assumption" in days && days.assumption ? { assumption: days.assumption } : {}) };
@@ -110,7 +167,7 @@ export class DuelsAgent {
       .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }))
       .map((duel) => {
         const { state, rival, assumption } = this.stateOf(duel, clock);
-        const mem = this.memory.get(duel.id);
+        const mem = this.memory.get(this.key(duel.id));
         const already = mem?.lastActionTick === clock.tick;
         return { duel, state, rival, assumption, decision: decideDuel(state, this.params), already };
       });
@@ -144,11 +201,13 @@ export class DuelsAgent {
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
     }
+    if (!this.options.dryRun && this.options.stateFile) saveDuelsMemory(this.options.stateFile, this.memory);
     return { tick: clock.tick, entries };
   }
 
   private async act(duelId: number | string, decision: DuelDecision, state: DuelState, tick: number): Promise<DuelStepEntry["outcome"]> {
-    const mem: Memory = this.memory.get(duelId) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
+    const key = this.key(duelId);
+    const mem: Memory = this.memory.get(key) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
     mem.rivalOffers = [...state.rivalOffers];
     try {
       if (decision.action === "accept") {
@@ -160,10 +219,10 @@ export class DuelsAgent {
         mem.rivalMovedSinceOurLast = false;
       }
       mem.lastActionTick = tick;
-      this.memory.set(duelId, mem);
+      this.memory.set(key, mem);
       return "sent";
     } catch (e) {
-      this.memory.set(duelId, { ...mem, rivalMovedSinceOurLast: state.rivalMovedSinceOurLast });
+      this.memory.set(key, { ...mem, rivalMovedSinceOurLast: state.rivalMovedSinceOurLast });
       if (e instanceof BazaarError) return `error:${e.code}`;
       throw e;
     }

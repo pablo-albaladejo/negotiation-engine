@@ -1,14 +1,15 @@
 import { parseArgs } from "node:util";
 import { BazaarClient } from "./client.js";
 import { DEFAULT_DUEL_PARAMS, type DuelParams } from "./duels.js";
-import { DuelsAgent, formatDuelEntry, formatNextDuels } from "./duels-agent.js";
+import { DuelsAgent, defaultDuelsStateFile, formatDuelEntry, formatNextDuels } from "./duels-agent.js";
 import { duelsApi } from "./duels-schemas.js";
 import { loadBazaarEnv } from "./env.js";
 
 /**
- * `pnpm bazaar:duels [--dry-run] [--once] [--max-rounds 4] [--beta 2] [--anchor-margin 0.5] [--floor-share 0.3] [--assumed-days-weight 0]`:
+ * `pnpm bazaar:duels [--dry-run] [--once] [--max-rounds 4] [--beta 2] [--anchor-margin 0.5] [--floor-share 0.3] [--assumed-days-weight 0] [--state-file path]`:
  * un paso por tick hasta Ctrl-C. `--dry-run` solo hace GET (clock, duels, schedule) e imprime lo que haría; ningún POST.
- * Nunca imprime la clave.
+ * En vivo, persiste la memoria por duelo en `--state-file` (por defecto `results/bazaar-live/<fecha>/duels-state.json`,
+ * rename atómico) para que un reinicio no reabra ni repita ofertas. Nunca imprime la clave.
  */
 
 function num(raw: string, name: string, min: number): number {
@@ -29,6 +30,7 @@ async function main() {
       "anchor-margin": { type: "string", default: String(DEFAULT_DUEL_PARAMS.anchorMargin) },
       "floor-share": { type: "string", default: String(DEFAULT_DUEL_PARAMS.floorShare) },
       "assumed-days-weight": { type: "string", default: String(DEFAULT_DUEL_PARAMS.assumedDaysWeight) },
+      "state-file": { type: "string" },
     },
   });
   const params: Partial<DuelParams> = {
@@ -46,8 +48,9 @@ async function main() {
   }
   const dryRun = values["dry-run"];
   const api = duelsApi(new BazaarClient({ url: env.url, key: env.key }));
-  const agent = new DuelsAgent(api, { dryRun, params });
-  console.log(`bazaar:duels · ${dryRun ? "DRY RUN (GET only, no POST)" : "LIVE"} · params ${JSON.stringify({ ...DEFAULT_DUEL_PARAMS, ...params })}`);
+  const stateFile = dryRun ? undefined : (values["state-file"] ?? defaultDuelsStateFile(process.cwd()));
+  const agent = new DuelsAgent(api, { dryRun, params, ...(stateFile ? { stateFile } : {}) });
+  console.log(`bazaar:duels · ${dryRun ? "DRY RUN (GET only, no POST)" : "LIVE"} · params ${JSON.stringify({ ...DEFAULT_DUEL_PARAMS, ...params })}${stateFile ? ` · state ${stateFile}` : ""}`);
   for (;;) {
     const report = await agent.step();
     const clock = await api.clock();

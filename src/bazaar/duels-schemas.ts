@@ -23,11 +23,27 @@ const normalizeDuel = (raw: unknown): unknown => {
   return { ...r, id: r.id ?? r.duel, deadline: r.deadline ?? r.deadline_tick, round: r.round ?? r.rounds };
 };
 
+/** Un mensaje del hilo del duelo; `sender` es "you" en los nuestros, cualquier otra cosa en los del rival. */
+export const DuelMessageSchema = z.looseObject({
+  sender: z.string().nullish(),
+  price: num.nullish(),
+  days: num.nullish(),
+  text: z.string().nullish(),
+});
+export type DuelMessage = z.infer<typeof DuelMessageSchema>;
+
+/** `your_offer`: nuestra ultima oferta segun el servidor (para no reabrir tras un reinicio sin memoria). */
+export const YourOfferSchema = z
+  .looseObject({ id: z.union([z.number(), z.string()]).nullish(), price: num.nullish(), days: num.nullish(), tick: num.nullish() })
+  .nullish();
+
 export const DuelSchema = z.preprocess(normalizeDuel, z.looseObject({
   id: z.union([z.number(), z.string()]),
   role: z.enum(["seller", "buyer"]),
   your_limit: num,
   rival_offer: RivalOfferSchema,
+  your_offer: YourOfferSchema,
+  messages: z.array(DuelMessageSchema).default([]),
   deadline: z.union([num, z.string(), z.null()]).optional(),
   issues: z.array(z.string()).default(["price"]),
   your_days_weight: DaysWeightSchema,
@@ -59,6 +75,36 @@ export function normalizeRivalOffer(raw: Duel["rival_offer"]): StructuredOffer |
   if (typeof raw === "number") return Number.isFinite(raw) ? { price: raw } : undefined;
   if (typeof raw.price !== "number" || !Number.isFinite(raw.price)) return undefined;
   return typeof raw.days === "number" && Number.isFinite(raw.days) ? { price: raw.price, days: raw.days } : { price: raw.price };
+}
+
+/** Un precio/día finitos de un mensaje, estructurados; `undefined` si no trae precio. */
+function offerOfMessage(m: Pick<DuelMessage, "price" | "days">): StructuredOffer | undefined {
+  if (typeof m.price !== "number" || !Number.isFinite(m.price)) return undefined;
+  return typeof m.days === "number" && Number.isFinite(m.days) ? { price: m.price, days: m.days } : { price: m.price };
+}
+
+/**
+ * Oferta vigente del rival: `rival_offer` si la trae, si no el precio del último mensaje suyo
+ * (`sender` distinto de "you") que tenga uno. Nunca lee el texto del mensaje, solo su precio/días.
+ */
+export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): StructuredOffer | undefined {
+  const direct = normalizeRivalOffer(duel.rival_offer);
+  if (direct) return direct;
+  const messages = duel.messages ?? [];
+  for (let k = messages.length - 1; k >= 0; k--) {
+    const m = messages[k]!;
+    if (m.sender === "you") continue;
+    const offer = offerOfMessage(m);
+    if (offer) return offer;
+  }
+  return undefined;
+}
+
+/** Nuestra última oferta según el servidor (`your_offer`); sirve para no reabrir tras un reinicio sin memoria. */
+export function ourOfferFrom(duel: Pick<Duel, "your_offer">): StructuredOffer | undefined {
+  const o = duel.your_offer;
+  if (!o) return undefined;
+  return offerOfMessage(o);
 }
 
 /** Cuerpo del POST de un mensaje de duelo: con días, el precio va también dentro de `offer` (como el SDK). */
