@@ -88,7 +88,7 @@ describe("MatchesScreen (P2)", () => {
 
   it("sin resultados para los filtros: estado vac\u00edo con \'Clear filters\'", () => {
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={fx.games} onOpenGame={() => {}} onBack={() => {}} initialFilters={{ rival: "no-such-rival" }} />);
-    expect(screen.getByText("No matches for these filters")).toBeTruthy();
+    expect(screen.getAllByText("No matches for these filters").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Clear filters"));
     expect(screen.getAllByText(fx.games[0]!.gameId).length).toBeGreaterThan(0);
   });

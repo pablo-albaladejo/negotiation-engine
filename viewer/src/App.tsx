@@ -17,7 +17,7 @@ import { RunsScreen } from "./screens/RunsScreen.js";
 import { StatesScreen } from "./screens/StatesScreen.js";
 import { TournamentReplayScreen } from "./screens/TournamentReplayScreen.js";
 import { TwoIssueScreen } from "./screens/TwoIssueScreen.js";
-import { InvalidLogBanner, LoadingCard } from "./ui/states.js";
+import { EmptyStateCard, InvalidLogBanner, LoadingCard } from "./ui/states.js";
 
 const TABS = [
   { id: "runs", label: "Runs" },
@@ -150,7 +150,7 @@ function MatchesContainer({ runId, query, replaceRoute }: { runId: string; query
     if (currentQuery.current !== query) replaceRoute(routeTo.matches(runId, currentQuery.current));
   }, [state]);
   if (!state) return <LoadingCard label={`Reading results/${runId}`} />;
-  if (!state.summary) return <LoadingCard label={`results/${runId}/summary.json is not available`} />;
+  if (!state.summary) return <EmptyStateCard title={`results/${runId}/summary.json is not available`} />;
   const isChampion = isChampionRun(state.summary.config, championVersion);
   return (
     <MatchesScreen
@@ -204,7 +204,7 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
   }, [runId, gameId]);
   if (!games || games.runId !== runId || !trace || trace.gameId !== gameId) return <LoadingCard label={`Reading ${gameId}`} />;
   const line = games.data.find((g) => g.gameId === gameId) ?? null;
-  if (!line) return <LoadingCard label={`${gameId} is not available`} />;
+  if (!line) return <EmptyStateCard title={`${gameId} is not available`} />;
   // MatchSelector shows the same games Matches would, under the filters carried in `query` (L14).
   const filteredGames = filterGames(games.data, queryToFilters(query));
   const onBack = () => navigate(routeTo.matches(runId, query));
@@ -226,7 +226,7 @@ function CompareContainer({ runId }: { runId: string }) {
     };
   }, [runId]);
   if (!state) return <LoadingCard label={`Reading results/${runId}/gate.json`} />;
-  if (!state.gate) return <LoadingCard label={`results/${runId}/gate.json is not available${state.errors[0] ? `: ${state.errors[0].message}` : ""}`} />;
+  if (!state.gate) return <EmptyStateCard title={`results/${runId}/gate.json is not available`} {...(state.errors[0] ? { body: state.errors[0].message } : {})} />;
   return <GateScreen model={gateModel(runId, state.gate)} onBack={() => navigate(routeTo.runs())} />;
 }
 
@@ -264,7 +264,7 @@ function LiveContainer() {
     <>
       <LiveScreen model={liveModel(feed)} />
       {errors.length > 0 ? (
-        <Root theme="dark">
+        <Root theme="dark" className="nr-live-overlay">
           <InvalidLogBanner errors={errors} validCount={feed.lines.length} />
         </Root>
       ) : null}
@@ -297,8 +297,8 @@ function AppContent() {
   /** D2: keep <html data-theme> (set pre-paint by the inline script in index.html) in sync with
    * React state, so color-scheme and the html/body background track every toggle too. */
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    document.documentElement.dataset.theme = route.screen === "live" ? "dark" : theme;
+  }, [theme, route.screen]);
   /** D9: once the user picks a theme explicitly, OS changes stop overriding it (watchSystemTheme
    * checks for a stored choice on every change event). */
   useEffect(() => watchSystemTheme(setTheme), []);

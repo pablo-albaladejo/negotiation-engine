@@ -158,12 +158,17 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
           if (key === "injection") setFilters((f) => withFilter(f, "injection", checked ? true : undefined));
         }}
       />
+      <span role="status" aria-live="polite" className="nr-sr-only">
+        {model.rows.length === 0
+          ? "No matches for these filters"
+          : `Showing ${paginated ? currentPage * PAGE_SIZE + 1 : 1}–${paginated ? currentPage * PAGE_SIZE + pageRows.length : model.rows.length} of ${model.rows.length} matches${model.rows.length !== games.length ? ` (filtered from ${games.length})` : ""}`}
+      </span>
       {model.rows.length === 0 ? (
         <EmptyStateCard title="No matches for these filters" action={<SecondaryButton onClick={clearFilters}>Clear filters</SecondaryButton>} />
       ) : (
         <Card>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-            <span className="nr-muted" ref={countRef} tabIndex={-1} aria-live="polite">
+            <span className="nr-muted" ref={countRef} tabIndex={-1}>
               {`Showing ${paginated ? currentPage * PAGE_SIZE + 1 : 1}–${paginated ? currentPage * PAGE_SIZE + pageRows.length : model.rows.length} of ${model.rows.length} matches`}
               {model.rows.length !== games.length ? ` (filtered from ${games.length})` : ""}
             </span>
@@ -178,7 +183,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
               <SecondaryButton onClick={() => changePage(Math.max(0, currentPage - 1))} disabled={currentPage === 0}>
                 Previous
               </SecondaryButton>
-              <span className="nr-muted" aria-live="polite">
+              <span className="nr-muted">
                 Page {currentPage + 1} of {pageCount}
               </span>
               <SecondaryButton onClick={() => changePage(Math.min(pageCount - 1, currentPage + 1))} disabled={currentPage >= pageCount - 1}>

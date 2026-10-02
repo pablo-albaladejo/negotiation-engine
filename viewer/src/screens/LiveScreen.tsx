@@ -106,19 +106,17 @@ export function LiveScreen({ model }: { model: LiveModel }) {
           data-screen="p7"
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
-          {!projectorMode ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: projectorMode ? "flex-end" : "space-between", gap: 24 }}>
+            {!projectorMode ? (
               <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
                 <Scoreboard badge={model.badge} us={US} rival={rival} rivalPending={waiting} round={waiting ? null : model.round} rounds={rounds} attacksBlocked={waiting ? null : model.attacksBlocked} />
                 <ModeBadge mode="tournament" />
               </div>
-              <SecondaryButton onClick={() => setProjectorMode(true)}>Projector mode</SecondaryButton>
-            </div>
-          ) : (
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <SecondaryButton onClick={() => setProjectorMode(false)}>Exit projector mode (Esc)</SecondaryButton>
-            </div>
-          )}
+            ) : null}
+            <SecondaryButton aria-pressed={projectorMode} onClick={() => setProjectorMode((v) => !v)}>
+              {projectorMode ? "Exit projector mode (Esc)" : "Projector mode"}
+            </SecondaryButton>
+          </div>
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>

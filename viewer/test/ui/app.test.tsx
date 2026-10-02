@@ -309,7 +309,7 @@ describe("App focus-on-navigation (C1)", () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
     fireEvent.click(screen.getByLabelText("With fallback"));
-    await waitFor(() => expect(screen.getByText("No matches for these filters")).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText("No matches for these filters").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByText("Clear filters"));
     await waitFor(() => expect(document.activeElement?.textContent).toContain("matches"));
     expect(document.activeElement?.textContent).toMatch(/^Showing/);

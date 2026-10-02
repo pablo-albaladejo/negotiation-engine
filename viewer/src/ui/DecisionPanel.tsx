@@ -79,10 +79,10 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
           </span>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
-          <SecondaryButton onClick={() => prevRound !== null && onSelectRound(prevRound)} disabled={prevRound === null}>
+          <SecondaryButton onClick={() => prevRound !== null && onSelectRound(prevRound)} aria-disabled={prevRound === null}>
             ← Previous round
           </SecondaryButton>
-          <SecondaryButton onClick={() => nextRound !== null && onSelectRound(nextRound)} disabled={nextRound === null}>
+          <SecondaryButton onClick={() => nextRound !== null && onSelectRound(nextRound)} aria-disabled={nextRound === null}>
             Next round →
           </SecondaryButton>
         </div>

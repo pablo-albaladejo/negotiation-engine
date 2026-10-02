@@ -33,8 +33,8 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
     render(<DecisionPanel hasTrace panel={panel(5)} rounds={[3, 5, 7]} selectedRound={5} onSelectRound={onSelectRound} />);
     const prev = screen.getByText("← Previous round") as HTMLButtonElement;
     const next = screen.getByText("Next round →") as HTMLButtonElement;
-    expect(prev.disabled).toBe(false);
-    expect(next.disabled).toBe(false);
+    expect(prev.getAttribute("aria-disabled")).toBe("false");
+    expect(next.getAttribute("aria-disabled")).toBe("false");
     prev.click();
     expect(onSelectRound).toHaveBeenCalledWith(3);
     next.click();
@@ -44,9 +44,9 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
   it("Previous disabled at the first round, Next disabled at the last", () => {
     const onSelectRound = vi.fn();
     const { rerender } = render(<DecisionPanel hasTrace panel={panel(3)} rounds={[3, 5, 7]} selectedRound={3} onSelectRound={onSelectRound} />);
-    expect((screen.getByText("← Previous round") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("← Previous round").getAttribute("aria-disabled")).toBe("true");
     rerender(<DecisionPanel hasTrace panel={panel(7)} rounds={[3, 5, 7]} selectedRound={7} onSelectRound={onSelectRound} />);
-    expect((screen.getByText("Next round →") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Next round →").getAttribute("aria-disabled")).toBe("true");
   });
 
   it("hasTrace true but no panel for the selected round: 'R{n}: not logged.' instead of an empty table", () => {
@@ -65,8 +65,8 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
     render(<DecisionPanel hasTrace panel={null} rounds={[3, 5, 7]} selectedRound={6} onSelectRound={onSelectRound} />);
     const prev = screen.getByText("← Previous round") as HTMLButtonElement;
     const next = screen.getByText("Next round →") as HTMLButtonElement;
-    expect(prev.disabled).toBe(false);
-    expect(next.disabled).toBe(false);
+    expect(prev.getAttribute("aria-disabled")).toBe("false");
+    expect(next.getAttribute("aria-disabled")).toBe("false");
     prev.click();
     expect(onSelectRound).toHaveBeenCalledWith(5);
     next.click();
@@ -76,9 +76,9 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
   it("C6: a selectedRound before the first logged round disables Previous, enables Next towards the first", () => {
     const onSelectRound = vi.fn();
     render(<DecisionPanel hasTrace panel={null} rounds={[3, 5, 7]} selectedRound={1} onSelectRound={onSelectRound} />);
-    expect((screen.getByText("← Previous round") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("← Previous round").getAttribute("aria-disabled")).toBe("true");
     const next = screen.getByText("Next round →") as HTMLButtonElement;
-    expect(next.disabled).toBe(false);
+    expect(next.getAttribute("aria-disabled")).toBe("false");
     next.click();
     expect(onSelectRound).toHaveBeenCalledWith(3);
   });

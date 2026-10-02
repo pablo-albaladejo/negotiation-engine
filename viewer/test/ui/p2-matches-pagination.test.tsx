@@ -60,17 +60,17 @@ describe("MatchesScreen pagination (INBOX A3)", () => {
   it("count shows the shown range, not the raw filtered/total pair (L8)", () => {
     const games = manyGames(fx.games[0]!, 201);
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
-    expect(screen.getByText("Showing 1–50 of 201 matches")).toBeTruthy();
+    expect(screen.getAllByText("Showing 1–50 of 201 matches").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("Showing 51–100 of 201 matches")).toBeTruthy();
+    expect(screen.getAllByText("Showing 51–100 of 201 matches").length).toBeGreaterThan(0);
   });
 
   it("count adds '(filtered from N)' only when filters narrow the set (L8)", () => {
     const games = manyGames(fx.games[0]!, 10);
     render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
-    expect(screen.getByText("Showing 1\u201310 of 10 matches")).toBeTruthy();
+    expect(screen.getAllByText("Showing 1\u201310 of 10 matches").length).toBeGreaterThan(0);
     fireEvent.change(screen.getByDisplayValue("All opponents"), { target: { value: games[0]!.rival } });
-    expect(screen.getByText(/Showing 1\u20135 of 5 matches \(filtered from 10\)/)).toBeTruthy();
+    expect(screen.getAllByText(/Showing 1\u20135 of 5 matches \(filtered from 10\)/).length).toBeGreaterThan(0);
   });
 });
 
