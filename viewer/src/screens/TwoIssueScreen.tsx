@@ -15,7 +15,7 @@ import type { Summary } from "../../../src/arena/results-schema.js";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
 import { gridCols } from "../ui/grid.js";
-import { matchConfigLine, resultLabel } from "../ui/labels.js";
+import { matchConfigLine, resultLabel, roleLabel } from "../ui/labels.js";
 import { ReplayHeader } from "../ui/replay-header.js";
 import { MatchSelector } from "../ui/match-selector.js";
 
@@ -89,7 +89,7 @@ export function TwoIssueScreen({ runId, model, onBack, summary, games, onSelectG
     tu: utility(r.uRival),
   }));
 
-  const sub = `${model.game.role} · ${y.name} and ${x.name}${model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}`;
+  const sub = `${roleLabel(model.game.role)} · ${y.name} and ${x.name}${model.game.roundLimit !== null ? ` · T=${model.game.roundLimit}` : ""}`;
   const cfg = `${matchConfigLine(summary?.config.params, summary?.config.params?.persona ?? null, model.provider)} · ${
     model.mandateLine ? `mandate: ${model.mandateLine}` : "mandate: not logged"
   }`;
@@ -107,10 +107,10 @@ export function TwoIssueScreen({ runId, model, onBack, summary, games, onSelectG
             ...(result.tone ? { tone: result.tone } : {}),
           },
           { label: "Agreement", value: agreement ? fmtOffer(agreement) : "—" },
-          { label: "Utility", value: utility(model.lastUtility) },
+          { label: "Utility", value: model.game.endReason === "agreement" ? utility(model.lastUtility) : "—" },
           { label: "Rounds", value: model.game.roundLimit !== null ? `${model.game.rounds}/${model.game.roundLimit}` : String(model.game.rounds) },
-          { label: "Role", value: model.game.role },
-          { label: "Within mandate", value: withinMandateValue, ...(model.withinMandate === true ? { tone: "deal" as const } : model.withinMandate === false ? { tone: "walk" as const } : {}) },
+          { label: "Role", value: roleLabel(model.game.role) },
+          { label: "Within mandate", value: model.game.endReason === "agreement" ? withinMandateValue : "—", ...(model.withinMandate === true ? { tone: "deal" as const } : model.withinMandate === false ? { tone: "walk" as const } : {}) },
         ]}
       />
       <div className="nr-grid" style={gridCols("minmax(0, 1.3fr) minmax(0, 1fr)")}>

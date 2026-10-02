@@ -4,6 +4,7 @@ import { consumePageFocus } from "../focus.js";
 import type { LiveModel, LiveOutcome } from "../model/index.js";
 import { offerLabel } from "../ui/offer.js";
 import { BackLink, SecondaryButton } from "../ui/buttons.js";
+import { roleLabel } from "../ui/labels.js";
 import { routeTo } from "../route.js";
 
 export const PROJECTOR = { width: 1920, height: 1080 } as const;
@@ -94,8 +95,8 @@ export function LiveScreen({ model }: { model: LiveModel }) {
     model.status === "finished" && model.outcome
       ? outcomeLabel(model.outcome)
       : model.sessionId !== null
-        ? `Match ${model.sessionId}${model.role ? ` · ${model.role}` : ""}`
-        : (model.role ?? "not logged");
+        ? `Match ${model.sessionId}${model.role ? ` · ${roleLabel(model.role)}` : ""}`
+        : (model.role ? roleLabel(model.role) : "not logged");
   const end = model.status === "finished" && model.outcome ? { round: model.outcome.round, kind: model.outcome.action === "accept" ? ("deal" as const) : ("walk" as const), label: model.outcome.action === "accept" ? "deal" : "walk" } : undefined;
 
   return (
