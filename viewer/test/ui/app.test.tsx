@@ -90,6 +90,30 @@ describe("App routing (C2, C3)", () => {
     await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
   });
 
+  it("T4: role filter survives opening a game and coming back; the table shows only that role", async () => {
+    window.location.hash = `#/runs/${fx.runId}`;
+    const { container } = render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} \u00b7 matches`))).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("tab", { name: "Buyer" }));
+    expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`);
+
+    const buyerGame = fx.games.find((g) => g.role === "buyer")!;
+    fireEvent.click(screen.getByText(buyerGame.gameId));
+    await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(buyerGame.gameId)}`));
+    expect(window.location.hash).toContain("role=buyer");
+
+    const backLink = await screen.findByText("\u2190 Matches");
+    fireEvent.click(backLink);
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}?role=buyer`));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Buyer" }).getAttribute("aria-selected")).toBe("true"));
+
+    const roleCells = [...container.querySelectorAll(".nr-table-wrap tbody tr")].map((row) => row.children[3]?.textContent);
+    const expectedCount = fx.games.filter((g) => g.role === "buyer").length;
+    expect(roleCells.length).toBe(expectedCount);
+    expect(roleCells.every((text) => text === "Buyer")).toBe(true);
+  });
+
   it("C3: switching to another run id resets Matches filters instead of keeping the previous run's (keyed container)", async () => {
     const otherRunId = `${fx.runId}-other`;
     window.location.hash = `#/runs/${fx.runId}?role=buyer`;
@@ -110,30 +134,36 @@ describe("App back/forward across routes (B3)", () => {
     mockFetch(fx.summary, fx.games);
   });
 
-  it("browser back/forward re-render the right screen after Runs -> Matches -> Replay", async () => {
+  it("browser back/forward re-render the right screen after Runs -> Matches -> Replay (T3)", async () => {
     window.location.hash = "#/runs";
     render(<App />);
-    await waitFor(() => expect(screen.getByText("Runs")).toBeTruthy());
+    expect(window.location.hash).toBe("#/runs");
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Runs" })).toBeTruthy());
 
     window.location.hash = `#/runs/${fx.runId}`;
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}`));
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
 
     const firstGameId = fx.games[0]!.gameId;
     fireEvent.click(screen.getByText(firstGameId));
     await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
+    await screen.findByText("← Matches");
 
     window.history.back();
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}`));
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
 
     window.history.back();
-    await waitFor(() => expect(screen.getByText("Runs")).toBeTruthy());
+    await waitFor(() => expect(window.location.hash).toBe("#/runs"));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Runs" })).toBeTruthy());
 
     window.history.forward();
+    await waitFor(() => expect(window.location.hash).toBe(`#/runs/${fx.runId}`));
     await waitFor(() => expect(screen.getByText(new RegExp(`${fx.runId} · matches`))).toBeTruthy());
 
     window.history.forward();
-    await waitFor(() => expect(screen.getByText(firstGameId)).toBeTruthy());
+    await waitFor(() => expect(window.location.hash).toContain(`/games/${encodeURIComponent(firstGameId)}`));
+    await screen.findByText("← Matches");
   });
 });
 
