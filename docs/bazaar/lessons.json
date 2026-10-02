@@ -188,6 +188,54 @@
         "She came down 29 → 25 (her list) in 2 messages; AC_next accepted when her offer met our next counter.",
         "Deals count reached 3 but level stayed 1: the first deal (at her opening price) likely does not count as a good negotiated deal."
       ]
+    },
+    {
+      "thread": 227,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "SAL-08 (specific uncommon)",
+      "our_value": 32.5,
+      "our_limit": 32,
+      "her_opening": 29,
+      "our_prices": [
+        22,
+        24,
+        25
+      ],
+      "her_prices": [
+        29,
+        26
+      ],
+      "outcome": "deal",
+      "price": 25,
+      "value_created": 7.5,
+      "received": "SAL-08 + gift sobre_bienvenida",
+      "lessons": [
+        "Same pattern as SAL-06: 29 -> 26 -> deal at 25 within 2-3 messages.",
+        "She sometimes adds a gift (a welcome pack)."
+      ]
+    },
+    {
+      "thread": 236,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "SAL-03 (specific common)",
+      "our_value": 13,
+      "our_limit": 13,
+      "her_opening": 12,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "outcome": "deal",
+      "price": 10,
+      "value_created": 3,
+      "lessons": [
+        "Commons she sells: opens 12, drops to 10 (her list) after one counter; deal at 10 in 1 message."
+      ]
     }
   ],
   "global_lessons": [
@@ -202,7 +250,9 @@
     "El Rastro (2 Oct, ~tick 100): settled uncommons 18–21 (n=2); open asks commons 8–12 (median 9, n=28), uncommons 24–25, a rare 88. Abuela bid 6 for a common, below those asks: selling commons on El Rastro may pay more.",
     "Holding at the same price makes Abuela walk (closed_reason no_progress) instead of sending a final offer.",
     "Abuela accepts specific-card purchases; uncommon list 25 reached quickly from 29.",
-    "Level-2 unlock needs good NEGOTIATED deals; a deal at her opening price probably does not count toward it."
+    "Level-2 unlock needs good NEGOTIATED deals; a deal at her opening price probably does not count toward it.",
+    "Abuela selling specific cards: uncommons 29 -> ~25, commons 12 -> 10 (her list); she reaches her list fast and stops there.",
+    "Duels (practice, 2 Oct): rivals are house bots (Rival Plata/Rojo/Luna); many do not reply for several ticks. Our duel agent conceded after 3 silent ticks: that is negotiating against ourselves. Never concede without a rival counter."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
