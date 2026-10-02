@@ -123,7 +123,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 24 }}>
                   <span className="nr-live-headline" style={{ color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
-                  <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
+                  <span className="nr-live-caption">utility × 100 by round</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <OfferChart rounds={Math.max(chartRounds, 1)} yDomain={[0, 100]} ourOffers={model.ours} theirOffers={model.theirs} zopa={false} injectionRounds={model.injectionRounds} {...(end ? { end } : {})} />
@@ -135,7 +135,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                     <Stat key={s.label} {...s} />
                   ))}
                 </div>
-                <div className="nr-chat nr-chat-projector" style={{ gap: 10, overflow: "hidden" }}>
+                <div className="nr-chat nr-chat-projector" style={{ gap: "var(--space-3)", overflow: "hidden" }}>
                   {model.lastMessages.map((b, i) => (
                     <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
                   ))}

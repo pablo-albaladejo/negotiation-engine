@@ -42,7 +42,7 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
     <WarningBanner tone="warn" title={`${first.file ?? "not logged"}${first.line !== null ? ` · line ${first.line}` : ""}`}>
       <BannerBody>
         <Flag kind="walk">schema fails</Flag>
-        <span style={{ font: "13px var(--font-mono)", color: "var(--ink)" }}>
+        <span className="nr-banner-detail">
           field <b>{first.path || "(root)"}</b>: {first.message}
         </span>
         <span className="nr-muted">{validCount} valid lines loaded.</span>
@@ -118,7 +118,7 @@ export function TemplateBanner({ templateCount, ourMessageCount, provider }: { t
     <WarningBanner tone="info" title={all ? `LLM down · ${provider ? `LLM_PROVIDER ${provider} · ` : ""}everything on template` : "Some messages on template"}>
       <BannerBody>
         <Flag kind="fallback">template</Flag>
-        <span style={{ color: "var(--ink)" }}>
+        <span className="nr-text-ink">
           {templateCount} of {ourMessageCount} via template. The engine decides the numbers and the validator still confirms them.
         </span>
       </BannerBody>
@@ -136,7 +136,7 @@ export function EmptyZopaBanner({ ours, rival, walked }: { ours: string; rival: 
     <WarningBanner tone={walked ? "warn" : "info"} title={`Reserves ${ours} / ${rival}${walked ? " → walk" : ""}`}>
       <BannerBody>
         <Flag kind={walked ? "walk" : "neutral"}>{walked ? "walk" : "empty ZOPA"}</Flag>
-        <span style={{ color: "var(--ink)" }}>
+        <span className="nr-text-ink">
           Their reserve ({rival}) and ours ({ours}) do not overlap: no deal is possible.
         </span>
       </BannerBody>

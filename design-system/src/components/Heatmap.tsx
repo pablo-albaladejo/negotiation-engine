@@ -41,7 +41,7 @@ export function Heatmap({ rows, columns, rowHeader = "Opponent" }: HeatmapProps)
           {rows.map((row, rowIndex) => {
             const rowLabel = row.label ?? row.rival ?? "";
             return (
-              <tr key={rowLabel || rowIndex}>
+              <tr key={`${rowLabel}-${rowIndex}`}>
                 <td>{rowLabel}</td>
                 {row.cells.map((cell, index) => {
                   const band = heatmapBand(cell.value);

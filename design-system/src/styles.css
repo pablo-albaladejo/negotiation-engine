@@ -80,7 +80,8 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 
 /* Heatmap */
 .nr-heat th:not(:first-child){text-align:center}
-.nr-heat-cell{text-align:center!important;font-family:var(--font-mono);font-size:13px;min-width:90px}
+.nr-heat td.nr-heat-cell{text-align:center}
+.nr-heat-cell{font-family:var(--font-mono);font-size:13px;min-width:90px}
 .nr-heat-cell.good{background:var(--ok-soft);color:var(--ok)}
 .nr-heat-cell.mid{background:var(--surface);color:var(--ink)}
 .nr-heat-cell.bad{background:var(--warn-soft);color:var(--warn)}
@@ -130,7 +131,7 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-link-back:focus-visible,.nr-btn-back:focus-visible,.nr-btn-secondary:focus-visible,.nr-btn:focus-visible,.nr-btn-primary:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 .nr-link-table{background:transparent;border:none;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
 .nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
-.nr-link-back,.nr-link-table{min-height:24px;padding:2px 0}
+.nr-link-back,.nr-btn-back,.nr-link-table{min-height:24px;padding:2px 0}
 
 /* P7 projector: discreet corner back link, visible on hover/focus only, outside the scaled canvas */
 .nr-live-corner-back{opacity:.6;transition:opacity .15s ease}
@@ -154,6 +155,11 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 
 /* Replay chart column: sticky only on wide viewports, never on mobile (A7) */
 @media (min-width:900px){.nr-sticky-wide{position:sticky;top:var(--space-4)}}
+
+/* Banner body copy, previously inlined per call site (S6) */
+.nr-banner-detail{font:13px var(--font-mono);color:var(--ink)}
+.nr-text-ink{color:var(--ink)}
+.nr-live-caption{font:500 24px var(--font-body);color:var(--muted)}
 
 /* Filters */
 .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}

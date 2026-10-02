@@ -31,12 +31,12 @@ describe("Button variants", () => {
 });
 
 describe("link hit targets (D6)", () => {
-  it("gives .nr-link-back and .nr-link-table a 24px min-height tap target", async () => {
+  it("gives .nr-link-back, .nr-btn-back and .nr-link-table a 24px min-height tap target (S8)", async () => {
     const { readFileSync } = await import("node:fs");
     const { dirname, resolve } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css"), "utf8");
-    expect(css).toContain(".nr-link-back,.nr-link-table{min-height:24px;padding:2px 0}");
+    expect(css).toContain(".nr-link-back,.nr-btn-back,.nr-link-table{min-height:24px;padding:2px 0}");
   });
 });
 
