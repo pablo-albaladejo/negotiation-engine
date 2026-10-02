@@ -1,47 +1,12 @@
-import {
-  Card,
-  ChatMessage,
-  DataTable,
-  type DataTableColumn,
-  type DataTableRow,
-  KpiStrip,
-  Legend,
-  OfferChart,
-  Pill,
-  formatNumber,
-} from "@negotiation-ring/design-system";
+import { Card, ChatMessage, KpiStrip, Legend, OfferChart, formatNumber } from "@negotiation-ring/design-system";
 import React, { useEffect, useState } from "react";
 import type { ArenaReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
-import { nameLatencySteps } from "../ui/decision.js";
 import { resultLabel, zopaKpi } from "../ui/labels.js";
 import { offerLabel, offerValue } from "../ui/offer.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
-import { SecondaryButton } from "../ui/buttons.js";
 import { ReplayHeader } from "../ui/replay-header.js";
-
-/** P3: una entrada por paso, con nombre único cuando una caja corrió más de una vez; los pasos de 0 ms quedan tras "show all". */
-function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: number }[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const steps = nameLatencySteps(boxes);
-  const hiddenCount = steps.filter((s) => s.latencyMs === 0).length;
-  const shown = showAll ? steps : steps.filter((s) => s.latencyMs > 0);
-  return (
-    <span>
-      {shown.map((s) => `${s.name} ${s.latencyMs} ms`).join(" · ")}
-      {hiddenCount > 0 ? (
-        <SecondaryButton style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
-          {showAll ? "hide 0 ms steps" : `show all (+${hiddenCount})`}
-        </SecondaryButton>
-      ) : null}
-    </span>
-  );
-}
-
-const DECISION_COLUMNS: DataTableColumn[] = [
-  { key: "k", label: "Turn step" },
-  { key: "v", label: "Engine log" },
-];
+import { DecisionPanel } from "../ui/DecisionPanel.js";
 
 const pct = (v: number | null): string => (v === null ? "not logged" : `${formatNumber(v * 100, { locale: "en", decimals: 1 })}%`);
 const dec = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 2 }));
@@ -97,34 +62,6 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
   const result = resultLabel(model.game.endReason);
   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
-  const decisionRows: DataTableRow[] = panel
-    ? [
-        { k: "Rule", v: panel.decision?.rule ?? "not logged" },
-        { k: "Target (Boulware curve)", v: panel.explain ? formatNumber(panel.explain.target, { locale: "en", decimals: 3 }) : "not logged" },
-        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "n/a" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
-        {
-          k: "AC_next",
-          v: panel.explain ? <Pill kind={panel.explain.acNext ? "verdict" : "rejected"}>{panel.explain.acNext ? "accept" : "no accept"}</Pill> : "not logged",
-        },
-        { k: "AC_time", v: panel.explain ? panel.explain.acTime : "not logged" },
-        { k: "Quarantined parser", v: panel.parser ? `${panel.parser.intent}${panel.parser.injectionSuspected ? " · injection" : ""}` : "not logged" },
-        {
-          k: "Validator",
-          v: panel.validator
-            ? `${panel.validator.ok ? "ok" : `rejected · ${Array.isArray(panel.validator.reasons) && panel.validator.reasons.length > 0 ? panel.validator.reasons.join(", ") : "no reason logged"}`} (${panel.boxes.filter((b) => b.box === "validator").length} attempt(s))`
-            : "not logged",
-        },
-        {
-          k: "Latencies",
-          v:
-            panel.boxes.length > 0 ? (
-              <LatencyList boxes={panel.boxes} />
-            ) : (
-              "not logged"
-            ),
-        },
-      ]
-    : [];
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -200,30 +137,14 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
           </div>
         </Card>
       </div>
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
-            <h3 className="nr-heading">Engine decision this round</h3>
-            <span className="nr-cfg">
-              R{selectedRound} / {model.game.rounds}
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <SecondaryButton onClick={() => setSelectedRound((r) => Math.max(1, r - 1))}>← Previous round</SecondaryButton>
-            <SecondaryButton onClick={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}>Next round →</SecondaryButton>
-          </div>
-        </div>
-        {model.hasTrace ? (
-          <>
-            <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
-            <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
-              Click a point on the chart to switch rounds. Values exactly as logged by the engine.
-            </p>
-          </>
-        ) : (
-          <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
-        )}
-      </Card>
+      <DecisionPanel
+        hasTrace={model.hasTrace}
+        panel={panel}
+        selectedRound={selectedRound}
+        totalRounds={model.game.rounds}
+        onPrev={() => setSelectedRound((r) => Math.max(1, r - 1))}
+        onNext={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}
+      />
     </section>
   );
 }
