@@ -69,7 +69,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <ReplayHeader
         onBack={onBack}
-        backLabel="← Matches"
+        backLabel={`← Matches in ${runId}`}
         gameId={model.game.gameId}
         rival={model.game.rival}
         {...(games ? { games } : {})}

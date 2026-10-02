@@ -1,4 +1,4 @@
-import { Card, DataTable, type DataTableColumn, type DataTableRow, Pill, formatNumber } from "@negotiation-ring/design-system";
+import { Card, DataTable, type DataTableColumn, type DataTableRow, Flag, formatNumber } from "@negotiation-ring/design-system";
 import { useState } from "react";
 import type { RoundPanel } from "../model/index.js";
 import { nameLatencySteps } from "./decision.js";
@@ -25,7 +25,53 @@ function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: numb
 const DECISION_COLUMNS: DataTableColumn[] = [
   { key: "k", label: "Turn step" },
   { key: "v", label: "Engine log" },
+  { key: "st", label: "Status" },
 ];
+
+const dec1 = (v: number | null): string => (v === null ? "not logged" : formatNumber(v, { locale: "en", decimals: 1 }));
+
+/** A7: one row per `decRows` entry in the design (d:609-617) -- no separate "Rule" row (its value
+ * moved to the chat `rule: …` flag, A6). */
+function decisionRows(panel: RoundPanel): DataTableRow[] {
+  const explain = panel.explain;
+  const attemptsCount = panel.boxes.filter((b) => b.box === "validator").length;
+  const attemptsLabel = `${attemptsCount} attempt${attemptsCount === 1 ? "" : "s"}`;
+  return [
+    {
+      k: "Target (Boulware curve)",
+      v: explain ? `${dec1(explain.target)}${panel.decision?.rule === "opening" ? " (opening)" : ""}` : "not logged",
+      st: <Flag kind="neutral">engine</Flag>,
+    },
+    { k: "Step vs previous round", v: explain ? dec1(explain.step) : "not logged", st: "" },
+    {
+      k: "AC_next",
+      v: "not logged",
+      st: explain ? <Flag kind={explain.acNext ? "decision" : "neutral"}>{explain.acNext ? "accept" : "no accept"}</Flag> : "not logged",
+    },
+    {
+      k: "AC_time",
+      v: explain ? `t = ${dec1(explain.t)}` : "not logged",
+      st: explain ? <Flag kind={explain.acTime === "applies" ? "decision" : "neutral"}>{explain.acTime}</Flag> : "not logged",
+    },
+    {
+      k: "Quarantined parser",
+      v: panel.parser ? panel.parser.intent : "not logged",
+      st: panel.parser ? <Flag kind={panel.parser.injectionSuspected ? "injection" : "neutral"}>{panel.parser.injectionSuspected ? "injection" : "clean"}</Flag> : "not logged",
+    },
+    {
+      k: "Validator",
+      v: panel.validator
+        ? `${panel.validator.ok ? "ok" : `rejected · ${Array.isArray(panel.validator.reasons) && panel.validator.reasons.length > 0 ? panel.validator.reasons.join(", ") : "no reason logged"}`} · ${attemptsLabel}`
+        : "not logged",
+      st: panel.validator ? <Flag kind={panel.template ? "fallback" : "decision"}>{panel.template ? "template" : "ok"}</Flag> : "not logged",
+    },
+    {
+      k: "Latencies",
+      v: panel.boxes.length > 0 ? <LatencyList boxes={panel.boxes} /> : "not logged",
+      st: "",
+    },
+  ];
+}
 
 export interface DecisionPanelProps {
   hasTrace: boolean;
@@ -45,37 +91,15 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
   const prevRound = [...rounds].reverse().find((r) => r < selectedRound) ?? null;
   const nextRound = rounds.find((r) => r > selectedRound) ?? null;
   const lastRound = rounds.length > 0 ? rounds[rounds.length - 1]! : selectedRound;
-  const decisionRows: DataTableRow[] = panel
-    ? [
-        { k: "Rule", v: panel.decision?.rule ?? "not logged" },
-        { k: "Target (Boulware curve)", v: panel.explain ? formatNumber(panel.explain.target, { locale: "en", decimals: 3 }) : "not logged" },
-        { k: "Step vs previous round", v: panel.explain ? (panel.explain.step === null ? "not logged" : formatNumber(panel.explain.step, { locale: "en", decimals: 3 })) : "not logged" },
-        {
-          k: "AC_next",
-          v: panel.explain ? <Pill kind={panel.explain.acNext ? "verdict" : "rejected"}>{panel.explain.acNext ? "accept" : "no accept"}</Pill> : "not logged",
-        },
-        { k: "AC_time", v: panel.explain ? panel.explain.acTime : "not logged" },
-        { k: "Quarantined parser", v: panel.parser ? `${panel.parser.intent}${panel.parser.injectionSuspected ? " · injection" : ""}` : "not logged" },
-        {
-          k: "Validator",
-          v: panel.validator
-            ? `${panel.validator.ok ? "ok" : `rejected · ${Array.isArray(panel.validator.reasons) && panel.validator.reasons.length > 0 ? panel.validator.reasons.join(", ") : "no reason logged"}`} (${panel.boxes.filter((b) => b.box === "validator").length} attempt(s))`
-            : "not logged",
-        },
-        {
-          k: "Latencies",
-          v: panel.boxes.length > 0 ? <LatencyList boxes={panel.boxes} /> : "not logged",
-        },
-      ]
-    : [];
+  const rows: DataTableRow[] = panel ? decisionRows(panel) : [];
 
   return (
     <Card>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-2)" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
           <h3 className="nr-heading">Engine decision this round</h3>
-          <span className="nr-cfg" role="status" aria-live="polite">
-            Round {selectedRound} of {lastRound}
+          <span className="nr-cfg" role="status" aria-live="polite" aria-label={`Round ${selectedRound} of ${lastRound}`}>
+            R{selectedRound} / {lastRound}
           </span>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
@@ -90,9 +114,9 @@ export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelect
       {hasTrace ? (
         panel ? (
           <>
-            <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
+            <DataTable columns={DECISION_COLUMNS} rows={rows} />
             <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
-              Select a point on the chart, or use Previous / Next round, to switch rounds. Values exactly as logged by the engine.
+              Click a point on the chart to switch rounds. Values exactly as logged by the engine.
             </p>
           </>
         ) : (

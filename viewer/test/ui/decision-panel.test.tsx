@@ -25,7 +25,8 @@ const panel = (round: number): RoundPanel => ({
 describe("DecisionPanel (L4/L5/L25/L26)", () => {
   it("round label uses the actual round numbers, not a count (may start above 1 / skip)", () => {
     render(<DecisionPanel hasTrace panel={panel(7)} rounds={[3, 5, 7]} selectedRound={7} onSelectRound={() => {}} />);
-    expect(screen.getByText("Round 7 of 7")).toBeTruthy();
+    expect(screen.getByText("R7 / 7")).toBeTruthy();
+    expect(screen.getByText("R7 / 7").getAttribute("aria-label")).toBe("Round 7 of 7");
   });
 
   it("Previous is disabled on the first round, Next on the last; onSelectRound gets the neighbouring round number", () => {
@@ -55,9 +56,9 @@ describe("DecisionPanel (L4/L5/L25/L26)", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("copy: 'Select a point on the chart, or use Previous / Next round, to switch rounds.'", () => {
+  it("copy: 'Click a point on the chart to switch rounds.'", () => {
     render(<DecisionPanel hasTrace panel={panel(1)} rounds={[1]} selectedRound={1} onSelectRound={() => {}} />);
-    expect(screen.getByText(/Select a point on the chart, or use Previous \/ Next round, to switch rounds\./)).toBeTruthy();
+    expect(screen.getByText(/Click a point on the chart to switch rounds\./)).toBeTruthy();
   });
 
   it("C6: a selectedRound not present in rounds still enables Previous/Next towards the nearest logged round", () => {
