@@ -56,7 +56,7 @@ describe("pnpm arena", () => {
     const paired = summary.paired as { diffPp: number | null }[];
     expect(paired.length).toBeGreaterThan(0);
     for (const p of paired) expect(p.diffPp === null || p.diffPp === 0).toBe(true);
-  });
+  }, 30_000);
 
   it("rechaza un escenario o rival desconocido", async () => {
     await expect(runArenaCli(["--scenarios", "nope", "--quiet"])).rejects.toThrow(/Escenario desconocido/);

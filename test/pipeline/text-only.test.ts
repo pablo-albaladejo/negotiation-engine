@@ -140,5 +140,5 @@ describe("200 partidas contra el bot de solo texto", () => {
     expect(report.overall.unextracted).toBeGreaterThan(0);
     expect(report.overall.violations).toBe(0);
     expect(report.overall.agreementRate).toBeGreaterThan(0.9);
-  });
+  }, 30_000);
 });

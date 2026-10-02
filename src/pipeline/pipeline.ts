@@ -517,9 +517,9 @@ export function createPipeline(deps: PipelineDeps): Brain {
       llmOnlyBlocked = true;
       record("llm-only-accept-blocked", null, decision, "ok", now());
     }
-    // Oferta no firme recién llegada: no concedemos ni nos retiramos ante una cifra que el rival no
-    // ha fijado; repetimos nuestra última oferta y pedimos confirmar, sea cual sea su cifra.
-    if (binding.kind === "offer" && session.rivalCurrentLlmOnly && decision.action !== "accept" && !llmOnlyBlocked) {
+    // Oferta no firme recién llegada: no nos retiramos ante una cifra que el rival no ha fijado;
+    // repetimos nuestra última oferta y pedimos confirmarla, sea cual sea su cifra.
+    if (binding.kind === "offer" && session.rivalCurrentLlmOnly && decision.action === "walk") {
       decision = emergencyDecision(session);
       record("non-firm-hold", null, decision, "ok", now());
     }
