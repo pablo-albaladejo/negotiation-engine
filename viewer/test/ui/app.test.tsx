@@ -28,6 +28,25 @@ function mockFetch(summary: Summary, games: TranscriptLine[]) {
   );
 }
 
+describe("App theme toggle (B1)", () => {
+  beforeEach(() => {
+    mockFetch(fx.summary, fx.games);
+    window.localStorage.clear();
+  });
+
+  it("toggles data-theme on the root and persists the choice", async () => {
+    window.location.hash = "#/runs";
+    const { container } = render(<App />);
+    const root = container.querySelector(".nr-root")!;
+    const button = screen.getByText(/mode$/i);
+    const before = root.getAttribute("data-theme");
+    fireEvent.click(button);
+    const after = root.getAttribute("data-theme");
+    expect(after).not.toBe(before);
+    expect(window.localStorage.getItem("nr-theme")).toBe(after);
+  });
+});
+
 describe("App routing (C2, C3)", () => {
   beforeEach(() => {
     mockFetch(fx.summary, fx.games);

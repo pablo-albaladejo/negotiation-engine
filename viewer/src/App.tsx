@@ -1,5 +1,7 @@
 import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useRef, useState } from "react";
+import { SecondaryButton } from "./ui/buttons.js";
+import { initialTheme, storeTheme, type Theme } from "./theme.js";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
 import { fetchApi, type ApiError } from "./api.js";
@@ -192,14 +194,23 @@ function LiveContainer() {
 
 export function App() {
   const route = useHashRoute();
+  const [theme, setTheme] = useState<Theme>(initialTheme);
   if (route.screen === "live") return <LiveContainer />;
   const activeTab = route.screen === "states" ? "states" : "runs";
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    storeTheme(next);
+  };
   return (
-    <Root theme="light">
+    <Root theme={theme}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-        <header>
-          <h1 className="nr-title">Arena viewer</h1>
-          <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            <h1 className="nr-title">Arena viewer</h1>
+            <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
+          </div>
+          <SecondaryButton onClick={toggleTheme}>{theme === "dark" ? "Light mode" : "Dark mode"}</SecondaryButton>
         </header>
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
