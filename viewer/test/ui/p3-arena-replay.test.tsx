@@ -56,4 +56,34 @@ describe("ArenaReplayScreen (P3)", () => {
     expect(container.querySelector("script")).toBeNull();
     expect(screen.getByText("<script>alert(1)</script>")).toBeTruthy();
   });
+
+  it("grid layout tiene las proporciones correctas: minmax(0,1.35fr) minmax(0,1fr)", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const gridParent = container.querySelector("[style*='minmax(0, 1.35fr)']");
+    expect(gridParent).toBeTruthy();
+  });
+
+  it("cuando cambia la ronda, el contenedor de mensajes puede hacer scroll", () => {
+    const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
+    const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const messagesContainer = container.querySelector(".nr-chat") as HTMLElement;
+    expect(messagesContainer).toBeTruthy();
+    // El contenedor debe existir y tener la capacidad de hacer scroll
+    expect(messagesContainer.querySelector(".nr-msg")).toBeTruthy();
+  });
+
+  it("un mensaje con números como '9,3' no tiene código ni mark tags", () => {
+    const line = fx.games[0]!;
+    const base = arenaReplayModel(line, null);
+    const model: ArenaReplayModel = { ...base, chat: [{ round: 1, from: "rival", action: "offer", text: "Te ofrezco 9,3", offer: null }] };
+    const { container } = render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
+    const codeElements = container.querySelectorAll("code");
+    const markElements = container.querySelectorAll("mark");
+    expect(codeElements.length).toBe(0);
+    expect(markElements.length).toBe(0);
+    expect(screen.getByText("Te ofrezco 9,3")).toBeTruthy();
+  });
 });

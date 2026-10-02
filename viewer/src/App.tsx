@@ -1,4 +1,4 @@
-import { Root, Tabs } from "@negotiation-ring/design-system";
+import { ModeBadge, Root, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useState } from "react";
 import type { GateFile, Summary, TranscriptLine } from "../../src/arena/results-schema.js";
 import type { TraceLine } from "../../src/pipeline/trace.js";
@@ -165,18 +165,20 @@ export function App() {
   const activeTab = route.screen === "states" ? "states" : "runs";
   return (
     <Root theme="light">
-      <header>
-        <h1 className="nr-title">Arena Viewer</h1>
-        <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
-      </header>
-      <main>
-        {route.screen === "runs" ? <RunsContainer /> : null}
-        {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
-        {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
-        {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
-        {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
-        {route.screen === "states" ? <StatesScreen /> : null}
-      </main>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px var(--gutter)", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
+        <header>
+          <h1 className="nr-title">Arena viewer</h1>
+          <Tabs items={TABS} selectedId={activeTab} onSelect={(id) => navigate(id === "states" ? routeTo.states() : id === "live" ? routeTo.live() : routeTo.runs())} />
+        </header>
+        <main>
+          {route.screen === "runs" ? <RunsContainer /> : null}
+          {route.screen === "matches" ? <MatchesContainer runId={route.runId} /> : null}
+          {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} /> : null}
+          {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
+          {route.screen === "promote" ? <GateContainer runId={route.runId} /> : null}
+          {route.screen === "states" ? <StatesScreen /> : null}
+        </main>
+      </div>
     </Root>
   );
 }

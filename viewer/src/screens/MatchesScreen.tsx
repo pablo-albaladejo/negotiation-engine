@@ -78,7 +78,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
       <KpiStrip
         items={[
           { label: "Matches", value: formatNumber(model.kpis.games, { locale: "en" }) },
-          { label: "Agreement", value: pct(model.kpis.agreementRate) },
+          { label: "Deal", value: pct(model.kpis.agreementRate), tone: model.kpis.agreementRate ? "deal" : "walk" },
           { label: "Avg. surplus", value: pct(model.kpis.meanSurplus) },
           { label: "Violations", value: formatNumber(model.kpis.violations, { locale: "en" }), tone: model.kpis.violations > 0 ? "walk" : "deal" },
           { label: "Leaks", value: formatNumber(model.kpis.leaks, { locale: "en" }), tone: model.kpis.leaks > 0 ? "walk" : "deal" },

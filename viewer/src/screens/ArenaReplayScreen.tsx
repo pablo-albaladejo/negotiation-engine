@@ -10,7 +10,7 @@ import {
   Pill,
   formatNumber,
 } from "@negotiation-ring/design-system";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ArenaReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { nameLatencySteps } from "../ui/decision.js";
@@ -53,6 +53,24 @@ export interface ArenaReplayScreenProps {
 export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenProps) {
   const lastRound = model.game.rounds || 1;
   const [selectedRound, setSelectedRound] = useState(lastRound);
+  const messagesContainerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!messagesContainerRef.current) return;
+    const container = messagesContainerRef.current;
+    const messageElements = container.querySelectorAll(".nr-msg");
+    let targetElement: HTMLElement | null = null;
+    for (const elem of messageElements) {
+      const roundText = elem.querySelector(".nr-msg-meta")?.textContent;
+      if (roundText?.includes(`R${selectedRound}`)) {
+        targetElement = elem as HTMLElement;
+        break;
+      }
+    }
+    if (targetElement) {
+      container.scrollTop = targetElement.offsetTop - container.offsetTop;
+    }
+  }, [selectedRound]);
 
   const ourOffers = toOfferPoints(model.offers.ours);
   const theirOffers = toOfferPoints(model.offers.rival);
@@ -141,8 +159,8 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
         <EmptyZopaBanner ours={offerLabel(model.reserves.ours)} rival={offerLabel(model.reserves.rival)} walked={model.game.endReason === "agent-walk"} />
       ) : null}
       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(320px, 1fr)", gap: "var(--space-4)", alignItems: "start" }}>
-        <Card title="Offers by round">
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)", gap: "var(--space-4)", alignItems: "start" }}>
+        <Card title="Offers by round" style={{ position: "sticky", top: "var(--space-4)" }}>
           <OfferChart
             rounds={model.game.roundLimit ?? model.game.rounds}
             yDomain={yDomain}
@@ -169,8 +187,8 @@ export function ArenaReplayScreen({ runId, model, onBack }: ArenaReplayScreenPro
             ]}
           />
         </Card>
-        <Card title="Messages">
-          <div className="nr-chat">
+        <Card title="Messages" style={{ maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div ref={messagesContainerRef} className="nr-chat" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
             {model.chat.map((c, i) => (
               <ChatMessage
                 key={i}
