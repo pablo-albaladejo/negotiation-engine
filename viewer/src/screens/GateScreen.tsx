@@ -11,6 +11,7 @@ import {
 } from "@negotiation-ring/design-system";
 import { useState } from "react";
 import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
+import { BackLink, SecondaryButton } from "../ui/buttons.js";
 
 const METRIC_COLUMNS = (model: GateModel): DataTableColumn[] => [
   { key: "k", label: "Metric" },
@@ -66,16 +67,14 @@ function CopyCommand({ command }: { command: string }) {
       <code className="nr-cfg" style={{ flex: 1, minWidth: 0, overflowX: "auto", whiteSpace: "nowrap" }}>
         {command}
       </code>
-      <button
-        className="nr-btn"
-        type="button"
+      <SecondaryButton
         onClick={() => {
           void navigator.clipboard?.writeText(command).catch(() => {});
           setCopied(true);
         }}
       >
         {copied ? "Copied" : "Copy"}
-      </button>
+      </SecondaryButton>
     </div>
   );
 }
@@ -99,9 +98,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-        ← Runs
-      </button>
+      <BackLink onClick={onBack}>← Runs</BackLink>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
           <h2 className="nr-heading">

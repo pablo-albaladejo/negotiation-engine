@@ -2,6 +2,7 @@ import { Card, DataTable, type DataTableColumn, type DataTableRow, formatNumber 
 import type { ApiError } from "../api.js";
 import type { RunRow } from "../model/index.js";
 import { EmptyStateCard, InvalidLogBanner } from "../ui/states.js";
+import { TableLink } from "../ui/buttons.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Run" },
@@ -38,9 +39,7 @@ export function RunsScreen({ rows, errors, onOpenRun }: RunsScreenProps) {
     vio: num(r.violations),
     fug: num(r.leaks),
     act: (
-      <button className="nr-btn" type="button" onClick={() => onOpenRun(r.runId)}>
-        Open
-      </button>
+      <TableLink onClick={() => onOpenRun(r.runId)}>Open</TableLink>
     ),
   }));
 

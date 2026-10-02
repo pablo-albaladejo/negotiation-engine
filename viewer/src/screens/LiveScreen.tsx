@@ -2,6 +2,7 @@ import { ChatMessage, type ChatMessageFlag, ModeBadge, OfferChart, Root, Scorebo
 import { useEffect, useState } from "react";
 import type { LiveModel, LiveOutcome } from "../model/index.js";
 import { offerLabel } from "../ui/offer.js";
+import { SecondaryButton } from "../ui/buttons.js";
 
 export const PROJECTOR = { width: 1920, height: 1080 } as const;
 /** Nombre de nuestro equipo en el marcador (design.md, Open Questions). */
@@ -85,9 +86,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
               <Scoreboard badge={model.badge} us={US} rival={rival} round={model.status === "waiting" ? null : model.round} rounds={rounds} attacksBlocked={model.status === "waiting" ? null : model.attacksBlocked} />
               <ModeBadge mode="tournament" />
             </div>
-            <button style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", font: "500 14px var(--font-body)" }} onClick={() => setProjectorMode(!projectorMode)}>
-              {projectorMode ? "exit" : "projector mode"}
-            </button>
+            <SecondaryButton onClick={() => setProjectorMode(!projectorMode)}>{projectorMode ? "Exit projector mode" : "Projector mode"}</SecondaryButton>
           </div>
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>

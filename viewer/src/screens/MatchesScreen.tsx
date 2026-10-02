@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { EmptyStateCard } from "../ui/states.js";
+import { BackLink, TableLink } from "../ui/buttons.js";
 
 const COLUMNS: DataTableColumn[] = [
   { key: "id", label: "Match" },
@@ -48,9 +49,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
   if (model.empty) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-          ← Runs
-        </button>
+        <BackLink onClick={onBack}>← Runs</BackLink>
         <EmptyStateCard title={`${runId} has no matches`} body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
       </section>
     );
@@ -70,9 +69,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
-          ← Runs
-        </button>
+        <BackLink onClick={onBack}>← Runs</BackLink>
         <h2 className="nr-heading">{runId}</h2>
       </div>
       <KpiStrip
@@ -109,7 +106,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack }: Mat
         </div>
         <DataTable
           columns={COLUMNS}
-          rows={rows.map((r, i) => ({ ...r, id: <button className="nr-btn" type="button" onClick={() => onOpenGame(model.rows[i]!.gameId)}>{r.id as string}</button> }))}
+          rows={rows.map((r, i) => ({ ...r, id: <TableLink onClick={() => onOpenGame(model.rows[i]!.gameId)}>{r.id as string}</TableLink> }))}
         />
       </Card>
     </section>

@@ -19,6 +19,7 @@ import { resultKpi, zopaKpi } from "../ui/labels.js";
 import { offerLabel, offerValue } from "../ui/offer.js";
 import { MatchSelector } from "../ui/match-selector.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
+import { SecondaryButton } from "../ui/buttons.js";
 
 /** P3: una entrada por paso, con nombre único cuando una caja corrió más de una vez; los pasos de 0 ms quedan tras "show all". */
 function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: number }[] }) {
@@ -30,9 +31,9 @@ function LatencyList({ boxes }: { boxes: readonly { box: string; latencyMs: numb
     <span>
       {shown.map((s) => `${s.name} ${s.latencyMs} ms`).join(" · ")}
       {hiddenCount > 0 ? (
-        <button className="nr-btn" type="button" style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
+        <SecondaryButton style={{ marginLeft: "var(--space-2)" }} onClick={() => setShowAll((v) => !v)}>
           {showAll ? "hide 0 ms steps" : `show all (+${hiddenCount})`}
-        </button>
+        </SecondaryButton>
       ) : null}
     </span>
   );
@@ -219,12 +220,8 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
             R{selectedRound} / {model.game.rounds}
           </span>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <button className="nr-btn" type="button" onClick={() => setSelectedRound((r) => Math.max(1, r - 1))}>
-              ← Previous round
-            </button>
-            <button className="nr-btn" type="button" onClick={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}>
-              Next round →
-            </button>
+            <SecondaryButton onClick={() => setSelectedRound((r) => Math.max(1, r - 1))}>← Previous round</SecondaryButton>
+            <SecondaryButton onClick={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}>Next round →</SecondaryButton>
           </div>
         </div>
         {model.hasTrace ? (
