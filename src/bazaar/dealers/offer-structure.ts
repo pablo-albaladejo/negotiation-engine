@@ -1,5 +1,5 @@
 import type { Side } from "./negotiator.js";
-import { StandingOfferSchema, type StandingOffer, type Thread } from "./schemas.js";
+import { StandingOfferSchema, type StandingOffer, type Thread } from "../shared/schemas.js";
 import { isDealer, type DealerRef } from "./view.js";
 
 /**

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ABUELA_SCENARIOS, runEpisode, runGrid, stats, summarize, formatTable, type EpisodeResult } from "../../src/bazaar/sim/harness.js";
 import { loadDealerProfile } from "../../src/bazaar/sim/model.js";
 import { naivePolicy, oursPolicy } from "../../src/bazaar/sim/policies.js";
-import { runSimCli } from "../../src/bazaar/sim/sim-main.js";
+import { runSimCli } from "../../src/bazaar/sim/main.js";
 
 const profile = loadDealerProfile();
 const pack = ABUELA_SCENARIOS.find((s) => s.name === "buy-pack")!;

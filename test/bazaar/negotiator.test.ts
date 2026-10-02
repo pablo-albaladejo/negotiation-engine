@@ -1,10 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { closeText, counterText, numbersIn, textMatchesPrice } from "../../src/bazaar/messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, holdsAllowed, LEGACY_NEGOTIATOR_PARAMS, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
-import { buyTargets, missingPageCards, spareTargets } from "../../src/bazaar/planner.js";
-import { ThreadSchema } from "../../src/bazaar/schemas.js";
-import { threadPrices } from "../../src/bazaar/view.js";
+import { closeText, counterText, numbersIn, textMatchesPrice } from "../../src/bazaar/dealers/messages.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, holdsAllowed, LEGACY_NEGOTIATOR_PARAMS, type Side, type ThreadView } from "../../src/bazaar/dealers/negotiator.js";
+import { buyTargets, missingPageCards, spareTargets } from "../../src/bazaar/dealers/planner.js";
+import { ThreadSchema } from "../../src/bazaar/shared/schemas.js";
+import { threadPrices } from "../../src/bazaar/dealers/view.js";
 
 function view(partial: Partial<ThreadView> & Pick<ThreadView, "side" | "reservation">): ThreadView {
   return { herPrices: [], ourPrices: [], canMessage: true, canAccept: true, ...partial };

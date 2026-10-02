@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BazaarError } from "../../src/bazaar/client.js";
-import { DealerInfoSchema, DealersSchema, type Clock } from "../../src/bazaar/schemas.js";
-import { runSerious, type SeriousApi, type SeriousOptions } from "../../src/bazaar/serious-run.js";
-import type { TraceRecord } from "../../src/bazaar/trace.js";
+import { BazaarError } from "../../src/bazaar/shared/client.js";
+import { DealerInfoSchema, DealersSchema, type Clock } from "../../src/bazaar/shared/schemas.js";
+import { runSerious, type SeriousApi, type SeriousOptions } from "../../src/bazaar/dealers/serious-run.js";
+import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
 
 const NOW = 1_700_000_000_000;
 const ABUELA = { id: "abuela", name: "Abuela Carmen", open_to_all: true, traits: { patience: 0.85, strictness: 0.1 }, menu: { sells: [{ rarity: "common", sets: "released", list_price: 10 }], buys: [{ rarity: "common", sets: "released" }], deals_per_team_per_hour: 8 } };

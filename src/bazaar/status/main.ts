@@ -1,7 +1,7 @@
-import { BazaarClient } from "./client.js";
-import { loadBazaarEnv } from "./env.js";
-import { rarityOf, spareTargets } from "./planner.js";
-import { extractScoreFields, formatScoreBreakdown } from "./score.js";
+import { BazaarClient } from "../shared/client.js";
+import { loadBazaarEnv } from "../shared/env.js";
+import { rarityOf, spareTargets } from "../dealers/planner.js";
+import { extractScoreFields, formatScoreBreakdown } from "../shared/score.js";
 
 /** `pnpm bazaar:status`: resumen de solo lectura (equipo, reloj, dealers, niveles, hilos). Nunca imprime la clave. */
 async function main() {

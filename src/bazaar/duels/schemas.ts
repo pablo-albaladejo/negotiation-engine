@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { BazaarClient } from "./client.js";
-import { ClockSchema, type Clock } from "./schemas.js";
+import type { BazaarClient } from "../shared/client.js";
+import { ClockSchema, type Clock } from "../shared/schemas.js";
 
 /**
  * Esquemas de los duelos (`/api/duels`) y de `/api/schedule`. Tolerantes como `schemas.ts`: el

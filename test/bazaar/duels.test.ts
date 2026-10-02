@@ -15,8 +15,8 @@ import {
   textMatchesOffer,
   withinLimit,
   type DuelState,
-} from "../../src/bazaar/duels.js";
-import { duelMessageBody, normalizeRivalOffer, ourOfferFrom, rivalOfferFrom, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
+} from "../../src/bazaar/duels/duels.js";
+import { duelMessageBody, normalizeRivalOffer, ourOfferFrom, rivalOfferFrom, type StructuredOffer } from "../../src/bazaar/duels/schemas.js";
 
 const flat = Array.from({ length: 11 }, () => 0);
 

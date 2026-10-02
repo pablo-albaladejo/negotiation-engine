@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BazaarError } from "../../src/bazaar/client.js";
-import { DEFAULT_TRADE_PARAMS } from "../../src/bazaar/trades.js";
-import { TradesAgent, type TradesApi } from "../../src/bazaar/trades-agent.js";
-import { runTradesCli } from "../../src/bazaar/trades-main.js";
+import { BazaarError } from "../../src/bazaar/shared/client.js";
+import { DEFAULT_TRADE_PARAMS } from "../../src/bazaar/trades/trades.js";
+import { TradesAgent, type TradesApi } from "../../src/bazaar/trades/agent.js";
+import { runTradesCli } from "../../src/bazaar/trades/main.js";
 
 const RARITY: [string, number][] = [
   ["common", 10], ["common", 10], ["common", 10], ["common", 10], ["common", 10],

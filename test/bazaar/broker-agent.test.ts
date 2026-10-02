@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BrokerAgent, type BrokerApi, type BrokerRecord } from "../../src/bazaar/broker-agent.js";
-import { runBrokerCli } from "../../src/bazaar/broker-main.js";
-import { BazaarError } from "../../src/bazaar/client.js";
+import { BrokerAgent, type BrokerApi, type BrokerRecord } from "../../src/bazaar/broker/agent.js";
+import { runBrokerCli } from "../../src/bazaar/broker/main.js";
+import { BazaarError } from "../../src/bazaar/shared/client.js";
 
 const ask = (id: string, cash: number) => ({ id, give: { assets: [{ kind: "card", ref: "X" }] }, want: { cash } });
 const bid = (id: string, cash: number) => ({ id, give: { cash }, want: { types: ["card:X"] } });

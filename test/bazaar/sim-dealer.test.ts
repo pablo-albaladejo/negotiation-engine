@@ -1,11 +1,11 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { BazaarAgent } from "../../src/bazaar/agent.js";
-import type { Topic } from "../../src/bazaar/client.js";
-import { negotiatorForDealer, traitsOf } from "../../src/bazaar/dealer-profile.js";
-import { numbersIn } from "../../src/bazaar/messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS } from "../../src/bazaar/negotiator.js";
-import type { TraceRecord } from "../../src/bazaar/trace.js";
+import { BazaarAgent } from "../../src/bazaar/dealers/agent.js";
+import type { Topic } from "../../src/bazaar/shared/client.js";
+import { negotiatorForDealer, traitsOf } from "../../src/bazaar/dealers/dealer-profile.js";
+import { numbersIn } from "../../src/bazaar/dealers/messages.js";
+import { DEFAULT_NEGOTIATOR_PARAMS } from "../../src/bazaar/dealers/negotiator.js";
+import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
 import { SimApi } from "../../src/bazaar/sim/api.js";
 import { DealerSim, type DealerSimOptions } from "../../src/bazaar/sim/dealer.js";
 import { runEpisode } from "../../src/bazaar/sim/harness.js";

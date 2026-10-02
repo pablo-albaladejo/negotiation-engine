@@ -2,10 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { BazaarError } from "../../src/bazaar/client.js";
-import { textMatchesOffer } from "../../src/bazaar/duels.js";
-import { DuelsAgent, formatDuelEntry, formatNextDuels, loadDuelsMemory, ticksLeft } from "../../src/bazaar/duels-agent.js";
-import { DuelSchema, DuelsSchema, rivalOfferFrom, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels-schemas.js";
+import { BazaarError } from "../../src/bazaar/shared/client.js";
+import { textMatchesOffer } from "../../src/bazaar/duels/duels.js";
+import { DuelsAgent, formatDuelEntry, formatNextDuels, loadDuelsMemory, ticksLeft } from "../../src/bazaar/duels/agent.js";
+import { DuelSchema, DuelsSchema, rivalOfferFrom, ScheduleSchema, type Duel, type DuelsApi, type StructuredOffer } from "../../src/bazaar/duels/schemas.js";
 
 interface FakeDuel {
   id: number | string;

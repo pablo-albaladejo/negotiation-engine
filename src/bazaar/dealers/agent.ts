@@ -1,17 +1,17 @@
-import { BazaarError, type BazaarClient } from "./client.js";
+import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiator.js";
 import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planner.js";
-import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "./schemas.js";
+import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
 import { formatPatience, PatienceLog } from "./patience.js";
-import type { TraceRecord, TraceSink } from "./trace.js";
+import type { TraceRecord, TraceSink } from "../shared/trace.js";
 import { gameHours } from "./dealer-profile.js";
 import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./view.js";
 import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./offer-structure.js";
-import { busyAssets, sellBlocked } from "./asset-locks.js";
+import { busyAssets, sellBlocked } from "../shared/asset-locks.js";
 
 /**
  * Bucle observar → decidir → actuar contra un dealer, un hilo a la vez. Toda cifra sale de

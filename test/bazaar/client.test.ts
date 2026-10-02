@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BazaarClient, BazaarError, TokenBucket } from "../../src/bazaar/client.js";
-import { loadBazaarEnv } from "../../src/bazaar/env.js";
+import { BazaarClient, BazaarError, TokenBucket } from "../../src/bazaar/shared/client.js";
+import { loadBazaarEnv } from "../../src/bazaar/shared/env.js";
 
 const KEY = "tk-test-secret";
 

@@ -1,5 +1,5 @@
-import { enforceGuardrails, type Mandate } from "../engine/guardrails.js";
-import { concession } from "../engine/offer.js";
+import { enforceGuardrails, type Mandate } from "../../engine/guardrails.js";
+import { concession } from "../../engine/offer.js";
 
 /**
  * Negociador con un dealer (un hilo, una cifra): decide aceptar, contraofertar, esperar o cerrar.

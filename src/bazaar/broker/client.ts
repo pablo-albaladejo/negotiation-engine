@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { BazaarError, TokenBucket } from "./client.js";
-import { DEFAULT_BAZAAR_URL } from "./env.js";
-import { ClockSchema, ErrorBodySchema, type Clock } from "./schemas.js";
+import { BazaarError, TokenBucket } from "../shared/client.js";
+import { DEFAULT_BAZAAR_URL } from "../shared/env.js";
+import { ClockSchema, ErrorBodySchema, type Clock } from "../shared/schemas.js";
 
 export interface BrokerEnv {
   url: string;

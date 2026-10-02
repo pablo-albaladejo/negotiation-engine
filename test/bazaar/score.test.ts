@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { causesFromRecords, computeDelta, extractScoreFields, formatScoreSummary, ScoreTracker, type ScoreSnapshot } from "../../src/bazaar/score.js";
-import type { Me } from "../../src/bazaar/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/trace.js";
+import { causesFromRecords, computeDelta, extractScoreFields, formatScoreSummary, ScoreTracker, type ScoreSnapshot } from "../../src/bazaar/shared/score.js";
+import type { Me } from "../../src/bazaar/shared/schemas.js";
+import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
 
 const ME = (score: unknown): Me => ({ cash: 100, assets: [], score }) as Me;
 

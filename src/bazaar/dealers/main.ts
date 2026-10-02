@@ -1,11 +1,11 @@
 import { parseArgs } from "node:util";
 import { BazaarAgent } from "./agent.js";
-import { BazaarClient } from "./client.js";
-import { loadBazaarEnv } from "./env.js";
+import { BazaarClient } from "../shared/client.js";
+import { loadBazaarEnv } from "../shared/env.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, type StepMode } from "./negotiator.js";
 import { parseOnly } from "./plan.js";
-import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "./score.js";
-import { FileTrace, liveTraceDir } from "./trace.js";
+import { FileScoreTrace, formatScoreSummary, ScoreTracker } from "../shared/score.js";
+import { FileTrace, liveTraceDir } from "../shared/trace.js";
 import { cashFloorOf, SERIOUS_DEFAULTS } from "./serious.js";
 import { runSerious } from "./serious-run.js";
 import { join } from "node:path";

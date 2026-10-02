@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/agent.js";
-import { BazaarError, type Topic } from "../../src/bazaar/client.js";
-import { missingPageCards, raritySetTargets } from "../../src/bazaar/planner.js";
-import { CatalogSchema, MeSchema, ThreadSchema } from "../../src/bazaar/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/trace.js";
+import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
+import { BazaarError, type Topic } from "../../src/bazaar/shared/client.js";
+import { missingPageCards, raritySetTargets } from "../../src/bazaar/dealers/planner.js";
+import { CatalogSchema, MeSchema, ThreadSchema } from "../../src/bazaar/shared/schemas.js";
+import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
 
 const catalog = CatalogSchema.parse({
   sets: [

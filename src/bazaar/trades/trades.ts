@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Asset, Catalog } from "./schemas.js";
+import type { Asset, Catalog } from "../shared/schemas.js";
 
 /**
  * Trades con otros equipos en El Rastro: valoración a NUESTROS valores privados y decisiones puras y

@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { BrokerClient } from "./broker-client.js";
-import { BazaarError } from "./client.js";
+import type { BrokerClient } from "./client.js";
+import { BazaarError } from "../shared/client.js";
 import {
   ANNOUNCEMENT,
   DEFAULT_BENCH_PARAMS,

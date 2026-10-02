@@ -1,8 +1,8 @@
 import { chmodSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { BazaarClient } from "./client.js";
-import { loadBazaarEnv } from "./env.js";
+import { BazaarClient } from "../shared/client.js";
+import { loadBazaarEnv } from "../shared/env.js";
 import { formatVenuePlan, planVenue, type Mechanism } from "./venue.js";
 
 /**
@@ -61,7 +61,7 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
   return 0;
 }
 
-if (process.argv[1] && /venue-main\.[cm]?[jt]s$/.test(process.argv[1])) {
+if (process.argv[1] && /venue\/main\.[cm]?[jt]s$/.test(process.argv[1])) {
   runVenueCli(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (e: unknown) => {

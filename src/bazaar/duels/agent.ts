@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { BazaarError } from "./client.js";
+import { BazaarError } from "../shared/client.js";
 import { DEFAULT_DUEL_PARAMS, daysValueFrom, decideDuel, type DuelDecision, type DuelParams, type DuelState } from "./duels.js";
-import { ourOfferFrom, rivalOfferFrom, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./duels-schemas.js";
-import type { Clock } from "./schemas.js";
-import { liveTraceDir } from "./trace.js";
+import { ourOfferFrom, rivalOfferFrom, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./schemas.js";
+import type { Clock } from "../shared/schemas.js";
+import { liveTraceDir } from "../shared/trace.js";
 
 /**
  * Bucle de duelos: un paso por tick. Lee `/api/duels`, decide cada duelo con `decideDuel` y envía

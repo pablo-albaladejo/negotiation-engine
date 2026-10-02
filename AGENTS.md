@@ -10,14 +10,22 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 - **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto.
 - **Nunca se revela la valoración privada** ni el límite (`your_limit`).
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
-- **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/bazaar/asset-locks.ts`).
+- **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/bazaar/shared/asset-locks.ts`).
 - **Nada en vivo sin aprobación**: los POST reales exigen quitar `--dry-run` y, donde aplica, `--confirm`.
 
 ## Arquitectura
 
 ```
 src/
-├─ bazaar/   agente del Bazaar: dealers, duelos, El Rastro, broker, venue, simulador
+├─ bazaar/   agente del Bazaar, una carpeta por concepto:
+│  ├─ shared/   cliente de la API, esquemas, claves, trazas, la cifra
+│  ├─ dealers/  negociar con Abuela y El Chato     (pnpm bazaar)
+│  ├─ duels/    duelos 1 contra 1                  (pnpm bazaar:duels)
+│  ├─ trades/   El Rastro con otros equipos        (pnpm bazaar:trades)
+│  ├─ broker/   casar ofertas en nuestro venue     (pnpm bazaar:broker)
+│  ├─ venue/    abrir nuestro mercado              (pnpm bazaar:venue)
+│  ├─ status/   resumen de solo lectura            (pnpm bazaar:status)
+│  └─ sim/      Abuela simulada, offline           (pnpm bazaar:sim)
 └─ engine/   núcleo numérico: utilidad, concesión, aceptación, guardarraíles, RNG
 test/        tests unitarios y de propiedades (fast-check)
 scripts/     escaneo de la API y comprobación de docs

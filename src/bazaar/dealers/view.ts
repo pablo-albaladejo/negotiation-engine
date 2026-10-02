@@ -1,5 +1,5 @@
 import type { HerOffer, Side } from "./negotiator.js";
-import { StandingOfferSchema, type StandingOffer, type Thread } from "./schemas.js";
+import { StandingOfferSchema, type StandingOffer, type Thread } from "../shared/schemas.js";
 
 /** Lectura estructurada de un hilo con un dealer: solo campos de precio y oferta, nunca su texto. */
 

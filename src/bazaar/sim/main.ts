@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { DEFAULT_NEGOTIATOR_PARAMS, LEGACY_NEGOTIATOR_PARAMS, type NegotiatorParams } from "../negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, LEGACY_NEGOTIATOR_PARAMS, type NegotiatorParams } from "../dealers/negotiator.js";
 import { ABUELA_SCENARIOS, formatTable, runGrid, summarize } from "./harness.js";
 import { ABUELA_FIXTURE, deriveParams, loadDealerProfile, type SimParams } from "./model.js";
 import { naivePolicy, oursPolicy } from "./policies.js";
@@ -85,7 +85,7 @@ export async function runSimCli(argv: string[], log: (line: string) => void = co
   return summary;
 }
 
-if (process.argv[1]?.endsWith("sim-main.ts")) {
+if (process.argv[1]?.endsWith("sim/main.ts")) {
   runSimCli(process.argv.slice(2)).catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);

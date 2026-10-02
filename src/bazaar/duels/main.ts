@@ -1,9 +1,9 @@
 import { parseArgs } from "node:util";
-import { BazaarClient } from "./client.js";
+import { BazaarClient } from "../shared/client.js";
 import { DEFAULT_DUEL_PARAMS, type DuelParams } from "./duels.js";
-import { DuelsAgent, defaultDuelsStateFile, formatDuelEntry, formatNextDuels } from "./duels-agent.js";
-import { duelsApi } from "./duels-schemas.js";
-import { loadBazaarEnv } from "./env.js";
+import { DuelsAgent, defaultDuelsStateFile, formatDuelEntry, formatNextDuels } from "./agent.js";
+import { duelsApi } from "./schemas.js";
+import { loadBazaarEnv } from "../shared/env.js";
 
 /**
  * `pnpm bazaar:duels [--dry-run] [--once] [--max-rounds 4] [--beta 2] [--anchor-margin 0.5] [--floor-share 0.3] [--assumed-days-weight 0] [--state-file path]`:

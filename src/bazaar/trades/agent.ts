@@ -1,6 +1,6 @@
-import { BazaarError, type BazaarClient } from "./client.js";
-import type { Catalog } from "./schemas.js";
-import { assetsInOffers, assetsInThreads } from "./asset-locks.js";
+import { BazaarError, type BazaarClient } from "../shared/client.js";
+import type { Catalog } from "../shared/schemas.js";
+import { assetsInOffers, assetsInThreads } from "../shared/asset-locks.js";
 import {
   buildValueModel,
   countHoldings,

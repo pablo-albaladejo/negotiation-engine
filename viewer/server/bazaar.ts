@@ -1,10 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { z } from "zod";
-import { BazaarClient } from "../../src/bazaar/client.js";
-import { duelsApi } from "../../src/bazaar/duels-schemas.js";
-import { loadBazaarEnv } from "../../src/bazaar/env.js";
-import { extractScoreFields, ScoreFieldsSchema } from "../../src/bazaar/score.js";
-import type { Thread } from "../../src/bazaar/schemas.js";
+import { BazaarClient } from "../../src/bazaar/shared/client.js";
+import { duelsApi } from "../../src/bazaar/duels/schemas.js";
+import { loadBazaarEnv } from "../../src/bazaar/shared/env.js";
+import { extractScoreFields, ScoreFieldsSchema } from "../../src/bazaar/shared/score.js";
+import type { Thread } from "../../src/bazaar/shared/schemas.js";
 
 type StandingOffer = Thread["standing_offers"][number];
 type OfferSide = NonNullable<StandingOffer["give"]>;
@@ -101,7 +101,7 @@ export class BazaarLive {
   }
 }
 
-/** Una entrada de `thread-<id>.jsonl` (`src/bazaar/trace.ts`): nuestro precio/límite/regla por tic y el
+/** Una entrada de `thread-<id>.jsonl` (`src/bazaar/shared/trace.ts`): nuestro precio/límite/regla por tic y el
  * log de paciencia. Tolerante (`looseObject`): es nuestra traza local, no una respuesta del Bazaar. */
 const ThreadTraceEntrySchema = z.looseObject({
   ts: z.string().optional(),

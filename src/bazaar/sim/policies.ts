@@ -1,7 +1,7 @@
-import { closeText, counterText, holdText } from "../messages.js";
-import { decide, DEFAULT_NEGOTIATOR_PARAMS, type Action, type NegotiatorParams, type Side, type ThreadView } from "../negotiator.js";
-import type { Thread } from "../schemas.js";
-import { threadPrices, type DealerRef } from "../view.js";
+import { closeText, counterText, holdText } from "../dealers/messages.js";
+import { decide, DEFAULT_NEGOTIATOR_PARAMS, type Action, type NegotiatorParams, type Side, type ThreadView } from "../dealers/negotiator.js";
+import type { Thread } from "../shared/schemas.js";
+import { threadPrices, type DealerRef } from "../dealers/view.js";
 
 /**
  * Políticas que el arnés enfrenta al `DealerSim`: nuestro negociador (las mismas llamadas que

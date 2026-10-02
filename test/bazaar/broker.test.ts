@@ -13,7 +13,7 @@ import {
   planPublic,
   temperOf,
   type QuoteTrack,
-} from "../../src/bazaar/broker.js";
+} from "../../src/bazaar/broker/broker.js";
 
 const ask = (id: string, cash: number) => ({ id, give: { assets: [{ kind: "card", ref: "X" }] }, want: { cash } });
 const bid = (id: string, cash: number) => ({ id, give: { cash }, want: { types: ["card:X"] } });

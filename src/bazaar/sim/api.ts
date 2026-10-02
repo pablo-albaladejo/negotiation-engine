@@ -1,7 +1,7 @@
-import type { BazaarApi } from "../agent.js";
-import type { Topic } from "../client.js";
-import { BazaarError } from "../client.js";
-import { CatalogSchema, MeSchema, SayResultSchema, ThreadListSchema, ThreadSchema, type Catalog, type Me, type Thread } from "../schemas.js";
+import type { BazaarApi } from "../dealers/agent.js";
+import type { Topic } from "../shared/client.js";
+import { BazaarError } from "../shared/client.js";
+import { CatalogSchema, MeSchema, SayResultSchema, ThreadListSchema, ThreadSchema, type Catalog, type Me, type Thread } from "../shared/schemas.js";
 import type { DealerSim } from "./dealer.js";
 
 /**

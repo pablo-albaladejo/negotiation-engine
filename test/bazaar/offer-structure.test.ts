@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BazaarAgent, type BazaarApi } from "../../src/bazaar/agent.js";
-import { checkStructure, expectationOf, firstMismatch } from "../../src/bazaar/offer-structure.js";
-import { DealerInfoSchema, StandingOfferSchema, ThreadSchema, type Thread } from "../../src/bazaar/schemas.js";
-import type { TraceRecord } from "../../src/bazaar/trace.js";
+import { BazaarAgent, type BazaarApi } from "../../src/bazaar/dealers/agent.js";
+import { checkStructure, expectationOf, firstMismatch } from "../../src/bazaar/dealers/offer-structure.js";
+import { DealerInfoSchema, StandingOfferSchema, ThreadSchema, type Thread } from "../../src/bazaar/shared/schemas.js";
+import type { TraceRecord } from "../../src/bazaar/shared/trace.js";
 
 const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncommon", set: "SAL", print_run: 90 };
 const offer = (o: object) => StandingOfferSchema.parse({ id: 1, maker: "chato", status: "open", final: false, ...o });

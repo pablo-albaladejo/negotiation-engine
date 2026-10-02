@@ -1,10 +1,10 @@
-import type { Issue } from "../engine/config.js";
-import { decideAcceptance, type AcceptanceRule, type TimeInfo } from "../engine/acceptance.js";
-import { enforceGuardrails, type Role } from "../engine/guardrails.js";
-import { utility } from "../engine/issues.js";
-import { concession } from "../engine/offer.js";
-import type { Duel, StructuredOffer } from "./duels-schemas.js";
-import { numbersIn } from "./messages.js";
+import type { Issue } from "../../engine/config.js";
+import { decideAcceptance, type AcceptanceRule, type TimeInfo } from "../../engine/acceptance.js";
+import { enforceGuardrails, type Role } from "../../engine/guardrails.js";
+import { utility } from "../../engine/issues.js";
+import { concession } from "../../engine/offer.js";
+import type { Duel, StructuredOffer } from "./schemas.js";
+import { numbersIn } from "../dealers/messages.js";
 
 /**
  * Decisión pura y determinista de un duelo del Bazaar (1 contra 1, un mensaje por lado y tick).

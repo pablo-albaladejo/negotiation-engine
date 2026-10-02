@@ -1,8 +1,8 @@
 import { parseArgs } from "node:util";
-import { BazaarClient } from "./client.js";
-import { loadBazaarEnv } from "./env.js";
+import { BazaarClient } from "../shared/client.js";
+import { loadBazaarEnv } from "../shared/env.js";
 import { DEFAULT_TRADE_PARAMS, type TradeParams } from "./trades.js";
-import { TradesAgent, type TradesApi } from "./trades-agent.js";
+import { TradesAgent, type TradesApi } from "./agent.js";
 
 /**
  * `pnpm bazaar:trades --dry-run --once`: lee el tablón de El Rastro, nuestras ofertas, el feed y nuestros
@@ -71,7 +71,7 @@ export async function runTradesCli(
   return 0;
 }
 
-if (process.argv[1] && /trades-main\.[cm]?[jt]s$/.test(process.argv[1])) {
+if (process.argv[1] && /trades\/main\.[cm]?[jt]s$/.test(process.argv[1])) {
   runTradesCli(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (e: unknown) => {

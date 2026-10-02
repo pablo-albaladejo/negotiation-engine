@@ -1,6 +1,6 @@
 import { gameHours } from "./dealer-profile.js";
-import type { Clock } from "./schemas.js";
-import type { TraceRecord } from "./trace.js";
+import type { Clock } from "../shared/schemas.js";
+import type { TraceRecord } from "../shared/trace.js";
 
 /**
  * Piezas puras del modo continuo (`pnpm bazaar --serious`): cuándo esperar (reloj en pausa o puertas cerradas),

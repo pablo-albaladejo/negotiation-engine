@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { BrokerAgent, FileBrokerSink, brokerLogDir, type BrokerApi, type BrokerSink } from "./broker-agent.js";
-import { BrokerClient, loadBrokerEnv } from "./broker-client.js";
+import { BrokerAgent, FileBrokerSink, brokerLogDir, type BrokerApi, type BrokerSink } from "./agent.js";
+import { BrokerClient, loadBrokerEnv } from "./client.js";
 import { DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
 
 /**
@@ -72,7 +72,7 @@ export async function runBrokerCli(
   return 0;
 }
 
-if (process.argv[1] && /broker-main\.[cm]?[jt]s$/.test(process.argv[1])) {
+if (process.argv[1] && /broker\/main\.[cm]?[jt]s$/.test(process.argv[1])) {
   runBrokerCli(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (e: unknown) => {

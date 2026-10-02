@@ -1,6 +1,6 @@
 import { createRng, type Rng } from "../../engine/rng.js";
-import { BazaarError, type Topic } from "../client.js";
-import type { Message, StandingOffer, Thread } from "../schemas.js";
+import { BazaarError, type Topic } from "../shared/client.js";
+import type { Message, StandingOffer, Thread } from "../shared/schemas.js";
 import { deriveParams, limitFor, menuItems, type DealerProfile, type MenuItem, type SimParams } from "./model.js";
 import { classifyTone } from "./mood.js";
 

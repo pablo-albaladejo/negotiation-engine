@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { PatienceSummary } from "./patience.js";
-import type { ThreadSummary } from "./thread-log.js";
+import type { PatienceSummary } from "../dealers/patience.js";
+import type { ThreadSummary } from "../dealers/thread-log.js";
 
 /** Una línea JSONL por decisión: lo que el visor necesita para reconstruir cada hilo. Sin clave. */
 export interface TraceRecord {

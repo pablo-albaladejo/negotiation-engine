@@ -1,6 +1,6 @@
 # src/engine/ — Núcleo numérico
 
-Funciones puras que usa el Bazaar (`../bazaar/negotiator.ts`, `../bazaar/duels.ts` y el simulador). Sin LLM ni red.
+Funciones puras que usa el Bazaar (`../bazaar/dealers/negotiator.ts`, `../bazaar/duels/duels.ts` y el simulador). Sin LLM ni red.
 
 ## Archivos
 

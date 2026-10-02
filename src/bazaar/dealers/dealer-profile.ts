@@ -1,5 +1,5 @@
 import type { NegotiatorParams } from "./negotiator.js";
-import type { DealerInfo, Me } from "./schemas.js";
+import type { DealerInfo, Me } from "../shared/schemas.js";
 
 /**
  * Perfil de negociación por dealer a partir de sus rasgos públicos (`/api/dealers`): paciencia en mensajes

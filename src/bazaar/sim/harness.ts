@@ -1,6 +1,6 @@
-import { BazaarError, type Topic } from "../client.js";
-import type { Side } from "../negotiator.js";
-import type { DealerRef } from "../view.js";
+import { BazaarError, type Topic } from "../shared/client.js";
+import type { Side } from "../dealers/negotiator.js";
+import type { DealerRef } from "../dealers/view.js";
 import { SimApi } from "./api.js";
 import { DealerSim } from "./dealer.js";
 import type { DealerProfile, SimParams } from "./model.js";

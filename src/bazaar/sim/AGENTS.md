@@ -10,7 +10,7 @@ Simulador de dealers del Bazaar guiado por sus rasgos, y un arnés que enfrenta 
 - **`api.ts`** — `SimApi`: el simulador detrás de `BazaarApi` (la interfaz que usa `BazaarAgent`); cada respuesta pasa por los esquemas Zod reales.
 - **`policies.ts`** — `oursPolicy` (con `LEGACY_NEGOTIATOR_PARAMS` y nombre `legacy` da el negociador anterior; mismas llamadas que el bucle del agente: `threadPrices` → `decide` → plantillas) y `naivePolicy` (pasos de +2 P del starter).
 - **`harness.ts`** — `runEpisode`, `runGrid`, `stats`, `summarize`, `formatTable`; escenarios en `ABUELA_SCENARIOS`.
-- **`sim-main.ts`** — CLI `pnpm bazaar:sim`.
+- **`main.ts`** — CLI `pnpm bazaar:sim`.
 
 ## Uso
 

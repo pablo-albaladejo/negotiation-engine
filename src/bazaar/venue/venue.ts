@@ -1,4 +1,4 @@
-import type { Clock, Me } from "./schemas.js";
+import type { Clock, Me } from "../shared/schemas.js";
 
 /**
  * Preparar nuestro mercado (venue). Puro: decide nombre, comisiones, mecanismo y comprueba requisitos.

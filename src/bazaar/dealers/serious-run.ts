@@ -1,13 +1,13 @@
 import { BazaarAgent, type BazaarApi } from "./agent.js";
-import type { BazaarClient } from "./client.js";
+import type { BazaarClient } from "../shared/client.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "./dealer-profile.js";
 import { appendLesson, PendingLessons } from "./lessons.js";
 import type { NegotiatorParams } from "./negotiator.js";
-import type { Clock, DealerInfo, Me } from "./schemas.js";
-import { formatScoreSummary, type ScoreTracker } from "./score.js";
+import type { Clock, DealerInfo, Me } from "../shared/schemas.js";
+import { formatScoreSummary, type ScoreTracker } from "../shared/score.js";
 import { Backoff, classifyThrown, clockGate, dealerState, statusLine, worstError } from "./serious.js";
 import { TeamBudget } from "./team.js";
-import type { TraceRecord, TraceSink } from "./trace.js";
+import type { TraceRecord, TraceSink } from "../shared/trace.js";
 
 /**
  * Bucle continuo del modo serio: todos los tratos con los dealers desbloqueados que crean valor (sin `--only`),
