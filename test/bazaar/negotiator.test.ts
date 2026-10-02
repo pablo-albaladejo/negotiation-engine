@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { closeText, counterText, numbersIn, textMatchesPrice } from "../../src/bazaar/messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, LEGACY_NEGOTIATOR_PARAMS, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, effectiveReservation, holdsAllowed, LEGACY_NEGOTIATOR_PARAMS, type Side, type ThreadView } from "../../src/bazaar/negotiator.js";
 import { buyTargets, missingPageCards, spareTargets } from "../../src/bazaar/planner.js";
 import { ThreadSchema } from "../../src/bazaar/schemas.js";
 import { threadPrices } from "../../src/bazaar/view.js";
@@ -74,13 +74,17 @@ describe("negotiator: compra", () => {
     expect(d.rule).toBe("hold");
   });
 
-  it("tras maxHolds aguantes sin su final, cierra", () => {
+  it("agotados los aguantes sin su final, cierra (adaptativo: hasta su paciencia + maxHolds mensajes; boulware: maxHolds)", () => {
     const stuckView = view({ side: "buy", reservation: 40, herOpening: 60, herPrices: [60, 55], herCurrent: { offerId: 3, price: 55, final: false }, ourPrices: [22, 40] });
-    for (let holdsUsed = 0; holdsUsed < DEFAULT_NEGOTIATOR_PARAMS.maxHolds; holdsUsed++) {
+    const allowed = holdsAllowed(2, DEFAULT_NEGOTIATOR_PARAMS);
+    expect(allowed).toBe(DEFAULT_NEGOTIATOR_PARAMS.patienceBudget + DEFAULT_NEGOTIATOR_PARAMS.maxHolds - 2);
+    expect(holdsAllowed(8, DEFAULT_NEGOTIATOR_PARAMS)).toBe(DEFAULT_NEGOTIATOR_PARAMS.maxHolds);
+    expect(holdsAllowed(2, LEGACY_NEGOTIATOR_PARAMS)).toBe(LEGACY_NEGOTIATOR_PARAMS.maxHolds);
+    for (let holdsUsed = 0; holdsUsed < allowed; holdsUsed++) {
       const d = decide({ ...stuckView, holdsUsed });
       expect(d.action).toEqual({ kind: "hold", price: 40 });
     }
-    const last = decide({ ...stuckView, holdsUsed: DEFAULT_NEGOTIATOR_PARAMS.maxHolds });
+    const last = decide({ ...stuckView, holdsUsed: allowed });
     expect(last.action.kind).toBe("close");
     expect(last.rule).toBe("holds-exhausted");
   });

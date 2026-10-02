@@ -281,6 +281,16 @@ export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTI
   return { price, rule: herMove > 0 && Math.abs(byStep - prev) >= Math.abs(byCurve - prev) ? "reciprocity" : "boulware" };
 }
 
+/**
+ * Aguantes permitidos. Boulware: `maxHolds`. Adaptativo: si llegamos pronto a nuestro límite (hueco pequeño),
+ * seguimos aguantando hasta pasar su paciencia estimada + `maxHolds` mensajes, porque su oferta final llega al
+ * agotarse su paciencia (hilo 125: tras nuestro 6.º mensaje) y cerrar antes la perdería.
+ */
+export function holdsAllowed(pricedSent: number, p: Pick<NegotiatorParams, "stepMode" | "maxHolds" | "patienceBudget">): number {
+  if (p.stepMode !== "adaptive") return p.maxHolds;
+  return Math.max(p.maxHolds, p.patienceBudget + p.maxHolds - pricedSent);
+}
+
 export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): Decision {
   const effRes = effectiveReservation(view);
   if (effRes < 1) return { action: { kind: "close" }, rule: "no-zone", effectiveReservation: effRes };
@@ -315,7 +325,7 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
   if (stuck) {
     const prevPrice = view.ourPrices[view.ourPrices.length - 1];
     const holdsUsed = view.holdsUsed ?? 0;
-    if (her && !her.final && prevPrice !== undefined && holdsUsed < p.maxHolds) {
+    if (her && !her.final && prevPrice !== undefined && holdsUsed < holdsAllowed(view.ourPrices.length, p)) {
       if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes };
       return { action: { kind: "hold", price: prevPrice }, rule: "hold", effectiveReservation: effRes };
     }
