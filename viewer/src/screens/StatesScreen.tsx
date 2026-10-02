@@ -66,8 +66,7 @@ export function StatesScreen() {
             <ChatMessage side="us" round={5} offer={119} text="Our offer this round is 119." flags={TEMPLATE_FLAG} />
           </div>
         </Card>
-        <EmptyStateCard title="r-1005 has no matches" body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
-        <LoadingCard label="Reading results/r-1001.jsonl" />
+        <EmptyStateCard title="Run with no matches" body="The log has a config header but 0 match lines. Check" command="pnpm arena --matches" />
         <LoadingCard label="Reading results/r-1002.jsonl · 1500 / 2000 matches" current={1500} total={2000} />
       </div>
     </section>

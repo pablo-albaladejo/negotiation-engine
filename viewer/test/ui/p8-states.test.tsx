@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StatesScreen } from "../../src/screens/StatesScreen.js";
+import { LoadingCard } from "../../src/ui/states.js";
 
 afterEach(cleanup);
 
@@ -14,28 +15,29 @@ describe("StatesScreen (P8)", () => {
     expect(screen.getByText(/Match m-0917 is skipped until the log is fixed\./)).toBeTruthy();
   });
 
-  it("run vacío", () => {
+  it("run vacío (F3/S5)", () => {
     render(<StatesScreen />);
-    expect(screen.getByText("r-1005 has no matches")).toBeTruthy();
+    expect(screen.getByText("Run with no matches")).toBeTruthy();
   });
 
   it("EmptyStateCard no anida dos Card (sin doble borde)", () => {
     render(<StatesScreen />);
-    const heading = screen.getByText("r-1005 has no matches");
+    const heading = screen.getByText("Run with no matches");
     const outerCard = heading.closest(".nr-card");
     expect(outerCard).toBeTruthy();
     expect(outerCard?.querySelectorAll(".nr-card")).toHaveLength(0);
   });
 
-  it("carga en curso: indeterminada sin cifras falsas, con el bloque de skeleton (S2)", () => {
+  it("carga en curso: una sola Loading card determinada, con el bloque de skeleton (F10/S2)", () => {
     const { container } = render(<StatesScreen />);
-    expect(screen.queryByText(/1240/)).toBeNull();
-    expect(screen.getByText("Reading results/r-1001.jsonl")).toBeTruthy();
-    expect(container.querySelector(".nr-progress-indeterminate")).toBeTruthy();
+    expect(screen.getAllByText("Loading")).toHaveLength(1);
+    expect(screen.getByText("Reading results/r-1002.jsonl · 1500 / 2000 matches")).toBeTruthy();
+    expect(container.querySelector(".nr-progress-indeterminate")).toBeNull();
+    expect(container.querySelector("[role='progressbar'][aria-valuenow]")).toBeTruthy();
     expect(container.querySelector(".nr-skeleton-grid")).toBeTruthy();
-    const firstLoadingCard = screen.getByText("Reading results/r-1001.jsonl").closest(".nr-card")!;
-    expect(firstLoadingCard.querySelectorAll(".nr-skeleton-grid .nr-skeleton-block")).toHaveLength(4);
-    expect(firstLoadingCard.querySelector(".nr-skeleton-block[style*='120px']")).toBeTruthy();
+    const loadingCard = screen.getByText("Reading results/r-1002.jsonl · 1500 / 2000 matches").closest(".nr-card")!;
+    expect(loadingCard.querySelectorAll(".nr-skeleton-grid .nr-skeleton-block")).toHaveLength(4);
+    expect(loadingCard.querySelector(".nr-skeleton-block[style*='120px']")).toBeTruthy();
     expect(container.textContent?.trim().length).toBeGreaterThan(0);
   });
 
@@ -90,18 +92,13 @@ describe("StatesScreen (P8)", () => {
     expect(found).toBe(true);
   });
 
-  it("loading variants: indeterminate when no counts, determinate when counts provided", () => {
-    const { container } = render(<StatesScreen />);
-    const progressbars = container.querySelectorAll("[role='progressbar']");
-    expect(progressbars.length).toBeGreaterThan(0);
-    let hasIndeterminate = false;
-    let hasDeterminate = false;
-    progressbars.forEach((bar) => {
-      if (bar.hasAttribute("aria-busy")) hasIndeterminate = true;
-      if (bar.hasAttribute("aria-valuenow")) hasDeterminate = true;
-    });
-    expect(hasIndeterminate).toBe(true);
-    expect(hasDeterminate).toBe(true);
+  it("LoadingCard is indeterminate (aria-busy) without current/total, determinate (aria-valuenow) with both", () => {
+    cleanup();
+    const { container: indeterminate } = render(<LoadingCard label="Reading results/" />);
+    expect(indeterminate.querySelector("[role='progressbar'][aria-busy]")).toBeTruthy();
+    cleanup();
+    const { container: determinate } = render(<LoadingCard label="Reading results/r-1002.jsonl" current={1500} total={2000} />);
+    expect(determinate.querySelector("[role='progressbar'][aria-valuenow]")).toBeTruthy();
   });
 
   it("the skeleton blocks stop pulsing under prefers-reduced-motion (a11y, S2)", () => {
