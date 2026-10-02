@@ -59,11 +59,11 @@ export function InvalidLogBanner({ errors, validCount }: { errors: readonly ApiE
 export function EmptyStateCard({ title, body, command, action }: { title: string; body?: string; command?: string; action?: ReactNode }) {
   return (
     <Card>
-      <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2)", textAlign: "center", maxWidth: "48ch", margin: "0 auto" }}>
+      <div className="nr-empty">
         <h3 className="nr-heading-sm">{title}</h3>
         {body ? (
           <span className="nr-muted">
-            {body} {command ? <code style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", whiteSpace: "nowrap" }}>{command}</code> : null}
+            {body} {command ? <code className="nr-code-inline">{command}</code> : null}
           </span>
         ) : null}
         {action}

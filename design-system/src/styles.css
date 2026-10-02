@@ -79,6 +79,7 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-better{color:var(--ok);font-weight:600} .nr-worse{color:var(--warn);font-weight:600}
 
 /* Heatmap */
+.nr-heat th:not(:first-child){text-align:center}
 .nr-heat-cell{text-align:center!important;font-family:var(--font-mono);font-size:13px;min-width:90px}
 .nr-heat-cell.good{background:var(--ok-soft);color:var(--ok)}
 .nr-heat-cell.mid{background:var(--surface);color:var(--ink)}
@@ -207,6 +208,12 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 
 /* Code box: copy-command and similar literal snippets (B2) */
 .nr-code-box{font:13px var(--font-mono);background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px 10px;overflow-x:auto;white-space:nowrap;color:var(--ink);user-select:all}
+
+/* Short inline literal (e.g. a CLI flag next to a sentence), not a standalone box (15) */
+.nr-code-inline{font-family:var(--font-mono);color:var(--ink);white-space:nowrap}
+
+/* Empty state body inside a Card: centered, narrow measure (15) */
+.nr-empty{padding:var(--space-5);display:flex;flex-direction:column;align-items:center;gap:var(--space-2);text-align:center;max-width:48ch;margin:0 auto}
 
 /* Visually hidden but available to assistive tech (L20 and similar live-region messages) */
 .nr-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

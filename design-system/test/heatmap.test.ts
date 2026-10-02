@@ -34,6 +34,19 @@ describe("Heatmap rowHeader (B4)", () => {
   });
 });
 
+describe("Heatmap row label (19)", () => {
+  it("accepts `label` as an alias for `rival`", () => {
+    const html = renderToString(createElement(Heatmap, { columns: ["seller"], rows: [{ label: "Boulware", cells: [{ label: "0.5", value: 0.5 }] }] }));
+    expect(html).toContain("<td>Boulware</td>");
+  });
+
+  it("prefers `label` over `rival` when both are given", () => {
+    const html = renderToString(createElement(Heatmap, { columns: ["seller"], rows: [{ rival: "old", label: "new", cells: [{ label: "0.5", value: 0.5 }] }] }));
+    expect(html).toContain("<td>new</td>");
+    expect(html).not.toContain("<td>old</td>");
+  });
+});
+
 describe("Heatmap cells without a value", () => {
   it("heatmapBand returns 'none' for null, undefined and NaN, never a good/mid/bad band", () => {
     expect(heatmapBand(null)).toBe("none");

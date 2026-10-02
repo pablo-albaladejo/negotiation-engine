@@ -131,18 +131,20 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <BackLink onClick={onBack}>← Runs</BackLink>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-          <h2 className="nr-heading-lg">
-            Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
-          </h2>
-          <span className="nr-cfg">
-            {model.runId} · {model.candidatePath} · criterion: {model.criterion}
-            {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
-          </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+        <BackLink onClick={onBack}>← Runs</BackLink>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+            <h2 className="nr-heading-lg">
+              Champion v{model.championVersion} vs {model.candidateVersion !== null ? `candidate v${model.candidateVersion}` : "candidate"}
+            </h2>
+            <span className="nr-cfg">
+              {model.runId} · {model.candidatePath} · criterion: {model.criterion}
+              {model.params ? ` · ${changed.length === 0 ? "no parameter changes" : `changed: ${changed.map((p) => `${p.key} ${p.champion} → ${p.candidate}`).join(", ")}`}` : ""}
+            </span>
+          </div>
+          <Verdict model={model} />
         </div>
-        <Verdict model={model} />
       </div>
       <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} />
       <div className="nr-grid" style={gridCols("minmax(0, 1.2fr) minmax(0, 1fr)")}>
@@ -176,7 +178,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
                   p.changed
                     ? [
                         <div key={`${p.key}-a`} className="nr-diff-row">
-                          <span className="nr-diff-sign">−</span>
+                          <span className="nr-diff-sign">-</span>
                           <span>{p.key}: {p.champion}</span>
                         </div>,
                         <div key={`${p.key}-b`} className="nr-diff-row">

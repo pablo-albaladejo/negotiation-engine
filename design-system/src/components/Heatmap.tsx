@@ -5,7 +5,9 @@ export interface HeatmapCell {
 }
 
 export interface HeatmapRow {
-  rival: string;
+  /** @deprecated use `label`; kept for backward compatibility. */
+  rival?: string;
+  label?: string;
   cells: HeatmapCell[];
 }
 
@@ -26,31 +28,32 @@ export function heatmapBand(value: number | null | undefined): "good" | "mid" | 
 export function Heatmap({ rows, columns, rowHeader = "Opponent" }: HeatmapProps) {
   return (
     <div className="nr-table-wrap">
-      <table className="nr-table">
+      <table className="nr-table nr-heat">
         <thead>
           <tr>
             <th>{rowHeader}</th>
             {columns.map((column) => (
-              <th key={column} style={{ textAlign: "center" }}>
-                {column}
-              </th>
+              <th key={column}>{column}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.rival}>
-              <td>{row.rival}</td>
-              {row.cells.map((cell, index) => {
-                const band = heatmapBand(cell.value);
-                return (
-                  <td key={`${row.rival}-${index}`} className={`nr-heat-cell ${band}`}>
-                    {band === "none" ? "n/a" : cell.label}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {rows.map((row, rowIndex) => {
+            const rowLabel = row.label ?? row.rival ?? "";
+            return (
+              <tr key={rowLabel || rowIndex}>
+                <td>{rowLabel}</td>
+                {row.cells.map((cell, index) => {
+                  const band = heatmapBand(cell.value);
+                  return (
+                    <td key={`${rowLabel}-${index}`} className={`nr-heat-cell ${band}`}>
+                      {band === "none" ? "n/a" : cell.label}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
