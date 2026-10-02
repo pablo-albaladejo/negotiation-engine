@@ -1,5 +1,5 @@
 import { Card, DataTable, type DataTableColumn, type DataTableRow, Filters, KpiStrip, Pill, formatNumber } from "@negotiation-ring/design-system";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Summary, TranscriptLine } from "../../../src/arena/results-schema.js";
 import { matchesModel, type MatchFilters } from "../model/index.js";
 import { BackLink, SecondaryButton, TableLink } from "../ui/buttons.js";
@@ -56,12 +56,17 @@ export interface MatchesScreenProps {
 export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initialFilters, onFiltersChange, isChampion }: MatchesScreenProps) {
   const [filters, setFiltersState] = useState<MatchFilters>(initialFilters ?? {});
   const [page, setPage] = useState(0);
+  const countRef = useRef<HTMLSpanElement>(null);
+  /** Clear filters (L24): the count span only exists once the (now unfiltered) rows render, so
+   * the focus move happens in an effect, after that commit, not inline in the click handler. */
+  const [clearedAt, setClearedAt] = useState(0);
+  useEffect(() => {
+    if (clearedAt > 0) countRef.current?.focus();
+  }, [clearedAt]);
   const setFilters = (updater: MatchFilters | ((f: MatchFilters) => MatchFilters)) => {
-    setFiltersState((f) => {
-      const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(f) : updater;
-      onFiltersChange?.(next);
-      return next;
-    });
+    const next = typeof updater === "function" ? (updater as (f: MatchFilters) => MatchFilters)(filters) : updater;
+    setFiltersState(next);
+    onFiltersChange?.(next);
     setPage(0);
   };
   const model = matchesModel(summary, games, filters);
@@ -91,7 +96,10 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
     inc: incidents(r),
   }));
 
-  const clearFilters = () => setFilters({});
+  const clearFilters = () => {
+    setFilters({});
+    setClearedAt((n) => n + 1);
+  };
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -136,8 +144,9 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
       ) : (
         <Card>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-            <span className="nr-muted">
-              Showing {model.rows.length} of {games.length} matches
+            <span className="nr-muted" ref={countRef} tabIndex={-1} aria-live="polite">
+              {`Showing ${paginated ? currentPage * PAGE_SIZE + 1 : 1}–${paginated ? currentPage * PAGE_SIZE + pageRows.length : model.rows.length} of ${model.rows.length} matches`}
+              {model.rows.length !== games.length ? ` (filtered from ${games.length})` : ""}
             </span>
           </div>
           <DataTable
@@ -150,7 +159,7 @@ export function MatchesScreen({ runId, summary, games, onOpenGame, onBack, initi
               <SecondaryButton onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}>
                 Previous
               </SecondaryButton>
-              <span className="nr-muted">
+              <span className="nr-muted" aria-live="polite">
                 Page {currentPage + 1} of {pageCount}
               </span>
               <SecondaryButton onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={currentPage >= pageCount - 1}>

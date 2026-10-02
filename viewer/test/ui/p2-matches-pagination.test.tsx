@@ -56,6 +56,32 @@ describe("MatchesScreen pagination (INBOX A3)", () => {
     expect(screen.getByText("Page 5 of 5")).toBeTruthy();
     expect((screen.getByText("Next").closest("button") as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("count shows the shown range, not the raw filtered/total pair (L8)", () => {
+    const games = manyGames(fx.games[0]!, 201);
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
+    expect(screen.getByText("Showing 1–50 of 201 matches")).toBeTruthy();
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Showing 51–100 of 201 matches")).toBeTruthy();
+  });
+
+  it("count adds '(filtered from N)' only when filters narrow the set (L8)", () => {
+    const games = manyGames(fx.games[0]!, 10);
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
+    expect(screen.getByText("Showing 1\u201310 of 10 matches")).toBeTruthy();
+    fireEvent.change(screen.getByDisplayValue("All opponents"), { target: { value: games[0]!.rival } });
+    expect(screen.getByText(/Showing 1\u20135 of 5 matches \(filtered from 10\)/)).toBeTruthy();
+  });
+});
+
+describe("MatchesScreen Clear filters moves focus to the results count (L24)", () => {
+  it("focuses the count span after clearing filters", () => {
+    const games = manyGames(fx.games[0]!, 10);
+    render(<MatchesScreen runId={fx.runId} summary={fx.summary} games={games} onOpenGame={() => {}} onBack={() => {}} />);
+    fireEvent.click(screen.getByLabelText("with fallback"));
+    fireEvent.click(screen.getByText("Clear filters"));
+    expect(document.activeElement?.textContent).toContain("Showing 1\u201310 of 10 matches");
+  });
 });
 
 describe("MatchesScreen filters reset is the App container's job via key={runId} (C3)", () => {

@@ -214,7 +214,7 @@ export function App() {
         </header>
         <main>
           {route.screen === "runs" ? <RunsContainer /> : null}
-          {route.screen === "matches" ? <MatchesContainer key={route.runId} runId={route.runId} query={route.query} /> : null}
+          {route.screen === "matches" ? <MatchesContainer key={`${route.runId}?${route.query}`} runId={route.runId} query={route.query} /> : null}
           {route.screen === "arena-replay" ? <ArenaReplayContainer runId={route.runId} gameId={route.gameId} query={route.query} /> : null}
           {route.screen === "tournament-replay" ? <TournamentReplayContainer runId={route.runId} session={route.session} /> : null}
           {route.screen === "compare" ? <CompareContainer runId={route.runId} /> : null}
