@@ -116,6 +116,47 @@
         "Scored at our private values: neg_points went 0 → −14.9 (value 8.1 − price 23). Bad deals subtract points."
       ],
       "neg_points_delta": -14.9
+    },
+    {
+      "thread": 184,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "common SAL (random card of that rarity+set)",
+      "our_value": 9.1,
+      "our_limit": 9,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        8,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "her_prices": [
+        12,
+        11,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "ticks_until_close": 9,
+      "outcome": "walked",
+      "closed_reason": "no_progress",
+      "price": null,
+      "value_created": 0,
+      "lessons": [
+        "She came down 12 → 11 → 10 (her list) and stopped there.",
+        "Holding at the same price (6 holds) did NOT draw a final offer: she walked with reason no_progress.",
+        "With Abuela: accept if within limit, otherwise close politely; do not hold."
+      ]
     }
   ],
   "global_lessons": [
@@ -127,7 +168,8 @@
     "El Chato (level 2) is the opposite of Abuela: patience 0.35, generosity 0.25, shrewdness 0.85, memory 0.9, strictness 0.85 — short, careful negotiations, no tricks.",
     "Each deal is scored at OUR private values (neg_points can go negative): a duplicate bought at near-list price costs points. Avoid random rarity buys with high duplicate risk.",
     "The visible negotiating score seems relative to other teams (moved 4.38 → 4.35 with no deal of ours).",
-    "El Rastro (2 Oct, ~tick 100): settled uncommons 18–21 (n=2); open asks commons 8–12 (median 9, n=28), uncommons 24–25, a rare 88. Abuela bid 6 for a common, below those asks: selling commons on El Rastro may pay more."
+    "El Rastro (2 Oct, ~tick 100): settled uncommons 18–21 (n=2); open asks commons 8–12 (median 9, n=28), uncommons 24–25, a rare 88. Abuela bid 6 for a common, below those asks: selling commons on El Rastro may pay more.",
+    "Holding at the same price makes Abuela walk (closed_reason no_progress) instead of sending a final offer."
   ],
   "open_hypotheses": [
     "Why her buy price for commons varies (13 vs 6): per thread random ceiling (list × U(0.55,0.8)?), per card need, our holdings, or our deal count this hour.",
