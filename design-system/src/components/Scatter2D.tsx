@@ -112,7 +112,6 @@ export function Scatter2D({ xDomain, yDomain, xLabel, yLabel, ourOffers, theirOf
   useEffect(() => {
     const newIndex = initialScatterIndex(interactivePoints, selectedRound);
     setActiveIndex(newIndex);
-    hitRefs.current[newIndex]?.focus();
   }, [selectedRound]);
   // A2: clamp against the current point count so a shrunk list always keeps exactly one reachable tab stop.
   const safeActiveIndex = interactivePoints.length === 0 ? 0 : Math.max(0, Math.min(activeIndex, interactivePoints.length - 1));

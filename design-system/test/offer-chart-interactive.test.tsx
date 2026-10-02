@@ -59,4 +59,19 @@ describe("OfferChart roving tabindex (D4)", () => {
     const html = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} />);
     expect(html).not.toContain("aria-pressed");
   });
+  it("D4: selectedRound changes update which point has tabIndex=0", () => {
+    // Verify that with selectedRound=1, round 1 is the tab stop
+    const html1 = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} selectedRound={1} />);
+    const tabStopsR1 = html1.match(/tabindex="0"[^>]*aria-label="Our offer, round 1"/g) ?? [];
+    expect(tabStopsR1).toHaveLength(1);
+    
+    // Verify that with selectedRound=2, round 2 is the tab stop
+    const html2 = renderToString(<OfferChart {...baseProps} onPointClick={() => {}} selectedRound={2} />);
+    const tabStopsR2 = html2.match(/tabindex="0"[^>]*aria-label="Our offer, round 2"/g) ?? [];
+    expect(tabStopsR2).toHaveLength(1);
+    
+    // Verify round 1 is now -1
+    expect(html2).toContain('tabindex="-1" aria-label="Our offer, round 1"');
+  });
+
 });
