@@ -15,6 +15,7 @@ Utilidades shell que coordinan flujos complejos: smoke tests, sparring, evaluaci
 - **`tunnel-smoke.sh`** — Smoke test a través de túnel HTTP (ej. Cloudflare, ngrok).
 - **`check-turn.ts`** — Validador de turno (TypeScript).
 - **`sim-ring.ts`** — Simulador de ring.
+- **`bazaar-api-scan.mjs`** — Escaneo de solo lectura de la API del Bazaar (`pnpm bazaar:scan`, con `.env` y `.env.broker` cargados): GET a cada endpoint, guarda las respuestas en `results/bazaar-live/<fecha>/api-scan-HHMM.json`. `/api/cards/{id}` pide el id numérico del asset, no la ref (`SAL-09` da 422).
 
 ## Cómo usar
 

@@ -96,3 +96,23 @@ El visor está unificado en la pestaña `#bazaar` con `/api/bazaar/board`.
 **Próximo paso:** `pnpm test && pnpm docs:check` para verificar que el árbol está limpio. Luego seguir con duelos, traders y el agente serio.
 
 Para contexto completo de la arquitectura, leer [`AGENTS.md`](AGENTS.md) y [`src/bazaar/AGENTS.md`](src/bazaar/AGENTS.md).
+
+## Escaneo de la API (sábado 00:11, partida en pausa, tick 159)
+
+`pnpm bazaar:scan` (con `.env` y `.env.broker` cargados) hace GET a todos los endpoints y guarda las respuestas en `results/bazaar-live/<fecha>/api-scan-HHMM.json`. Primeros escaneos: `results/bazaar-live/2026-10-03/api-scan-0011.json` y `results/bazaar-live/2026-10-02/api-scan-0016.json`. Todos los endpoints dan 200.
+
+- **`/api/cards/{id}`** pide el **id numérico del asset** (p. ej. `/api/cards/438` → SAL-07 con su historial), no la ref: `/api/cards/SAL-09` da 422. Para el valor de una ref usa `/api/me/value?card=SAL-09`.
+- **`/api/flags`** solo admite POST (GET da 404). **`/api/broker/book`** pide `X-Broker-Key` (con la de equipo da 401): devuelve `offers`, `bench_offers` y `recent`.
+- **`/api/dealers`** devuelve la lista en la clave `personas`.
+- **Market Test en la hora 3, antes de la ronda 2:** el mismo libro sintético para todos los venues (10 traders, 16 ticks). Un venue `auto` saca la mitad de los puntos; para los puntos completos hace falta `board` y un broker activo.
+- **Hora 4.05:** todos reciben un sobre de El Retiro y 150 P.
+- **Afinidad por set:** RET 1,6 · SAL 1,3 · CHA 1,1 · MAL 0,9 · LAT 0,7 · LAV 0,5. El Retiro es el set que más nos vale.
+- **Reglas de valor (`/api/catalog`):** la 2.ª copia vale el 25 % y la 3.ª el 10 %; página completa +25 %; todas las versiones de una carta +10 %. Existe un **sobre de oro** (valor esperado 410).
+- **SAL-09:** en El Rastro solo hay ofertas de compra (7 y 8 P). Nadie la vende y no hay ninguna rara a la venta.
+- **Duelos vivos durante la pausa:** 177 (vendemos, límite 66), 178 (compramos, límite 78), 300 (compramos, límite 116; el rival pide 119).
+
+## Venue v04: no se puede pasar a `board`
+
+- `PATCH /api/venues/v04` solo cambia comisiones. Sin `fee_bps` da 400 ("send fee_bps"). Con `fee_bps` da 200, pero **ignora `rules`**: v04 sigue en `auto`. (Quedó anunciado un cambio de comisión 0 → 0, efectivo en el tick 161, sin efecto.)
+- **Solo se puede reabriendo:** cerrar v04 y abrir otro venue con `{"rules": {"mechanism": "board"}}`. Cuesta 250 de fianza (se devuelve) + 20 P. La fianza de v04 vuelve solo tras un periodo de espera, y cada Market Test cuenta solo el venue abierto durante la sesión.
+- **Decisión pendiente para el sábado:** con 40 P de caja no llegamos. Para la prueba de la hora 3 nos quedamos en `auto` (mitad segura). Después, con los +150 de la hora 4.05 y las ventas de repetidas, elegir entre comprar **SAL-09** y abrir un venue **`board`** con el broker (`pnpm bazaar:broker --confirm`). Si se abre el nuevo, cerrar v04 después, nunca antes.
