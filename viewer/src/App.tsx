@@ -165,37 +165,38 @@ function ArenaReplayContainer({ runId, gameId, query }: { runId: string; gameId:
   /** T9: the run payload (summary + every game) is cached per `runId` and only refetched when it
    * changes; switching games via the MatchSelector/onSelectGame only changes `gameId`, so only the
    * trace is refetched below instead of the whole run again. */
-  const [games, setGames] = useState<TranscriptLine[] | null>(null);
+  const [games, setGames] = useState<{ runId: string; data: TranscriptLine[] } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setGames(null);
     fetchApi<{ runId: string; summary: Summary | null; games: TranscriptLine[] }>(`runs/${encodeURIComponent(runId)}`).then((run) => {
-      if (!cancelled) setGames(run.data?.games ?? []);
+      if (!cancelled) setGames({ runId, data: run.data?.games ?? [] });
     });
     return () => {
       cancelled = true;
     };
   }, [runId]);
-  const [trace, setTrace] = useState<TraceLine[] | null | undefined>(undefined);
+  /** C4: tagged with the `gameId` it was fetched for, so a render right after `gameId` changes but
+   * before this effect's fetch resolves (still showing the previous trace) is caught below instead
+   * of pairing the new game with the previous trace. */
+  const [trace, setTrace] = useState<{ gameId: string; data: TraceLine[] | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setTrace(undefined);
     fetchApi<TraceLine[]>(`runs/${encodeURIComponent(runId)}/games/${encodeURIComponent(gameId)}`).then((res) => {
-      if (!cancelled) setTrace(res.data && res.data.length > 0 ? res.data : null);
+      if (!cancelled) setTrace({ gameId, data: res.data && res.data.length > 0 ? res.data : null });
     });
     return () => {
       cancelled = true;
     };
   }, [runId, gameId]);
-  if (!games || trace === undefined) return <LoadingCard label={`Reading ${gameId}`} />;
-  const line = games.find((g) => g.gameId === gameId) ?? null;
+  if (!games || games.runId !== runId || !trace || trace.gameId !== gameId) return <LoadingCard label={`Reading ${gameId}`} />;
+  const line = games.data.find((g) => g.gameId === gameId) ?? null;
   if (!line) return <LoadingCard label={`${gameId} is not available`} />;
   // MatchSelector shows the same games Matches would, under the filters carried in `query` (L14).
-  const filteredGames = filterGames(games, queryToFilters(query));
+  const filteredGames = filterGames(games.data, queryToFilters(query));
   const onBack = () => navigate(routeTo.matches(runId, query));
   const onSelectGame = (newGameId: string) => navigate(routeTo.arenaReplay(runId, newGameId, query));
-  if (isTwoIssue(line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(line, trace)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
-  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(line, trace)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
+  if (isTwoIssue(line)) return <TwoIssueScreen runId={runId} model={twoIssueModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
+  return <ArenaReplayScreen runId={runId} model={arenaReplayModel(line, trace.data)} onBack={onBack} games={filteredGames} onSelectGame={onSelectGame} />;
 }
 
 function CompareContainer({ runId }: { runId: string }) {

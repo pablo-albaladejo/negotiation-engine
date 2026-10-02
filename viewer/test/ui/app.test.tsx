@@ -240,6 +240,42 @@ describe("App routing: switching games in a replay caches the run payload (T9)",
   });
 });
 
+describe("App routing: switching games never pairs the new game with the previous trace (C4)", () => {
+  it("shows the loading state for the new game while its trace is still in flight, not the previous game's content", async () => {
+    const [firstGame, secondGame] = fx.games;
+    expect(fx.traces.has(firstGame!.gameId)).toBe(true);
+    expect(fx.traces.has(secondGame!.gameId)).toBe(true);
+    let resolveSecondTrace: (res: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/champion")) return new Response(JSON.stringify({ data: null, errors: [] }));
+        if (url.includes(`/games/${encodeURIComponent(secondGame!.gameId)}`)) {
+          return new Promise<Response>((resolve) => {
+            resolveSecondTrace = resolve;
+          });
+        }
+        if (url.includes(`/games/${encodeURIComponent(firstGame!.gameId)}`)) {
+          return new Response(JSON.stringify({ data: fx.traces.get(firstGame!.gameId), errors: [] }));
+        }
+        if (url.includes("/api/runs/")) return new Response(JSON.stringify({ data: { runId: fx.summary.runId, summary: fx.summary, games: fx.games }, errors: [] }));
+        return new Response(JSON.stringify({ data: null, errors: [] }));
+      }),
+    );
+    window.location.hash = `#/runs/${fx.runId}/games/${encodeURIComponent(firstGame!.gameId)}`;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText(new RegExp(firstGame!.gameId))).toBeTruthy());
+
+    window.location.hash = `#/runs/${fx.runId}/games/${encodeURIComponent(secondGame!.gameId)}`;
+    await waitFor(() => expect(screen.getByText(`Reading ${secondGame!.gameId}`)).toBeTruthy());
+    expect(screen.queryByText(new RegExp(firstGame!.gameId))).toBeNull();
+
+    resolveSecondTrace(new Response(JSON.stringify({ data: fx.traces.get(secondGame!.gameId), errors: [] })));
+    await waitFor(() => expect(screen.getByText(new RegExp(secondGame!.gameId))).toBeTruthy());
+  });
+});
+
 describe("App focus-on-navigation (C1)", () => {
   beforeEach(() => {
     mockFetch(fx.summary, fx.games);
