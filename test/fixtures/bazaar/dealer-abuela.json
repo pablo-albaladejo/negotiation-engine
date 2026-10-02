@@ -1,0 +1,19 @@
+{
+  "id": "abuela",
+  "name": "Abuela Carmen",
+  "level": 1,
+  "traits": { "patience": 0.85, "generosity": 0.8, "shrewdness": 0.2, "memory": 0.15, "strictness": 0.1, "chattiness": 0.75 },
+  "unlock": { "always": true, "early_min_deals": 3 },
+  "menu": {
+    "sells": [
+      { "pack": "sobre_barrio", "name": "Neighbourhood pack", "list_price": 26, "opening_ask": 30, "per_team_per_hour": 3 },
+      { "rarity": "common", "sets": "released", "list_price": 10 },
+      { "rarity": "uncommon", "sets": "released", "list_price": 25 }
+    ],
+    "buys": [
+      { "rarity": "common", "sets": "released" },
+      { "rarity": "uncommon", "sets": "released" }
+    ],
+    "deals_per_team_per_hour": 8
+  }
+}
