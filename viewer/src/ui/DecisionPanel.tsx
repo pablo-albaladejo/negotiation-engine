@@ -30,14 +30,18 @@ const DECISION_COLUMNS: DataTableColumn[] = [
 export interface DecisionPanelProps {
   hasTrace: boolean;
   panel: RoundPanel | null;
+  /** Actual logged round numbers, in order (may not start at 1 or be contiguous -- e.g. a tournament session). */
+  rounds: number[];
   selectedRound: number;
-  totalRounds: number;
-  onPrev: () => void;
-  onNext: () => void;
+  onSelectRound: (round: number) => void;
 }
 
 /** Shared "Engine decision this round" card, reused by the arena and tournament replay screens. */
-export function DecisionPanel({ hasTrace, panel, selectedRound, totalRounds, onPrev, onNext }: DecisionPanelProps) {
+export function DecisionPanel({ hasTrace, panel, rounds, selectedRound, onSelectRound }: DecisionPanelProps) {
+  const index = rounds.indexOf(selectedRound);
+  const prevRound = index > 0 ? rounds[index - 1]! : null;
+  const nextRound = index >= 0 && index < rounds.length - 1 ? rounds[index + 1]! : null;
+  const lastRound = rounds.length > 0 ? rounds[rounds.length - 1]! : selectedRound;
   const decisionRows: DataTableRow[] = panel
     ? [
         { k: "Rule", v: panel.decision?.rule ?? "not logged" },
@@ -67,22 +71,30 @@ export function DecisionPanel({ hasTrace, panel, selectedRound, totalRounds, onP
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
           <h3 className="nr-heading">Engine decision this round</h3>
-          <span className="nr-cfg">
-            R{selectedRound} / {totalRounds}
+          <span className="nr-cfg" role="status" aria-live="polite">
+            Round {selectedRound} of {lastRound}
           </span>
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
-          <SecondaryButton onClick={onPrev}>← Previous round</SecondaryButton>
-          <SecondaryButton onClick={onNext}>Next round →</SecondaryButton>
+          <SecondaryButton onClick={() => prevRound !== null && onSelectRound(prevRound)} disabled={prevRound === null}>
+            ← Previous round
+          </SecondaryButton>
+          <SecondaryButton onClick={() => nextRound !== null && onSelectRound(nextRound)} disabled={nextRound === null}>
+            Next round →
+          </SecondaryButton>
         </div>
       </div>
       {hasTrace ? (
-        <>
-          <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
-          <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
-            Click a point on the chart to switch rounds. Values exactly as logged by the engine.
-          </p>
-        </>
+        panel ? (
+          <>
+            <DataTable columns={DECISION_COLUMNS} rows={decisionRows} />
+            <p className="nr-muted" style={{ marginTop: "var(--space-2)" }}>
+              Select a point on the chart, or use Previous / Next round, to switch rounds. Values exactly as logged by the engine.
+            </p>
+          </>
+        ) : (
+          <p className="nr-muted">R{selectedRound}: not logged.</p>
+        )
       ) : (
         <p className="nr-muted">No trace recorded for this match (played with --no-traces or --agent-url).</p>
       )}

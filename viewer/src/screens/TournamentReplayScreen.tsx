@@ -79,6 +79,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
   });
 
   const panel = model.rounds.find((p) => p.round === selectedRound) ?? null;
+  const roundNumbers = model.rounds.map((p) => p.round);
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -154,14 +155,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
           </div>
         </Card>
       </div>
-      <DecisionPanel
-        hasTrace
-        panel={panel}
-        selectedRound={selectedRound}
-        totalRounds={rounds}
-        onPrev={() => setSelectedRound((r) => Math.max(1, r - 1))}
-        onNext={() => setSelectedRound((r) => Math.min(rounds, r + 1))}
-      />
+      <DecisionPanel hasTrace panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
     </section>
   );
 }

@@ -62,6 +62,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
   const result = resultLabel(model.game.endReason, model.game.protocolViolationBy);
   const errorRoundPanel = model.rounds?.find((p) => p.round === model.game.rounds) ?? null;
   const panel = model.rounds?.find((p) => p.round === selectedRound) ?? null;
+  const roundNumbers = model.rounds ? model.rounds.map((p) => p.round) : Array.from({ length: model.game.rounds }, (_, i) => i + 1);
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
@@ -137,14 +138,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
           </div>
         </Card>
       </div>
-      <DecisionPanel
-        hasTrace={model.hasTrace}
-        panel={panel}
-        selectedRound={selectedRound}
-        totalRounds={model.game.rounds}
-        onPrev={() => setSelectedRound((r) => Math.max(1, r - 1))}
-        onNext={() => setSelectedRound((r) => Math.min(model.game.rounds, r + 1))}
-      />
+      <DecisionPanel hasTrace={model.hasTrace} panel={panel} rounds={roundNumbers} selectedRound={selectedRound} onSelectRound={setSelectedRound} />
     </section>
   );
 }

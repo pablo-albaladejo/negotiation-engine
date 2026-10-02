@@ -26,7 +26,7 @@ describe("ArenaReplayScreen (P3)", () => {
     const line = fx.games.find((g) => g.scenarioId === "price-buyer-wide")!;
     const model = arenaReplayModel(line, fx.traces.get(line.gameId)!);
     render(<ArenaReplayScreen runId={fx.runId} model={model} onBack={() => {}} />);
-    expect(screen.getByText("Click a point on the chart to switch rounds. Values exactly as logged by the engine.")).toBeTruthy();
+    expect(screen.getByText("Select a point on the chart, or use Previous / Next round, to switch rounds. Values exactly as logged by the engine.")).toBeTruthy();
   });
 
   it("el validador se muestra legible (ok / rejected · motivo), nunca JSON.stringify", () => {
