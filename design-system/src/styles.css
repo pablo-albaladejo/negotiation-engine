@@ -98,6 +98,11 @@
 
 .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 
+/* Plain action button, styled through tokens only (back link, round navigation) */
+.nr-btn{background:transparent;border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--space-1) var(--space-3);font-family:var(--font-body);font-size:14px;color:var(--ink);cursor:pointer}
+.nr-btn:focus-visible{outline:2px solid var(--us);outline-offset:2px}
+.nr-btn-back{align-self:flex-start}
+
 /* Filters */
 .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}
 .nr-filter-field{display:flex;flex-direction:column;gap:2px}

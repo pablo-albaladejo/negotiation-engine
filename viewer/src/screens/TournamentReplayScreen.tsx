@@ -1,6 +1,6 @@
 import { Card, ChatMessage, DataTable, type DataTableColumn, type DataTableRow, KpiStrip, Legend, ModeBadge, OfferChart, formatNumber } from "@negotiation-ring/design-system";
 import type { TournamentReplayModel } from "../model/index.js";
-import { offerDomain, toOfferPoints } from "../ui/chart.js";
+import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
 import { offerValue } from "../ui/offer.js";
 import { ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 
@@ -19,7 +19,7 @@ export interface TournamentReplayScreenProps {
 export function TournamentReplayScreen({ model }: TournamentReplayScreenProps) {
   const ourOffers = toOfferPoints(model.offers.ours);
   const theirOffers = toOfferPoints(model.offers.rival);
-  const target = model.explain.map((e) => ({ round: e.round, value: e.target }));
+  const target = toTargetOfferPoints(model.explain);
   const estimate = model.explain.flatMap((e) => {
     const value = offerValue(e.rivalReserveEstimate);
     return value === null ? [] : [{ round: e.round, value }];
@@ -70,13 +70,15 @@ export function TournamentReplayScreen({ model }: TournamentReplayScreenProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <Card title="Offers by round" caption="In a tournament the opponent's reserve is unknown: no ZOPA and no surplus, only our estimate.">
             <OfferChart rounds={rounds} yDomain={yDomain} ourOffers={ourOffers} theirOffers={theirOffers} target={target} estimate={estimate} {...(ourReserve !== undefined ? { ourReserve } : {})} />
-            <Legend>
-              <span>Our offers</span>
-              <span>Opponent offers</span>
-              <span>Estimate of their reserve</span>
-              <span>Target curve</span>
-              <span>Our reserve</span>
-            </Legend>
+            <Legend
+              items={[
+                { kind: "us", label: "Our offers" },
+                { kind: "them", label: "Opponent offers" },
+                { kind: "estimate", label: "Estimate of their reserve" },
+                { kind: "target", label: "Target curve" },
+                { kind: "reserve-us", label: "Our reserve" },
+              ]}
+            />
           </Card>
           <Card title="Estimate of their reserve by round">
             <DataTable columns={EST_COLUMNS} rows={estRows} />

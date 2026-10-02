@@ -46,9 +46,10 @@ describe("LiveScreen (P7)", () => {
   it("un registro parser con injectionSuspected sube el contador sin recargar", () => {
     const feed = feedFrom(fx.tournament.trace);
     const { container, rerender } = render(<LiveScreen model={liveModel(feed, 2_000)} />);
-    const before = Number(container.querySelector(".nr-scoreboard-attacks")?.textContent);
+    const attacksCell = () => container.querySelector(".nr-scoreboard-attacks, .nr-scoreboard-attacks-muted");
+    const before = Number(attacksCell()?.textContent);
     rerender(<LiveScreen model={liveModel(applyLiveEvent(feed, "record", { session: "ring-session-1-abcd", record: box(4, "parser", { intent: "offer", injectionSuspected: true }) }, 2_000), 2_000)} />);
-    expect(Number(container.querySelector(".nr-scoreboard-attacks")?.textContent)).toBe(before + 1);
+    expect(Number(attacksCell()?.textContent)).toBe(before + 1);
   });
 
   it("FINAL y después BREAK (waiting for the next match) con el último resultado", () => {

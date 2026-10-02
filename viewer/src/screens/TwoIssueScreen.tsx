@@ -74,7 +74,7 @@ export function TwoIssueScreen({ runId, model, onBack }: TwoIssueScreenProps) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-        <button type="button" onClick={onBack}>
+        <button className="nr-btn nr-btn-back" type="button" onClick={onBack}>
           ← Matches in {runId}
         </button>
         <h2 className="nr-heading">
