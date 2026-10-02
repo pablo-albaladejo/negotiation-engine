@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import type { Offer, TwoIssueModel } from "../model/index.js";
 import { offerDomain } from "../ui/chart.js";
+import { gridCols } from "../ui/grid.js";
 import { resultLabel } from "../ui/labels.js";
 import { ReplayHeader } from "../ui/replay-header.js";
 
@@ -121,7 +122,7 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
           { label: "Role", value: model.game.role },
         ]}
       />
-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)" }}>
+      <div className="nr-grid" style={gridCols("minmax(0, 1.3fr) minmax(0, 1fr)")}>
         <Card title={`Offers on the ${y.name} × ${x.name} plane`}>
           <Scatter2D
             xDomain={xDomain}

@@ -190,12 +190,15 @@
 .nr-diff-row:last-child{border-bottom:none}
 .nr-diff-sign{color:var(--muted)}
 
-/* B2: responsive grids and tables. Screens set their own column ratios inline (content-specific);
-   below 900px every `.nr-grid` collapses to one column (the live/projector canvas is exempt: it never
-   uses this class). Tables already scroll horizontally inside `.nr-table-wrap`, never the page. */
-.nr-grid{display:grid;gap:var(--space-4);align-items:start}
+/* B2/D1: responsive grids and tables. Screens pass their own column ratio via the --nr-grid-cols
+   custom property (content-specific), e.g. style={{ "--nr-grid-cols": "minmax(0,1.55fr) minmax(320px,1fr)" }};
+   below 900px every `.nr-grid` collapses to `minmax(0,1fr)` (not plain `1fr`, so nowrap code boxes and
+   wide tables inside it can still shrink instead of overflowing the page — the live/projector canvas is
+   exempt: it never uses this class). Tables already scroll horizontally inside `.nr-table-wrap`, never
+   the page. */
+.nr-grid{display:grid;gap:var(--space-4);align-items:start;grid-template-columns:var(--nr-grid-cols,minmax(0,1fr))}
 @media (max-width:899px){
-  .nr-grid{grid-template-columns:1fr!important}
+  .nr-grid{grid-template-columns:minmax(0,1fr)}
 }
 
 /* Loading progress: determinate fill or an indeterminate 30% slider (P8) */

@@ -5,13 +5,20 @@ import { describe, expect, it } from "vitest";
 
 const stylesPath = resolve(dirname(fileURLToPath(import.meta.url)), "../src/styles.css");
 
-describe("B2: responsive grids collapse below 900px", () => {
-  it("styles.css defines .nr-grid and forces a single column under a 900px media query", () => {
+describe("B2/D1: responsive grids collapse below 900px", () => {
+  it("styles.css defines .nr-grid reading --nr-grid-cols, with no !important", () => {
     const css = readFileSync(stylesPath, "utf8");
     expect(css).toContain(".nr-grid{display:grid");
+    expect(css).toContain("grid-template-columns:var(--nr-grid-cols,minmax(0,1fr))");
+    const gridRule = css.match(/\.nr-grid\{[^}]*\}/)![0];
+    expect(gridRule).not.toContain("!important");
+  });
+
+  it("forces minmax(0,1fr) (not plain 1fr) under a 900px media query, so nowrap content can shrink", () => {
+    const css = readFileSync(stylesPath, "utf8");
     const mediaBlock = css.match(/@media \(max-width:\s*899px\)\s*{([^}]*\.nr-grid[^}]*})/);
     expect(mediaBlock).toBeTruthy();
-    expect(mediaBlock![1]).toContain("grid-template-columns:1fr");
+    expect(mediaBlock![1]).toContain("grid-template-columns:minmax(0,1fr)");
   });
 
   it("tables scroll horizontally inside their own wrapper, not the page", () => {

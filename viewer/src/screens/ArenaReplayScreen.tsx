@@ -2,6 +2,7 @@ import { Card, ChatMessage, KpiStrip, Legend, OfferChart, formatNumber } from "@
 import React, { useEffect, useState } from "react";
 import type { ArenaReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
+import { gridCols } from "../ui/grid.js";
 import { resultLabel, zopaKpi } from "../ui/labels.js";
 import { offerLabel, offerValue } from "../ui/offer.js";
 import { EmptyZopaBanner, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
@@ -94,7 +95,7 @@ export function ArenaReplayScreen({ runId, model, onBack, games, onSelectGame }:
         <EmptyZopaBanner ours={offerLabel(model.reserves.ours)} rival={offerLabel(model.reserves.rival)} walked={model.game.endReason === "agent-walk"} />
       ) : null}
       {model.game.templateCount > 0 ? <TemplateBanner templateCount={model.game.templateCount} ourMessageCount={model.game.ourMessageCount} provider={model.provider} /> : null}
-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr)" }}>
+      <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
         <Card title="Offers by round" style={{ position: "sticky", top: "var(--space-4)" }}>
           <OfferChart
             rounds={model.game.roundLimit ?? model.game.rounds}

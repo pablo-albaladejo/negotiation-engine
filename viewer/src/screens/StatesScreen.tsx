@@ -1,4 +1,5 @@
 import { Card, ChatMessage, Legend, OfferChart } from "@negotiation-ring/design-system";
+import { gridCols } from "../ui/grid.js";
 import { EmptyStateCard, EmptyZopaBanner, InvalidLogBanner, LoadingCard, ProtocolBreakBanner, TemplateBanner } from "../ui/states.js";
 
 const TEMPLATE_FLAG = [{ kind: "fallback" as const, label: "template · LLM down" }];
@@ -15,7 +16,7 @@ export function StatesScreen() {
         <h2 className="nr-heading-lg">States and edge cases</h2>
         <span className="nr-muted">How the viewer behaves when the logs or the match go off the happy path.</span>
       </div>
-      <div className="nr-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
+      <div className="nr-grid" style={gridCols("repeat(auto-fit, minmax(420px, 1fr))")}>
         <Card title="Invalid log">
           <InvalidLogBanner
             errors={[{ file: "results/r-1003.jsonl", line: 1834, path: "offer.value", message: "expected number, got string \"one hundred four\"" }]}

@@ -14,6 +14,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { TournamentReplayModel } from "../model/index.js";
 import { offerDomain, toOfferPoints, toTargetOfferPoints } from "../ui/chart.js";
+import { gridCols } from "../ui/grid.js";
 import { offerValue } from "../ui/offer.js";
 import { BackLink } from "../ui/buttons.js";
 import { DecisionPanel } from "../ui/DecisionPanel.js";
@@ -117,7 +118,7 @@ export function TournamentReplayScreen({ model, onBack }: TournamentReplayScreen
         <ProtocolBreakBanner key={i} round={b.round} detail={b.issues.length > 0 ? b.issues.map((x) => `${x.path || "(root)"} (${x.code})`).join(", ") : "not logged"} />
       ))}
       {model.templateCount > 0 ? <TemplateBanner templateCount={model.templateCount} ourMessageCount={model.ourMessageCount} provider={model.provider} /> : null}
-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(320px, 1fr)" }}>
+      <div className="nr-grid" style={gridCols("minmax(0, 1.55fr) minmax(320px, 1fr)")}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <Card title="Offers by round" caption="In a tournament the opponent's reserve is unknown: no ZOPA and no surplus, only our estimate.">
             <OfferChart

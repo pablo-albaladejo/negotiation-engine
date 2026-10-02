@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { formatPp, PHASE_LABEL, type GateModel, type GatePhase, type PhaseMetrics } from "../model/index.js";
 import { BackLink, PrimaryButton } from "../ui/buttons.js";
+import { gridCols } from "../ui/grid.js";
 
 const METRIC_COLUMNS = (model: GateModel): DataTableColumn[] => [
   { key: "k", label: "Metric" },
@@ -144,7 +145,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
         <Verdict model={model} />
       </div>
       <Tabs items={model.phases.map((p) => ({ id: p, label: PHASE_LABEL[p] }))} selectedId={phase} onSelect={(id) => setPhase(id as GatePhase)} />
-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)" }}>
+      <div className="nr-grid" style={gridCols("minmax(0, 1.2fr) minmax(0, 1fr)")}>
         <Card title={`Metrics · ${PHASE_LABEL[phase]}`} caption="Change is the logged paired, role-weighted surplus difference; other rows have no logged change.">
           {metrics ? <DataTable columns={METRIC_COLUMNS(model)} rows={metricRows(metrics)} /> : <p className="nr-muted">Phase not logged.</p>}
         </Card>
@@ -152,7 +153,7 @@ export function GateScreen({ model, onBack }: GateScreenProps) {
           <DataTable columns={CHECK_COLUMNS} rows={checkRows} />
         </Card>
       </div>
-      <div className="nr-grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)" }}>
+      <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
         <Card title={`Surplus / ZOPA by opponent and role · ${PHASE_LABEL[phase]}`} caption="Candidate · ≥ 0.60 good · 0.45–0.59 mid · < 0.45 poor">
           {heat ? (
             <Heatmap
