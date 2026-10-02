@@ -54,7 +54,7 @@ function findOfferAt(round: number, ourOffers: OfferPoint[], theirOffers: OfferP
 }
 
 export interface LegendItem {
-  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them";
+  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate";
   label: string;
 }
 

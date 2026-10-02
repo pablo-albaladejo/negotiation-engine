@@ -35,6 +35,19 @@ describe("Legend items", () => {
     const html = renderToString(<Legend>plain text</Legend>);
     expect(html).toContain("plain text");
   });
+
+  it("renders the same-round and mandate swatch kinds (finding 2)", () => {
+    const html = renderToString(
+      <Legend
+        items={[
+          { kind: "same-round", label: "Same round" },
+          { kind: "mandate", label: "Mandate" },
+        ]}
+      />,
+    );
+    expect(html).toContain("nr-legend-swatch same-round");
+    expect(html).toContain("nr-legend-swatch mandate");
+  });
 });
 
 describe("Scoreboard with null round/attacksBlocked", () => {

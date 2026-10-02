@@ -107,6 +107,8 @@
 .nr-legend-swatch.reserve-us{border-top-color:var(--us);border-top-style:dashed}
 .nr-legend-swatch.reserve-them{border-top-color:var(--them);border-top-style:dashed}
 .nr-legend-swatch.zopa{height:10px;border-top:none;background:var(--zopa)}
+.nr-legend-swatch.same-round{border-top:1px solid var(--muted)}
+.nr-legend-swatch.mandate{height:10px;border-top:none;border:1px dashed var(--us);background:var(--us-soft)}
 
 .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 

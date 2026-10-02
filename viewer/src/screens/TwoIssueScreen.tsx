@@ -135,12 +135,14 @@ export function TwoIssueScreen({ runId, model, onBack, games, onSelectGame }: Tw
             {...(deal ? { deal } : {})}
             onPointClick={selectPoint}
           />
-          <Legend>
-            <span>Our offers</span>
-            <span>Opponent offers</span>
-            <span>Same round</span>
-            {mandate ? <span>Mandate</span> : null}
-          </Legend>
+          <Legend
+            items={[
+              { kind: "us", label: "Our offers" },
+              { kind: "them", label: "Opponent offers" },
+              { kind: "same-round", label: "Same round" },
+              ...(mandate ? [{ kind: "mandate" as const, label: "Mandate" }] : []),
+            ]}
+          />
         </Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <Card title="Utility by round" caption="Our utility × 100 as logged by the engine, for our offer and the opponent's.">
