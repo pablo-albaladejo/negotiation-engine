@@ -131,9 +131,22 @@ html,body{margin:0;background:var(--bg);color-scheme:light dark}
 .nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 .nr-link-back,.nr-link-table{min-height:24px;padding:2px 0}
 
-/* P7 projector: discreet corner back link, visible on hover/focus only */
-.nr-live-corner-back{opacity:.35;transition:opacity .15s ease}
+/* P7 projector: discreet corner back link, visible on hover/focus only, outside the scaled canvas */
+.nr-live-corner-back{opacity:.6;transition:opacity .15s ease}
 .nr-live-corner-back:hover,.nr-live-corner-back:focus-visible{opacity:1}
+@media (prefers-reduced-motion: reduce){
+  .nr-live-corner-back{transition:none}
+}
+
+/* P7 projector: typography for the stat grid, headline and waiting state (13) */
+.nr-live-stat-value{font:800 76px/1 var(--font-display)}
+.nr-live-stat-label{font:500 22px var(--font-body);color:var(--muted)}
+.nr-live-headline{font:800 64px/1 var(--font-display)}
+.nr-live-waiting{font:800 96px/1.05 var(--font-display)}
+
+/* P7 projector: chat scaled up for readability without transform/zoom (14) */
+.nr-chat-projector .nr-msg{font-size:21.6px;padding:13px 16px}
+.nr-chat-projector .nr-msg-meta{font-size:17.6px}
 
 /* Filters */
 .nr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-4) var(--space-5);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4)}

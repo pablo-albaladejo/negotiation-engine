@@ -19,8 +19,8 @@ function outcomeLabel(o: LiveOutcome): string {
 function Stat({ value, label, color }: { value: string; label: string; color: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span style={{ font: "800 76px/1 var(--font-display)", color }}>{value}</span>
-      <span style={{ font: "500 22px var(--font-body)", color: "var(--muted)" }}>{label}</span>
+      <span className="nr-live-stat-value" style={{ color }}>{value}</span>
+      <span className="nr-live-stat-label">{label}</span>
     </div>
   );
 }
@@ -49,9 +49,8 @@ export function LiveScreen({ model }: { model: LiveModel }) {
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (projectorMode) setProjectorMode(false);
-      else window.location.hash = routeTo.runs();
+      if (e.key !== "Escape" || !projectorMode) return;
+      setProjectorMode(false);
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
@@ -85,21 +84,21 @@ export function LiveScreen({ model }: { model: LiveModel }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      <BackLink
+        className="nr-live-corner-back"
+        style={{ position: "fixed", top: 16, left: 16, color: "var(--muted)" }}
+        onClick={() => {
+          window.location.hash = routeTo.runs();
+        }}
+      >
+        ← Runs
+      </BackLink>
       <div style={{ width: PROJECTOR.width, height: PROJECTOR.height, transform: `scale(${scale})`, transformOrigin: "center center" }}>
         <Root
           theme="dark"
           data-screen="p7"
           style={{ position: "relative", width: PROJECTOR.width, height: PROJECTOR.height, boxSizing: "border-box", padding: "56px 72px", display: "flex", flexDirection: "column", gap: 36, overflow: "hidden" }}
         >
-          <BackLink
-            className="nr-live-corner-back"
-            style={{ position: "absolute", top: 16, left: 16, color: "var(--muted)" }}
-            onClick={() => {
-              window.location.hash = routeTo.runs();
-            }}
-          >
-            ← Runs
-          </BackLink>
           {!projectorMode ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
@@ -108,12 +107,16 @@ export function LiveScreen({ model }: { model: LiveModel }) {
               </div>
               <SecondaryButton onClick={() => setProjectorMode(true)}>Projector mode</SecondaryButton>
             </div>
-          ) : null}
+          ) : (
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <SecondaryButton onClick={() => setProjectorMode(false)}>Exit projector mode (Esc)</SecondaryButton>
+            </div>
+          )}
           {playing ? (
             <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(0, 1fr)", gap: 48 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 24 }}>
-                  <span style={{ font: "800 64px/1 var(--font-display)", color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
+                  <span className="nr-live-headline" style={{ color: model.status === "finished" ? "var(--ok)" : "var(--ink)" }}>{headline}</span>
                   <span style={{ font: "500 24px var(--font-body)", color: "var(--muted)" }}>utility × 100 by round</span>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
@@ -126,7 +129,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
                     <Stat key={s.label} {...s} />
                   ))}
                 </div>
-                <div className="nr-chat" style={{ gap: 10, overflow: "hidden", transform: "scale(1.6)", transformOrigin: "top left", width: `${100 / 1.6}%` }}>
+                <div className="nr-chat nr-chat-projector" style={{ gap: 10, overflow: "hidden" }}>
                   {model.lastMessages.map((b, i) => (
                     <ChatMessage key={`${b.round}-${b.side}-${i}`} side={b.side} round={b.round} text={b.text} flags={flags(b)} />
                   ))}
@@ -135,7 +138,7 @@ export function LiveScreen({ model }: { model: LiveModel }) {
             </div>
           ) : (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, textAlign: "center" }}>
-              <span style={{ font: "800 96px/1.05 var(--font-display)" }}>Waiting for the next match</span>
+              <span className="nr-live-waiting">Waiting for the next match</span>
               {model.last ? <span style={{ font: "600 30px var(--font-mono)", color: model.last.action === "accept" ? "var(--ok)" : "var(--warn)", marginTop: 24 }}>Last: {outcomeLabel(model.last)}</span> : null}
             </div>
           )}

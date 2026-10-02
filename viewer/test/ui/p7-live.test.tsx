@@ -84,21 +84,28 @@ describe("LiveScreen (P7)", () => {
     expect(rival?.classList.contains("nr-scoreboard-rival-pending")).toBe(true);
   });
 
-  it("projector mode: el botón oculta el marcador y Esc lo restaura", () => {
+  it("projector mode: el botón oculta el marcador, muestra el botón de salida y Esc lo restaura", () => {
     const { container } = render(<LiveScreen model={liveModel(feedFrom(fx.tournament.trace))} />);
     expect(container.querySelector(".nr-scoreboard")).toBeTruthy();
     fireEvent.click(screen.getByText("Projector mode"));
     expect(container.querySelector(".nr-scoreboard")).toBeNull();
+    expect(screen.getByText("Exit projector mode (Esc)")).toBeTruthy();
     fireEvent.keyDown(window, { key: "Escape" });
     expect(container.querySelector(".nr-scoreboard")).toBeTruthy();
   });
 
-  it("Esc fuera de projector mode navega a #/runs; el back link de la esquina también", () => {
+  it("en projector mode, el botón visible de salida también restaura el marcador", () => {
+    const { container } = render(<LiveScreen model={liveModel(feedFrom(fx.tournament.trace))} />);
+    fireEvent.click(screen.getByText("Projector mode"));
+    fireEvent.click(screen.getByText("Exit projector mode (Esc)"));
+    expect(container.querySelector(".nr-scoreboard")).toBeTruthy();
+  });
+
+  it("Esc fuera de projector mode no navega (el back link de la esquina es la única salida)", () => {
     window.location.hash = "#/live";
     const { container } = render(<LiveScreen model={liveModel(feedFrom(fx.tournament.trace))} />);
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(window.location.hash).toBe(routeTo.runs());
-    window.location.hash = "#/live";
+    expect(window.location.hash).toBe("#/live");
     const corner = container.querySelector(".nr-live-corner-back") as HTMLElement;
     expect(corner).toBeTruthy();
     fireEvent.click(corner);
