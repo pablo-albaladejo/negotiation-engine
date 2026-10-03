@@ -1,14 +1,14 @@
 import { open, readdir, readFile } from "node:fs/promises";
-import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../src/shared/client.js";
-import { loadBazaarEnv } from "../../src/shared/env.js";
-import { buildGameState, type GameState } from "../../src/state/game-state.js";
-import { loadConversationMemos } from "../../src/state/conversation.js";
-import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../src/coordinator/coordinator.js";
-import { parseOffers, readSide } from "../../src/trades/trades.js";
-import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../../src/coordinator/routes.js";
-import type { ApiResponse } from "./api.js";
+import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../src/shared/client.js";
+import { loadBazaarEnv } from "../../../src/shared/env.js";
+import { buildGameState, type GameState } from "../../../src/state/game-state.js";
+import { loadConversationMemos } from "../../../src/state/conversation.js";
+import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../../src/coordinator/coordinator.js";
+import { parseOffers, readSide } from "../../../src/trades/trades.js";
+import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../../../src/coordinator/routes.js";
+import type { ApiResponse } from "../api.js";
 import { FeedEventSchema, feedLine, parseList, type FeedLine } from "./bazaar-board-core.js";
-import { isSafeId, resolveInside } from "./paths.js";
+import { isSafeId, resolveInside } from "../paths.js";
 
 /**
  * `GET /api/bazaar/model`: NUESTRO modelo interno, no un espejo de la API. Una vez por tick construye el

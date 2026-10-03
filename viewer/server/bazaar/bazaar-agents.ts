@@ -1,5 +1,5 @@
 import { open, readdir, stat } from "node:fs/promises";
-import { isSafeId, resolveInside } from "./paths.js";
+import { isSafeId, resolveInside } from "../paths.js";
 
 /**
  * Señal de vida de cada agente: cuándo escribió por última vez su traza en

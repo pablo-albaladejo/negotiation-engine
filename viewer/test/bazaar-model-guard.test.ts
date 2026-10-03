@@ -4,7 +4,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BazaarModel, ModelPostBlocked, ReadOnlyBazaarClient, readOnlyFetch } from "../server/bazaar-model.js";
+import { BazaarModel, ModelPostBlocked, ReadOnlyBazaarClient, readOnlyFetch } from "../server/bazaar/bazaar-model.js";
 import { startViewerServer } from "../server/http.js";
 
 /**
@@ -78,7 +78,7 @@ describe("viewer model guard: never POSTs to the game", () => {
   });
 
   it("the model module never calls an execute path", () => {
-    const src = readFileSync(new URL("../server/bazaar-model.ts", import.meta.url), "utf8");
+    const src = readFileSync(new URL("../server/bazaar/bazaar-model.ts", import.meta.url), "utf8");
     expect(src).not.toMatch(/\.execute\(/);
     expect(src).not.toMatch(/dryRun:\s*false/);
   });

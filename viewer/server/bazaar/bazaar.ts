@@ -1,17 +1,17 @@
 import { readdir } from "node:fs/promises";
 import { z } from "zod";
-import { BazaarClient } from "../../src/shared/client.js";
-import { duelsApi } from "../../src/duels/schemas.js";
-import { loadBazaarEnv } from "../../src/shared/env.js";
-import { extractScoreFields, ScoreFieldsSchema } from "../../src/shared/score.js";
-import type { Thread } from "../../src/shared/schemas.js";
+import { BazaarClient } from "../../../src/shared/client.js";
+import { duelsApi } from "../../../src/duels/schemas.js";
+import { loadBazaarEnv } from "../../../src/shared/env.js";
+import { extractScoreFields, ScoreFieldsSchema } from "../../../src/shared/score.js";
+import type { Thread } from "../../../src/shared/schemas.js";
 
 type StandingOffer = Thread["standing_offers"][number];
 type OfferSide = NonNullable<StandingOffer["give"]>;
 type ThreadSummary = Awaited<ReturnType<BazaarClient["myThreads"]>>["threads"][number];
-import type { ApiResponse } from "./api.js";
-import { isSafeId, resolveInside } from "./paths.js";
-import { readJsonl, type ReadError } from "./read.js";
+import type { ApiResponse } from "../api.js";
+import { isSafeId, resolveInside } from "../paths.js";
+import { readJsonl, type ReadError } from "../read.js";
 
 /**
  * Bazaar de solo lectura: `/api/bazaar/score` lee los `score.jsonl` escritos por el agente

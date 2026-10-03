@@ -1,9 +1,9 @@
 import { mkdir, open, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { TokenBucket } from "../../src/shared/client.js";
-import { loadBazaarEnv } from "../../src/shared/env.js";
-import type { ApiResponse } from "./api.js";
+import { TokenBucket } from "../../../src/shared/client.js";
+import { loadBazaarEnv } from "../../../src/shared/env.js";
+import type { ApiResponse } from "../api.js";
 import {
   BoardClockSchema,
   BoardDuelSchema,
@@ -36,8 +36,8 @@ import {
 } from "./bazaar-board-core.js";
 import { agentStatuses, type AgentStatus } from "./bazaar-agents.js";
 import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, type AlbumOut, type ScheduleOut } from "./bazaar-cockpit-core.js";
-import { isSafeId, resolveInside } from "./paths.js";
-import { readJsonl } from "./read.js";
+import { isSafeId, resolveInside } from "../paths.js";
+import { readJsonl } from "../read.js";
 
 /**
  * `GET /api/bazaar/board`: la vista unificada del Bazaar. Un ciclo por tick del juego (programado

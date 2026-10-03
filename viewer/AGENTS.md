@@ -15,7 +15,7 @@ Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: 
 
 - **127.0.0.1 solamente**, Host comprobado, solo GET/HEAD.
 - **Hacia el Bazaar solo GET**: tablero ≤ 2 req/s y modelo ≤ 1,5 req/s (visor < 4 req/s); nunca devuelve la clave.
-- **El modelo no puede enviar**: cliente de solo lectura (`ReadOnlyBazaarClient` + `readOnlyFetch`), rutas en dry-run, nunca el método execute; test de guardarraíl en `test/bazaar-model-guard.test.ts` (`pnpm viewer:test`).
+- **El modelo no puede enviar**: cliente de solo lectura (`ReadOnlyBazaarClient` + `readOnlyFetch`), rutas en dry-run, nunca el método execute; test de guardarraíl en `test/bazaar-model-guard.test.ts` (sobre `server/bazaar/bazaar-model.ts`) (`pnpm viewer:test`).
 - **Datos privados solo en local**: el modelo lleva valores privados, `your_limit` y reservas; el servidor solo escucha en 127.0.0.1 y rechaza otro Host.
 - Única escritura: `results/bazaar-live/<fecha>/verdicts.json` (valor de cada trato, calculado una vez).
 - **Texto rival**: solo como texto plano, nunca como HTML.

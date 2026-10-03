@@ -2,9 +2,9 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { ApiResponse } from "./api.js";
-import { BazaarDuels, BazaarLive, bazaarScore, BazaarThreads, type BazaarDuelsDeps, type BazaarLiveDeps, type BazaarThreadsDeps } from "./bazaar.js";
-import { BazaarBoard, type BazaarBoardDeps } from "./bazaar-board.js";
-import { BazaarModel, type BazaarModelDeps } from "./bazaar-model.js";
+import { BazaarDuels, BazaarLive, bazaarScore, BazaarThreads, type BazaarDuelsDeps, type BazaarLiveDeps, type BazaarThreadsDeps } from "./bazaar/bazaar.js";
+import { BazaarBoard, type BazaarBoardDeps } from "./bazaar/bazaar-board.js";
+import { BazaarModel, type BazaarModelDeps } from "./bazaar/bazaar-model.js";
 
 /**
  * Servidor local del visor. SOLO escucha en 127.0.0.1 (la dirección no es configurable, solo el
