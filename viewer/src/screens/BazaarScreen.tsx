@@ -12,9 +12,11 @@ import {
   boardTimeline,
   filterBoardRows,
   KIND_LABEL,
+  SCOPE_LABEL,
   type Board,
   type BazaarModel,
   type BoardFilters,
+  type BoardScope,
   type BoardRow,
   type BoardRowKind,
   agentLines,
@@ -81,14 +83,24 @@ function SelectField({ label, value, options, onChange, format }: { label: strin
   );
 }
 
-function FiltersBar({ rows, filters, onChange }: { rows: BoardRow[]; filters: BoardFilters; onChange: (f: BoardFilters) => void }) {
+function FiltersBar({ board, rows, filters, onChange }: { board: Board; rows: BoardRow[]; filters: BoardFilters; onChange: (f: BoardFilters) => void }) {
   const opts = boardFilterOptions(rows);
   const sortId = useId();
   const set = (patch: Partial<BoardFilters>) => onChange({ ...filters, ...patch });
+  const withOthers = rows.some((r) => r.kind === "other-trade");
   return (
     <div className="nr-filters" role="group" aria-label="Conversation filters">
+      {withOthers ? (
+        <SelectField
+          label="Whose"
+          value={filters.scope}
+          options={["ours", "others"]}
+          onChange={(scope) => set({ scope: scope as BoardScope })}
+          format={(s) => SCOPE_LABEL[s as BoardScope] ?? s}
+        />
+      ) : null}
       <SelectField label="Kind" value={filters.kind} options={opts.kind} onChange={(kind) => set({ kind })} format={(k) => KIND_LABEL[k as BoardRowKind] ?? k} />
-      <SelectField label="Counterparty" value={filters.counterparty} options={opts.counterparty} onChange={(counterparty) => set({ counterparty })} />
+      <SelectField label="Counterparty" value={filters.counterparty} options={opts.counterparty} onChange={(counterparty) => set({ counterparty })} format={(c) => withTeamNames(board, c)} />
       <SelectField label="Status" value={filters.status} options={opts.status} onChange={(status) => set({ status })} />
       <div className="nr-filter-field">
         <label className="nr-muted nr-filter-label" htmlFor={sortId}>
@@ -101,6 +113,14 @@ function FiltersBar({ rows, filters, onChange }: { rows: BoardRow[]; filters: Bo
       </div>
     </div>
   );
+}
+
+/** Why a row has no chat: book fills and public offers never carry text in the API. */
+function emptyChatNote(row: BoardRow): string {
+  if (row.kind === "other-trade") return `Trade between other parties${row.tick_settled !== null ? ` at tick ${row.tick_settled}` : ""}: only the public settlement is visible (no chat, no offers, no private values).`;
+  if (row.id.startsWith("settlement:")) return `Order-book fill${row.tick_settled !== null ? ` at tick ${row.tick_settled}` : ""}: the other team took a public offer, so there is no chat. Only direct team threads carry messages.`;
+  if (row.kind === "team-offer") return "Public offer on the book: no chat until someone takes it.";
+  return "No messages for this entry.";
 }
 
 function ConversationList({ board, rows, selectedId, onSelect }: { board: Board; rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void }) {
@@ -187,7 +207,7 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
             ))}
           </div>
         ) : (
-          <span className="nr-muted">No messages for this entry.</span>
+          <span className="nr-muted">{emptyChatNote(row)}</span>
         )}
         <div className="nr-grid" style={gridCols("minmax(0, 2fr) minmax(220px, 1fr)")}>
           {row.offers.length > 0 ? (
@@ -551,6 +571,10 @@ function RightNow({ board, onOpen }: { board: Board; onOpen: (id: string) => voi
             who: `${it.counterparty} · ${PARTY_LABEL[it.party]}`,
             state: it.warning ? { value: `⚠ ${it.warning}${it.state ? ` · ${it.state}` : ""}`, tone: "worse" as const } : it.state || "—",
           }))}
+          onRowClick={(i) => {
+            const it = items[i];
+            if (it) onOpen(it.id);
+          }}
         />
       ) : (
         <span className="nr-muted">Nothing open.</span>
@@ -627,6 +651,10 @@ function ScoreMovers({ board, onOpen }: { board: Board; onOpen: (id: string) => 
             value: show(r.our_value, "—"),
             delta: toned(r.d_score),
           }))}
+          onRowClick={(i) => {
+            const r = rows[i];
+            if (r) onOpen(r.id);
+          }}
         />
       ) : (
         <span className="nr-muted">No deal has moved the score yet.</span>
@@ -655,11 +683,12 @@ function Agents({ board }: { board: Board }) {
 }
 
 function History({ board, rows, title, filters, onFiltersChange }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void }) {
-  const shown = filterBoardRows(rows, filters);
+  // "Whose" only applies where other teams' trades are listed (duels are always ours).
+  const shown = filterBoardRows(rows, rows.some((r) => r.kind === "other-trade") ? filters : { ...filters, scope: "all" });
   const select = (id: string) => onFiltersChange({ ...filters, row: id });
   return (
     <Fold title={`${title} (${rows.length})`}>
-      <FiltersBar rows={rows} filters={filters} onChange={onFiltersChange} />
+      <FiltersBar board={board} rows={rows} filters={filters} onChange={onFiltersChange} />
       {shown.length > 0 ? <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} /> : <span className="nr-muted">Nothing matches these filters.</span>}
     </Fold>
   );
@@ -728,7 +757,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   const [view, setView] = useState<View>("now");
   const pick = (id: string) => setView(VIEWS.find((v) => v.id === id)?.id ?? "now");
   const { model, loading } = useBazaarModel(view !== "cockpit" || filters.row !== "");
-  const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? null;
+  const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? board.others.find((r) => r.id === filters.row) ?? null;
   const conv = filters.row ? modelConversationFor(model, selected?.id ?? filters.row) ?? modelConversationFor(model, filters.row) : null;
   const open = (id: string) => onFiltersChange({ ...filters, row: id });
   /** From the model: the board row if it exists; otherwise the model conversation. */
@@ -772,7 +801,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <Agents board={board} />
         </div>
       </div>
-      <History board={board} rows={trades} title="History · dealers and El Rastro" filters={filters} onFiltersChange={onFiltersChange} />
+      <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} />
       <History board={board} rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} />
       <Fold title="Market · leaderboard, feed, El Rastro, our venue">
         <MarketPanel board={board} />

@@ -184,7 +184,7 @@ export function parseCache(raw: unknown): VerdictCache {
 
 // ---------------------------------------------------------------- output
 
-export type RowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer";
+export type RowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer" | "other-trade";
 export type Verdict = "good" | "bad" | "neutral" | "open" | "no deal" | "not logged";
 
 export interface BoardMessage {
@@ -218,6 +218,8 @@ export interface BoardRow {
   id: string;
   kind: RowKind;
   counterparty: string;
+  /** Teams/dealers in the deal (filled only for other parties' trades, to filter by team). */
+  parties: string[];
   item: string;
   status: string;
   closed_reason: string | null;
@@ -475,6 +477,7 @@ interface Built {
 }
 
 const blankRow = (): Omit<BoardRow, "id" | "kind" | "counterparty" | "item" | "status"> => ({
+  parties: [],
   closed_reason: null,
   price: null,
   our_value: null,
@@ -727,14 +730,50 @@ export function headerOf(me: BoardMe | null, team: string): BoardHeader | null {
 }
 
 /** Feed settlements that involve us (accumulated in the cache: the feed is short). */
-export function ourSettlements(events: readonly FeedEvent[], team: string): Settlement[] {
+/** Every settlement in the public feed (ours and other teams'). */
+export function feedSettlements(events: readonly FeedEvent[]): Settlement[] {
   const out: Settlement[] = [];
   for (const e of events) {
     if (e.type !== "settlement") continue;
     const p = SettlementSchema.safeParse(e.payload);
-    if (p.success && (p.data.parties ?? []).includes(team)) out.push(p.data);
+    if (p.success) out.push(p.data);
   }
   return out;
+}
+
+/** One line of the recorder's public stream (`stream-public.jsonl`): the feed event sits under `data`. */
+export const StreamLineSchema = z.looseObject({ event: str.nullish(), data: FeedEventSchema.nullish() });
+export type StreamLine = z.infer<typeof StreamLineSchema>;
+
+export function streamSettlements(lines: readonly StreamLine[]): Settlement[] {
+  return feedSettlements(lines.flatMap((l) => (l.data ? [l.data] : [])));
+}
+
+/** A settlement between other parties (we are not in it): public structure only, no value or verdict. */
+function otherTradeRow(s: Settlement): BoardRow {
+  const items = s.items ?? [];
+  const first = items[0];
+  const seller = first?.frm ?? s.parties?.[0] ?? "?";
+  const buyer = first?.to ?? s.parties?.find((p) => p !== seller) ?? "?";
+  return {
+    ...blankRow(),
+    id: `settlement:${s.settlement}`,
+    kind: "other-trade",
+    counterparty: `${seller} → ${buyer}${s.venue ? ` @ ${s.venue}` : ""}`,
+    parties: (s.parties ?? []).slice(),
+    item: items.map((i) => i.name ?? i.ref ?? "?").join(" + ") || "—",
+    status: s.kind === "match" ? "matched" : "settled",
+    price: s.price ?? null,
+    tick_settled: s.tick ?? null,
+  };
+}
+
+/** Settlements of other parties, newest first. */
+export function otherTradeRows(settlements: readonly Settlement[], team: string): BoardRow[] {
+  return settlements
+    .filter((s) => !(s.parties ?? []).includes(team))
+    .map(otherTradeRow)
+    .sort((a, b) => (b.tick_settled ?? -1) - (a.tick_settled ?? -1));
 }
 
 // ---------------------------------------------------------------- market

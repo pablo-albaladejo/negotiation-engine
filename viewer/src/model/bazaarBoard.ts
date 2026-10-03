@@ -4,7 +4,7 @@
  * conversation by tick. Message text is verbatim (it may carry an injection): it is never
  * interpreted, only shown as text.
  */
-export type BoardRowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer";
+export type BoardRowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer" | "other-trade";
 export type BoardVerdict = "good" | "bad" | "neutral" | "open" | "no deal" | "not logged";
 
 export interface BoardMessage {
@@ -38,6 +38,8 @@ export interface BoardRow {
   id: string;
   kind: BoardRowKind;
   counterparty: string;
+  /** Parties of a trade between other teams (`other-trade`), to filter by team. */
+  parties?: string[];
   item: string;
   status: string;
   closed_reason: string | null;
@@ -155,6 +157,8 @@ export interface Board {
   clock: BoardClock | null;
   header: BoardHeader | null;
   rows: BoardRow[];
+  /** Settlements between other parties (we are not in them), from the public feed. */
+  others: BoardRow[];
   market: BoardMarket;
   album: BoardAlbum | null;
   holdings: Record<string, number>;
@@ -171,6 +175,7 @@ export const EMPTY_BOARD: Board = {
   clock: null,
   header: null,
   rows: [],
+  others: [],
   market: { leaderboard: [], feed: [], rastro: [], venue: null },
   album: null,
   holdings: {},
@@ -186,11 +191,17 @@ export const KIND_LABEL: Record<BoardRowKind, string> = {
   "duel-seller": "duel · we sell",
   "team-trade": "team trade",
   "team-offer": "team offer",
+  "other-trade": "other teams' trade",
 };
 
 export type BoardSort = "tick" | "surplus";
 
+/** Whose deals the history shows: all, only ours, or only between other parties. */
+export type BoardScope = "all" | "ours" | "others";
+export const SCOPE_LABEL: Record<BoardScope, string> = { all: "Everyone", ours: "Only us", others: "Other teams" };
+
 export interface BoardFilters {
+  scope: BoardScope;
   kind: string;
   counterparty: string;
   status: string;
@@ -200,13 +211,15 @@ export interface BoardFilters {
 }
 
 export const ALL = "all";
-const DEFAULT_FILTERS: BoardFilters = { kind: ALL, counterparty: ALL, status: ALL, verdict: ALL, sort: "tick", row: "" };
+const DEFAULT_FILTERS: BoardFilters = { scope: "all", kind: ALL, counterparty: ALL, status: ALL, verdict: ALL, sort: "tick", row: "" };
 
 /** Filters from the hash query (`#/bazaar?kind=duel-buyer&verdict=bad&sort=surplus&row=thread:178`). */
 export function parseBoardQuery(query: string): BoardFilters {
   const p = new URLSearchParams(query);
   const sort = p.get("sort") === "surplus" ? "surplus" : "tick";
+  const whose = p.get("whose");
   return {
+    scope: whose === "ours" || whose === "others" ? whose : "all",
     kind: p.get("kind") || ALL,
     counterparty: p.get("with") || ALL,
     status: p.get("status") || ALL,
@@ -218,6 +231,7 @@ export function parseBoardQuery(query: string): BoardFilters {
 
 export function boardQuery(f: BoardFilters): string {
   const p = new URLSearchParams();
+  if (f.scope !== DEFAULT_FILTERS.scope) p.set("whose", f.scope);
   if (f.kind !== ALL) p.set("kind", f.kind);
   if (f.counterparty !== ALL) p.set("with", f.counterparty);
   if (f.status !== ALL) p.set("status", f.status);
@@ -229,7 +243,12 @@ export function boardQuery(f: BoardFilters): string {
 
 export function filterBoardRows(rows: readonly BoardRow[], f: BoardFilters): BoardRow[] {
   const out = rows.filter(
-    (r) => (f.kind === ALL || r.kind === f.kind) && (f.counterparty === ALL || r.counterparty === f.counterparty) && (f.status === ALL || r.status === f.status) && (f.verdict === ALL || r.verdict === f.verdict),
+    (r) =>
+      inScope(r, f.scope) &&
+      (f.kind === ALL || r.kind === f.kind) &&
+      (f.counterparty === ALL || counterpartiesOf(r).includes(f.counterparty)) &&
+      (f.status === ALL || r.status === f.status) &&
+      (f.verdict === ALL || r.verdict === f.verdict),
   );
   const tick = (r: BoardRow) => r.tick_settled ?? r.tick_opened ?? -1;
   if (f.sort === "surplus") return out.sort((a, b) => (b.surplus ?? -Infinity) - (a.surplus ?? -Infinity) || tick(b) - tick(a));
@@ -238,10 +257,15 @@ export function filterBoardRows(rows: readonly BoardRow[], f: BoardFilters): Boa
 
 const uniq = (xs: string[]) => [...new Set(xs)].sort();
 
+const isOthers = (r: BoardRow) => r.kind === "other-trade";
+const inScope = (r: BoardRow, scope: BoardScope) => scope === "all" || (scope === "others") === isOthers(r);
+/** What the counterparty filter matches: each team of an other teams' trade, our counterparty otherwise. */
+const counterpartiesOf = (r: BoardRow): string[] => (isOthers(r) ? (r.parties ?? []) : [r.counterparty]);
+
 export function boardFilterOptions(rows: readonly BoardRow[]): { kind: string[]; counterparty: string[]; status: string[]; verdict: string[] } {
   return {
     kind: uniq(rows.map((r) => r.kind)),
-    counterparty: uniq(rows.map((r) => r.counterparty)),
+    counterparty: uniq(rows.flatMap(counterpartiesOf)),
     status: uniq(rows.map((r) => r.status)),
     verdict: uniq(rows.map((r) => r.verdict)),
   };
@@ -271,5 +295,5 @@ export function boardTimeline(row: BoardRow): TimelineStep[] {
 }
 
 export function boardModel(raw: Board | null | undefined): Board {
-  return raw ? { ...EMPTY_BOARD, ...raw, market: { ...EMPTY_BOARD.market, ...(raw.market ?? {}) }, rows: raw.rows ?? [], holdings: raw.holdings ?? {}, agents: raw.agents ?? [] } : EMPTY_BOARD;
+  return raw ? { ...EMPTY_BOARD, ...raw, market: { ...EMPTY_BOARD.market, ...(raw.market ?? {}) }, rows: raw.rows ?? [], others: raw.others ?? [], holdings: raw.holdings ?? {}, agents: raw.agents ?? [] } : EMPTY_BOARD;
 }

@@ -19,7 +19,10 @@ import {
   leaderLines,
   LessonSchema,
   OUR_TEAM_FALLBACK,
-  ourSettlements,
+  feedSettlements,
+  otherTradeRows,
+  StreamLineSchema,
+  streamSettlements,
   parseCache,
   parseList,
   parseOffers,
@@ -78,6 +81,8 @@ export interface BoardOut {
   clock: BoardClockOut | null;
   header: ReturnType<typeof headerOf>;
   rows: BoardRow[];
+  /** Settlements between other parties (we are not in them), newest first. */
+  others: BoardRow[];
   market: { leaderboard: LeaderLine[]; feed: FeedLine[]; rastro: BookLine[]; venue: BoardVenueOut | null };
   /** Album pages with the missing cards (cockpit). */
   album: AlbumOut | null;
@@ -265,7 +270,9 @@ export class BazaarBoard {
     const events = parseList(FeedEventSchema, field(feedRaw, "events"));
     const cache = await this.readCache();
     let dirty = false;
-    for (const s of ourSettlements(events, team)) {
+    // Every settlement (ours and other teams'): the feed only covers recent ones, the recorder the day.
+    const streamed = streamSettlements(await readAllJsonl(this.bazaarDir, (f) => f === "stream-public.jsonl", StreamLineSchema));
+    for (const s of [...streamed, ...feedSettlements(events)]) {
       if (!cache.settlements[String(s.settlement)]) {
         cache.settlements[String(s.settlement)] = s;
         dirty = true;
@@ -345,6 +352,7 @@ export class BazaarBoard {
         : null,
       header: headerOf(me, team),
       rows,
+      others: otherTradeRows(Object.values(cache.settlements), team),
       market: { leaderboard: leaderLines(leaderRaw, team), feed: events.slice(-20).reverse().map(feedLine), rastro: bookLines(field(rastroRaw, "offers"), 40, ourIds), venue },
       album,
       holdings,

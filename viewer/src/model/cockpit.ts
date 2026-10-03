@@ -163,7 +163,7 @@ export function historyGroups(rows: readonly BoardRow[]): { trades: BoardRow[]; 
   return { trades: closed.filter((r) => !r.kind.startsWith("duel")), duels: closed.filter((r) => r.kind.startsWith("duel")) };
 }
 
-export type PartyKind = "us" | "team" | "dealer" | "duel rival" | "public";
+export type PartyKind = "us" | "team" | "dealer" | "duel rival" | "public" | "others";
 
 /** How each kind of part reads in the UI. Duels pit teams against each other, but the rules hide which one behind an alias. */
 export const PARTY_LABEL: Record<PartyKind, string> = {
@@ -172,6 +172,7 @@ export const PARTY_LABEL: Record<PartyKind, string> = {
   dealer: "dealer",
   "duel rival": "team under an alias (hidden by the rules)",
   public: "public offer",
+  others: "other teams (we are not in it)",
 };
 
 /** Official rarity colors (`/api/catalog`). */
@@ -230,6 +231,7 @@ export function partyOf(board: Board, row: BoardRow): Party {
   if (row.kind.startsWith("dealer")) return { label: row.counterparty, kind: "dealer" };
   if (row.kind.startsWith("duel")) return { label: row.counterparty, kind: "duel rival" };
   if (row.kind === "team-offer") return { label: "anyone (public offer)", kind: "public" };
+  if (row.kind === "other-trade") return { label: withTeamNames(board, row.counterparty), kind: "others" };
   return { label: withTeamNames(board, row.counterparty), kind: "team" };
 }
 

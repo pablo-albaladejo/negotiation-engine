@@ -20,6 +20,8 @@ export {
   type BoardClock,
   type BoardDecision,
   type BoardFilters,
+  type BoardScope,
+  SCOPE_LABEL,
   type BoardHeader,
   type BoardMarket,
   type BoardTeam,
