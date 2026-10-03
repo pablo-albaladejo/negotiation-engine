@@ -79,7 +79,7 @@ async function main() {
     pageTargets,
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
   });
-  const trades = new TradesRoute(client, dryRun);
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") });
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
   const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });

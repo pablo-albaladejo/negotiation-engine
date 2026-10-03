@@ -9,7 +9,7 @@ import { appendLesson, PendingLessons } from "../dealers/history/lessons.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
-import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeState } from "../trades/trades.js";
+import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeParams, type TradeState } from "../trades/trades.js";
 import { completesPage, duelStrategy, type Strategy, type StrategyDecision } from "../state/conversation.js";
 import type { GameState } from "../state/game-state.js";
 import type { FlagRecord } from "../state/world.js";
@@ -293,8 +293,9 @@ export class TradesRoute {
   readonly agent: TradesAgent;
   private last: { state: TradeState; plan: TickPlan } | undefined;
 
-  constructor(client: BazaarClient, dryRun: boolean) {
-    this.agent = new TradesAgent(client, DEFAULT_TRADE_PARAMS, { dryRun, log: () => {} });
+  /** `params`: the coordinator's `--max-spend` and `--cash-floor` (otherwise the El Rastro defaults). */
+  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}) {
+    this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {} });
   }
 
   async propose(state: GameState, me: Me | undefined, pageTargets: readonly string[]): Promise<RouteProposal> {
