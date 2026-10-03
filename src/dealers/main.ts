@@ -46,6 +46,7 @@ async function main() {
       "patience-budget": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.patienceBudget) },
       "max-step": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.maxStep) },
       "step-mode": { type: "string", default: DEFAULT_NEGOTIATOR_PARAMS.stepMode },
+      "first-step-frac": { type: "string", default: String(DEFAULT_NEGOTIATOR_PARAMS.firstStepFrac) },
       safety: { type: "string" },
       only: { type: "string" },
     },
@@ -68,6 +69,8 @@ async function main() {
   const patienceBudget = Number(values["patience-budget"]);
   const maxStep = Number(values["max-step"]);
   const stepMode = values["step-mode"] as StepMode;
+  const firstStepFrac = Number(values["first-step-frac"]);
+  if (!Number.isFinite(firstStepFrac) || firstStepFrac < 0 || firstStepFrac > 0.5) throw new Error("--first-step-frac debe estar entre 0 y 0,5");
   if (!Number.isFinite(sellFloorAnchorMult) || sellFloorAnchorMult < 1) throw new Error("--sell-floor-anchor-mult debe ser un número ≥ 1");
   if (!Number.isInteger(patienceBudget) || patienceBudget < 1) throw new Error("--patience-budget debe ser un entero ≥ 1");
   if (!Number.isInteger(maxStep) || maxStep < 1) throw new Error("--max-step debe ser un entero ≥ 1");
@@ -83,7 +86,7 @@ async function main() {
     process.exit(2);
   }
   const client = new BazaarClient({ url: env.url, key: env.key });
-  const negotiator = { buyAnchorFrac, sellAnchorMult, maxHolds, sellFloorAnchorMult, patienceBudget, maxStep, stepMode };
+  const negotiator = { buyAnchorFrac, sellAnchorMult, maxHolds, sellFloorAnchorMult, patienceBudget, maxStep, stepMode, firstStepFrac };
   if (serious) {
     const trace = new FileTrace(liveTraceDir(process.cwd()));
     const clock = await client.clock();

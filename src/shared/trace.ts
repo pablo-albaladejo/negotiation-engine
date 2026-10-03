@@ -32,6 +32,8 @@ export interface TraceRecord {
    * (no entra en el share medio; personas.md § 9).
    */
   tookOpening?: boolean;
+  /** ¿Sus pasos siguen a los nuestros? (`mirrorVerdict`: mirror, not-mirror, unknown). */
+  mirror?: string;
   error?: string;
   /** Al cerrar/aceptar/terminar: mensajes nuestros, respuestas suyas, tics hasta su final y respuesta a cada paso. */
   patience?: PatienceSummary;

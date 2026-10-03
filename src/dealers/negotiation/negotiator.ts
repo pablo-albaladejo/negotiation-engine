@@ -55,6 +55,12 @@ export interface NegotiatorParams {
    * (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
    */
   lowballFrac: number;
+  /**
+   * `mirror_concessions` (site-map § 8.3): el dealer nunca cede más rápido que nuestro último paso. Nuestra PRIMERA
+   * concesión tras el ancla es al menos esta fracción del tramo ancla → reserva efectiva (aunque supere `maxStep`);
+   * después, la curva de siempre (adaptativa o Boulware). 0 lo desactiva.
+   */
+  firstStepFrac: number;
 }
 
 export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
@@ -72,6 +78,9 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   maxHolds: 1,
   fixedAfterConcessions: 2,
   lowballFrac: 0.7,
+  // APAGADO. Replay offline (modelo de personas.md § 3.3, con y sin espejo): en los 11 hilos guardados, igual (huecos
+  // pequeños); en hilos sintéticos de rara/épica, peor (EV medio 11,42 → 10,92 con 0,12). Se prueba con --first-step-frac.
+  firstStepFrac: 0,
 };
 
 /** Negociador anterior a la evidencia de los hilos 56 y 125 (ancla lejana + Boulware), para comparar. */
@@ -129,6 +138,7 @@ export type Rule =
   | "reciprocity"
   | "adaptive"
   | "adaptive-fallback"
+  | "mirror-first-step"
   | "ac-next"
   | "welcome-first-deal"
   | "final-above-reservation"
@@ -259,6 +269,18 @@ export function bigStepsDidNotPay(responses: readonly StepResponse[]): boolean {
   return big.some((r) => r.herMove <= baseline);
 }
 
+export type MirrorVerdict = "mirror" | "not-mirror" | "unknown";
+
+/**
+ * ¿Sus pasos siguen a los nuestros (`mirror_concessions`)? Se comparan tamaños: «mirror» si algún paso grande nuestro
+ * (≥ 2) le arrancó más que el mejor de nuestros pasos de 1 (o que 0); «not-mirror» si ninguno lo hizo
+ * (`bigStepsDidNotPay`): entonces se vuelve a pasos pequeños. Sin pasos grandes contestados, «unknown».
+ */
+export function mirrorVerdict(responses: readonly StepResponse[]): MirrorVerdict {
+  if (!responses.some((r) => r.step >= 2)) return "unknown";
+  return bigStepsDidNotPay(responses) ? "not-mirror" : "mirror";
+}
+
 /** Paso adaptativo: ⌈hueco hasta nuestro límite ÷ mensajes que le quedan de paciencia⌉, entre 1 y `maxStep`. */
 export function adaptiveStep(gap: number, sent: number, p: Pick<NegotiatorParams, "patienceBudget" | "maxStep">): number {
   const remaining = Math.max(1, p.patienceBudget - sent);
@@ -290,6 +312,15 @@ export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTI
   const mandate: Mandate = { role: view.side === "buy" ? "buyer" : "seller", reservation: effRes };
   const prev = view.ourPrices[view.ourPrices.length - 1];
   if (prev === undefined) return { price: enforceGuardrails(mandate, anchor), rule: "anchor" };
+
+  // Primera concesión tras el ancla con `firstStepFrac` (mirror_concessions): paso grande, guardarraíles y monotonía intactos.
+  if (view.ourPrices.length === 1 && p.firstStepFrac > 0) {
+    const dir = view.side === "buy" ? 1 : -1;
+    const big = Math.max(1, Math.round(p.firstStepFrac * Math.abs(effRes - view.ourPrices[0]!)));
+    const normal = p.stepMode === "adaptive" ? adaptiveStep(dir * (effRes - prev), 1, p) : 1;
+    const price = enforceGuardrails(mandate, prev + dir * Math.max(big, normal), prev);
+    if (price !== prev) return { price, rule: big > normal ? "mirror-first-step" : "adaptive" };
+  }
 
   if (p.stepMode === "adaptive") {
     const dir = view.side === "buy" ? 1 : -1;

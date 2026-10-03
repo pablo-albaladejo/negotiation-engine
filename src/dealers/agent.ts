@@ -1,6 +1,6 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
 import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./planning/plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
@@ -496,6 +496,7 @@ export class BazaarAgent {
       reservation,
       effectiveReservation: d.effectiveReservation,
       rule: d.rule,
+      mirror: mirrorVerdict(stepResponses(view)),
       ...(p.herCurrent ? { herPrice: p.herCurrent.price, herFinal: p.herCurrent.final } : {}),
       ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
     };
