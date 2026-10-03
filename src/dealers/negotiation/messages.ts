@@ -86,8 +86,10 @@ export function counterText(side: Side, round: number, price: number, probe?: st
   return text;
 }
 
-export function closeText(round: number): string {
-  return pick(CLOSE, round);
+/** Farewell without an offer; an egg probe may ride on it (a message we send anyway, never a separate one). */
+export function closeText(round: number, probe?: string): string {
+  const ask = probe !== undefined && GREETINGS.includes(probe) ? ` ${probe}` : probe !== undefined && isProbePhrase(probe) ? ` Do you know about ${probe.trim()}?` : "";
+  return pick(CLOSE, round) + ask;
 }
 
 /** Text to hold the already-sent price `price` (round `round`), without opening a new offer; a `GREETINGS` entry may ride on it. */

@@ -679,7 +679,13 @@ export class BazaarAgent {
         case "close": {
           if (!this.o.dryRun) {
             // The farewell is text without an offer: only if the previous message wasn't one already.
-            if (view.canMessage && !active.lastTextOnly) await this.api.say(thread.id, closeText(p.ourPrices.length)).catch(() => undefined);
+            if (view.canMessage && !active.lastTextOnly) {
+              // A probe still pending rides on the farewell: dealers that walk on round 1 never see a second counter.
+              const probe = this.o.probe?.(thread.id);
+              const text = closeText(p.ourPrices.length, probe);
+              const sent = await this.api.say(thread.id, text).then(() => true, () => false);
+              if (sent && probe !== undefined && text.includes(probe)) this.o.onProbe?.(thread.id, probe);
+            }
             await this.api.closeThread(thread.id);
             this.skip.set(target.key, tick + ticksPerHour);
           }
