@@ -2,7 +2,7 @@
 
 Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cromos de Madrid en el que negociamos con dealers, con otros equipos en El Rastro y en duelos 1 contra 1. **El código decide la cifra**; el texto es una plantilla con esa misma cifra.
 
-**Entrada rápida:** [`DAY1.md`](DAY1.md) — estado, cómo jugar, horario, comandos y datos medidos. Contexto del día 1: [`handoff/2026-10-02/HANDOFF.md`](handoff/2026-10-02/HANDOFF.md).
+**Entrada rápida:** [`DAY1.md`](DAY1.md) — estado, cómo jugar, horario, comandos y datos medidos. Arrancar el día: [`DAY2.md`](DAY2.md) (`pnpm bazaar:doctor`, `pnpm bazaar:up`). Contexto del día 1: [`handoff/2026-10-02/HANDOFF.md`](handoff/2026-10-02/HANDOFF.md).
 
 ## Reglas no negociables
 
@@ -56,6 +56,8 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:broker` | Broker de nuestro venue (en vivo con `--confirm`). |
 | `pnpm bazaar:venue` | Plan de nuestro mercado (abrir exige `--confirm`). |
 | `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`). |
+| `pnpm bazaar:doctor` | Comprueba que todo está listo (✓/✗): `.env`, Node, git, tests, API, puerto del visor y `bazaar:play --dry-run --once` (`--fast`). |
+| `pnpm bazaar:up` | Doctor y recorder, visor, `bazaar:play` y broker en sombra, en dry-run (en vivo: `--live --confirm`); `pnpm bazaar:down` para lo de `--detach`. Ver [`DAY2.md`](DAY2.md). |
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
 | `pnpm bazaar:scan` | GET a todos los endpoints, guarda las respuestas. |
 | `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |
