@@ -252,6 +252,8 @@ export interface Board {
   team_desk?: BoardDeskTeam[];
   /** Every open venue's book as play read it, marked against our hand (null without venue-books.json). */
   venue_books?: BoardVenueBooks | null;
+  /** Forex chains A → B → C as play found them this tick (null without forex.json; absent on an older server). */
+  forex?: BoardForex | null;
   /** Where each of our open offers comes from (plan.jsonl), by offer id. */
   offer_origins?: Record<string, BoardOfferOrigin>;
   /** Directed offers between other teams, last ~60 ticks (structure only). */
@@ -486,6 +488,52 @@ export interface BoardVenueBooks {
   tick: number | null;
   updated: string | null;
   venues: BoardVenueBook[];
+}
+
+/** One leg of a forex chain (server: viewer/server/bazaar/forex/forex.ts). */
+export interface BoardForexLeg {
+  at: string;
+  kind: "dealer" | "venue";
+  price: number;
+  lo: number;
+  hi: number;
+  n: number;
+  fee: number;
+  last_tick: number | null;
+}
+
+export interface BoardForexStep {
+  kind: "buy" | "hold" | "sell";
+  at: string;
+  /** buy = −(price + fee), hold = 0, sell = +(price − fee). */
+  expected: number;
+  label: string;
+}
+
+export interface BoardForexChain {
+  id: string;
+  card: string;
+  rarity: string | null;
+  buy: BoardForexLeg;
+  sell: BoardForexLeg;
+  steps: BoardForexStep[];
+  margin: number;
+  worst: number;
+  automated: boolean;
+  max_buy: number | null;
+  min_sell: number | null;
+  /** Index into steps; −1 = idle. */
+  current: number;
+  status: string;
+  done_today: number;
+}
+
+export interface BoardForex {
+  tick: number | null;
+  updated: string | null;
+  trades: number;
+  scanned: number;
+  chains: BoardForexChain[];
 }
 
 export interface BoardOfferOrigin {

@@ -5,6 +5,7 @@ import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
 import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer-origins.js";
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
 import { eggsOf, type EggsOut } from "./profile/eggs.js";
+import { forexOf, type ForexOut } from "./forex/forex.js";
 import { TokenBucket } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import type { ApiResponse } from "../api.js";
@@ -106,6 +107,8 @@ export interface BoardOut {
   team_desk: TeamDeskTeam[];
   /** Every open venue's book as play read it (venue-books.json), marked against our hand; null without the file. */
   venue_books: VenueBooksOut | null;
+  /** Forex chains A → B → C as play found them this tick (forex.json); null without the file. */
+  forex: ForexOut | null;
   /** Where each of our open offers comes from (plan.jsonl), by offer id. */
   offer_origins: Record<string, OfferOrigin>;
   /** Directed offers between other teams, last ~60 ticks (public stream; structure only). */
@@ -398,6 +401,7 @@ export class BazaarBoard {
         team,
         this.catalog?.raw ?? null,
       ),
+      forex: forexOf(await readJsonFile(join(this.bazaarDir, this.today(), "forex.json"))),
       offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
