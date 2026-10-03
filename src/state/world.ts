@@ -28,6 +28,7 @@ const PERSONA_TYPES: readonly PersonaType[] = ["dealer", "collector", "trickster
 export interface EggProbe {
   phrase: string;
   tick: number;
+  /** "sent" until resolved: "hit" if an egg of ours fired at this persona soon after, "miss" once the window passed. */
   result?: string;
   /** Eggs the persona has left after the probe, if known. */
   capLeft?: number;
@@ -63,6 +64,24 @@ export interface EggFind {
   persona?: string;
   tick: number;
   prize?: string;
+}
+
+/** Ticks after a probe in which an egg of ours at that persona counts as its hit (the dealer answers within a tick or two). */
+export const PROBE_WINDOW_TICKS = 6;
+
+/**
+ * Probe outcome from structure only (the feed's egg events, never the dealer's text): each egg of ours at the persona
+ * marks as "hit" the latest probe sent at most `PROBE_WINDOW_TICKS` before it; a probe still "sent" after the window is a
+ * "miss". Already resolved probes are kept as they are.
+ */
+export function resolveProbes(probes: readonly EggProbe[], ourEggs: readonly EggFind[], tick: number): EggProbe[] {
+  const out = probes.map((p) => ({ ...p }));
+  for (const e of ourEggs) {
+    const p = out.filter((x) => x.tick <= e.tick && e.tick - x.tick <= PROBE_WINDOW_TICKS && x.result !== "hit").sort((a, b) => b.tick - a.tick)[0];
+    if (p) p.result = "hit";
+  }
+  for (const p of out) if ((p.result ?? "sent") === "sent" && tick - p.tick > PROBE_WINDOW_TICKS) p.result = "miss";
+  return out;
 }
 
 /** ASSUMPTION: 15 eggs per persona (`max_total`) until the API gives another figure. */
@@ -314,10 +333,15 @@ export function formatPersona(p: Persona): string {
   return `${p.id}: ${p.status}${progress} · ${extra.join(" · ")}`;
 }
 
-export function formatEggsAndFlags(eggs: WorldEggs, ours: OursWorld): string[] {
+export function formatEggsAndFlags(eggs: WorldEggs, ours: OursWorld, personas: readonly Persona[] = []): string[] {
   const per = Object.entries(eggs.byPersona).map(([p, s]) => `${p} ${s.foundByOthers.length} by others, ${s.left} left${s.leftAssumed ? "*" : ""}`);
+  const probes = personas.filter((p) => p.eggProbes.length).map((p) => {
+    const n = (r: string) => p.eggProbes.filter((x) => (x.result ?? "sent") === r).length;
+    return `${p.id} ${n("hit")} hit, ${n("miss")} miss, ${n("sent")} pending`;
+  });
   return [
     `eggs: ${per.join(" · ") || "-"}${per.some((x) => x.endsWith("*")) ? ` (* ASSUMPTION: ${EGGS_PER_PERSONA_ASSUMPTION} per persona)` : ""}`,
+    ...(probes.length ? [`probes: ${probes.join(" · ")}`] : []),
     `ours: eggs ${ours.eggs.length} · badges ${ours.badges.length ? ours.badges.join(", ") : 0} · hidden cards ${ours.hiddenCards.length ? ours.hiddenCards.join(", ") : 0} · gifts ${ours.gifts.length}${ours.gifts.length ? ` (${ours.gifts.map((g) => `${g.from ?? "?"} t${g.tick}`).join(", ")})` : ""}`,
     `flags: sent ${ours.flags.sent.length} (${ours.flags.sent.filter((f) => f.result === "hit").length} hit, ${ours.flags.sent.filter((f) => f.result === "miss").length} miss) · balance ${ours.flags.balance} P`,
   ];

@@ -10,6 +10,7 @@ Lo que usan todas las rutas: cliente HTTP de la API, esquemas Zod, claves, «un 
 - **`asset-locks.ts`** — **guardarraíl crítico**: un activo, un sitio. `busyAssets` (hilos abiertos + `/api/me/offers`) y `sellBlocked`, que usa el agente de dealers; `assetsInThreads`/`assetsInOffers` los usa `trades`. El agente de dealers no abre un hilo de venta de un activo ya en otro hilo u oferta abierta (si no puede leerlos, no ofrece ninguno); `../trades/agent.ts` no lista ni paga con un activo que esté en un hilo con un dealer.
 - **`trace.ts`** — `FileTrace`: JSONL en `results/bazaar-live/<fecha>/decisions.jsonl` y `thread-<id>.jsonl` (tick, precios, reserva usada, acción, regla, resultado).
 - **`score.ts`** — la cifra que maximizamos: `ScoreTracker.record` lee de `/api/me` solo los campos públicos de la cifra (lista cerrada; los campos privados de rareza/suerte del servidor nunca se leen) y escribe un snapshot por tick en `results/bazaar-live/<fecha>/score.jsonl` (`FileScoreTrace`), con `delta` por campo y `cause` (hilo, dealer, acción, precio) desde la traza del propio tick. `formatScoreSummary`/`formatScoreBreakdown` dan la línea de la CLI y el desglose de `bazaar:status`.
+- **`llm.ts`** — `claudeOnce`: una llamada a `claude -p --model haiku` con el prompt por stdin y 60 s de tope; null si falla, nunca lanza. La usan el resumen de noticias (`../news/`) y el etiquetado de pistas (`../hints/labels.ts`); su salida nunca es una cifra.
 
 ## Reglas
 

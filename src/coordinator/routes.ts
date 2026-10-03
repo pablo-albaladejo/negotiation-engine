@@ -14,7 +14,8 @@ import { completesPage, duelStrategy, type Strategy, type StrategyDecision } fro
 import type { GameState } from "../state/game-state.js";
 import { tradeSignals } from "../state/rivals.js";
 import type { FlagRecord } from "../state/world.js";
-import type { FlagCandidate } from "../flags/flags.js";
+import { normalize, type FlagCandidate } from "../flags/flags.js";
+import type { HintLine } from "../hints/corpus.js";
 import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
 import { marketSale, proposeMarkets, type MarketsContext } from "../markets/markets.js";
@@ -457,10 +458,38 @@ export const EGG_PARAMS = {
 };
 
 /**
+ * Probe phrases for `persona`, best first. Hints plant rumours about OTHER stalls, so a line that names this persona
+ * from another stall ranks first ("ask Carmen about the golden chulapa" → abuela); then the persona's own lines
+ * labelled egg-clue; then its own unlabelled keywords. Lines labelled 'voice' never give a phrase. Each line offers
+ * the LLM phrase and the rule keyword; only valid ones (`isProbePhrase`: no digits) and only once.
+ */
+export function probePhrasesFor(hints: readonly HintLine[], persona: string): string[] {
+  const rank = (l: HintLine): number | undefined => {
+    if (l.classification === "voice") return undefined;
+    if (l.persona !== persona) return l.targets?.includes(persona) ? (l.classification === "egg-clue" ? 0 : 1) : undefined;
+    if (l.targets?.length) return undefined;
+    return l.classification === "egg-clue" ? 2 : 3;
+  };
+  const seen = new Set<string>();
+  return hints
+    .flatMap((l) => {
+      const r = rank(l);
+      return r === undefined ? [] : [{ l, r }];
+    })
+    .sort((a, b) => a.r - b.r || (b.l.tick ?? 0) - (a.l.tick ?? 0))
+    .flatMap(({ l }) => [l.phrase, l.keyword])
+    .flatMap((x) => {
+      const k = x?.trim();
+      if (!k || !isProbePhrase(k) || seen.has(normalize(k))) return [];
+      seen.add(normalize(k));
+      return [k];
+    });
+}
+
+/**
  * X phrase of the probe that can ride on the next counteroffer in `conversationId` (never in a separate message):
  * at most one per conversation (`eggsTried` empty), never the same X with the same persona (`eggsTried` of all its
- * conversations and its `eggProbes`), never with warnings, strikes or cooloff, and only with a candidate hint with a valid
- * keyword (`isProbePhrase`: no digits).
+ * conversations and its `eggProbes`), never with warnings, strikes or cooloff, and only from `probePhrasesFor`.
  */
 export function eggProbeFor(state: GameState, conversationId: string): string | undefined {
   const conv = state.conversations.find((c) => c.id === conversationId);
@@ -471,8 +500,8 @@ export function eggProbeFor(state: GameState, conversationId: string): string | 
   if (!persona) return undefined;
   const eggs = state.world.eggs.byPersona[persona.id];
   if (eggs && eggs.left <= 0) return undefined;
-  const tried = new Set([...state.conversations.filter((c) => c.counterparty === persona.id).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)].map((x) => x.toLowerCase().trim()));
-  return persona.hints.map((h) => h.keyword?.trim()).find((k): k is string => !!k && isProbePhrase(k) && !tried.has(k.toLowerCase()) && !tried.has(EGG_PARAMS.template.replace("{hint}", k).toLowerCase()));
+  const tried = new Set([...state.conversations.filter((c) => c.counterparty === persona.id).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)].map(normalize));
+  return probePhrasesFor(state.hints.all, persona.id).find((k) => !tried.has(normalize(k)) && !tried.has(normalize(EGG_PARAMS.template.replace("{hint}", k))));
 }
 
 /**

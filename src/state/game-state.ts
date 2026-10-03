@@ -16,8 +16,9 @@ import { buildPriceSheet, buildVenues, formatPriceSheet, formatVenues, valuesWan
 import { buildTime, formatTime, type TimeState } from "./time.js";
 import { applyCardHistory, confirmCandidates, emptyRivalLedger, formatRivals, ingestEvents, ingestLeaderboard, rivalsView, type RivalLedger, type RivalsState } from "./rivals.js";
 import type { MechanismDecision } from "../venue/mechanism.js";
-import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
-import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { candidateContext, collectRaw, enrichLine, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
+import { applyLabels, type HintLabel } from "../hints/labels.js";
+import { buildPersonas, parseFeed, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
 
 /**
@@ -206,6 +207,8 @@ export interface BuildOptions {
   hintCorpus?: readonly HintLine[];
   /** Corpus seed from `results/` (first time only, without `hints.jsonl`). */
   hintSeed?: readonly Raw[];
+  /** LLM labels of the corpus (`hint-labels.json`, `src/hints/labels.ts`). */
+  hintLabels?: ReadonlyMap<string, HintLabel>;
   /** Private values cache on disk (`values.json`) and its timestamp; seeds the client's if still fresh. */
   valueCache?: ReadonlyMap<string, number>;
   valueCacheAt?: number;
@@ -303,7 +306,8 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   }), catalog);
   const corpus = opts.hintCorpus ?? [];
   const fresh = newLines([...(opts.hintSeed ?? []), ...collectRaw([allThreads, feed])], new Set(corpus.map((h) => h.key)), ctx);
-  const hintsAll = [...corpus, ...fresh];
+  // Stored lines are re-derived with today's rules and personas, then labelled (in memory: the file only grows).
+  const hintsAll = applyLabels([...corpus.map((l) => enrichLine(l, ctx)), ...fresh], opts.hintLabels ?? new Map());
   const personas = buildPersonas({
     dealers: rawDealers,
     levels,
@@ -326,6 +330,8 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (est) p.estimates = est;
   }
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
+  // Egg probes resolve from the feed's egg events (structure): hit or miss, persisted with the persona memo.
+  for (const p of personas) p.eggProbes = resolveProbes(p.eggProbes, world.ours.eggs.filter((e) => e.persona === p.id), clock.tick);
   // Model of each persona: the fit (estimates) writes it and it accumulates over the previous tick's.
   for (const p of personas) {
     const raw = (rawDealers.find((d) => (d as { id?: string }).id === p.id) ?? {}) as Record<string, unknown>;
@@ -488,7 +494,7 @@ export function formatGameState(g: GameState): string[] {
   ];
   const lb = g.env.leaderboard;
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
-  lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
+  lines.push(...formatEggsAndFlags(g.world.eggs, g.ours, g.personas));
   lines.push(...formatHints(g.hints.all));
   if (g.news) lines.push(...formatNewsSignals(g.news));
   lines.push("venues:", ...formatVenues(g.markets.venues));

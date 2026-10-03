@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
-import { claudeOnce } from "./llm.js";
+import { claudeOnce } from "../shared/llm.js";
 import { buildSummaryFile, itemFromApi, itemFromStreamLine, latestFirst, NewsListSchema, rulesSummary, summaryPrompt, tagMentions, type Mention, type NewsItem, type NewsSummaryFile } from "./news.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");

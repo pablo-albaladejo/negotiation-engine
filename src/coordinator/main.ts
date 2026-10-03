@@ -26,6 +26,7 @@ import { executeRivalBuy, proposeRivalBuy, type RivalBuyPlan } from "../markets/
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { ScannerLedger } from "../markets/scanner.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
+import { defaultHintLabelsFile, HintLabeler, loadHintLabels } from "../hints/labels.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
 import { executeVenueMechanism, proposeVenueMechanism } from "../venue/route.js";
 import { defaultHeartbeatFile, defaultSessionsFile, loadBenchSessions, loadHeartbeat, publicSession } from "../broker/shadow.js";
@@ -79,6 +80,7 @@ async function main() {
       scanner: { type: "boolean", default: false },
       "scanner-spend-per-hour": { type: "string", default: "60" },
       "plan-log": { type: "string", default: "" },
+      "hint-llm": { type: "boolean", default: false },
     },
   });
   const live = !values["dry-run"] && values.confirm;
@@ -119,6 +121,10 @@ async function main() {
   const triggersFile = defaultTriggersFile(root);
   let prevTime: TimeState | undefined;
   const hintsFile = defaultHintsFile(root);
+  // LLM labels of the hint corpus (egg probe phrases): in the background, also in dry-run (it only reads game text).
+  // Opt-in (--hint-llm); off with --once: a pending `claude -p` child would hold the process for up to 90 s.
+  const hintLabelsFile = defaultHintLabelsFile(root);
+  const hintLabeler = values["hint-llm"] && !values.once ? new HintLabeler(hintLabelsFile) : undefined;
   const valuesFile = defaultValuesFile(root);
   const posteriorFile = defaultPosteriorFile(root);
   const personaModelFile = defaultPersonaModelFile(root);
@@ -172,6 +178,7 @@ async function main() {
       rivalConfirmPerTick: 2,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
+      hintLabels: loadHintLabels(hintLabelsFile),
       valueCache: valueCache.values,
       valueCacheAt: valueCache.at,
       ...(valueCache.hand ? { valueCacheHand: valueCache.hand } : {}),
@@ -185,6 +192,8 @@ async function main() {
     }
     // The hint corpus is read-only game data (GET): it is also added in dry-run. It never enters a figure.
     appendHints(hintsFile, state.hints.fresh);
+    const labelNote = hintLabeler?.tick(state.hints.all, state.personas.map((p) => ({ id: p.id, ...(p.name ? { name: p.name } : {}) })));
+    if (labelNote) console.log(`  ${labelNote}`);
     // Private values already requested (GET): also saved in dry-run so the query is not repeated.
     // The disk cache seeds the client on the first tick only: later ticks would revive values the hand already forgot.
     valueCache.values.clear();
