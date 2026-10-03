@@ -3,9 +3,9 @@ import { assetIdsOf } from "../dealers/negotiation/offer-structure.js";
 import { StandingOfferSchema } from "./schemas.js";
 
 /**
- * Un activo, un sitio: un activo que ya está en un hilo abierto con un dealer (topic `{sell: {assets}}` o una
- * oferta nuestra del hilo) o en una oferta abierta nuestra en cualquier venue no se ofrece en otro sitio. Lo usan
- * el agente de dealers (no abre un hilo de venta) y el de trades (no lo lista en El Rastro). Solo lee la API.
+ * One asset, one place: an asset that is already in an open thread with a dealer (topic `{sell: {assets}}` or an
+ * offer of ours in the thread) or in an open offer of ours in any venue is not offered elsewhere. Used by
+ * the dealers agent (does not open a sell thread) and the trades agent (does not list it in El Rastro). Only reads the API.
  */
 
 export type BusyAssets = Map<number, string>;
@@ -21,7 +21,7 @@ function offersOf(raw: unknown): unknown[] {
   return ["offers", "open", "queued"].flatMap((k) => (Array.isArray(obj[k]) ? (obj[k] as unknown[]) : []));
 }
 
-/** Activos que damos en ofertas abiertas nuestras (`/api/me/offers`), con dónde están. */
+/** Assets we give in our open offers (`/api/me/offers`), with where they are. */
 export function assetsInOffers(raw: unknown, selfId?: string | null, excludeThread?: number): BusyAssets {
   const out: BusyAssets = new Map();
   for (const x of offersOf(raw)) {
@@ -37,7 +37,7 @@ export function assetsInOffers(raw: unknown, selfId?: string | null, excludeThre
   return out;
 }
 
-/** Activos de los topics de venta de nuestros hilos abiertos (`/api/me/threads?status=open`). */
+/** Assets from the sell topics of our open threads (`/api/me/threads?status=open`). */
 export function assetsInThreads(threads: readonly unknown[], excludeThread?: number): BusyAssets {
   const out: BusyAssets = new Map();
   for (const t of threads) {
@@ -50,8 +50,8 @@ export function assetsInThreads(threads: readonly unknown[], excludeThread?: num
 }
 
 /**
- * Activos ocupados (hilos abiertos + ofertas abiertas), sin contar `excludeThread` (el hilo propio al retomarlo o aceptar).
- * Si no se puede leer, `undefined`: no se ofrece ningún activo.
+ * Busy assets (open threads + open offers), not counting `excludeThread` (our own thread when resuming or accepting).
+ * If it cannot be read, `undefined`: no asset is offered.
  */
 export async function busyAssets(api: LocksApi, selfId?: string | null, excludeThread?: number): Promise<BusyAssets | undefined> {
   try {
@@ -62,13 +62,13 @@ export async function busyAssets(api: LocksApi, selfId?: string | null, excludeT
   }
 }
 
-/** Ids de activos de un topic de venta. */
+/** Asset ids of a sell topic. */
 export function sellAssetsOf(topic: unknown): number[] {
   const ids = (topic as { sell?: { assets?: unknown } } | undefined)?.sell?.assets;
   return Array.isArray(ids) ? ids.filter((x): x is number => typeof x === "number") : [];
 }
 
-/** El topic vende algún activo ocupado (o no sabemos cuáles lo están). */
+/** The topic sells a busy asset (or we do not know which ones are busy). */
 export function sellBlocked(topic: unknown, busy: BusyAssets | undefined): string | undefined {
   const ids = sellAssetsOf(topic);
   if (!ids.length) return undefined;

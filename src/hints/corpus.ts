@@ -4,13 +4,13 @@ import { normalize } from "../flags/flags.js";
 import type { Catalog } from "../shared/schemas.js";
 
 /**
- * Corpus de pistas: cada línea de un dealer, por persona, con tick, hora de juego, hora de pared, hilo y mensaje,
- * y su fuente (nuestro hilo o el feed público). Excepción estrecha a «del rival solo se lee la estructura»: este
- * texto se guarda para buscar pistas de eggs y NUNCA entra en una cifra ni en una decisión de precio.
+ * Hints corpus: each dealer line, per persona, with tick, game time, wall-clock time, thread and message,
+ * and its source (our thread or the public feed). Narrow exception to "only the rival's structure is read": this
+ * text is stored to look for egg hints and NEVER enters a figure or a price decision.
  *
- * Una regla determinista marca candidatas (con sus `reasons`); `classification` queda en null hasta que un LLM la
- * rellene en el paso 3 ('hint' | 'egg-clue' | 'voice'). Persiste en `results/bazaar-live/hints.jsonl`, solo
- * añadiendo, a través de los días; se deduplica por id de mensaje o, sin id, por persona + texto normalizado.
+ * A deterministic rule flags candidates (with their `reasons`); `classification` stays null until an LLM
+ * fills it in at step 3 ('hint' | 'egg-clue' | 'voice'). Persists in `results/bazaar-live/hints.jsonl`, append-
+ * only, across days; deduplicated by message id or, without an id, by persona + normalized text.
  */
 
 export type HintSource = "our-thread" | "feed";
@@ -27,12 +27,12 @@ export interface HintLine {
   source: HintSource;
   candidate: boolean;
   reasons: string[];
-  /** Palabra clave para un probe («… about X»), si la hay. */
+  /** Keyword for a probe ("… about X"), if any. */
   keyword?: string;
   classification: null | "hint" | "egg-clue" | "voice";
 }
 
-/** Contexto de la regla: personas conocidas (id y nombre) y catálogo (ids, sets sin publicar). */
+/** Rule context: known personas (id and name) and catalog (ids, unpublished sets). */
 export interface CandidateContext {
   personas: readonly { id: string; name?: string }[];
   catalogIds: ReadonlySet<string>;
@@ -52,7 +52,7 @@ const TIME_RE = /\b(\d{1,2}([:.]\d{2})?\s?(am|pm|h)\b|half past|quarter (past|to
 const SECRET_RE = /\b(secret|rumou?rs?|hidden|legends?|legendary tale|whispers?|only the curious)\b/i;
 const QUOTE_RE = /["“«‘][^"”»’]{3,}["”»’]/;
 
-/** Regla determinista de candidata; devuelve los motivos (vacío si no lo es). */
+/** Deterministic candidate rule; returns the reasons (empty if it is not one). */
 export function candidateReasons(persona: string, text: string, ctx: CandidateContext): string[] {
   const reasons: string[] = [];
   const norm = normalize(text);
@@ -97,8 +97,8 @@ function line(r: Raw, ctx: CandidateContext): HintLine {
 }
 
 /**
- * Recorre cualquier JSON (respuesta de la API, volcado, línea de stream) y saca las líneas de dealer: eventos
- * `thread.message` del feed y mensajes de hilos (`with` + `messages`) cuyo emisor es la persona.
+ * Walks any JSON (API response, dump, stream line) and extracts dealer lines: feed
+ * `thread.message` events and thread messages (`with` + `messages`) whose sender is the persona.
  */
 export function collectRaw(value: unknown, wall?: string, out: Raw[] = [], depth = 0): Raw[] {
   if (depth > 8 || value === null || typeof value !== "object") return out;
@@ -122,16 +122,16 @@ export function collectRaw(value: unknown, wall?: string, out: Raw[] = [], depth
     }
     return out;
   }
-  // Línea de stream (`{recv, event, data}`): la hora de pared es la de recepción.
+  // Stream line (`{recv, event, data}`): the wall-clock time is the receive time.
   const recv = str(o.recv);
   for (const v of Object.values(o)) collectRaw(v, recv ?? wall, out, depth + 1);
   return out;
 }
 
-/** Líneas nuevas (no vistas en `seen`), deduplicadas entre sí. Ordena por tick. */
+/** New lines (not seen in `seen`), deduplicated among themselves. Sorted by tick. */
 export function newLines(raws: readonly Raw[], seen: ReadonlySet<string>, ctx: CandidateContext): HintLine[] {
   const keys = new Set(seen);
-  // Un mensaje visto por id en el feed y en nuestro hilo es el mismo; si una copia no trae id, se casa por texto.
+  // A message seen by id in the feed and in our thread is the same one; if a copy has no id, it is matched by text.
   const textKeys = new Set([...seen].filter((k) => k.startsWith("t:")));
   const out: HintLine[] = [];
   for (const r of [...raws].sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0))) {
@@ -144,7 +144,7 @@ export function newLines(raws: readonly Raw[], seen: ReadonlySet<string>, ctx: C
   return out;
 }
 
-// ---------------------------------------------------------------- fichero
+// ---------------------------------------------------------------- file
 
 export const defaultHintsFile = (root: string) => join(root, "results", "bazaar-live", "hints.jsonl");
 
@@ -157,7 +157,7 @@ export function loadHints(file: string): HintLine[] {
       try {
         return [JSON.parse(l) as HintLine];
       } catch {
-        // Línea corrupta: se ignora (el fichero solo crece).
+        // Corrupt line: ignored (the file only grows).
         return [];
       }
     });
@@ -169,7 +169,7 @@ export function appendHints(file: string, lines: readonly HintLine[]): void {
   appendFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
 }
 
-/** Semilla desde lo ya guardado en `results/` (volcados, escaneos, streams, trazas): todo `.json`/`.jsonl`. */
+/** Seed from what is already stored in `results/` (dumps, scans, streams, traces): every `.json`/`.jsonl`. */
 export function seedRaw(resultsDir: string): Raw[] {
   const out: Raw[] = [];
   const walk = (dir: string) => {
@@ -182,14 +182,14 @@ export function seedRaw(resultsDir: string): Raw[] {
           try {
             collectRaw(JSON.parse(l), undefined, out);
           } catch {
-            // Línea a medias de un stream cortado.
+            // Partial line from a cut-off stream.
           }
         }
       } else if (name.endsWith(".json") && !/conversations|personas|flags|triggers/.test(name)) {
         try {
           collectRaw(JSON.parse(readFileSync(path, "utf8")), undefined, out);
         } catch {
-          // JSON inválido: se salta.
+          // Invalid JSON: skipped.
         }
       }
     }
@@ -198,7 +198,7 @@ export function seedRaw(resultsDir: string): Raw[] {
   return out;
 }
 
-/** Por persona, las más recientes primero. */
+/** Per persona, most recent first. */
 export function hintsByPersona(lines: readonly HintLine[]): Map<string, HintLine[]> {
   const out = new Map<string, HintLine[]>();
   for (const l of lines) out.set(l.persona, [...(out.get(l.persona) ?? []), l]);

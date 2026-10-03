@@ -3,11 +3,11 @@ import { loadBazaarEnv } from "../shared/env.js";
 import { rarityOf, spareTargets } from "../dealers/planning/planner.js";
 import { extractScoreFields, formatScoreBreakdown } from "../shared/score.js";
 
-/** `pnpm bazaar:status`: resumen de solo lectura (equipo, reloj, dealers, niveles, hilos). Nunca imprime la clave. */
+/** `pnpm bazaar:status`: read-only summary (team, clock, dealers, levels, threads). Never prints the key. */
 async function main() {
   const env = loadBazaarEnv();
   if (!env.key) {
-    console.error("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
+    console.error("BAZAAR_KEY is missing (put it in .env or the environment).");
     process.exit(2);
   }
   const c = new BazaarClient({ url: env.url, key: env.key });

@@ -2,12 +2,12 @@ import type { Issue } from "./config.js";
 import { normalizeIssue, roundInFavor, utility, valueAtNorm, type Offer } from "./issues.js";
 import type { Rng } from "./rng.js";
 
-/** Utilidad de apertura: fracción `openingMargin` del tramo entre la reserva y 1. */
+/** Opening utility: fraction `openingMargin` of the span between the reservation and 1. */
 export function openingUtility(reservationUtility: number, openingMargin: number): number {
   return reservationUtility + openingMargin * (1 - reservationUtility);
 }
 
-/** Fracción concedida en t (Faratin et al.): t^(1/β). β = 0 no concede hasta t = 1. */
+/** Fraction conceded at t (Faratin et al.): t^(1/β). β = 0 does not concede until t = 1. */
 export function concession(t: number, beta: number): number {
   const time = Math.min(1, Math.max(0, t));
   if (time >= 1) return 1;
@@ -17,19 +17,19 @@ export function concession(t: number, beta: number): number {
 
 export function boulwareTarget(t: number, uOpen: number, uRes: number, beta: number): number {
   const c = concession(t, beta);
-  // Concesión completa: exactamente la utilidad de reserva, sin ruido de coma flotante.
+  // Full concession: exactly the reservation utility, without floating-point noise.
   return c >= 1 ? uRes : uOpen - (uOpen - uRes) * c;
 }
 
-/** ε ∈ [−n, n] del generador sembrado de la caja. */
+/** ε ∈ [−n, n] from the box's seeded generator. */
 export function sampleEpsilon(rng: Rng, noise: number): number {
   return noise === 0 ? 0 : rng.between(-noise, noise);
 }
 
 /**
- * Reciprocidad Tit-for-Tat como factor en [0, 1] sobre nuestro paso: con peso `weight`, el paso se
- * reduce en proporción a lo que el rival concedió (en nuestra utilidad) frente a nuestra última
- * concesión. Sin datos de alguna de las dos concesiones, 1 (curva Boulware sin cambios).
+ * Tit-for-Tat reciprocity as a factor in [0, 1] on our step: with weight `weight`, the step is
+ * reduced in proportion to what the rival conceded (in our utility) versus our last
+ * concession. Without data for either concession, 1 (Boulware curve unchanged).
  */
 export function reciprocityFactor(weight: number, rivalConcession: number | undefined, ourConcession: number | undefined): number {
   if (weight <= 0 || rivalConcession === undefined || ourConcession === undefined || ourConcession <= 0) return 1;
@@ -42,17 +42,17 @@ export interface UtilityStep {
   uRes: number;
   beta: number;
   t: number;
-  /** Utilidad de nuestra oferta anterior; ausente en la primera oferta. */
+  /** Utility of our previous offer; absent on the first offer. */
   previousUtility?: number;
   epsilon: number;
-  /** Factor de reciprocidad en [0, 1]; ausente = 1. Solo puede reducir el paso. */
+  /** Reciprocity factor in [0, 1]; absent = 1. It can only reduce the step. */
   reciprocity?: number;
 }
 
 /**
- * Utilidad objetivo de nuestra siguiente oferta. El ruido se aplica al paso, no a la oferta:
- * paso' = max(0, paso · (1 + ε)), así nunca sube nuestra utilidad. En t = 1 no hay ruido:
- * se ofrece la oferta de t = 1 (la reserva).
+ * Target utility of our next offer. Noise is applied to the step, not the offer:
+ * step' = max(0, step · (1 + ε)), so our utility never rises. At t = 1 there is no noise:
+ * the t = 1 offer (the reservation) is made.
  */
 export function nextUtility(step: UtilityStep): number {
   if (step.previousUtility === undefined) return step.uOpen;
@@ -65,14 +65,14 @@ export function nextUtility(step: UtilityStep): number {
 }
 
 /**
- * Oferta con utilidad `u` que respeta los límites por issue: cada issue se interpola entre su
- * nivel de reserva rᵢ y 1 con el mismo λ, ℓᵢ = rᵢ + λ(1 − rᵢ), de modo que Σ wᵢ·ℓᵢ = u.
+ * Offer with utility `u` that respects per-issue limits: each issue is interpolated between its
+ * reservation level rᵢ and 1 with the same λ, ℓᵢ = rᵢ + λ(1 − rᵢ), so that Σ wᵢ·ℓᵢ = u.
  */
 export function offerAboveReservation(issues: readonly Issue[], reservation: Offer, u: number): Offer {
   const levels = issues.map((issue) => normalizeIssue(issue, reservation[issue.name]!));
   const uRes = issues.reduce((sum, issue, k) => sum + issue.weight * levels[k]!, 0);
   const lambda = uRes >= 1 ? 1 : Math.min(1, Math.max(0, (u - uRes) / (1 - uRes)));
-  // λ = 0 es la propia reserva: su valor exacto, no el de ida y vuelta por la normalización.
+  // λ = 0 is the reservation itself: its exact value, not the round trip through normalization.
   return Object.fromEntries(
     issues.map((issue, k) => [issue.name, lambda === 0 ? reservation[issue.name]! : valueAtNorm(issue, levels[k]! + lambda * (1 - levels[k]!))]),
   );
@@ -81,14 +81,14 @@ export function offerAboveReservation(issues: readonly Issue[], reservation: Off
 export interface OfferParams {
   /** Issues orientados a nuestro rol. */
   issues: readonly Issue[];
-  /** Límites por issue del mandato. */
+  /** Per-issue limits of the mandate. */
   reservation: Offer;
   uRes: number;
   openingMargin: number;
   beta: number;
 }
 
-/** Propuesta Boulware sin reciprocidad, redondeada a nuestro favor; pasa después por los guardarraíles. */
+/** Boulware proposal without reciprocity, rounded in our favor; it then goes through the guardrails. */
 export function generateOffer(
   params: OfferParams,
   t: number,

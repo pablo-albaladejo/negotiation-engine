@@ -4,12 +4,12 @@ import type { DealerTraits } from "../dealers/dealer-profile.js";
 import { PERSONA_PRIORS, RARITY_BOOK, type PersonaEstimates } from "../dealers/history/persona-fit.js";
 
 /**
- * Modelo de cada persona dentro de `GameState` (`Persona.model`): un campo por parámetro del YAML (personas.md §1 y §3),
- * con su valor, rango, nº de muestras, de dónde sale y cuándo cambió por última vez. Se acumula tick a tick: el ajuste
- * por persona (`src/dealers/history/persona-fit.ts`) ESCRIBE aquí; el coordinador, los planificadores y el visor
- * (`/api/bazaar/model`, `personas[].model`) LEEN de aquí. Solo estructura (precios, avisos, hallazgos); nunca una cifra
- * sacada de un texto. Lo que no se puede observar (templates, model, prompt_base, voice, knowledge) no está: ver `UNOBSERVABLE`.
- * Privado: nunca sale en un mensaje.
+ * Model of each persona inside `GameState` (`Persona.model`): one field per YAML parameter (personas.md §1 and §3),
+ * with its value, range, sample count, where it comes from and when it last changed. It accumulates tick by tick: the per-
+ * persona fit (`src/dealers/history/persona-fit.ts`) WRITES here; the coordinator, the planners and the viewer
+ * (`/api/bazaar/model`, `personas[].model`) READ from here. Structure only (prices, warnings, findings); never a figure
+ * taken from text. What cannot be observed (templates, model, prompt_base, voice, knowledge) is absent: see `UNOBSERVABLE`.
+ * Private: never appears in a message.
  */
 
 export type FieldSource = "measured" | "prior" | "public" | "unknown";
@@ -20,21 +20,21 @@ export interface Field<T = number> {
   hi: number | null;
   n: number;
   source: FieldSource;
-  /** Último tick en que cambió el valor (o el rango). */
+  /** Last tick at which the value (or range) changed. */
   lastTick: number;
 }
 
 export interface BandModel {
-  /** `floor_frac` (vende ella) o `ceiling_frac` (compra ella): límite medido como fracción del book (del precio de lista en un sobre). */
+  /** `floor_frac` (she sells) or `ceiling_frac` (she buys): limit measured as a fraction of the book (of the list price for a pack). */
   frac: Field;
-  /** El mismo límite en P. */
+  /** The same limit in P. */
   limit: Field;
 }
 
 export interface PersonaModel {
   id: string;
   updated: number;
-  /** Conocido con exactitud (API pública). */
+  /** Known exactly (public API). */
   public: {
     kind?: string;
     level?: number;
@@ -43,7 +43,7 @@ export interface PersonaModel {
     unlock: { always?: boolean; early_deals_with?: string; early_min_deals?: number; early_min_level?: number; open_to_all_at?: string };
     menu: { sells: MenuLine[]; buys: MenuLine[] };
   };
-  /** Un campo por clave de `strategy` del YAML (los markups y la bienvenida, por lado). */
+  /** One field per `strategy` key of the YAML (the markups and the welcome, per side). */
   strategy: {
     opening_markup_sell: Field;
     opening_markup_buy: Field;
@@ -60,7 +60,7 @@ export interface PersonaModel {
     demand_markup: Field;
     politeness_discount: Field;
   };
-  /** Por banda `sells:<rareza>` / `buys:<rareza>`. */
+  /** Per band `sells:<rarity>` / `buys:<rarity>`. */
   bands: Record<string, BandModel>;
   trades: { stock_per_hour: Field; budget_per_hour: Field };
   anti_cheat: { strikes_seen: Field; cooloff_seen: Field };
@@ -78,7 +78,7 @@ export interface MenuLine {
   per_team_per_hour?: number;
 }
 
-/** Claves del YAML que la API nunca deja ver: no se modelan. */
+/** YAML keys the API never lets us see: they are not modeled. */
 export const UNOBSERVABLE = ["templates", "model", "prompt_base", "voice", "knowledge"] as const;
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -87,7 +87,7 @@ const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object"
 
 export const unknownField = <T = number>(tick: number): Field<T> => ({ value: null, lo: null, hi: null, n: 0, source: "unknown", lastTick: tick });
 
-/** Conserva `lastTick` si el campo no cambió respecto al tick anterior. */
+/** Keeps `lastTick` if the field did not change from the previous tick. */
 function settle<T>(next: Omit<Field<T>, "lastTick">, prev: Field<T> | undefined, tick: number): Field<T> {
   const same = prev && prev.value === next.value && prev.lo === next.lo && prev.hi === next.hi && prev.source === next.source;
   return { ...next, lastTick: same ? prev.lastTick : tick };
@@ -106,7 +106,7 @@ function scalarField<T extends number | boolean>(v: T | undefined, n: number, so
   return settle<T>({ value: x as T, lo: typeof x === "number" ? x : null, hi: typeof x === "number" ? x : null, n, source }, prev, tick);
 }
 
-/** Un contador que solo sube (avisos, hallazgos...): lo visto hasta ahora. */
+/** A counter that only goes up (warnings, findings...): what has been seen so far. */
 function counter(seen: number, prev: Field | undefined, tick: number): Field {
   const n = Math.max(seen, prev?.n ?? 0);
   return settle({ value: n, lo: n, hi: n, n, source: "measured" }, prev, tick);
@@ -114,16 +114,16 @@ function counter(seen: number, prev: Field | undefined, tick: number): Field {
 
 export interface PersonaModelInput {
   id: string;
-  /** Entrada de `/api/dealers` (solo lo público). */
+  /** Entry from `/api/dealers` (public only). */
   raw: Record<string, unknown>;
   traits: DealerTraits;
   estimates?: PersonaEstimates;
-  /** Strikes y cooloffs vistos en las conversaciones con esta persona. */
+  /** Strikes and cooloffs seen in conversations with this persona. */
   strikes: number;
   cooloffs: number;
   hintsFired: number;
   eggsFired: number;
-  /** Flags acertados sobre esta persona (por texto de la razón) como trampas de presión o cartas cambiadas. */
+  /** Correct flags about this persona (by reason text) such as pressure traps or swapped cards. */
   trapsSeen: number;
   switchesSeen: number;
   tick: number;
@@ -145,11 +145,11 @@ function menuLines(x: unknown): MenuLine[] {
   });
 }
 
-/** Construye el modelo del tick a partir del ajuste (`estimates`), lo público y lo visto; acumula sobre `prev`. */
+/** Builds the tick's model from the fit (`estimates`), the public data and what was seen; accumulates over `prev`. */
 export function buildPersonaModel(i: PersonaModelInput): PersonaModel {
   const { tick, prev, estimates: e } = i;
   const hasPrior = PERSONA_PRIORS[i.id] !== undefined;
-  // Con datos propios (o del posterior) → medido; solo con el prior offline → prior; sin nada → desconocido.
+  // With own data (or from the posterior) → measured; only with the offline prior → prior; with nothing → unknown.
   const n = e?.fittedFrom ?? 0;
   const fitted: FieldSource = n > 0 ? "measured" : hasPrior ? "prior" : "unknown";
   const priorOnly: FieldSource = hasPrior ? "prior" : "unknown";
@@ -160,7 +160,7 @@ export function buildPersonaModel(i: PersonaModelInput): PersonaModel {
   const welcome = e?.welcome;
   const welcomeFrac = (side: "buys" | "sells"): Field => {
     if (!welcome || welcome.side !== side) return settle({ value: null, lo: null, hi: null, n: 0, source: "unknown" }, side === "buys" ? s?.welcome_price_frac_buy : s?.welcome_price_frac_sell, tick);
-    // Precio de bienvenida como parte del book: vendiendo, como mucho esta fracción; comprando, al menos 2 − fracción.
+    // Welcome price as part of the book: selling, at most this fraction; buying, at least 2 − fraction.
     const f = side === "sells" ? welcome.frac_of_book : { mean: 2 - welcome.frac_of_book.mean, lo: 2 - welcome.frac_of_book.hi, hi: 2 - welcome.frac_of_book.lo };
     return rangeField(f, welcome.n, welcome.n > 0 ? "measured" : "prior", side === "buys" ? s?.welcome_price_frac_buy : s?.welcome_price_frac_sell, tick);
   };
@@ -218,15 +218,15 @@ export function buildPersonaModel(i: PersonaModelInput): PersonaModel {
   };
 }
 
-// ---------------------------------------------------------------- persistencia
+// ---------------------------------------------------------------- persistence
 
 const SCHEMA = "bazaar-persona-model/v1";
 
 export const defaultPersonaModelFile = (root: string) => join(root, "results", "bazaar-live", "persona-model.json");
 
 /**
- * Modelos guardados por persona; vacío si no existe o no es válido (nunca lanza). Sin fichero, el primer tick migra
- * desde `persona-posterior.json`: el ajuste ya se rehace de las observaciones y el modelo se construye de él.
+ * Saved models per persona; empty if missing or invalid (never throws). Without a file, the first tick migrates
+ * from `persona-posterior.json`: the fit is already rebuilt from observations and the model is built from it.
  */
 export function loadPersonaModels(file: string): Record<string, PersonaModel> {
   try {
@@ -252,7 +252,7 @@ const f = (x: Field<number | boolean>): string => {
   return `${tag}${x.value}${range}`;
 };
 
-/** Una línea por persona para la salida de play. */
+/** One line per persona for play's output. */
 export function formatPersonaModel(m: PersonaModel): string {
   const st = m.strategy;
   const bands = Object.entries(m.bands).map(([b, x]) => `${b} ${f(x.frac)}×${x.limit.n}${x.limit.n < 3 ? "?" : ""}`).join(" ");

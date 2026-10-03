@@ -5,10 +5,10 @@ import { readSide, type TradeOffer } from "../trades/trades.js";
 import type { FeedEvent } from "./world.js";
 
 /**
- * Hoja de precios: una entrada por carta del catálogo (sets publicados; un set nuevo entra solo cuando su
- * `released` pasa a true), con escasez, dealers que la venden o compran, mejor ask y bid en El Rastro y en otros
- * venues (sin contar las nuestras), último precio de trato del feed, nuestro valor privado, cuántas tenemos y
- * los huecos derivados. Solo estructura: ningún texto. Los valores privados son de uso local.
+ * Price sheet: one entry per catalog card (published sets; a new set enters only when its
+ * `released` becomes true), with scarcity, dealers that sell or buy it, best ask and bid in El Rastro and in other
+ * venues (not counting our own), last deal price from the feed, our private value, how many we hold and
+ * the derived gaps. Structure only: no text. Private values are for local use.
  */
 
 export interface Quote {
@@ -25,26 +25,26 @@ export interface PriceEntry {
   book?: number;
   printRun?: number;
   minted?: number;
-  /** minted / print_run (1 = agotada). */
+  /** minted / print_run (1 = sold out). */
   scarcity?: number;
   hidden: boolean;
   dealers: { sells: string[]; buys: string[] };
-  /** Mejores ask y bid entre los venues donde podemos operar (el nuestro no cuenta). */
+  /** Best ask and bid among the venues where we can trade (ours does not count). */
   bestAsk?: Quote;
   bestBid?: Quote;
-  /** Por venue: mejor ask y bid y profundidad (ofertas abiertas de una sola carta por lado). */
+  /** Per venue: best ask and bid and depth (open single-card offers per side). */
   byVenue: Record<string, { ask?: Quote; bid?: Quote; asks: number; bids: number }>;
-  /** Último trato de una sola carta en el feed (`settlement`); sin él, unknown. */
+  /** Last single-card deal in the feed (`settlement`); without it, unknown. */
   lastTrade?: { price: number; tick: number };
   value?: number;
   holdings: number;
-  /** value − bestAsk: lo que ganamos comprando al mejor ask. */
+  /** value − bestAsk: what we gain by buying at the best ask. */
   buyEdge?: number;
-  /** bestBid − value: lo que ganamos vendiendo al mejor bid. */
+  /** bestBid − value: what we gain by selling at the best bid. */
   sellEdge?: number;
   /**
-   * ASSUMPTION (anomalía de neg_points): con un dealer, por encima del book no se gana más, así que el tope útil
-   * de un trato con dealer es min(valor, book).
+   * ASSUMPTION (neg_points anomaly): with a dealer, going above the book gains nothing more, so the useful cap
+   * of a dealer deal is min(value, book).
    */
   dealerCap?: number;
   completesPage: boolean;
@@ -53,14 +53,14 @@ export interface PriceEntry {
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
 const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {});
 
-/** Carta única de un lado (activo con `ref` o tipo `card:REF`), o undefined si hay más de una o ninguna. */
+/** Single card on a side (asset with `ref` or type `card:REF`), or undefined if there is more than one or none. */
 function singleCard(side: TradeOffer["give"]): string | undefined {
   const s = readSide(side);
   const refs = [...s.assets.map((a) => a.ref), ...s.cards];
   return refs.length === 1 && refs[0] && s.unsupported.length === 0 ? refs[0] : undefined;
 }
 
-/** ¿Vende o compra la persona esta carta? Menú por rareza (`sets: "released"` o lista) o por carta. */
+/** Does the persona sell or buy this card? Menu by rarity (`sets: "released"` or a list) or by card. */
 function menuHas(entries: unknown, ref: string, set: string, rarity: string | undefined): boolean {
   if (!Array.isArray(entries)) return false;
   return entries.map(obj).some((e) => {
@@ -74,10 +74,10 @@ function menuHas(entries: unknown, ref: string, set: string, rarity: string | un
 export interface PriceInputs {
   catalog?: Catalog;
   dealers: readonly unknown[];
-  /** Ofertas abiertas por venue (El Rastro y otros). */
+  /** Open offers per venue (El Rastro and others). */
   boards: readonly { venue: string; offers: readonly TradeOffer[] }[];
   team?: string;
-  /** Venues donde no podemos operar (el nuestro: RULES «You cannot trade on your own venue»). */
+  /** Venues where we cannot trade (ours: RULES "You cannot trade on your own venue"). */
   untradeable?: ReadonlySet<string>;
   events: readonly FeedEvent[];
   values: Readonly<Record<string, number>>;
@@ -174,7 +174,7 @@ export function buildPriceSheet(i: PriceInputs): PriceEntry[] {
   return out;
 }
 
-/** Cartas sin valor conocido que más interesan (con ask o bid a la vista), para pedir pocas por tick. */
+/** Cards without a known value that matter most (with an ask or bid in view), to request few per tick. */
 export function valuesWanted(sheet: readonly PriceEntry[], max: number): string[] {
   return sheet
     .filter((e) => e.value === undefined && !e.hidden && (e.bestAsk || e.bestBid))
@@ -183,9 +183,9 @@ export function valuesWanted(sheet: readonly PriceEntry[], max: number): string[
     .map((e) => e.ref);
 }
 
-// ---------------------------------------------------------------- caché de valores privados
+// ---------------------------------------------------------------- private values cache
 
-/** `results/bazaar-live/values.json`: valores ya pedidos a `/api/me/value` (privados, fuera de git). */
+/** `results/bazaar-live/values.json`: values already requested from `/api/me/value` (private, outside git). */
 export const defaultValuesFile = (root: string) => join(root, "results", "bazaar-live", "values.json");
 
 export function loadValueCache(file: string): { values: Map<string, number>; at: number } {
@@ -195,7 +195,7 @@ export function loadValueCache(file: string): { values: Map<string, number>; at:
     const at = typeof d.updated === "string" ? Date.parse(d.updated) : 0;
     return { values: new Map(Object.entries(obj(d.values)).flatMap(([k, v]) => (num(v) !== undefined ? [[k, num(v)!] as const] : []))), at: Number.isFinite(at) ? at : 0 };
   } catch {
-    // Caché corrupta: se vuelve a pedir poco a poco.
+    // Corrupt cache: values are requested again little by little.
     return { values: new Map(), at: 0 };
   }
 }
@@ -226,7 +226,7 @@ export interface VenueInfo {
   name?: string;
   owner?: string;
   ownerName?: string;
-  /** Puesto y cifra del dueño en el leaderboard (para la penalización por rival). */
+  /** Owner's rank and figure on the leaderboard (for the rival penalty). */
   ownerRank?: number;
   ownerScore?: number;
   house: boolean;
@@ -234,9 +234,9 @@ export interface VenueInfo {
   feePerCard: number;
   mechanism?: string;
   status?: string;
-  /** Ofertas abiertas en su libro (todas las cartas). */
+  /** Open offers in its book (all cards). */
   depth: number;
-  /** El nuestro: no podemos operar en él con nuestra clave. */
+  /** Ours: we cannot trade in it with our key. */
   canTrade: boolean;
 }
 

@@ -9,15 +9,15 @@ import type { HintLine } from "../hints/corpus.js";
 import type { PersonaModel } from "./persona-model.js";
 
 /**
- * Mundo alrededor de las negociaciones: personas (dealers y las que vayan apareciendo), easter eggs, badges,
- * regalos y flags. Todo sale de GET (`/api/dealers`, `/api/levels`, `/api/feed`, `/api/catalog`, hilos) y de dos
- * memorias locales: `personas.json` (pistas oídas y probes de eggs) y `flags.json` (flags enviados).
+ * World around the negotiations: personas (dealers and those that keep appearing), easter eggs, badges,
+ * gifts and flags. Everything comes from GET (`/api/dealers`, `/api/levels`, `/api/feed`, `/api/catalog`, threads) and from two
+ * local memories: `personas.json` (hints heard and egg probes) and `flags.json` (flags sent).
  *
- * Las personas NO son una lista fija: hoy hay dos, RULES habla de cinco y las nuevas llegan por `/api/levels` y
- * el feed (`level.announced`, `level.activated`, `level.unlocked`). Aquí no hay ningún id de persona escrito a mano.
+ * Personas are NOT a fixed list: today there are two, RULES mentions five and new ones arrive via `/api/levels` and
+ * the feed (`level.announced`, `level.activated`, `level.unlocked`). There is no hand-written persona id here.
  *
- * Pistas: vienen del corpus (`src/hints/corpus.ts`), segunda excepción estrecha a «del rival solo se lee la
- * estructura»; nunca dan una cifra ni cambian una decisión de precio.
+ * Hints: they come from the corpus (`src/hints/corpus.ts`), a second narrow exception to "only the rival's
+ * structure is read"; they never yield a figure nor change a price decision.
  */
 
 export type PersonaType = "dealer" | "collector" | "trickster" | "banker";
@@ -29,7 +29,7 @@ export interface EggProbe {
   phrase: string;
   tick: number;
   result?: string;
-  /** Eggs que le quedan a la persona tras el probe, si se sabe. */
+  /** Eggs the persona has left after the probe, if known. */
   capLeft?: number;
 }
 
@@ -40,21 +40,21 @@ export interface Persona {
   status: PersonaStatus;
   level?: number;
   unlock: { always?: boolean; earlyDealsWith?: string; earlyMinDeals?: number; earlyMinLevel?: number; openToAllAt?: string };
-  /** Progreso nuestro hacia el desbloqueo temprano: tratos NEGOCIADOS con `earlyDealsWith` (a precio de apertura no cuentan). */
+  /** Our progress toward the early unlock: NEGOTIATED deals with `earlyDealsWith` (deals at the opening price do not count). */
   progress?: { dealer: string; deals: number; needed: number };
-  /** Premio del desbloqueo (`unlock_reward_pack`), si la API lo expone. */
+  /** Unlock reward (`unlock_reward_pack`), if the API exposes it. */
   unlockPrize?: string;
-  /** Rasgos públicos; para una persona nueva, el negociador deriva sus parámetros de aquí (`negotiatorForDealer`). */
+  /** Public traits; for a new persona, the negotiator derives its parameters from here (`negotiatorForDealer`). */
   traits: DealerTraits;
   teaser?: string;
-  /** Líneas del dealer del corpus de pistas (`src/hints/`), las más recientes primero, con su marca de candidata. */
+  /** Dealer lines from the hints corpus (`src/hints/`), most recent first, with their candidate flag. */
   hints: HintLine[];
   eggProbes: EggProbe[];
-  /** Trickster: el detector de flags mira desde el primer mensaje (en el resto se salta la apertura). */
+  /** Trickster: the flag detector looks from the first message (for the rest the opening is skipped). */
   flagsFromFirstMessage: boolean;
-  /** Estrategia estimada de la persona y límite por banda (`src/dealers/history/persona-fit.ts`). Privado. */
+  /** Estimated strategy of the persona and limit per band (`src/dealers/history/persona-fit.ts`). Private. */
   estimates?: PersonaEstimates;
-  /** Modelo acumulado de la persona (un campo por parámetro del YAML, con su fuente); el ajuste lo escribe y los demás lo leen. */
+  /** Accumulated model of the persona (one field per YAML parameter, with its source); the fit writes it and the rest read it. */
   model?: PersonaModel;
 }
 
@@ -65,11 +65,11 @@ export interface EggFind {
   prize?: string;
 }
 
-/** ASSUMPTION: 15 eggs por persona (`max_total`) mientras la API no diga otra cifra. */
+/** ASSUMPTION: 15 eggs per persona (`max_total`) until the API gives another figure. */
 export const EGGS_PER_PERSONA_ASSUMPTION = 15;
 
 export interface WorldEggs {
-  /** Por persona: hallazgos de otros equipos y eggs que quedan. */
+  /** Per persona: other teams' findings and eggs remaining. */
   byPersona: Record<string, { foundByOthers: EggFind[]; left: number; leftAssumed: boolean }>;
 }
 
@@ -112,7 +112,7 @@ const str = (x: unknown): string | undefined => (typeof x === "string" && x.leng
 const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {});
 const count = (x: unknown): number | undefined => (Array.isArray(x) ? x.length : num(x));
 
-/** `/api/feed` tolerante: `{events: [...]}` o una lista; un evento raro se ignora. */
+/** Tolerant `/api/feed`: `{events: [...]}` or a list; an odd event is ignored. */
 export function parseFeed(raw: unknown): FeedEvent[] {
   const list = Array.isArray(raw) ? raw : Array.isArray(obj(raw).events) ? (obj(raw).events as unknown[]) : [];
   return list.flatMap((e) => {
@@ -127,7 +127,7 @@ export function parseFeed(raw: unknown): FeedEvent[] {
 const personaOf = (e: FeedEvent) => str(e.payload.persona) ?? str(e.payload.dealer) ?? e.actor;
 const prizeOf = (p: Record<string, unknown>) => str(p.prize) ?? str(p.reward) ?? str(p.badge) ?? str(p.card) ?? (num(p.cash) !== undefined ? `${num(p.cash)} P` : undefined);
 
-/** Eggs del mundo y lo nuestro (eggs, badges, cartas ocultas, regalos, resultado de flags) desde el feed. */
+/** World eggs and ours (eggs, badges, hidden cards, gifts, flag results) from the feed. */
 export function worldFromFeed(events: readonly FeedEvent[], team: string | undefined, personaIds: readonly string[], heldRefs: readonly string[], catalog: Catalog | undefined, flags: readonly FlagRecord[]): { eggs: WorldEggs; ours: OursWorld } {
   const byPersona: WorldEggs["byPersona"] = {};
   const slot = (p: string) => (byPersona[p] ??= { foundByOthers: [], left: EGGS_PER_PERSONA_ASSUMPTION, leftAssumed: true });
@@ -152,7 +152,7 @@ export function worldFromFeed(events: readonly FeedEvent[], team: string | undef
       const g = e.payload;
       ours.gifts.push({ ...(e.actor ? { from: e.actor } : {}), tick: e.tick, ...(num(g.cash) !== undefined ? { cash: num(g.cash)! } : {}), ...(count(g.cards) !== undefined ? { cards: count(g.cards)! } : {}), ...(count(g.packs) !== undefined ? { packs: count(g.packs)! } : {}), ...(str(g.reason) ? { reason: str(g.reason)! } : {}) });
     } else if (e.type.startsWith("flag.") && who === team) {
-      // Resultado de un flag nuestro, si el feed lo publica (no visto aún): se casa por message_id.
+      // Result of a flag of ours, if the feed publishes it (not seen yet): matched by message_id.
       const id = e.payload.message_id;
       const rec = ours.flags.sent.find((f) => String(f.messageId) === String(id));
       const points = num(e.payload.points) ?? num(e.payload.delta);
@@ -170,7 +170,7 @@ export function worldFromFeed(events: readonly FeedEvent[], team: string | undef
   return { eggs: { byPersona }, ours };
 }
 
-/** Tipo de persona (`kind` de `/api/dealers`); lo desconocido cuenta como dealer. */
+/** Persona kind (`kind` from `/api/dealers`); unknown counts as dealer. */
 export function personaTypeOf(raw: unknown): PersonaType {
   const k = str(obj(raw).kind) ?? str(obj(raw).type);
   return PERSONA_TYPES.includes(k as PersonaType) ? (k as PersonaType) : "dealer";
@@ -187,17 +187,17 @@ export interface PersonaInputs {
   team?: string;
   unlocked: readonly string[];
   conversations: readonly Conversation[];
-  /** Corpus de pistas por persona (más recientes primero). */
+  /** Hints corpus per persona (most recent first). */
   hints: ReadonlyMap<string, HintLine[]>;
   memos: ReadonlyMap<string, PersonaMemo>;
 }
 
-/** Tratos negociados con un dealer: hilo cerrado en trato a un precio distinto de su apertura. */
+/** Negotiated deals with a dealer: thread closed in a deal at a price different from its opening. */
 export function negotiatedDeals(conversations: readonly Conversation[], dealer: string): number {
   return conversations.filter((c) => c.kind === "dealer" && c.counterparty === dealer && c.result?.price !== undefined && c.history.herPrices[0] !== undefined && c.result.price !== c.history.herPrices[0]).length;
 }
 
-/** Personas del tick: `/api/dealers` + `/api/levels` + eventos de nivel del feed, con estado y progreso de desbloqueo. */
+/** Tick's personas: `/api/dealers` + `/api/levels` + level events from the feed, with state and unlock progress. */
 export function buildPersonas(i: PersonaInputs): Persona[] {
   const levels = Array.isArray(obj(i.levels).levels) ? (obj(i.levels).levels as unknown[]).map(obj) : [];
   const ids = new Set<string>();
@@ -261,7 +261,7 @@ export function buildPersonas(i: PersonaInputs): Persona[] {
   });
 }
 
-// ---------------------------------------------------------------- memoria local
+// ---------------------------------------------------------------- local memory
 
 const PERSONAS_SCHEMA = "bazaar-personas/v1";
 const FLAGS_SCHEMA = "bazaar-flags/v1";
@@ -275,7 +275,7 @@ function readJson(file: string, schema: string): Record<string, unknown> | undef
     const data = obj(JSON.parse(readFileSync(file, "utf8")));
     return data.schema === schema ? data : undefined;
   } catch {
-    // Fichero corrupto: se arranca vacío (lo estructural sale de la API).
+    // Corrupt file: start empty (the structural part comes from the API).
     return undefined;
   }
 }
@@ -305,9 +305,9 @@ export function saveFlags(file: string, flags: readonly FlagRecord[]): void {
   writeJson(file, { schema: FLAGS_SCHEMA, updated: new Date().toISOString(), flags });
 }
 
-// ---------------------------------------------------------------- consola
+// ---------------------------------------------------------------- console
 
-/** «chato: unlocked-for-us · abuela deals 3/3». */
+/** "chato: unlocked-for-us · abuela deals 3/3". */
 export function formatPersona(p: Persona): string {
   const progress = p.progress ? ` · ${p.progress.dealer} deals ${p.progress.deals}/${p.progress.needed}` : p.unlock.always ? " · always open" : "";
   const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined, p.model ? undefined : p.estimates ? `fit ${p.estimates.fittedFrom} conv (markup ${p.estimates.opening_markup.mean}, β ${p.estimates.beta.mean}, max_rounds ${p.estimates.max_rounds.mean}, mirror ${p.estimates.mirror}; ${Object.entries(p.estimates.bands).map(([b, e]) => `${b} ${e.limit.mean} [${e.limit.lo}–${e.limit.hi}] n${e.samples}${e.fewSamples ? "?" : ""}`).join(", ")})` : undefined].filter(Boolean);

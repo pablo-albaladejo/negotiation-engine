@@ -3,9 +3,9 @@ import { acceptableForUs, reservationUtility, utility, type Offer, type OfferMan
 
 export interface TimeFields {
   round: number;
-  /** Límite de rondas del ring, si lo da. */
+  /** Ring round limit, if it gives one. */
   roundLimit?: number;
-  /** Plazo del ring (ms epoch), si lo da; con inicio de sesión y reloj inyectados. */
+  /** Ring deadline (epoch ms), if it gives one; with session start and clock injected. */
   deadlineMs?: number;
   startedAtMs?: number;
   nowMs?: number;
@@ -14,13 +14,13 @@ export interface TimeFields {
 export interface TimeInfo {
   t: number;
   source: "ring-rounds" | "ring-deadline" | "default-horizon";
-  /** Nuestro último movimiento posible según el ring. */
+  /** Our last possible move according to the ring. */
   isLastMove: boolean;
-  /** Horizonte alcanzado que solo procede de `defaultHorizon`: sin retirada. */
+  /** Horizon reached that comes only from `defaultHorizon`: no walking away. */
   defaultHorizonReached: boolean;
 }
 
-/** t ∈ [0, 1] solo desde campos del ring o `defaultHorizon`; nunca desde el texto ni el parser. */
+/** t ∈ [0, 1] only from ring fields or `defaultHorizon`; never from text or the parser. */
 export function computeTime(fields: TimeFields, defaultHorizon: number): TimeInfo {
   if (fields.roundLimit !== undefined) {
     return {
@@ -46,9 +46,9 @@ export function computeTime(fields: TimeFields, defaultHorizon: number): TimeInf
 export type AcceptanceRule = "ac-next" | "ac-combi" | "ac-time" | "last-move" | "default-horizon" | "none";
 
 /**
- * Tamaño de la ventana W de AC_combi(T, MAX^W): las ofertas del rival del último tramo de tiempo
- * de longitud 1 − t. Sin la ronda de cada oferta, se supone un ritmo constante: con `previous`
- * ofertas en [0, t], la ventana son las últimas ⌈previous · (1 − t) / t⌉ (al menos 1).
+ * Size of the window W of AC_combi(T, MAX^W): the rival's offers from the last stretch of time
+ * of length 1 − t. Without each offer's round, a constant pace is assumed: with `previous`
+ * offers in [0, t], the window is the last ⌈previous · (1 − t) / t⌉ (at least 1).
  */
 export function acCombiWindow(t: number, previous: number): number {
   if (previous <= 0) return 0;
@@ -57,21 +57,21 @@ export function acCombiWindow(t: number, previous: number): number {
 }
 
 export interface AcceptanceInput {
-  /** Issues orientados a nuestro rol. */
+  /** Issues oriented to our role. */
   issues: readonly Issue[];
   mandate: OfferMandate;
-  /** Oferta actual del rival (la última registrada); nunca una anterior. */
+  /** Rival's current offer (the latest recorded); never an earlier one. */
   rivalCurrent?: Offer;
-  /** Ofertas anteriores del rival (sin la actual), en orden; para AC_combi. */
+  /** Rival's earlier offers (without the current one), in order; for AC_combi. */
   rivalPrevious?: readonly Offer[];
-  /** Umbral T de AC_combi; ausente = AC_combi desactivada. */
+  /** Threshold T of AC_combi; absent = AC_combi disabled. */
   acCombiThreshold?: number;
-  /** Utilidad de la contraoferta que enviaríamos. */
+  /** Utility of the counteroffer we would send. */
   ourNextUtility: number;
   time: TimeInfo;
   acceptMargin: number;
   acTimeThreshold: number;
-  /** Si el ring aún admite respuesta del rival tras nuestro último movimiento. */
+  /** Whether the ring still allows a rival reply after our last move. */
   rivalCanRespond: boolean;
 }
 
@@ -88,10 +88,10 @@ export function decideAcceptance(input: AcceptanceInput): AcceptanceVerdict {
   if (!rivalCurrent) return noDeal;
 
   const u = utility(issues, rivalCurrent);
-  // Toda regla exige límites por issue y u ≥ u(reserva) (tarea 3.8).
+  // Every rule requires per-issue limits and u ≥ u(reservation) (task 3.8).
   const acceptable = acceptableForUs(issues, mandate, rivalCurrent);
 
-  // Último movimiento (del ring) u horizonte por defecto: aceptar si y solo si u ≥ u(reserva), sin margen.
+  // Last move (of the ring) or default horizon: accept if and only if u ≥ u(reservation), no margin.
   if (time.isLastMove || time.defaultHorizonReached) {
     const rule: AcceptanceRule = time.isLastMove ? "last-move" : "default-horizon";
     if (acceptable) return { verdict: "accept", rule };
@@ -99,8 +99,8 @@ export function decideAcceptance(input: AcceptanceInput): AcceptanceVerdict {
   }
   if (!acceptable) return noDeal;
   if (u >= input.ourNextUtility - input.acceptMargin) return { verdict: "accept", rule: "ac-next" };
-  // AC_combi (Baarslag et al.): con t ≥ T, aceptar si es al menos tan buena como la mejor oferta
-  // del rival en la ventana reciente.
+  // AC_combi (Baarslag et al.): with t ≥ T, accept if it is at least as good as the best offer
+  // from the rival in the recent window.
   const previous = input.rivalPrevious ?? [];
   if (input.acCombiThreshold !== undefined && time.t >= input.acCombiThreshold && previous.length > 0) {
     const window = previous.slice(previous.length - acCombiWindow(time.t, previous.length));

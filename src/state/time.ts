@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import type { Schedule } from "../duels/schemas.js";
 
 /**
- * Tiempo del tick: hora de juego, hora de pared, fase del día, ronda y peso, ticks que quedan hoy y deriva frente
- * al plan. El plan sale de `clock.days` (aperturas y cierres de pared) y de los `day_opens` del calendario: una
- * hora de pared con puertas abiertas es una hora de juego. Si el reloj se paró, la deriva es negativa.
+ * Tick time: game time, wall-clock time, phase of the day, round and weight, ticks left today and drift against
+ * the plan. The plan comes from `clock.days` (wall-clock openings and closings) and the calendar's `day_opens`: a
+ * wall-clock hour with doors open is a game hour. If the clock stopped, the drift is negative.
  */
 
 export interface TimeState {
@@ -19,9 +19,9 @@ export interface TimeState {
   closes?: string;
   nextOpens?: string;
   nextName?: string;
-  /** Hora de juego que tocaría ahora según el plan y diferencia (juego − plan), en horas. */
+  /** Game time it would be now according to the plan and difference (game − plan), in hours. */
   drift?: { planHour: number; offsetHours: number };
-  /** Huella del calendario pendiente; si cambia entre ticks, hay que releerlo. */
+  /** Fingerprint of the pending calendar; if it changes between ticks, it must be re-read. */
   scheduleHash: string;
   scheduleChanged: boolean;
 }
@@ -35,11 +35,11 @@ export function scheduleHash(s: Schedule | undefined): string {
   return createHash("sha1").update(JSON.stringify(items)).digest("hex").slice(0, 12);
 }
 
-/** Hora de juego en que abre cada día: el primero en 0 y el resto por su `day_opens` del calendario. */
+/** Game time at which each day opens: the first at 0 and the rest by their calendar `day_opens`. */
 function dayStartHours(days: Record<string, unknown>[], s: Schedule | undefined): Map<string, number> {
   const out = new Map<string, number>();
   for (const u of s?.upcoming ?? []) if (u.action === "day_opens" && str(u.params?.day)) out.set(str(u.params!.day)!, u.at_hours);
-  // El día de hoy (o el primero) sin `day_opens` pendiente: se reconstruye hacia atrás con la duración de pared.
+  // Today (or the first day) without a pending `day_opens`: rebuilt backwards from the wall-clock duration.
   for (let k = days.length - 1; k >= 0; k--) {
     const d = str(days[k]!.day);
     if (!d || out.has(d)) continue;
@@ -75,7 +75,7 @@ export function buildTime(clockRaw: unknown, schedule: Schedule | undefined, lea
       if (gameHour !== undefined) drift = { planHour: Math.round(planHour * 100) / 100, offsetHours: Math.round((gameHour - planHour) * 100) / 100 };
     }
   }
-  // Peso de la ronda: `leaderboard.rounds` (la ronda activa) o el último `round` del calendario ya pasado.
+  // Round weight: `leaderboard.rounds` (the active round) or the last already-passed `round` of the calendar.
   const lbRounds = Array.isArray(obj(leaderboardRaw).rounds) ? (obj(leaderboardRaw).rounds as unknown[]).map(obj) : [];
   const roundN = num(c.round);
   const lbRound = lbRounds.find((r) => num(r.round) === roundN) ?? lbRounds.find((r) => r.status === "active");
@@ -104,7 +104,7 @@ const short = (iso: string) => {
   return Number.isNaN(d.getTime()) ? iso : `${d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "Europe/Madrid" })} ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" })}`;
 };
 
-/** «h 2.65 · R1 ×0.5 · closed until Sat 09:00 · tick 159 · 60 s/tick · …». */
+/** "h 2.65 · R1 ×0.5 · closed until Sat 09:00 · tick 159 · 60 s/tick · …". */
 export function formatTime(t: TimeState): string {
   const r = t.round;
   const parts = [

@@ -5,10 +5,10 @@ import type { Me } from "./schemas.js";
 import type { TraceRecord } from "./trace.js";
 
 /**
- * La cifra que maximizamos: media ponderada de 3 días (vie 0.5, sáb 1, dom 1) de Negociando 30 +
- * Compraventa 30 + Jueces 40. `/api/me` la devuelve en `score`; aquí solo se extraen, trazan y
- * resumen los campos públicos listados abajo. `rarest`, `luck` y `luck_private` nunca cuentan ni
- * se guardan: ni siquiera se leen (lista cerrada de campos).
+ * The figure we maximize: weighted average over 3 days (Fri 0.5, Sat 1, Sun 1) of Negotiating 30 +
+ * Trading 30 + Judges 40. `/api/me` returns it in `score`; here the public fields listed below are only extracted, traced and
+ * summarized. `rarest`, `luck` and `luck_private` never count nor are
+ * stored: they are not even read (closed list of fields).
  */
 const SCORE_KEYS = [
   "score",
@@ -57,13 +57,13 @@ export const ScoreFieldsSchema = z.looseObject({
 });
 export type ScoreFields = z.infer<typeof ScoreFieldsSchema>;
 
-/** Campos numéricos sobre los que tiene sentido calcular un delta. */
+/** Numeric fields for which computing a delta makes sense. */
 const NUMERIC_KEYS = ["score", "negotiating", "market", "neg_points", "mm_points", "duel_points", "ladder_points", "bench_efficiency", "bench_points", "level", "album_filled", "album_slots", "pages_complete", "deals", "rank"] as const satisfies readonly (keyof ScoreFields)[];
 
 /**
- * Lee `me.score` con una lista cerrada de campos (allowlist): aunque el servidor incluya
- * `rarest`/`luck`/`luck_private` u otro campo privado, nunca llegan a `picked` y por tanto nunca
- * se devuelven, se trazan ni se sirven. `undefined` si `me.score` no es un objeto o no valida.
+ * Reads `me.score` with a closed list of fields (allowlist): even if the server includes
+ * `rarest`/`luck`/`luck_private` or another private field, they never reach `picked` and so are never
+ * returned, traced or served. `undefined` if `me.score` is not an object or fails validation.
  */
 export function extractScoreFields(me: Me): ScoreFields | undefined {
   const raw = me.score;
@@ -74,7 +74,7 @@ export function extractScoreFields(me: Me): ScoreFields | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-/** Diferencia por campo numérico frente al snapshot anterior; 0 si no hay anterior o no cambia. */
+/** Per-numeric-field difference against the previous snapshot; 0 if there is none or it does not change. */
 export function computeDelta(prev: ScoreFields | undefined, curr: ScoreFields): Record<string, number> {
   const delta: Record<string, number> = {};
   for (const key of NUMERIC_KEYS) {
@@ -93,8 +93,8 @@ export interface CauseEntry {
   price?: number;
 }
 
-/** Acciones de la traza del agente desde el snapshot anterior que probablemente movieron la cifra:
- * aceptaciones y resultados liquidados (`deal`). Nunca incluye reserva privada ni texto. */
+/** Agent trace actions since the previous snapshot that probably moved the figure:
+ * acceptances and settled outcomes (`deal`). Never includes private reservation or text. */
 export function causesFromRecords(records: readonly TraceRecord[]): CauseEntry[] {
   const out: CauseEntry[] = [];
   for (const r of records) {
@@ -111,7 +111,7 @@ export function causesFromRecords(records: readonly TraceRecord[]): CauseEntry[]
 export interface ScoreSnapshot extends ScoreFields {
   ts: string;
   tick: number;
-  /** Día de la jornada (vie/sáb/dom), si el servidor la da en `venue`; si no, ausente. */
+  /** Day of the event (Fri/Sat/Sun), if the server gives it in `venue`; otherwise absent. */
   round?: string;
   delta: Record<string, number>;
   cause: CauseEntry[];
@@ -122,8 +122,8 @@ export interface ScoreSink {
 }
 
 /**
- * Acumula el snapshot anterior para calcular `delta` y arma la causa a partir de las trazas del
- * agente desde la última llamada. Puro aparte del reloj inyectable; el sink decide dónde se guarda.
+ * Accumulates the previous snapshot to compute `delta` and builds the cause from the agent's traces
+ * since the last call. Pure apart from the injectable clock; the sink decides where it is stored.
  */
 export class ScoreTracker {
   private prev: ScoreFields | undefined;
@@ -152,7 +152,7 @@ export class ScoreTracker {
   }
 }
 
-/** `results/bazaar-live/<fecha>/score.jsonl`, una línea por snapshot. */
+/** `results/bazaar-live/<date>/score.jsonl`, one line per snapshot. */
 export class FileScoreTrace implements ScoreSink {
   constructor(readonly dir: string) {
     mkdirSync(dir, { recursive: true });
@@ -163,7 +163,7 @@ export class FileScoreTrace implements ScoreSink {
   }
 }
 
-/** Línea de una sola línea para la CLI: `score 3.2 (neg 2.1 · mm 0 · duel 0 · ladder 2.1) rank 9 ↑2`. */
+/** Single-line summary for the CLI: `score 3.2 (neg 2.1 · mm 0 · duel 0 · ladder 2.1) rank 9 ↑2`. */
 export function formatScoreSummary(curr: ScoreFields, prevRank?: number): string {
   const parts = [`neg ${curr.neg_points ?? 0}`, `mm ${curr.mm_points ?? 0}`, `duel ${curr.duel_points ?? 0}`, `ladder ${curr.ladder_points ?? 0}`].join(" · ");
   let rankPart = "";
@@ -177,7 +177,7 @@ export function formatScoreSummary(curr: ScoreFields, prevRank?: number): string
   return `score ${curr.score ?? "?"} (${parts})${rankPart}`;
 }
 
-/** Desglose multilínea para `pnpm bazaar:status`. */
+/** Multi-line breakdown for `pnpm bazaar:status`. */
 export function formatScoreBreakdown(curr: ScoreFields): string[] {
   return [
     `score: ${curr.score ?? "?"} · rank ${curr.rank ?? "?"}${curr.venue ? ` · ${curr.venue}` : ""}`,

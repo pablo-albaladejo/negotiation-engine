@@ -13,18 +13,18 @@ import { readSide, type TradeOffer } from "../trades/trades.js";
 import { detectFlag, detectPressure, type CatalogIndex, type FlagCandidate } from "../flags/flags.js";
 
 /**
- * Una conversación como entidad de primera clase: hilo con un dealer, duelo u oferta nuestra en El Rastro.
- * La parte estructural (precios, oferta vigente, fase, resultado) se reconstruye en cada tick desde la API,
- * leyendo solo estructura (precios, ofertas, estados), nunca el texto del rival. Lo que la API no da (fase
- * forzada, ánimo, pistas, eggs probados) persiste en `results/bazaar-live/<fecha>/conversations.json`.
- * `limits` es privado: reserva, valor privado y `your_limit` nunca salen en un mensaje.
+ * A conversation as a first-class entity: a thread with a dealer, a duel or our offer in El Rastro.
+ * The structural part (prices, standing offer, phase, outcome) is rebuilt every tick from the API,
+ * reading structure only (prices, offers, states), never the rival's text. What the API does not give (forced
+ * phase, mood, hints, probed eggs) persists in `results/bazaar-live/<date>/conversations.json`.
+ * `limits` is private: reservation, private value and `your_limit` never appear in a message.
  */
 
 export type ConversationKind = "dealer" | "duel" | "rastro";
 export type Phase = "opening" | "haggling" | "closing" | "done";
 export type Goal = "ladder" | "page" | "duplicate" | "duel" | "listing" | "bid" | "other";
 
-/** Decisión del código en un tick (la cifra es la decidida; `reason` es una frase fija del código, nunca de un LLM). */
+/** Code's decision in a tick (the figure is the one decided; `reason` is a fixed phrase from code, never from an LLM). */
 export interface StrategyDecision {
   action: "accept" | "counter" | "hold" | "walk" | "wait";
   price?: number;
@@ -34,18 +34,18 @@ export interface StrategyDecision {
   tick: number;
 }
 
-/** Estrategia calculada por código cada tick, junto al estado. Privada como `limits`: nunca en un mensaje. */
+/** Strategy computed by code each tick, alongside the state. Private like `limits`: never in a message. */
 export interface Strategy {
   plan: {
     anchor?: number;
-    /** Camino previsto de nuestros precios si el otro no se mueve (`plannedSchedule`; en duelos, la curva). */
+    /** Expected path of our prices if the other side does not move (`plannedSchedule`; in duels, the curve). */
     plannedPath: number[];
     stepSize?: number;
     patienceBudget?: number;
     walkCondition: string;
-    /** Duelos: precio a partir del cual aceptamos ya (decay y parte razonable). */
+    /** Duels: price from which we accept right away (decay and reasonable share). */
     acceptThreshold?: number;
-    /** Duelos con días: qué día pedimos y cuál cedemos. */
+    /** Duels with days: which day we ask for and which we give up. */
     daysPlan?: string;
   };
   lastDecision?: StrategyDecision;
@@ -53,45 +53,45 @@ export interface Strategy {
 }
 
 export interface Conversation {
-  /** `dealer:<thread>`, `duel:<id>` o `rastro:<offer>`. */
+  /** `dealer:<thread>`, `duel:<id>` or `rastro:<offer>`. */
   id: string;
   kind: ConversationKind;
-  /** Id de la persona (abuela, chato), alias del rival del duelo o "rastro" (tablón público). */
+  /** Persona id (abuela, chato), the duel rival's alias or "rastro" (public board). */
   counterparty: string;
   asset: { ref?: string; rarity?: string; set?: string; item?: string };
   side: "buy" | "sell";
   goal: { why: Goal; expectedValue?: number };
-  /** Privado: nunca en un mensaje. */
+  /** Private: never in a message. */
   limits: { reservation?: number; privateValue?: number; duelLimit?: number; daysWeight?: unknown };
-  /** Solo estructura (precios y ofertas), nunca su texto. */
+  /** Structure only (prices and offers), never its text. */
   history: { herPrices: number[]; ourPrices: number[]; herAtOurMessages?: number[]; herCurrent?: { price: number; final: boolean; days?: number } };
   phase: Phase;
-  /** Lo que el otro lado ha cedido desde su primer precio (P, ≥ 0). */
+  /** What the other side has conceded since its first price (P, ≥ 0). */
   herConcession?: number;
-  /** Mensajes nuestros frente a la paciencia estimada (dealer) o rondas del duelo. */
+  /** Our messages against the estimated patience (dealer) or duel rounds. */
   roundsUsed: number;
   patienceEstimate?: number;
   holdsUsed?: number;
   mood: { warnings: number; strikes: number; cooloffUntil?: number; kindness: number };
-  /** Pistas oídas y eggs probados (paso 3). Su texto nunca da una cifra. */
+  /** Hints heard and eggs probed (step 3). Their text never yields a figure. */
   hints: string[];
   eggsTried: string[];
   /**
-   * Paciencia para probes de eggs: `probeCostNow` 0 en la apertura o tras un trato (no gasta paciencia), 1 si no.
-   * Los probes van siempre a caballo de una contraoferta (`eggProbeFor` en `src/coordinator/routes.ts`), nunca solos.
+   * Patience for egg probes: `probeCostNow` 0 at the opening or after a deal (spends no patience), 1 otherwise.
+   * Probes always ride along with a counteroffer (`eggProbeFor` in `src/coordinator/routes.ts`), never alone.
    */
   patience?: { roundsSpent: number; budget: number; probeCostNow: number };
-  /** Contradicción texto↔estructura en un mensaje del dealer (ver `src/flags/flags.ts`). */
+  /** Text↔structure contradiction in a dealer message (see `src/flags/flags.ts`). */
   flagCandidate?: FlagCandidate;
-  /** Predicción de su curva (ajuste por persona, `src/dealers/history/persona-fit.ts`). Privado: nunca en un mensaje. */
+  /** Prediction of its curve (per-persona fit, `src/dealers/history/persona-fit.ts`). Private: never in a message. */
   prediction?: Prediction;
-  /** Lo rellena el coordinador con el presupuesto del tick. */
+  /** Filled in by the coordinator with the tick's budget. */
   turn: { canMessage?: boolean; canAccept?: boolean };
   result?: { outcome?: string; price?: number; ladderShare?: number; negPointsDelta?: number; score?: number };
   strategy: Strategy;
 }
 
-/** Lo que persiste entre ticks porque la API no lo da. */
+/** What persists between ticks because the API does not give it. */
 export interface ConversationMemo {
   phaseOverride?: Phase;
   mood?: Partial<Conversation["mood"]>;
@@ -106,7 +106,7 @@ export function defaultConversationsFile(root: string, now: Date = new Date()): 
   return join(liveTraceDir(root, now), "conversations.json");
 }
 
-/** Memoria persistida; vacía si el fichero no existe o no es válido (nunca lanza). */
+/** Persisted memory; empty if the file does not exist or is invalid (never throws). */
 export function loadConversationMemos(file: string): Map<string, ConversationMemo> {
   const out = new Map<string, ConversationMemo>();
   if (!existsSync(file)) return out;
@@ -115,12 +115,12 @@ export function loadConversationMemos(file: string): Map<string, ConversationMem
     if (data.schema !== SCHEMA || !data.conversations) return out;
     for (const [id, m] of Object.entries(data.conversations)) out.set(id, m);
   } catch {
-    // Fichero corrupto: se arranca sin memoria (la estructura sale de la API).
+    // Corrupt file: start with no memory (the structure comes from the API).
   }
   return out;
 }
 
-/** Guarda la parte no estructural de cada conversación (rename atómico). */
+/** Saves the non-structural part of each conversation (atomic rename). */
 export function saveConversationMemos(file: string, conversations: readonly Conversation[]): void {
   mkdirSync(dirname(file), { recursive: true });
   const memos: Record<string, ConversationMemo> = {};
@@ -133,28 +133,28 @@ export function saveConversationMemos(file: string, conversations: readonly Conv
 export interface ConversationInputs {
   tick: number;
   me?: Me;
-  /** Hilos de `/api/me/threads` tal cual (con mensajes y ofertas). */
+  /** Threads from `/api/me/threads` as-is (with messages and offers). */
   threads: readonly unknown[];
-  /** `/api/dealers` (rasgos públicos para estimar la paciencia). */
+  /** `/api/dealers` (public traits to estimate patience). */
   dealers: readonly unknown[];
   duels: readonly Duel[];
-  /** Nuestras ofertas abiertas en El Rastro. */
+  /** Our open offers in El Rastro. */
   rastro: readonly TradeOffer[];
-  /** Páginas del álbum, para saber si una carta completa página. */
+  /** Album pages, to know whether a card completes a page. */
   pages: readonly { set: string; have: number; of: number }[];
-  /** Cartas que siempre cuentan como «página» (SAL-09). */
+  /** Cards that always count as "page" (SAL-09). */
   pageTargets: readonly string[];
   memos: ReadonlyMap<string, ConversationMemo>;
-  /** Catálogo indexado para el detector de flags; sin él, no hay candidatos. */
+  /** Indexed catalog for the flag detector; without it, there are no candidates. */
   catalog?: CatalogIndex;
-  /** Personas cuyo detector mira desde el primer mensaje (trickster). */
+  /** Personas whose detector looks from the first message (trickster). */
   flagsFromFirstMessage?: ReadonlySet<string>;
 }
 
 /**
- * Último candidato a flag del hilo: mensajes del dealer con oferta adjunta, comparando texto con estructura (gana
- * siempre) y, si no hay, frases de presión de la lista cerrada en sus contraofertas (con oferta y no su primer
- * mensaje). Salvo trickster, la apertura se salta. El texto nunca da una cifra (excepción estrecha, ver `flags.ts`).
+ * Latest flag candidate of the thread: dealer messages with an attached offer, comparing text with structure (wins
+ * always) and, if none, pressure phrases from the closed list in its counteroffers (with an offer and not its first
+ * message). Except for the trickster, the opening is skipped. The text never yields a figure (narrow exception, see `flags.ts`).
  */
 function flagCandidateOf(t: Thread, i: ConversationInputs): FlagCandidate | undefined {
   if (!i.catalog || !t.with) return undefined;
@@ -180,7 +180,7 @@ function copies(me: Me | undefined, ref: string): number {
   return me ? me.assets.filter((a) => a.ref === ref && (a.kind ?? "card") === "card").length : 0;
 }
 
-/** Comprar `ref` completa una página (le falta solo esa carta) o es un objetivo fijo (SAL-09). */
+/** Buying `ref` completes a page (only that card is missing) or is a fixed target (SAL-09). */
 export function completesPage(ref: string, me: Me | undefined, pages: ConversationInputs["pages"], pageTargets: readonly string[]): boolean {
   if (pageTargets.includes(ref)) return true;
   const page = pages.find((p) => p.set === setOfRef(ref));
@@ -196,8 +196,8 @@ function withMemo(c: Omit<Conversation, "mood" | "hints" | "eggsTried" | "strate
 }
 
 /**
- * Estrategia de un hilo con un dealer desde el negociador (mismos parámetros que `pnpm bazaar --serious`: perfil del
- * dealer). Reserva estimada = nuestro valor privado (safety 1,0 del modo serio); sin valor conocido, sin plan.
+ * Strategy of a dealer thread from the negotiator (same parameters as `pnpm bazaar --serious`: the
+ * dealer's profile). Estimated reservation = our private value (safety 1.0 of serious mode); without a known value, no plan.
  */
 export function dealerStrategy(
   side: "buy" | "sell",
@@ -257,7 +257,7 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
     };
     const privateValue = cardRef ? i.me?.assets.find((a) => a.ref === cardRef && typeof a.your_value === "number")?.your_value ?? undefined : undefined;
     const why: Goal = side === "sell" ? (cardRef && copies(i.me, cardRef) > 1 ? "duplicate" : "other") : cardRef && completesPage(cardRef, i.me, i.pages, i.pageTargets) ? "page" : "ladder";
-    // Niveles 3–5 (o sin rasgo): paciencia desconocida, se mide; para la fase se supone la de por defecto (6).
+    // Levels 3–5 (or no trait): unknown patience, measured; for the phase the default (6) is assumed.
     const known = patienceBudgetFor(traitsOf(dealerInfo));
     const patience = known ?? 6;
     const done = t.status !== "open";
@@ -367,8 +367,8 @@ function rastroConversations(i: ConversationInputs): Conversation[] {
 }
 
 /**
- * Estrategia de un duelo desde la política v2 (`decideDuel`): ancla, curva de precios por ronda, umbral de aceptación
- * (el mayor de `acceptShare` × excedente de apertura y la siguiente oferta descontada una ronda de decay) y plan de días.
+ * Strategy of a duel from policy v2 (`decideDuel`): anchor, price curve per round, acceptance threshold
+ * (the larger of `acceptShare` × opening surplus and the next offer discounted by one round of decay) and day plan.
  */
 export function duelStrategy(state: DuelState, params: DuelParams, decision: DuelDecision, tick: number): Strategy {
   const sign = state.role === "seller" ? 1 : -1;
@@ -412,12 +412,12 @@ export function duelStrategy(state: DuelState, params: DuelParams, decision: Due
   };
 }
 
-/** Todas las conversaciones del tick: hilos con dealers, duelos vivos y nuestras ofertas abiertas en El Rastro. */
+/** All the tick's conversations: dealer threads, live duels and our open offers in El Rastro. */
 export function buildConversations(i: ConversationInputs): Conversation[] {
   return [...duelConversations(i), ...dealerConversations(i), ...rastroConversations(i)];
 }
 
-/** Una línea por conversación (sin límites privados): tipo, contraparte, activo, fase, últimos precios y turno. */
+/** One line per conversation (no private limits): kind, counterparty, asset, phase, latest prices and turn. */
 export function formatConversation(c: Conversation): string {
   const asset = c.asset.ref ?? c.asset.item ?? (c.asset.rarity ? `${c.asset.rarity} ${c.asset.set ?? ""}`.trim() : "?");
   const her = c.history.herCurrent ? `${c.history.herCurrent.price}${c.history.herCurrent.final ? "F" : ""}` : "-";

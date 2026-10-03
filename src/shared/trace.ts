@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { PatienceSummary } from "../dealers/negotiation/patience.js";
 import type { ThreadSummary } from "../dealers/history/thread-log.js";
 
-/** Una línea JSONL por decisión: lo que el visor necesita para reconstruir cada hilo. Sin clave. */
+/** One JSONL line per decision: what the viewer needs to rebuild each thread. No key. */
 export interface TraceRecord {
   ts: string;
   tick: number;
@@ -17,7 +17,7 @@ export interface TraceRecord {
   herOpening?: number;
   herFinal?: boolean;
   ourPrice?: number;
-  /** Reserva privada usada (solo en la traza local; nunca en un mensaje al dealer). */
+  /** Private reservation used (local trace only; never in a message to the dealer). */
   reservation?: number;
   effectiveReservation?: number;
   rule?: string;
@@ -25,19 +25,19 @@ export interface TraceRecord {
   status?: string;
   closedReason?: string;
   settledPrice?: number;
-  /** `welcome-first-deal`: su apertura, medida como su límite para este dealer y esta banda (`target`). */
+  /** `welcome-first-deal`: its opening, measured as its limit for this dealer and this band (`target`). */
   measuredLimit?: number;
   /**
-   * Aceptamos su apertura sin haber hecho oferta: el servidor lo cuenta como took_opening, no como trato negociado
-   * (no entra en el share medio; personas.md § 9).
+   * We accepted its opening without making an offer: the server counts it as took_opening, not as a negotiated deal
+   * (it does not enter the average share; personas.md § 9).
    */
   tookOpening?: boolean;
-  /** ¿Sus pasos siguen a los nuestros? (`mirrorVerdict`: mirror, not-mirror, unknown). */
+  /** Do its steps follow ours? (`mirrorVerdict`: mirror, not-mirror, unknown). */
   mirror?: string;
   error?: string;
-  /** Al cerrar/aceptar/terminar: mensajes nuestros, respuestas suyas, tics hasta su final y respuesta a cada paso. */
+  /** On close/accept/finish: our messages, its replies, ticks until its end and the reply to each step. */
   patience?: PatienceSummary;
-  /** Al terminar una conversación: cartas, copias antes/después, tratos con el dealer en la hora, apertura/final y paciencia. */
+  /** On finishing a conversation: cards, copies before/after, deals with the dealer in the hour, opening/final and patience. */
   summary?: ThreadSummary;
 }
 
@@ -45,7 +45,7 @@ export interface TraceSink {
   write(record: TraceRecord): void;
 }
 
-/** `results/bazaar-live/<fecha>/decisions.jsonl` + `thread-<id>.jsonl` por hilo. */
+/** `results/bazaar-live/<date>/decisions.jsonl` + `thread-<id>.jsonl` per thread. */
 export class FileTrace implements TraceSink {
   constructor(readonly dir: string) {
     mkdirSync(dir, { recursive: true });

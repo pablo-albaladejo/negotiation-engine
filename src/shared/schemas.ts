@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Esquemas de las respuestas del Bazaar. Tolerantes: campos desconocidos permitidos y casi todo
- * opcional, porque el servidor añade campos con cada nivel. Solo se exige lo que el agente usa.
+ * Schemas for the Bazaar's responses. Tolerant: unknown fields allowed and almost everything
+ * optional, because the server adds fields with each level. Only what the agent uses is required.
  */
 
 const num = z.number();
@@ -63,7 +63,7 @@ export const CatalogSchema = z.looseObject({
 });
 export type Catalog = z.infer<typeof CatalogSchema>;
 
-/** Ficha de un dealer (`GET /api/dealers/{id}`): menú (qué vende y compra, y cómo) y regla de desbloqueo. */
+/** A dealer's sheet (`GET /api/dealers/{id}`): menu (what it sells and buys, and how) and unlock rule. */
 const MenuSetsSchema = z.union([z.string(), z.array(z.string())]).nullish();
 export const DealerInfoSchema = z.looseObject({
   id: z.string(),
@@ -93,7 +93,7 @@ export const DealerInfoSchema = z.looseObject({
 });
 export type DealerInfo = z.infer<typeof DealerInfoSchema>;
 
-/** Mercados abiertos (`GET /api/venues`) y respuesta de abrir uno (la broker key llega una sola vez y nunca se imprime). */
+/** Open markets (`GET /api/venues`) and the response to opening one (the broker key arrives only once and is never printed). */
 export const VenuesSchema = z.looseObject({
   venues: z.array(z.looseObject({ venue: z.string().nullish(), name: z.string().nullish(), owner: z.string().nullish(), fee_bps: num.nullish(), fee_per_card: num.nullish(), rules: z.unknown().optional() })).default([]),
 });
@@ -106,7 +106,7 @@ export const DealerSchema = z.looseObject({
   level: num.nullish(),
   status: z.string().optional(),
 });
-/** El servidor responde `personas` (nombre antiguo) o `dealers`. */
+/** The server responds `personas` (old name) or `dealers`. */
 export const DealersSchema = z.preprocess(
   (raw) => (raw && typeof raw === "object" && !("dealers" in raw) && "personas" in raw ? { ...raw, dealers: (raw as { personas: unknown }).personas } : raw),
   z.looseObject({ dealers: z.array(DealerSchema).default([]) }),
@@ -131,7 +131,7 @@ export const StandingOfferSchema = z.looseObject({
 });
 export type StandingOffer = z.infer<typeof StandingOfferSchema>;
 
-/** `offer` se deja sin validar aquí: `view.ts` la lee con `StandingOfferSchema.safeParse`, así una oferta rara no tumba el hilo. */
+/** `offer` is left unvalidated here: `view.ts` reads it with `StandingOfferSchema.safeParse`, so an odd offer does not take down the thread. */
 export const MessageSchema = z.looseObject({
   id: z.union([num, z.string()]).nullish(),
   text: z.string().nullish(),
@@ -158,7 +158,7 @@ export type Thread = z.infer<typeof ThreadSchema>;
 export const ThreadSummarySchema = z.looseObject({ id: num, status: z.string().nullish(), with: z.string().nullish() });
 export const ThreadListSchema = z.looseObject({ threads: z.array(ThreadSummarySchema).nullish().transform((t) => t ?? []) });
 
-/** El agente no lee la respuesta de un mensaje: validarla solo servía para tumbar un envío que el servidor ya aceptó. */
+/** The agent does not read a message's response: validating it only served to fail a send the server had already accepted. */
 export const SayResultSchema = z.unknown();
 
 export const ErrorBodySchema = z.looseObject({ error: z.string().optional(), message: z.string().optional() });

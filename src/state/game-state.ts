@@ -18,18 +18,18 @@ import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, ty
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 
 /**
- * Un único `GameState` por tick, construido solo con GET y tolerante: cada lectura que falla se apunta en
- * `missing` y el resto del estado sigue. Lo leen el coordinador (`pnpm bazaar:play`) y, más adelante, el visor.
- * Nuestro valor privado de cada carta (`your_value`) va en `ours.values` para uso local; nunca sale en un mensaje.
+ * A single `GameState` per tick, built with GET only and tolerant: each read that fails is recorded in
+ * `missing` and the rest of the state carries on. Read by the coordinator (`pnpm bazaar:play`) and, later, the viewer.
+ * Our private value for each card (`your_value`) goes in `ours.values` for local use; it never appears in a message.
  */
 
-/** Límites en vigor (`/api/clock` → `limits`). Un campo ausente queda `undefined`: el coordinador decide qué hacer. */
+/** Limits in force (`/api/clock` → `limits`). An absent field stays `undefined`: the coordinator decides what to do. */
 export interface TickLimits {
   acceptsPerTick?: number;
-  /** `messages_per_side_per_tick`: mensajes nuestros por conversación y tick. */
+  /** `messages_per_side_per_tick`: our messages per conversation and tick. */
   messagesPerConversation?: number;
   maxOpenThreads?: number;
-  /** `offers_per_team_per_tick`: altas nuevas por tick (una cancelada también cuenta). */
+  /** `offers_per_team_per_tick`: new offers per tick (a cancelled one also counts). */
   offersPerTick?: number;
   maxOpenOffers?: number;
   raw: Record<string, unknown>;
@@ -58,7 +58,7 @@ export interface GameState {
     nextOpens?: string;
   };
   limits: TickLimits;
-  /** Hora de juego, fase del día, ronda y peso, ticks que quedan hoy, deriva y cambio de calendario. */
+  /** Game time, phase of the day, round and weight, ticks left today, drift and calendar change. */
   time: TimeState;
   ours: {
     team?: string;
@@ -69,23 +69,23 @@ export interface GameState {
     frozen?: boolean;
     album: { pages: AlbumPage[]; filled?: number; slots?: number };
     holdings: { cards: number; packs: number; byRef: Record<string, number>; spares: number };
-    /** Valores privados ya conocidos (`your_value` de lo que tenemos), por carta. Solo uso local. */
+    /** Already-known private values (`your_value` of what we hold), per card. Local use only. */
     values: Record<string, number>;
     score?: ScoreFields;
     venue?: { id?: string; name?: string; mechanism?: string; status?: string };
     openThreads: { id: number; with?: string; status: string }[];
-    /** Dealers en cooloff (hilo cerrado con `closed_reason` cooloff y `until_tick` futuro). */
+    /** Dealers in cooloff (thread closed with `closed_reason` cooloff and a future `until_tick`). */
     cooloffs: { dealer: string; untilTick: number }[];
-    /** Campos de strikes que traiga `/api/me`, si alguno (hoy no aparece ninguno). */
+    /** Strike fields that `/api/me` carries, if any (none appear today). */
     strikes?: Record<string, unknown>;
   } & OursWorld;
-  /** Hoja de precios por carta (sets publicados): escasez, dealers, mejores ask/bid, último trato, valor y huecos. */
+  /** Price sheet per card (published sets): scarcity, dealers, best ask/bid, last deal, value and gaps. */
   markets: { prices: PriceEntry[]; venues: VenueInfo[] };
-  /** Sobres cerrados nuestros y tipos de sobre (valor esperado con el suministro, dealers, El Rastro). */
+  /** Our sealed packs and pack types (expected value with supply, dealers, El Rastro). */
   packs: PacksState;
-  /** Corpus de pistas completo (lo ya guardado + lo nuevo de este tick) y lo nuevo para añadir a `hints.jsonl`. */
+  /** Full hints corpus (what is already stored + what is new this tick) and the new part to append to `hints.jsonl`. */
   hints: { all: HintLine[]; fresh: HintLine[] };
-  /** Personas (dealers y las que aparezcan por `/api/levels` o el feed), con estado y progreso de desbloqueo. */
+  /** Personas (dealers and those that appear via `/api/levels` or the feed), with state and unlock progress. */
   personas: Persona[];
   world: { eggs: WorldEggs };
   env: {
@@ -96,13 +96,13 @@ export interface GameState {
     myOpenOffers: number;
     leaderboard?: { tick?: number; ourRank?: number; ourScore?: number; top: { team: string; name?: string; score?: number; rank?: number }[] };
   };
-  /** Una por hilo con dealer, duelo vivo y oferta nuestra en El Rastro (ver `conversation.ts`). */
+  /** One per dealer thread, live duel and our offer in El Rastro (see `conversation.ts`). */
   conversations: Conversation[];
-  /** Lecturas que fallaron (endpoint: código); el estado es parcial pero usable. */
+  /** Reads that failed (endpoint: code); the state is partial but usable. */
   missing: string[];
   /**
-   * ¿auto o board? Sesiones del Market Test medidas en sombra y la recomendación (`src/venue/mechanism.ts`). La rellena
-   * el coordinador tras construir el estado (lee `bench-sessions.json` y el latido del broker de disco).
+   * auto or board? Market Test sessions measured in shadow and the recommendation (`src/venue/mechanism.ts`). Filled in by
+   * the coordinator after building the state (reads `bench-sessions.json` and the broker heartbeat from disk).
    */
   venue?: { mechanismDecision: MechanismDecision };
 }
@@ -136,7 +136,7 @@ const LeaderboardSchema = z.looseObject({
   teams: z.array(z.looseObject({ team: z.string(), name: z.string().nullish(), score: z.number().nullish(), rank: z.number().nullish() })).catch([]),
 });
 
-/** Partes de `/api/me` que el estado usa (todo opcional; un campo raro se ignora). */
+/** Parts of `/api/me` that the state uses (all optional; an odd field is ignored). */
 function oursFrom(me: Me) {
   const raw = me as Me & Record<string, unknown>;
   const album = AlbumSchema.safeParse(me.album);
@@ -179,42 +179,42 @@ function oursFrom(me: Me) {
 }
 
 export interface BuildOptions {
-  /** Leer `/api/leaderboard` (el coordinador lo pide cada pocos ticks; el servidor lo refresca cada 5). */
+  /** Read `/api/leaderboard` (the coordinator requests it every few ticks; the server refreshes it every 5). */
   leaderboard?: boolean;
-  /** Cartas que siempre cuentan como «página» (SAL-09). */
+  /** Cards that always count as "page" (SAL-09). */
   pageTargets?: readonly string[];
-  /** Parte persistida de cada conversación (`conversations.json`). */
+  /** Persisted part of each conversation (`conversations.json`). */
   memos?: ReadonlyMap<string, ConversationMemo>;
-  /** Pistas y probes por persona (`personas.json`). */
+  /** Hints and probes per persona (`personas.json`). */
   personaMemos?: ReadonlyMap<string, PersonaMemo>;
-  /** Flags ya enviados (`flags.json`). */
+  /** Flags already sent (`flags.json`). */
   flags?: readonly FlagRecord[];
-  /** Tiempo del tick anterior: huella del calendario y peso de la ronda si el leaderboard no se leyó. */
+  /** Previous tick's time: calendar fingerprint and round weight if the leaderboard was not read. */
   prevTime?: TimeState;
-  /** Corpus de pistas ya guardado (`hints.jsonl`). */
+  /** Hints corpus already stored (`hints.jsonl`). */
   hintCorpus?: readonly HintLine[];
-  /** Semilla del corpus desde `results/` (solo la primera vez, sin `hints.jsonl`). */
+  /** Corpus seed from `results/` (first time only, without `hints.jsonl`). */
   hintSeed?: readonly Raw[];
-  /** Caché de valores privados en disco (`values.json`) y su hora; siembra la del cliente si aún es fresca. */
+  /** Private values cache on disk (`values.json`) and its timestamp; seeds the client's if still fresh. */
   valueCache?: ReadonlyMap<string, number>;
   valueCacheAt?: number;
-  /** Máximo de `/api/me/value` por tick (por defecto 4). */
+  /** Maximum `/api/me/value` calls per tick (default 4). */
   valueFetchesPerTick?: number;
   /**
-   * Posterior del ajuste por persona (`persona-posterior.json`). Se actualiza EN SITIO con las conversaciones del tick
-   * (observaciones y estimaciones) para que quien lo cargó lo guarde.
+   * Per-persona fit posterior (`persona-posterior.json`). Updated IN PLACE with the tick's conversations
+   * (observations and estimates) so that whoever loaded it saves it.
    */
   posterior?: Posterior;
   /**
-   * Modelos acumulados por persona (`persona-model.json`). Se actualizan EN SITIO cada tick para que quien los cargó los
-   * guarde; sin ellos (p. ej. el visor, que no guarda) se reconstruyen desde el posterior.
+   * Accumulated models per persona (`persona-model.json`). Updated IN PLACE every tick so that whoever loaded them
+   * saves them; without them (e.g. the viewer, which does not save) they are rebuilt from the posterior.
    */
   personaModels?: Record<string, PersonaModel>;
-  /** Puestos del leaderboard del tick anterior (si este tick no se lee). */
+  /** Leaderboard ranks from the previous tick (if this tick does not read it). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
 
-/** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
+/** Builds the tick's state with parallel GETs; never throws on a failed read (except `/api/clock`). */
 export async function buildGameState(client: BazaarClient, opts: BuildOptions = {}): Promise<GameState> {
   const duels = duelsApi(client);
   const clock = await client.clock();
@@ -241,7 +241,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     settle("catalog", client.catalog()),
     settle("venues", client.venues()),
   ]);
-  // Otros venues abiertos (sin El Rastro): su libro para la hoja de precios.
+  // Other open venues (without El Rastro): their book for the price sheet.
   const others = (venues?.venues ?? []).filter((v) => v.venue && v.venue !== "rastro" && (v as { status?: unknown }).status !== "closed");
   const otherBoards = await Promise.all(others.map(async (v) => ({ venue: v.venue!, offers: parseOffers(await settle(`board ${v.venue}`, client.board(v.venue!))) })));
   const events = parseFeed(feed);
@@ -289,7 +289,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     hints: hintsByPersona(hintsAll),
     memos: opts.personaMemos ?? new Map(),
   });
-  // Ajuste de la curva por persona: predicción en cada conversación con dealer y estimaciones en cada persona.
+  // Per-persona curve fit: prediction in each dealer conversation and estimates in each persona.
   const fit = updatePosterior(opts.posterior ?? { observations: {}, estimates: {} }, conversations, clock.tick);
   if (opts.posterior) Object.assign(opts.posterior, fit.posterior);
   for (const conv of conversations) {
@@ -301,7 +301,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (est) p.estimates = est;
   }
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
-  // Modelo de cada persona: el ajuste (estimates) lo escribe y se acumula sobre el del tick anterior.
+  // Model of each persona: the fit (estimates) writes it and it accumulates over the previous tick's.
   for (const p of personas) {
     const raw = (rawDealers.find((d) => (d as { id?: string }).id === p.id) ?? {}) as Record<string, unknown>;
     const convs = conversations.filter((c) => c.kind === "dealer" && c.counterparty === p.id);
@@ -323,7 +323,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (opts.personaModels) opts.personaModels[p.id] = p.model;
   }
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
-  // Caché de valores en el cliente: la mano nueva olvida lo que cambió; `/api/me` siembra lo que tenemos.
+  // Values cache in the client: the new hand forgets what changed; `/api/me` seeds what we hold.
   client.noteHand(ours.holdings.byRef);
   if (opts.valueCache) client.seedValues(Object.fromEntries(opts.valueCache), opts.valueCacheAt ?? 0);
   client.seedValues(ours.values);
@@ -341,7 +341,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     pages: ours.album.pages,
     pageTargets: opts.pageTargets ?? [],
   };
-  // Pocos GET de valor por tick: las cartas sin valor con ask o bid a la vista, las de página primero.
+  // Few value GETs per tick: cards without a value with an ask or bid in view, page cards first.
   for (const ref of valuesWanted(buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) }), opts.valueFetchesPerTick ?? 4)) {
     const v = await settle(`value ${ref}`, client.value(ref));
     if (v !== undefined) valueCache.set(ref, v);
@@ -417,7 +417,7 @@ function scheduleSummary(s: Schedule | undefined): GameState["env"]["schedule"] 
   };
 }
 
-/** Resumen compacto del estado para la consola (sin valores privados ni límites de duelo). */
+/** Compact state summary for the console (no private values or duel limits). */
 export function formatGameState(g: GameState): string[] {
   const c = g.clock;
   const o = g.ours;

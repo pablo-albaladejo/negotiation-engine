@@ -5,13 +5,13 @@ export const DEFAULT_BAZAAR_URL = "https://bazaar.causaprima.ai";
 
 export interface BazaarEnv {
   url: string;
-  /** Clave del equipo (cabecera X-Team-Key). Nunca se imprime ni se escribe en trazas. */
+  /** Team key (X-Team-Key header). Never printed or written to traces. */
   key: string | undefined;
 }
 
 /**
- * Lee `BAZAAR_URL` y `BAZAAR_KEY` del entorno; si existe `.env` en la raíz, lo carga antes
- * (`process.loadEnvFile`, sin dependencias). Las variables ya exportadas tienen prioridad.
+ * Reads `BAZAAR_URL` and `BAZAAR_KEY` from the environment; if a root `.env` exists, it is loaded first
+ * (`process.loadEnvFile`, no dependencies). Already-exported variables take priority.
  */
 export function loadBazaarEnv(options: { envFile?: string; env?: NodeJS.ProcessEnv } = {}): BazaarEnv {
   const env = options.env ?? process.env;

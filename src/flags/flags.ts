@@ -1,13 +1,13 @@
 import type { Catalog } from "../shared/schemas.js";
 
 /**
- * Detector de mala fe para `POST /api/flags` (un flag correcto puntúa, uno erróneo cuesta: RULES.md:55).
+ * Bad-faith detector for `POST /api/flags` (a correct flag scores, a wrong one costs: RULES.md:55).
  *
- * EXCEPCIÓN ESTRECHA, aprobada por el usuario, a «del rival solo se lee la estructura»: aquí se lee el texto del
- * dealer para dos cosas y nada más: (1) compararlo con la estructura de la oferta adjunta a ese mismo mensaje (qué
- * carta, qué rareza, cuántas), y (2) buscar frases de presión de una LISTA CERRADA (`PRESSURE_PATTERNS`: las tres
- * tácticas etiquetadas del trickster, site-map § 9.4) solo en contraofertas del dealer. El texto NUNCA da una cifra
- * ni cambia una decisión de precio. Fuera de la lista cerrada, nunca se marca por tono ni por urgencia.
+ * NARROW EXCEPTION, approved by the user, to "only the rival's structure is read": here the dealer's text
+ * is read for two things and nothing else: (1) comparing it with the structure of the offer attached to that same message (which
+ * card, which rarity, how many), and (2) looking for pressure phrases from a CLOSED LIST (`PRESSURE_PATTERNS`: the three
+ * tactics labeled for the trickster, site-map § 9.4) only in the dealer's counteroffers. The text NEVER yields a figure
+ * nor changes a price decision. Outside the closed list, it is never flagged for tone or urgency.
  */
 
 export interface CardInfo {
@@ -18,14 +18,14 @@ export interface CardInfo {
 
 export interface CatalogIndex {
   byId: Map<string, CardInfo>;
-  /** Nombres normalizados, del más largo al más corto (para no casar un nombre dentro de otro). */
+  /** Normalized names, longest to shortest (so one name is not matched inside another). */
   names: { norm: string; card: CardInfo }[];
   rarities: string[];
 }
 
 const DEFAULT_RARITIES = ["common", "uncommon", "rare", "epic", "legendary"];
 
-/** Minúsculas, sin acentos y con espacios simples. */
+/** Lowercase, no accents and single spaces. */
 export function normalize(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ");
 }
@@ -40,7 +40,7 @@ export function indexCatalog(catalog: Pick<Catalog, "sets"> & { rarities?: unkno
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Cartas que el texto nombra (por id o por nombre completo del catálogo, palabra entera). */
+/** Cards the text names (by id or by full catalog name, whole word). */
 export function namedCards(text: string, idx: CatalogIndex): string[] {
   const found = new Set<string>();
   for (const m of text.matchAll(/\b([A-Z]{3}-\d{2})\b/g)) if (idx.byId.has(m[1]!)) found.add(m[1]!);
@@ -55,7 +55,7 @@ export function namedCards(text: string, idx: CatalogIndex): string[] {
   return [...found];
 }
 
-/** Rarezas que el texto atribuye a una carta («a rare card», «this uncommon one»); un adjetivo suelto no cuenta. */
+/** Rarities the text attributes to a card ("a rare card", "this uncommon one"); a loose adjective does not count. */
 export function namedRarities(text: string, idx: CatalogIndex): string[] {
   const norm = normalize(text);
   const out = new Set<string>();
@@ -67,7 +67,7 @@ export function namedRarities(text: string, idx: CatalogIndex): string[] {
 
 const QUANTITY_WORDS: Record<string, number> = { one: 1, single: 1, two: 2, both: 2, pair: 2, three: 3, four: 4, five: 5 };
 
-/** Cantidad de cartas que el texto afirma («two cards», «3 copies»); `undefined` si no la afirma. */
+/** Number of cards the text claims ("two cards", "3 copies"); `undefined` if it claims none. */
 export function namedQuantity(text: string): number | undefined {
   const m = /\b(\d+|one|single|two|both|pair|three|four|five)( of)? (cards|copies|card|copy)\b/.exec(normalize(text));
   if (!m) return undefined;
@@ -80,7 +80,7 @@ export interface OfferShape {
   want?: { cash?: unknown; assets?: unknown[] | null; types?: unknown[] | null; cards?: unknown[] | null } | null;
 }
 
-/** Cartas de la oferta (ambos lados): activos con `ref` y tipos `card:REF`. Solo estructura. */
+/** Cards in the offer (both sides): assets with `ref` and `card:REF` types. Structure only. */
 export function offerCards(offer: OfferShape | undefined | null): string[] {
   if (!offer) return [];
   const out: string[] = [];
@@ -92,13 +92,13 @@ export function offerCards(offer: OfferShape | undefined | null): string[] {
   return out;
 }
 
-/** Tácticas de presión etiquetadas por el servidor en las contraofertas de un trickster (site-map § 9.4). */
+/** Pressure tactics labeled by the server in a trickster's counteroffers (site-map § 9.4). */
 export type PressureTactic = "fake_deadline" | "fake_rival" | "false_scarcity";
 
 /**
- * LISTA CERRADA y conservadora de frases de presión, sobre texto normalizado (minúsculas, sin acentos). Solo la forma
- * clara de cada táctica: «decide now» / «we close in a minute»; otro pujador que «offered more»; «the last one
- * anywhere». Ampliarla exige aprobación (un flag erróneo cuesta puntos). Ninguna captura una cifra.
+ * CLOSED, conservative list of pressure phrases, over normalized text (lowercase, no accents). Only the clear
+ * form of each tactic: "decide now" / "we close in a minute"; another bidder who "offered more"; "the last one
+ * anywhere". Extending it requires approval (a wrong flag costs points). None captures a figure.
  */
 export const PRESSURE_PATTERNS: Readonly<Record<PressureTactic, readonly RegExp[]>> = {
   fake_deadline: [
@@ -116,7 +116,7 @@ export const PRESSURE_PATTERNS: Readonly<Record<PressureTactic, readonly RegExp[
 
 const GIFT_RE = /\b(present|gift|regalo|regalito)\b/;
 
-/** Táctica de presión de la lista cerrada que nombra el texto; `undefined` si ninguna o si anuncia un regalo. Nunca un número. */
+/** Pressure tactic from the closed list that the text names; `undefined` if none or if it announces a gift. Never a number. */
 export function pressureTactic(text: string): PressureTactic | undefined {
   const norm = normalize(text).replace(/[‘’]/g, "'");
   if (GIFT_RE.test(norm)) return undefined;
@@ -128,22 +128,22 @@ export function pressureTactic(text: string): PressureTactic | undefined {
 
 export interface FlagCandidate {
   messageId: number | string;
-  /** Frase de presión de la lista cerrada (no verificable con la estructura: exige aprobación antes de enviarse). */
+  /** Pressure phrase from the closed list (not verifiable against the structure: requires approval before being sent). */
   tactic?: PressureTactic;
   namedCard?: string;
   offerCard?: string;
   namedRarity?: string;
   offerRarity?: string;
   quantityMismatch?: { named: number; offered: number };
-  /** Hay una contradicción verificable entre el texto y la estructura de la oferta del mismo mensaje. */
+  /** There is a verifiable contradiction between the text and the structure of the offer in the same message. */
   verifiable: boolean;
   reason?: string;
 }
 
 /**
- * Compara el texto de un mensaje del dealer con la oferta adjunta. Solo hay candidato verificable si la oferta
- * trae exactamente una carta conocida por el catálogo y el texto: nombra una única carta y es otra; o atribuye una
- * única rareza a la carta y no es la suya; o afirma un número de cartas distinto. Sin oferta, nada.
+ * Compares a dealer message's text with the attached offer. There is a verifiable candidate only if the offer
+ * carries exactly one card known to the catalog and the text: names a single card and it is a different one; or attributes a
+ * single rarity to the card and it is not its own; or claims a different number of cards. Without an offer, nothing.
  */
 export function detectFlag(message: { id?: number | string | null; text?: string | null; offer?: OfferShape | null }, idx: CatalogIndex): FlagCandidate | undefined {
   if (message.id == null || !message.text || !message.offer) return undefined;
@@ -158,7 +158,7 @@ export function detectFlag(message: { id?: number | string | null; text?: string
   const offerCard = idx.byId.get(cards[0]!);
   if (!offerCard) return undefined;
   const named = namedCards(message.text, idx);
-  // Un regalo anunciado («a little present from me: …») nombra otra carta sin contradecir la oferta: no se marca.
+  // An announced gift ("a little present from me: …") names another card without contradicting the offer: not flagged.
   const mentionsGift = GIFT_RE.test(normalize(message.text));
   if (!mentionsGift && named.length === 1 && named[0] !== offerCard.id) {
     return { ...base, namedCard: named[0]!, offerCard: offerCard.id, verifiable: true, reason: `text names ${named[0]} (${idx.byId.get(named[0]!)?.name}), the offer gives ${offerCard.id} (${offerCard.name})` };
@@ -171,9 +171,9 @@ export function detectFlag(message: { id?: number | string | null; text?: string
 }
 
 /**
- * Frase de presión en una contraoferta del dealer: hace falta una coincidencia con `PRESSURE_PATTERNS` Y que el mensaje
- * sea una contraoferta suya (`counter`: lleva oferta y no es su primer mensaje del hilo). Sin las dos cosas, nada. El
- * candidato no es `verifiable` (no lo prueba la estructura): el coordinador solo lo envía con aprobación.
+ * Pressure phrase in a dealer counteroffer: requires a match with `PRESSURE_PATTERNS` AND that the message
+ * be a counteroffer of its own (`counter`: carries an offer and is not its first message in the thread). Without both, nothing. The
+ * candidate is not `verifiable` (the structure does not prove it): the coordinator only sends it with approval.
  */
 export function detectPressure(message: { id?: number | string | null; text?: string | null; offer?: OfferShape | null }, counter: boolean): FlagCandidate | undefined {
   if (!counter || message.id == null || !message.text || !message.offer) return undefined;

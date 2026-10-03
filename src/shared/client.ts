@@ -18,7 +18,7 @@ import {
   type Thread,
 } from "./schemas.js";
 
-/** Petición rechazada. `code` es el código del servidor (`wait_for_tick`, `insufficient_cash`...); `status` 0 = sin respuesta. */
+/** Rejected request. `code` is the server's code (`wait_for_tick`, `insufficient_cash`...); `status` 0 = no response. */
 export class BazaarError extends Error {
   readonly code: string;
   readonly status: number;
@@ -32,7 +32,7 @@ export class BazaarError extends Error {
   }
 }
 
-/** Cubo de fichas: `ratePerSec` peticiones por segundo con ráfaga `burst`. Reloj y espera inyectables. */
+/** Token bucket: `ratePerSec` requests per second with burst `burst`. Clock and sleep injectable. */
 export class TokenBucket {
   private tokens: number;
   private last: number;
@@ -66,11 +66,11 @@ export interface BazaarClientOptions {
   fetch?: typeof fetch;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
-  /** Peticiones por segundo (por debajo del límite de 5 del servidor). */
+  /** Requests per second (below the server's limit of 5). */
   ratePerSec?: number;
   burst?: number;
   retries?: number;
-  /** Ante `wait_for_tick`, dormir hasta el siguiente tick y reintentar (si no, se lanza el error). */
+  /** On `wait_for_tick`, sleep until the next tick and retry (otherwise the error is thrown). */
   waitOnTick?: boolean;
   timeoutMs?: number;
 }
@@ -81,7 +81,7 @@ export type Topic =
   | { buy: { rarity: string; set: string } }
   | { sell: { assets: number[] } };
 
-/** Rutas y códigos de los fallos de validación (nunca valores: la respuesta no se vuelca al log). */
+/** Paths and codes of validation failures (never values: the response is not dumped to the log). */
 export function zodIssues(error: z.ZodError): string {
   const parts = error.issues.slice(0, 5).map((i) => `${i.path.length ? i.path.join(".") : "(root)"}: ${i.code}${"expected" in i ? ` expected ${String(i.expected)}` : ""}`);
   return parts.join("; ") + (error.issues.length > 5 ? `; +${error.issues.length - 5} more` : "");
@@ -89,7 +89,7 @@ export function zodIssues(error: z.ZodError): string {
 
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Cliente HTTP del Bazaar (equipo). La clave solo viaja en la cabecera; nunca aparece en errores ni logs. */
+/** Bazaar HTTP client (team). The key only travels in the header; it never appears in errors or logs. */
 export class BazaarClient {
   private readonly fetchFn: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -143,7 +143,7 @@ export class BazaarClient {
     }
   }
 
-  /** Milisegundos hasta el siguiente tick: `next_tick_in` del error, si no del reloj (+200 ms de margen). */
+  /** Milliseconds until the next tick: `next_tick_in` from the error, otherwise from the clock (+200 ms margin). */
   private async waitMs(err: BazaarError): Promise<number> {
     let seconds = typeof err.extra.next_tick_in === "number" ? err.extra.next_tick_in : undefined;
     if (seconds === undefined) {
@@ -202,7 +202,7 @@ export class BazaarClient {
   venues() {
     return this.request("GET", "/api/venues", VenuesSchema);
   }
-  /** Abre un mercado propio (nivel ≥ 2, 250 P de fianza + 20 P). Solo desde `bazaar:venue` sin --dry-run y con --confirm. */
+  /** Opens our own market (level ≥ 2, 250 P deposit + 20 P). Only from `bazaar:venue` without --dry-run and with --confirm. */
   openVenue(body: { name: string; fee_bps: number; fee_per_card: number; rules: Record<string, unknown>; description: string }): Promise<unknown> {
     return this.raw("POST", "/api/venues", body);
   }
@@ -213,9 +213,9 @@ export class BazaarClient {
     return this.request("GET", "/api/me", MeSchema);
   }
   /**
-   * Valor privado de una carta, con caché en el cliente: no cambia dentro del día salvo que cambie la mano
-   * (`noteHand` olvida las cartas cuya cantidad cambió) o pase una hora (`VALUE_TTL_MS`). Así un tick solo pide
-   * las que faltan, y todos los que comparten cliente (agentes, coordinador, visor) se benefician.
+   * Private value of a card, cached in the client: it does not change within the day unless the hand changes
+   * (`noteHand` forgets cards whose count changed) or an hour passes (`VALUE_TTL_MS`). So a tick only requests
+   * the missing ones, and everyone sharing the client (agents, coordinator, viewer) benefits.
    */
   async value(card: string): Promise<number> {
     const hit = this.valueCache.get(card);
@@ -227,19 +227,19 @@ export class BazaarClient {
   static readonly VALUE_TTL_MS = 3_600_000;
   private readonly valueCache = new Map<string, { v: number; at: number }>();
   private lastHand: Record<string, number> | undefined;
-  /** Siembra valores ya conocidos (`your_value` de `/api/me`, o una caché en disco con su hora). */
+  /** Seeds already-known values (`your_value` from `/api/me`, or a disk cache with its timestamp). */
   seedValues(values: Readonly<Record<string, number>>, at: number = Date.now()): void {
     for (const [card, v] of Object.entries(values)) {
       const cur = this.valueCache.get(card);
       if (!cur || cur.at <= at) this.valueCache.set(card, { v, at });
     }
   }
-  /** Valores en caché aún frescos (para guardarlos o mostrarlos). */
+  /** Cached values that are still fresh (to store or display them). */
   cachedValues(): Record<string, number> {
     const now = Date.now();
     return Object.fromEntries([...this.valueCache].filter(([, x]) => now - x.at < BazaarClient.VALUE_TTL_MS).map(([k, x]) => [k, x.v]));
   }
-  /** Mano actual (copias por carta): olvida el valor de las cartas cuya cantidad cambió desde la última vez. */
+  /** Current hand (copies per card): forgets the value of cards whose count changed since last time. */
   noteHand(byRef: Readonly<Record<string, number>>): void {
     if (this.lastHand) {
       for (const ref of new Set([...Object.keys(byRef), ...Object.keys(this.lastHand)])) if ((byRef[ref] ?? 0) !== (this.lastHand[ref] ?? 0)) this.valueCache.delete(ref);
@@ -264,11 +264,11 @@ export class BazaarClient {
   accept(offerId: number): Promise<unknown> {
     return this.raw("POST", `/api/offers/${offerId}/accept`, {});
   }
-  /** Ofertas públicas de un venue (El Rastro por defecto). Se validan en `trades.ts` (`parseOffers`). */
+  /** Public offers of a venue (El Rastro by default). Validated in `trades.ts` (`parseOffers`). */
   board(venue = "rastro"): Promise<unknown> {
     return this.raw("GET", `/api/venues/${encodeURIComponent(venue)}/offers`);
   }
-  /** Nuestras ofertas abiertas/en cola y las dirigidas a nosotros (`parseMyOffers`). */
+  /** Our open/queued offers and those addressed to us (`parseMyOffers`). */
   myOffers(): Promise<unknown> {
     return this.raw("GET", "/api/me/offers");
   }
@@ -281,7 +281,7 @@ export class BazaarClient {
   cancelOffer(offerId: number): Promise<unknown> {
     return this.raw("DELETE", `/api/offers/${offerId}`);
   }
-  /** Acepta una oferta; `assets` elige qué copias nuestras entregamos cuando pide un tipo de carta. */
+  /** Accepts an offer; `assets` chooses which of our copies we hand over when it asks for a card type. */
   acceptOffer(offerId: number, assets?: number[]): Promise<unknown> {
     return this.raw("POST", `/api/offers/${offerId}/accept`, assets?.length ? { assets } : {});
   }

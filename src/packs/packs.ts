@@ -8,17 +8,17 @@ import type { Intent } from "../coordinator/coordinator.js";
 import type { FeedEvent } from "../state/world.js";
 
 /**
- * Sobres: los que tenemos cerrados, el valor esperado de cada tipo ajustado al suministro, dónde se venden y qué
- * vale para nosotros. Ruta PACKS: comprar a un dealer (solo si el trato se negociaría, nunca al precio de apertura,
- * para que cuente en la escalera), abrir los cerrados (salvo que venderlos cerrados gane) y vender cerrado cuando
- * la mejor puja supera nuestro valor. Toda cifra sale del código y pasa por `enforceGuardrails`.
+ * Packs: the ones we hold sealed, the expected value of each type adjusted for supply, where they are sold and what
+ * they are worth to us. PACKS route: buy from a dealer (only if the deal would be negotiated, never at the opening price,
+ * so that it counts on the ladder), open the sealed ones (unless selling them sealed wins) and sell sealed when
+ * the best bid exceeds our value. Every figure comes from code and goes through `enforceGuardrails`.
  *
- * ASSUMPTIONS: `/api/me/value` no acepta sobres (`unknown_card`, comprobado): el valor de un sobre que no tenemos
- * se estima con la media de nuestros valores por rareza; abrir un sobre (`POST /api/packs/{id}/open`) no gasta el
- * cupo de aceptaciones (sin verificar).
+ * ASSUMPTIONS: `/api/me/value` does not accept packs (`unknown_card`, verified): the value of a pack we do not hold
+ * is estimated with the average of our values per rarity; opening a pack (`POST /api/packs/{id}/open`) does not spend the
+ * acceptance quota (unverified).
  */
 
-/** Tiradas fijas (RULES.md:20): cuando una rareza se agota, el hueco da la rareza inferior. */
+/** Fixed draws (RULES.md:20): when a rarity runs out, the slot yields the next lower rarity. */
 export const PRINT_RUNS: Record<string, number> = { common: 300, uncommon: 90, rare: 30, epic: 9, legendary: 3 };
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 
@@ -30,12 +30,12 @@ export const PACK_ASSUMPTIONS = [
 export interface PackType {
   id: string;
   name?: string;
-  /** Probabilidad por rareza en cada hueco, ya ajustada al suministro. */
+  /** Probability per rarity in each slot, already adjusted for supply. */
   slots: Record<string, number>[];
   expectedBook?: number;
-  /** Valor esperado en book con el suministro actual (rarezas agotadas caen a la inferior). */
+  /** Expected value in book with current supply (depleted rarities fall to the lower one). */
   adjustedBook?: number;
-  /** Nuestro valor esperado (medias por rareza de nuestros valores conocidos). */
+  /** Our expected value (per-rarity averages of our known values). */
   ourValue?: number;
   dealers: { persona: string; list?: number; opening?: number; perHour?: number }[];
   bestAsk?: { price: number; offer: number };
@@ -47,7 +47,7 @@ export interface SealedPack {
   assetId: number;
   ref: string;
   name?: string;
-  /** `your_value` de `/api/me` (exacto para lo que tenemos). */
+  /** `your_value` from `/api/me` (exact for what we hold). */
   value?: number;
 }
 
@@ -61,7 +61,7 @@ const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object"
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined);
 const r1 = (x: number) => Math.round(x * 10) / 10;
 
-/** Fracción agotada por rareza (cartas con minted ≥ tirada entre las de sets publicados). */
+/** Depleted fraction per rarity (cards with minted ≥ draw among those in published sets). */
 function exhausted(catalog: Catalog | undefined): Record<string, number> {
   const out: Record<string, number> = {};
   for (const r of RARITY_ORDER) {
@@ -72,7 +72,7 @@ function exhausted(catalog: Catalog | undefined): Record<string, number> {
   return out;
 }
 
-/** Huecos con el suministro actual: la parte agotada de una rareza pasa a la inferior (en cascada). */
+/** Slots with current supply: the depleted part of a rarity moves to the lower one (cascading). */
 export function adjustSlots(slots: readonly Record<string, number>[], gone: Record<string, number>): Record<string, number>[] {
   return slots.map((slot) => {
     const out: Record<string, number> = { ...slot };
@@ -97,7 +97,7 @@ export interface PacksInputs {
   rastro: readonly TradeOffer[];
   team?: string;
   events: readonly FeedEvent[];
-  /** Valores privados conocidos por carta (hoja de precios). */
+  /** Known private values per card (price sheet). */
   values: Readonly<Record<string, number>>;
 }
 
@@ -168,17 +168,17 @@ export function formatPacks(s: PacksState): string[] {
   ];
 }
 
-// ---------------------------------------------------------------- ruta
+// ---------------------------------------------------------------- route
 
 export interface PacksRouteInput {
   packs: PacksState;
   cash?: number;
   cashFloor: number;
-  /** Personas con las que podemos tratar. */
+  /** Personas we can deal with. */
   unlocked: readonly string[];
-  /** Rasgos por persona (para el plan del negociador). */
+  /** Traits per persona (for the negotiator's plan). */
   dealers: readonly unknown[];
-  /** Sobres que llegarán por la agenda (grant_all) o por un desbloqueo: se abrirán cuando aparezcan. */
+  /** Packs that will arrive via the agenda (grant_all) or an unlock: they will be opened when they appear. */
   incoming: readonly string[];
 }
 
@@ -187,7 +187,7 @@ export interface PacksProposal {
   notes: string[];
 }
 
-/** Precio esperado del trato con el dealer: último trato visto del sobre, o su lista; nunca su apertura. */
+/** Expected price of the deal with the dealer: last seen deal for the pack, or its list; never its opening. */
 function expectedDeal(t: PackType, d: PackType["dealers"][number]): number | undefined {
   return t.lastDeal?.price ?? d.list;
 }
@@ -199,7 +199,7 @@ export function proposePacks(i: PacksRouteInput): PacksProposal {
     const bid = t?.bestBid;
     const value = s.value ?? t?.ourValue;
     if (bid && value !== undefined && bid.price > value) {
-      // Vender cerrado: nunca por debajo de nuestro valor (guardarraíl de vendedor).
+      // Sell sealed: never below our value (seller guardrail).
       const price = enforceGuardrails({ role: "seller", reservation: Math.ceil(value) }, bid.price);
       out.intents.push({ id: `packs:sell:${s.assetId}`, route: "packs", kind: "listing", conversation: `pack:${s.assetId}`, price, ev: r1(price - value), locks: [`asset:${s.assetId}`], summary: `sell sealed #${s.assetId} ${s.ref} in El Rastro at ${price} P (best bid ${bid.price} > our value ${value}); not opened` });
       continue;
@@ -232,7 +232,7 @@ export function proposePacks(i: PacksRouteInput): PacksProposal {
   return out;
 }
 
-/** En vivo (solo con --confirm): abrir y listar lo seleccionado. La compra de sobres aún no se ejecuta. */
+/** Live (only with --confirm): open and list the selection. Buying packs is not executed yet. */
 export async function executePacks(client: BazaarClient, selected: readonly Intent[], dryRun: boolean): Promise<string[]> {
   const lines: string[] = [];
   for (const i of selected.filter((x) => x.route === "packs")) {

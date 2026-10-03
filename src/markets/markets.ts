@@ -4,23 +4,23 @@ import type { GameState } from "../state/game-state.js";
 import type { PriceEntry, Quote, VenueInfo } from "../state/prices.js";
 
 /**
- * Ruta de mercados: la misma carta puede estar en El Rastro y en los venues de otros equipos. Para cada compra o
- * venta posible se calcula el hueco neto por venue = hueco − comisión − penalización por rival, y se elige el
- * mejor (a igualdad, El Rastro). Solo estructura (precios y ofertas); la cifra es la de la oferta a la vista.
+ * Markets route: the same card can be in El Rastro and in other teams' venues. For each possible purchase or
+ * sale the net gap per venue = gap − fee − rival penalty is computed, and the
+ * best is chosen (on a tie, El Rastro). Structure only (prices and offers); the figure is that of the offer on display.
  *
- * HIPÓTESIS sin verificar (RULES.md:75): en un venue `auto` una oferta que cruza la casa el motor sin gastar
- * nuestra aceptación. Hasta verificarlo, esas intenciones se marcan «fills without accept (unverified)» pero el
- * coordinador las cuenta en el cupo de aceptaciones como cualquier otra.
+ * UNVERIFIED hypothesis (RULES.md:75): in an `auto` venue an offer that crosses the house engine without spending
+ * our acceptance. Until verified, those intents are marked "fills without accept (unverified)" but the
+ * coordinator counts them against the acceptance quota like any other.
  */
 
 /**
- * Penalización por rival (P por trato): operar en el venue de otro equipo sube su puntuación de Market-making, y la
- * cifra es relativa al líder. El Rastro (la casa) no penaliza; los venues del top 3 penalizan mucho; los de la
- * mitad baja, poco; el resto, intermedio.
+ * Rival penalty (P per deal): trading in another team's venue raises its Market-making score, and the
+ * figure is relative to the leader. El Rastro (the house) does not penalize; top-3 venues penalize heavily; those in the
+ * bottom half, little; the rest, in between.
  */
 export const RIVAL_PENALTY = { house: 0, top3: 12, middle: 4, bottomHalf: 1 };
 
-/** Hueco neto mínimo para proponer un trato, y para proponer un hilo con el equipo en su venue (solo estructura). */
+/** Minimum net gap to propose a deal, and to propose a thread with the team in its venue (structure only). */
 export const MARKET_PARAMS = { minNetEdge: 1, teamThreadEdge: 15 };
 
 export function rivalPenalty(v: VenueInfo, teams: number): number {
@@ -30,12 +30,12 @@ export function rivalPenalty(v: VenueInfo, teams: number): number {
   return v.ownerRank > teams / 2 ? RIVAL_PENALTY.bottomHalf : RIVAL_PENALTY.middle;
 }
 
-/** Comisión de un trato de una carta a `price` (fee_bps sobre el precio + fee_per_card). ASSUMPTION: la pagamos nosotros. */
+/** Fee of a one-card deal at `price` (fee_bps on the price + fee_per_card). ASSUMPTION: we pay it. */
 export const feeOf = (v: VenueInfo, price: number) => Math.round(((price * v.feeBps) / 10_000 + v.feePerCard) * 10) / 10;
 
 /**
- * Juego limpio (RULES.md:130–132): nunca un trato que regale al otro equipo casi todo el valor. Regla simple:
- * no vendemos por debajo de la mitad del book ni compramos por encima del doble (si no hay book, se permite).
+ * Fair play (RULES.md:130–132): never a deal that gives the other team almost all the value. Simple rule:
+ * we do not sell below half the book nor buy above double (if there is no book, it is allowed).
  */
 export function fairPrice(side: "buy" | "sell", price: number, book: number | undefined): boolean {
   return book === undefined || (side === "sell" ? price >= book * 0.5 : price <= book * 2);
@@ -52,7 +52,7 @@ export interface MarketChoice {
   net: number;
 }
 
-/** Mejor venue para comprar o vender esta carta (hueco neto); a igualdad, El Rastro. */
+/** Best venue to buy or sell this card (net gap); on a tie, El Rastro. */
 export function bestVenue(e: PriceEntry, side: "buy" | "sell", venues: readonly VenueInfo[], teams: number): MarketChoice | undefined {
   if (e.value === undefined) return undefined;
   let best: MarketChoice | undefined;
@@ -74,7 +74,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   const notes: string[] = [`RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf}`];
   const teams = Math.max(1, ...state.markets.venues.map((v) => v.ownerRank ?? 0));
   for (const e of state.markets.prices) {
-    // Comprar: solo lo que nos falta o completa página (una repetida vale poco).
+    // Buy: only what we lack or what completes a page (a duplicate is worth little).
     if (e.holdings === 0 || e.completesPage) {
       const c = bestVenue(e, "buy", state.markets.venues, teams);
       if (c && c.net >= MARKET_PARAMS.minNetEdge && (state.ours.cash ?? 0) >= c.quote.price + c.fee) intents.push(intent(c, e, undefined));
@@ -83,7 +83,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
         intents.push({ id: `markets:thread:${c.venue.owner}:${e.ref}`, route: "markets", kind: "open", conversation: `team:${c.venue.owner}:${e.ref}`, ev: c.net, summary: `team thread with ${c.venue.owner} on ${c.venue.id} for ${e.ref} (net edge ${c.net}; structure only; proposal only)` });
       }
     }
-    // Vender: solo repetidas (nunca la última copia de una carta de página).
+    // Sell: only duplicates (never the last copy of a page card).
     if (e.holdings === 1) {
       const c = bestVenue(e, "sell", state.markets.venues, teams);
       if (c && c.net >= MARKET_PARAMS.minNetEdge) notes.push(`${e.ref}: sell net ${c.net} on ${c.venue.id} but it is our last copy (left to the El Rastro route's page logic)`);
@@ -112,7 +112,7 @@ function intent(c: MarketChoice, e: PriceEntry, asset: number | undefined): Inte
   };
 }
 
-/** En vivo (solo con --confirm): aceptar las ofertas seleccionadas en su venue. */
+/** Live (only with --confirm): accept the selected offers in their venue. */
 export async function executeMarkets(client: BazaarClient, selected: readonly Intent[], dryRun: boolean): Promise<string[]> {
   const lines: string[] = [];
   for (const i of selected.filter((x) => x.route === "markets" && x.kind === "accept")) {

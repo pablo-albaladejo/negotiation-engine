@@ -1,18 +1,18 @@
 import { uniformFloat64 } from "pure-rand/distribution/uniformFloat64";
 import { xoroshiro128plus } from "pure-rand/generator/xoroshiro128plus";
 
-/** Generador sembrado. Nunca se usa Math.random: todo tiene que ser reproducible por semilla. */
+/** Seeded generator. Math.random is never used: everything must be reproducible by seed. */
 export interface Rng {
   readonly seed: number;
-  /** Flotante uniforme en [0, 1). */
+  /** Uniform float in [0, 1). */
   float(): number;
-  /** Flotante uniforme en [min, max]. */
+  /** Uniform float in [min, max]. */
   between(min: number, max: number): number;
-  /** Generador independiente para una caja o subtarea, derivado de esta semilla y una etiqueta. */
+  /** Independent generator for a box or subtask, derived from this seed and a label. */
   derive(label: string): Rng;
 }
 
-/** FNV-1a de 32 bits sobre la semilla y la etiqueta: semillas distintas por caja, estables. */
+/** 32-bit FNV-1a over the seed and the label: distinct, stable seeds per box. */
 export function deriveSeed(seed: number, label: string): number {
   let hash = 0x811c9dc5 ^ (seed | 0);
   hash = Math.imul(hash, 0x01000193);
