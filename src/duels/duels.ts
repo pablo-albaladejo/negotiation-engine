@@ -338,7 +338,11 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   const lastMove = state.ticksLeft !== undefined && state.ticksLeft <= params.lastMoveTicks;
   const endgame = state.ticksLeft !== undefined && state.ticksLeft <= params.endgameTicks;
   const previous = state.ourOffers.at(-1);
-  const prevSurplus = previous ? surplusOf(state, previous) : undefined;
+  // A standing offer below the minimum surplus (sent with the shifted days table, Duels II 5659: 93 P day 10 = −10.7) is a
+  // loss if the rival accepts it: replace it now, ignoring monotonicity against it and without waiting for the rival.
+  const rawPrevSurplus = previous ? surplusOf(state, previous) : undefined;
+  const repair = rawPrevSurplus !== undefined && rawPrevSurplus < params.minSurplus;
+  const prevSurplus = repair ? undefined : rawPrevSurplus;
   const decay = state.decay ?? params.decay;
   // At the end, only move towards a deal if the rival has ever offered; if they never
   // spoke there is nothing to split and it's better to keep the current offer than to concede alone.
@@ -352,7 +356,7 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   const silentLeft = (state.concessionsSinceRival ?? 0) < silentCap;
   const waitedEnough = (state.ticksSinceOurLast ?? 0) >= params.silentWaitTicks;
   const endgameSilent = endgame && !rivalHasOffered && previous !== undefined;
-  const canConcede = !previous || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival)) || endgameSilent;
+  const canConcede = !previous || repair || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival)) || endgameSilent;
 
   // Next target surplus: engine curve, at the end split the difference with the rival.
   let target = targetSurplus(state, params, round);
