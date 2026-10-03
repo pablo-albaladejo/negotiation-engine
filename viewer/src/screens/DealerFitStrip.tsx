@@ -42,35 +42,68 @@ export function DealerFitStrip({ model, conv }: { model: GameModel | null; conv:
 }
 
 /**
- * Estrategia de la persona según el modelo de HOY (también en conversaciones viejas o cerradas): cada parámetro como
- * «value [lo–hi] · n · source» o «unknown»; el límite medido de la banda de esta conversación con su book; y la marca
- * `welcome` (solo cuenta para su límite). Solo el lado del dealer.
+ * Estrategia de la persona según el modelo de HOY (también en conversaciones viejas o cerradas), plegable: el resumen
+ * lleva las cifras clave (límite de la banda, β, rondas, retirada); dentro, una tabla parámetro · valor · rango · n ·
+ * fuente, con el límite de la banda de esta conversación arriba y los parámetros sin medida juntos en una línea.
+ * La marca `welcome` dice que solo cuenta para su límite. Solo el lado del dealer.
  */
 export function PersonaStrategy({ model, conv }: { model: GameModel | null; conv: ModelConversation }) {
   if (conv.kind !== "dealer") return null;
   const lines = strategyLines(model, conv);
   const band = bandView(model, conv);
   const welcome = isWelcome(model, conv);
+  const known = lines.filter((l) => l.value !== null);
+  const unknown = lines.filter((l) => l.value === null);
+  const pick = (key: string) => lines.find((l) => l.key === key)?.value;
+  const headline = [
+    band?.cells.value ? `her ${band.kind} ${band.cells.value}` : null,
+    pick("beta") ? `β ${pick("beta")}` : null,
+    pick("max_rounds") ? `rounds ${pick("max_rounds")}` : null,
+    pick("walk_after_rounds") ? `walk ≈ ${pick("walk_after_rounds")}` : null,
+  ].filter(Boolean);
+  const rows = [
+    ...(band ? [{ key: "band", label: `her ${band.kind} (${band.band})`, ...band.cells, source: `${band.cells.source}${band.cells.source ? " · " : ""}book ${band.book ?? "?"}`, few: band.fewSamples }] : []),
+    ...known.map((l) => ({ ...l, label: l.label.replace(" ± patience_jitter", " ± jitter"), few: false })),
+  ];
   return (
-    <div aria-label="Persona strategy (today's model)" style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: "1px solid var(--line)", paddingTop: "var(--space-2)", fontSize: 12.5 }}>
-      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+    <details open aria-label="Persona strategy (today's model)" style={{ borderTop: "1px solid var(--line)", paddingTop: "var(--space-2)", fontSize: 12.5 }}>
+      <summary style={{ cursor: "pointer", display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
         <strong>{conv.counterparty} · today's model</strong>
+        <span className="nr-muted">{headline.join(" · ")}</span>
         {welcome ? <Flag kind="decision">welcome: counts only towards her limit</Flag> : null}
-      </div>
-      {lines.map((l) => (
-        <span key={l.key} style={{ fontFamily: "var(--font-mono)" }}>
-          {l.label}: <span className={l.text === "unknown" ? "nr-muted" : undefined}>{l.text}</span>
-        </span>
-      ))}
-      <span style={{ fontFamily: "var(--font-mono)" }}>
-        {band ? (
-          <>
-            band {band.band} · her {band.kind}: {band.limit} · samples {band.samples} · book {band.book ?? "unknown"} {band.fewSamples ? <Flag kind="fallback">fewSamples</Flag> : null}
-          </>
-        ) : (
-          <span className="nr-muted">band: unknown (no rarity for this conversation)</span>
-        )}
-      </span>
-    </div>
+      </summary>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "var(--space-2)", fontVariantNumeric: "tabular-nums" }}>
+        <thead>
+          <tr className="nr-muted" style={{ textAlign: "left", fontSize: 11.5 }}>
+            <th style={th}>parameter</th>
+            <th style={{ ...th, textAlign: "right" }}>value</th>
+            <th style={{ ...th, textAlign: "right" }}>range</th>
+            <th style={{ ...th, textAlign: "right" }}>n</th>
+            <th style={th}>source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key} style={{ borderTop: "1px solid var(--line)", fontWeight: r.key === "band" ? 700 : undefined }}>
+              <td style={{ ...td, fontFamily: "var(--font-mono)", fontSize: 12 }}>{r.label}</td>
+              <td style={{ ...td, textAlign: "right" }}>{r.value ?? <span className="nr-muted">unknown</span>}</td>
+              <td style={{ ...td, textAlign: "right" }} className="nr-muted">{r.range || "—"}</td>
+              <td style={{ ...td, textAlign: "right" }}>
+                {r.n ?? "—"} {r.few ? <Flag kind="fallback">few</Flag> : null}
+              </td>
+              <td style={td} className="nr-muted">{r.source}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {unknown.length ? (
+        <div className="nr-muted" style={{ marginTop: "var(--space-1)" }}>
+          not measured yet: <span style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{unknown.map((l) => l.label).join(", ")}</span>
+        </div>
+      ) : null}
+    </details>
   );
 }
+
+const th = { padding: "2px var(--space-2) 2px 0", fontWeight: 600 } as const;
+const td = { padding: "3px var(--space-2) 3px 0", verticalAlign: "top", whiteSpace: "nowrap" } as const;

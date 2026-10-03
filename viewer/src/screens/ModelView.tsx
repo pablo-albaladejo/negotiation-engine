@@ -587,21 +587,27 @@ export function ConversationModelPanel({ conv, model = null }: { conv: ModelConv
       </Card>
       <Card title="Strategy (computed by code)">
         <div style={col}>
-          <span>
-            plan: anchor {p.anchor ?? "—"} · step {p.stepSize ?? "—"}
-            {p.acceptThreshold !== undefined ? ` · accept from ${p.acceptThreshold}` : ""}
-          </span>
-          <span>path: {p.plannedPath.length ? p.plannedPath.join(" → ") : "—"}</span>
-          {p.daysPlan ? <span>days: {p.daysPlan}</span> : null}
-          <span className="nr-muted">walk: {dash(p.walkCondition)}</span>
-          <span>
-            last decision: <strong>{decisionLabel(d)}</strong>
-            {d ? <Muted>{` · ${d.reason} (tick ${d.tick})`}</Muted> : null}
-          </span>
-          <span>
-            next: {conv.strategy.next.priceIfTheyHold !== undefined ? `${conv.strategy.next.priceIfTheyHold} if they hold · ` : ""}
-            <Muted>{dash(conv.strategy.next.walkWhen)}</Muted>
-          </span>
+          {conv.phase === "done" && !d ? (
+            <span className="nr-muted">closed: no live plan (plan, path, walk and next only on open conversations)</span>
+          ) : (
+            <>
+              <span>
+                plan: anchor {p.anchor ?? "—"} · step {p.stepSize ?? "—"}
+                {p.acceptThreshold !== undefined ? ` · accept from ${p.acceptThreshold}` : ""}
+              </span>
+              <span>path: {p.plannedPath.length ? p.plannedPath.join(" → ") : "—"}</span>
+              {p.daysPlan ? <span>days: {p.daysPlan}</span> : null}
+              <span className="nr-muted">walk: {dash(p.walkCondition)}</span>
+              <span>
+                last decision: <strong>{decisionLabel(d)}</strong>
+                {d ? <Muted>{` · ${d.reason} (tick ${d.tick})`}</Muted> : null}
+              </span>
+              <span>
+                next: {conv.strategy.next.priceIfTheyHold !== undefined ? `${conv.strategy.next.priceIfTheyHold} if they hold · ` : ""}
+                <Muted>{dash(conv.strategy.next.walkWhen)}</Muted>
+              </span>
+            </>
+          )}
           <PersonaStrategy model={model} conv={conv} />
         </div>
       </Card>

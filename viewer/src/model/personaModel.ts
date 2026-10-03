@@ -49,6 +49,11 @@ export interface ParamLine {
   label: string;
   /** «value [lo–hi] · n · source» o «unknown». */
   text: string;
+  /** Las mismas piezas por separado, para pintarlas en tabla; `value` es `null` si no se sabe. */
+  value: string | null;
+  range: string;
+  n: number | null;
+  source: string;
 }
 
 interface Val {
@@ -71,6 +76,13 @@ function textOf(v: Val | null): string {
   const value = typeof v.value === "boolean" ? (v.value ? "yes" : "no") : fmt(v.value);
   const range = v.lo !== null && v.hi !== null && v.lo !== v.hi ? ` [${fmt(v.lo)}–${fmt(v.hi)}]` : "";
   return `${value}${range} · n${v.n} · ${v.source}`;
+}
+
+function cellsOf(v: Val | null): Pick<ParamLine, "value" | "range" | "n" | "source"> {
+  if (!v || v.value === null || v.source === "unknown") return { value: null, range: "", n: null, source: "" };
+  const value = typeof v.value === "boolean" ? (v.value ? "yes" : "no") : fmt(v.value);
+  const range = v.lo !== null && v.hi !== null && v.lo !== v.hi ? `${fmt(v.lo)}–${fmt(v.hi)}` : "";
+  return { value, range, n: v.n, source: v.source };
 }
 
 const fromRange = (r: FitRange | null, n: number, source: string): Val | null => (r ? { value: r.mean, lo: r.lo, hi: r.hi, n, source } : null);
@@ -110,10 +122,18 @@ export function strategyLines(model: GameModel | null, c: ModelConversation): Pa
     ["demand_markup", "demand_markup", strategyVal(model, id, "demand_markup", () => null)],
     ["politeness_discount", "politeness_discount", strategyVal(model, id, "politeness_discount", () => null)],
   ];
-  const out = lines.map(([key, label, v]) => ({ key, label, text: textOf(v) }));
+  const out: ParamLine[] = lines.map(([key, label, v]) => ({ key, label, text: textOf(v), ...cellsOf(v) }));
   const walkText = textOf(walk);
   const j = jitter && typeof jitter.value === "number" && jitter.source !== "unknown" ? jitter.value : null;
-  out.splice(3, 0, { key: "walk_after_rounds", label: "walk_after_rounds ± patience_jitter", text: walkText === "unknown" ? "unknown" : `${walkText}${j !== null ? ` · ± ${fmt(j)} (${jitter!.source})` : " · ± unknown"}` });
+  const walkCells = cellsOf(walk);
+  out.splice(3, 0, {
+    key: "walk_after_rounds",
+    label: "walk_after_rounds ± patience_jitter",
+    text: walkText === "unknown" ? "unknown" : `${walkText}${j !== null ? ` · ± ${fmt(j)} (${jitter!.source})` : " · ± unknown"}`,
+    ...walkCells,
+    value: walkCells.value === null ? null : `${walkCells.value} ± ${j !== null ? fmt(j) : "?"}`,
+    source: walkCells.value === null ? "" : `${walkCells.source}${j !== null ? ` · ± ${jitter!.source}` : ""}`,
+  });
   return out;
 }
 
@@ -132,6 +152,8 @@ export interface BandView {
   /** floor (vende ella) o ceiling (compra ella). */
   kind: "floor" | "ceiling";
   limit: string;
+  /** Las piezas del límite por separado (tabla); `value` `null` si no hay medida. */
+  cells: Pick<ParamLine, "value" | "range" | "n" | "source">;
   samples: number;
   fewSamples: boolean;
   book: number | null;
@@ -145,12 +167,13 @@ export function bandView(model: GameModel | null, c: ModelConversation): BandVie
   const kind = band.startsWith("sells:") ? "floor" : "ceiling";
   const mb = rec(rec(rec(personaRec(model, c.counterparty)?.model).bands)[band]);
   const mLimit = fieldVal(mb.limit);
-  if (mLimit && mLimit.value !== null) return { band, kind, limit: textOf(mLimit), samples: mLimit.n, fewSamples: mLimit.n < 3, book };
+  if (mLimit && mLimit.value !== null) return { band, kind, limit: textOf(mLimit), cells: cellsOf(mLimit), samples: mLimit.n, fewSamples: mLimit.n < 3, book };
   const b = rec(rec(estimatesOf(model, c.counterparty).bands)[band]);
   const r = rangeOf(b.limit);
-  if (!r) return { band, kind, limit: "unknown", samples: 0, fewSamples: true, book };
+  if (!r) return { band, kind, limit: "unknown", cells: cellsOf(null), samples: 0, fewSamples: true, book };
   const samples = num(b.samples) ?? 0;
-  return { band, kind, limit: textOf(fromRange(r, samples, "fit")), samples, fewSamples: b.fewSamples === true || samples < 3, book };
+  const v = fromRange(r, samples, "fit");
+  return { band, kind, limit: textOf(v), cells: cellsOf(v), samples, fewSamples: b.fewSamples === true || samples < 3, book };
 }
 
 /** La misma fórmula que el ajuste (`says` de persona-fit): su precio en la ronda r de `open` hacia `limit`. */
