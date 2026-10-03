@@ -2,6 +2,9 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { BrokerClient } from "./client.js";
 import { BazaarError } from "../shared/client.js";
+import { ScheduleSchema } from "../duels/schemas.js";
+import { activeBench, ticksPerHourOf, type Heartbeat } from "../venue/mechanism.js";
+import type { BenchShadow } from "./shadow.js";
 import {
   ANNOUNCEMENT,
   DEFAULT_BENCH_PARAMS,
@@ -18,7 +21,7 @@ import {
 } from "./broker.js";
 
 /** Lo que el bucle necesita del cliente (inyectable en tests). */
-export type BrokerApi = Pick<BrokerClient, "clock" | "book" | "venues" | "match" | "announce">;
+export type BrokerApi = Pick<BrokerClient, "clock" | "book" | "venues" | "match" | "announce"> & Partial<Pick<BrokerClient, "schedule">>;
 
 /** Una línea JSONL por cruce (planeado, enviado o rechazado) o por foto del banco. Sin clave. */
 export interface BrokerRecord {
@@ -65,6 +68,10 @@ export interface BrokerAgentOptions {
   maxPublic?: number;
   announce?: boolean;
   now?: () => Date;
+  /** Sombra del Market Test (solo dry-run): apunta por bench lo que casaríamos frente a lo que cruzó auto. */
+  shadow?: BenchShadow;
+  /** Latido por paso (el coordinador lo lee para saber si el broker está sano). */
+  heartbeat?: (hb: Heartbeat) => void;
 }
 
 export interface BrokerStep {
@@ -90,6 +97,7 @@ export class BrokerAgent {
   private announced = false;
   private venueChecked = false;
   mechanism: string | undefined;
+  private schedule: { tick: number; value: ReturnType<typeof ScheduleSchema.parse> | undefined } | undefined;
   private readonly log: (line: string) => void;
   private readonly params: BenchParams;
 
@@ -125,6 +133,13 @@ export class BrokerAgent {
     await this.maybeAnnounce();
 
     observeBench(this.tracks, book.bench, tick);
+    const hbNow = (this.opts.now ?? (() => new Date()))();
+    this.opts.heartbeat?.({ ts: hbNow.toISOString(), tick, mode: this.opts.dryRun ? "shadow" : "live", ...(book.venue ? { venue: book.venue } : {}), ...(this.mechanism ? { mechanism: this.mechanism } : {}) });
+    if (this.opts.shadow && this.opts.dryRun) {
+      const slot = await this.benchSlot(tick, hours, book.bench.length > 0);
+      const line = this.opts.shadow.step(tick, slot, book, raw);
+      if (line) this.log(line);
+    }
     const present = new Set([...book.bench.map((b) => b.id), ...book.sells.map((s) => String(s.id)), ...book.buys.map((b) => String(b.id))]);
     for (const id of [...this.used]) if (!present.has(id)) this.used.delete(id);
 
@@ -181,6 +196,23 @@ export class BrokerAgent {
     );
     for (const m of matches) if (this.opts.dryRun) this.log(`  ${m.source} ${m.sell} x ${m.buy} at ${m.price} (ask ${m.ask}, bid ${m.bid}, surplus ${m.surplus})`);
     return { status: "planned", tick, matches, sent, refused };
+  }
+
+  /**
+   * Bench en curso según `/api/schedule` (se relee cada 30 ticks). Sin calendario legible pero con banco en el libro,
+   * la hora entera en curso (los benches caen en horas enteras).
+   */
+  private async benchSlot(tick: number, hours: number | undefined, benchVisible: boolean): Promise<{ atHours: number; hard: boolean } | undefined> {
+    if (this.api.schedule && (!this.schedule || tick - this.schedule.tick >= 30)) {
+      const parsed = ScheduleSchema.safeParse(await this.api.schedule().catch(() => undefined));
+      this.schedule = { tick, value: parsed.success ? parsed.data : undefined };
+    }
+    const sched = this.schedule?.value;
+    if (hours !== undefined && sched) {
+      const slot = activeBench(sched, hours, ticksPerHourOf(tick, hours));
+      if (slot) return slot;
+    }
+    return benchVisible && hours !== undefined ? { atHours: Math.floor(hours), hard: false } : undefined;
   }
 
   private async checkVenue(venue: string | undefined): Promise<void> {

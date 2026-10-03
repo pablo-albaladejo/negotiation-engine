@@ -2,11 +2,15 @@ import { parseArgs } from "node:util";
 import { BrokerAgent, FileBrokerSink, brokerLogDir, type BrokerApi, type BrokerSink } from "./agent.js";
 import { BrokerClient, loadBrokerEnv } from "./client.js";
 import { DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
+import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, saveHeartbeat } from "./shadow.js";
 
 /**
  * `pnpm bazaar:broker --dry-run --once`: lee reloj, libro y mercados (solo GET) e imprime qué cruzaría.
  * En vivo hace falta quitar `--dry-run` Y pasar `--confirm`; entonces corre sin fin (Ctrl-C para parar),
  * leyendo cada `--poll-ms` y enviando solo cuando cambia el estado del libro.
+ * En dry-run es la sombra del Market Test (`--shadow` = `--dry-run --no-announce`): durante cada bench apunta en
+ * `results/bazaar-live/bench-sessions.json` lo que casaría frente a lo que cruzó auto, y en cualquier modo deja un
+ * latido en `results/bazaar-live/broker-heartbeat.json` (lo lee el coordinador para decidir auto o board).
  */
 export async function runBrokerCli(
   argv: string[],
@@ -20,6 +24,7 @@ export async function runBrokerCli(
     options: {
       "dry-run": { type: "boolean", default: false },
       once: { type: "boolean", default: false },
+      shadow: { type: "boolean", default: false },
       confirm: { type: "boolean", default: false },
       steps: { type: "string" },
       "poll-ms": { type: "string", default: "1000" },
@@ -36,7 +41,7 @@ export async function runBrokerCli(
     if (!Number.isFinite(x) || x < 0) throw new Error(`--${flag} must be a non-negative number`);
     return x;
   };
-  const dryRun = values["dry-run"];
+  const dryRun = values["dry-run"] || values.shadow;
   if (!dryRun && !values.confirm) {
     log("REFUSED: the live broker sends matches and an announcement; run with --dry-run, or without it AND with --confirm (only with the user's approval).");
     return 2;
@@ -61,7 +66,9 @@ export async function runBrokerCli(
   log(
     `broker: ${dryRun ? "DRY-RUN" : "LIVE"} · hold ${bench.holdTicks} ticks · firm shade ${bench.firmShade} · max age ${bench.maxAgeTicks} ticks · max public ${maxPublic}/tick · poll ${pollMs} ms`,
   );
-  const agent = new BrokerAgent(client, { dryRun, log, sink: out, bench, maxPublic, announce: !values["no-announce"] });
+  // Sombra y latido solo con E/S real (sin sink inyectado). La sombra nunca envía nada: solo en dry-run.
+  const files = sink ? {} : { ...(dryRun ? { shadow: new BenchShadow(defaultSessionsFile(), bench) } : {}), heartbeat: (hb: Parameters<typeof saveHeartbeat>[1]) => saveHeartbeat(defaultHeartbeatFile(), hb) };
+  const agent = new BrokerAgent(client, { dryRun, log, sink: out, bench, maxPublic, announce: !values["no-announce"] && !values.shadow, ...files });
   const maxSteps = values.once ? 1 : values.steps !== undefined ? n("steps", values.steps, 1) : Infinity;
   for (let i = 0; i < maxSteps; i++) {
     await agent.step();

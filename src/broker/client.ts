@@ -118,6 +118,10 @@ export class BrokerClient {
   book(): Promise<unknown> {
     return this.raw("GET", "/api/broker/book");
   }
+  /** Calendario (`action: bench`, `at_hours`) para saber cuándo corre el Market Test. */
+  schedule(): Promise<unknown> {
+    return this.raw("GET", "/api/schedule");
+  }
   /** Mercados públicos (para leer el mecanismo de nuestro venue). */
   venues(): Promise<unknown> {
     return this.raw("GET", "/api/venues");
