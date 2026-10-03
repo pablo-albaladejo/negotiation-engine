@@ -16,7 +16,10 @@ export interface BenchQuote {
 export interface PublicSell {
   id: string | number;
   maker: string;
+  /** "card:LAV-03": kind and ref of the single asset given (any serial). */
   card: string;
+  /** Id of the asset given (a specific serial), when the book carries it. */
+  asset?: string | number;
   ask: number;
   index: number;
 }
@@ -25,6 +28,8 @@ export interface PublicBuy {
   id: string | number;
   maker: string;
   card: string;
+  /** Set only for an exact bid (`want.assets: [asset]`): that specific asset. Unset = any copy of `card`. */
+  asset?: string | number;
   bid: number;
   index: number;
 }
@@ -43,8 +48,12 @@ export interface BrokerBook {
   errors: string[];
 }
 
+export type PublicKind = "exact" | "any-copy";
+
 export interface BrokerMatch {
   source: "bench" | "public";
+  /** Public only: exact asset bid or any-copy bid (`want.cards` / `want.types: ["card:REF"]`). */
+  pairing?: PublicKind;
   sell: string | number;
   buy: string | number;
   price: number;
@@ -93,6 +102,9 @@ export function fairPrice(ask: number, bid: number, fee: (price: number) => numb
   return p >= ask && p <= bid && p + fee(p) <= bid ? p : undefined;
 }
 
+const assetId = (x: unknown): string | number | undefined =>
+  isObj(x) && (typeof x.id === "number" || typeof x.id === "string") ? x.id : typeof x === "number" ? x : undefined;
+
 function cardKey(x: unknown): string | undefined {
   if (typeof x === "string") return x.includes(":") ? x : `card:${x}`;
   if (isObj(x) && typeof x.ref === "string") return `${typeof x.kind === "string" ? x.kind : "card"}:${x.ref}`;
@@ -128,17 +140,23 @@ export function parseBrokerBook(raw: unknown): BrokerBook {
     }
     const maker = typeof o.maker === "string" ? o.maker : String(o.maker ?? "");
     const assets = arr(o.give.assets);
+    const wantAssets = arr(o.want.assets);
     const types = [...arr(o.want.types), ...arr(o.want.cards)];
     const giveCash = posNum(o.give.cash);
     const wantCash = posNum(o.want.cash);
-    if (assets.length === 1 && wantCash !== undefined && giveCash === undefined && types.length === 0) {
+    if (assets.length === 1 && wantCash !== undefined && giveCash === undefined && types.length === 0 && wantAssets.length === 0) {
       const card = cardKey(assets[0]);
       if (!card) return void book.errors.push(`offer ${o.id}: asset without ref`);
-      book.sells.push({ id: o.id, maker, card, ask: wantCash, index });
-    } else if (giveCash !== undefined && assets.length === 0 && types.length === 1 && wantCash === undefined) {
+      const asset = assetId(assets[0]);
+      book.sells.push({ id: o.id, maker, card, ...(asset !== undefined ? { asset } : {}), ask: wantCash, index });
+    } else if (giveCash !== undefined && assets.length === 0 && types.length === 1 && wantAssets.length === 0 && wantCash === undefined) {
       const card = cardKey(types[0]);
       if (!card) return void book.errors.push(`offer ${o.id}: wanted type unreadable`);
       book.buys.push({ id: o.id, maker, card, bid: giveCash, index });
+    } else if (giveCash !== undefined && assets.length === 0 && types.length === 0 && wantAssets.length === 1 && wantCash === undefined) {
+      const asset = assetId(wantAssets[0]);
+      if (asset === undefined) return void book.errors.push(`offer ${o.id}: wanted asset without id`);
+      book.buys.push({ id: o.id, maker, card: cardKey(wantAssets[0]) ?? `asset:${asset}`, asset, bid: giveCash, index });
     } else {
       book.unsupported += 1;
     }
@@ -273,24 +291,65 @@ export function planBench(
   return plan;
 }
 
+/** Offers and assets already taken within one planning call (shared across exact and any-copy). */
+export interface PublicUsed {
+  offers: Set<string>;
+  assets: Set<string>;
+}
+
+export const newPublicUsed = (): PublicUsed => ({ offers: new Set(), assets: new Set() });
+
+function pairPublic(book: BrokerBook, kind: PublicKind, used: PublicUsed): BrokerMatch[] {
+  const fee = (p: number) => venueFee(p, book.feeBps, book.feePerCard);
+  const fits = (s: PublicSell, b: PublicBuy) =>
+    kind === "exact"
+      ? b.asset !== undefined && s.asset !== undefined && String(s.asset) === String(b.asset)
+      : b.asset === undefined && s.card === b.card;
+  const cands: { s: PublicSell; b: PublicBuy; price: number }[] = [];
+  for (const s of book.sells) {
+    for (const b of book.buys) {
+      if (!fits(s, b) || b.maker === s.maker || s.ask + fee(s.ask) > b.bid) continue;
+      const price = fairPrice(s.ask, b.bid, fee);
+      if (price !== undefined) cands.push({ s, b, price });
+    }
+  }
+  // Best surplus first: the highest bid against the lowest ask of each card.
+  cands.sort((x, y) => y.b.bid - y.s.ask - (x.b.bid - x.s.ask) || x.s.ask - y.s.ask || y.b.bid - x.b.bid || x.s.index - y.s.index || x.b.index - y.b.index);
+  const out: BrokerMatch[] = [];
+  for (const { s, b, price } of cands) {
+    const sk = `s${s.id}`;
+    const bk = `b${b.id}`;
+    const ak = s.asset !== undefined ? String(s.asset) : undefined;
+    if (used.offers.has(sk) || used.offers.has(bk) || (ak !== undefined && used.assets.has(ak))) continue;
+    used.offers.add(sk);
+    used.offers.add(bk);
+    if (ak !== undefined) used.assets.add(ak);
+    out.push({ source: "public", pairing: kind, sell: s.id, buy: b.id, price, ask: s.ask, bid: b.bid, surplus: b.bid - s.ask, estSurplus: b.bid - s.ask });
+  }
+  return out;
+}
+
 /**
- * Real offers of the venue, card by card: the lowest ask against the highest bid (from another maker) that
- * covers ask + fee, at the midpoint lowered until the buyer can pay the fee. If there are
- * more than `max` matches, those with the highest surplus are kept.
+ * Any-copy bids (`want.cards: ["LAV-03"]`, stored as `want.types: ["card:LAV-03"]`, cash given) against sales of one
+ * asset of that same card, any serial: same card only, another maker, bid ≥ ask + fee, at the integer midpoint lowered
+ * until the buyer can pay the fee. Best surplus first; each offer and each asset at most once (also across `used`).
+ */
+export function planAnyCopy(book: BrokerBook, used: PublicUsed = newPublicUsed()): BrokerMatch[] {
+  return pairPublic(book, "any-copy", used);
+}
+
+/** Exact bids (`want.assets: [asset]`) against the sale of that same asset; same rules as `planAnyCopy`. */
+export function planExactAsset(book: BrokerBook, used: PublicUsed = newPublicUsed()): BrokerMatch[] {
+  return pairPublic(book, "exact", used);
+}
+
+/**
+ * Real offers of the venue: exact asset bids first, then any-copy bids, never reusing an offer or an asset.
+ * If there are more than `max` matches, those with the highest surplus are kept.
  */
 export function planPublic(book: BrokerBook, max = MAX_PUBLIC_MATCHES_PER_TICK): BrokerMatch[] {
-  const fee = (p: number) => venueFee(p, book.feeBps, book.feePerCard);
-  const bids = [...book.buys].sort((a, b) => b.bid - a.bid || a.index - b.index);
-  const used = new Set<PublicBuy>();
-  const out: BrokerMatch[] = [];
-  for (const s of [...book.sells].sort((a, b) => a.ask - b.ask || a.index - b.index)) {
-    const b = bids.find((x) => !used.has(x) && x.card === s.card && x.maker !== s.maker && s.ask + fee(s.ask) <= x.bid);
-    if (!b) continue;
-    const price = fairPrice(s.ask, b.bid, fee);
-    if (price === undefined) continue;
-    used.add(b);
-    out.push({ source: "public", sell: s.id, buy: b.id, price, ask: s.ask, bid: b.bid, surplus: b.bid - s.ask, estSurplus: b.bid - s.ask });
-  }
+  const used = newPublicUsed();
+  const out = [...planExactAsset(book, used), ...planAnyCopy(book, used)];
   return out.sort((a, b) => b.surplus - a.surplus).slice(0, Math.max(0, max));
 }
 

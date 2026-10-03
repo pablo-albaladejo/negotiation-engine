@@ -1,7 +1,22 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { BenchSession, Heartbeat, OfficialBench } from "../venue/mechanism.js";
-import { benchRun, DEFAULT_BENCH_PARAMS, observeBench, planBench, type BenchParams, type BenchQuote, type BrokerBook, type QuoteTrack } from "./broker.js";
+import {
+  benchRun,
+  DEFAULT_BENCH_PARAMS,
+  MAX_PUBLIC_MATCHES_PER_TICK,
+  newPublicUsed,
+  observeBench,
+  planAnyCopy,
+  planBench,
+  planExactAsset,
+  planPublic,
+  type BenchParams,
+  type BenchQuote,
+  type BrokerBook,
+  type BrokerMatch,
+  type QuoteTrack,
+} from "./broker.js";
 
 /**
  * Market Test shadow broker: during each bench it reads the book (GET only, also on an auto venue) and records
@@ -234,6 +249,28 @@ export function shadowStep(
     `shadow bench ${session.benchAt} h${session.hard ? " (hard)" : ""} · tick ${tick}: book ${book.bench.length} + ${extra.length} rebuilt · ` +
     `auto +${newAuto} (${session.pairsAuto} pairs, surplus ${session.autoSurplus}${session.autoUnknown ? `, ${session.autoUnknown} without quotes` : ""}) · ` +
     `shadow +${plan.matches.length} (${session.pairsShadow} pairs, surplus ${session.shadowSurplus})${plan.held.length ? ` held ${plan.held.length}` : ""} · ratio ${session.ratio ?? "?"}`
+  );
+}
+
+/**
+ * One line per tick: what a board broker would cross on this book (exact and any-copy public pairs, capped at `maxPublic`,
+ * plus bench pairs with patience) versus what auto would cross (bench like the stall, without history; public: every
+ * crossing pair, uncapped, assumed). Quote surplus (bid − ask). Pure; nothing is sent.
+ */
+export function boardShadowLine(
+  tick: number,
+  book: BrokerBook,
+  tracks: Map<string, QuoteTrack>,
+  params: BenchParams = DEFAULT_BENCH_PARAMS,
+  maxPublic = MAX_PUBLIC_MATCHES_PER_TICK,
+): string {
+  const sum = (ms: BrokerMatch[]) => `${ms.length} (surplus ${ms.reduce((a, m) => a + m.surplus, 0)})`;
+  const pub = planPublic(book, maxPublic);
+  const used = newPublicUsed();
+  const autoPublic = [...planExactAsset(book, used), ...planAnyCopy(book, used)];
+  return (
+    `board shadow · tick ${tick} · ${book.venue ?? "?"}: exact ${sum(pub.filter((m) => m.pairing === "exact"))} · any-copy ${sum(pub.filter((m) => m.pairing === "any-copy"))}` +
+    ` · bench ${sum(planBench(book, tracks, tick, params).matches)} | auto: public ${sum(autoPublic)} · bench ${sum(planBench(book).matches)}`
   );
 }
 

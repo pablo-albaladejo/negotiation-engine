@@ -4,7 +4,7 @@ import type { BrokerClient } from "./client.js";
 import { BazaarError } from "../shared/client.js";
 import { ScheduleSchema } from "../duels/schemas.js";
 import { activeBench, ticksPerHourOf, type Heartbeat } from "../venue/mechanism.js";
-import type { BenchShadow } from "./shadow.js";
+import { boardShadowLine, type BenchShadow } from "./shadow.js";
 import {
   ANNOUNCEMENT,
   DEFAULT_BENCH_PARAMS,
@@ -30,6 +30,7 @@ export interface BrokerRecord {
   kind: "match" | "bench" | "bench-raw";
   dryRun: boolean;
   source?: BrokerMatch["source"];
+  pairing?: BrokerMatch["pairing"];
   sell?: string | number;
   buy?: string | number;
   price?: number;
@@ -97,6 +98,7 @@ export class BrokerAgent {
   readonly tracks = new Map<string, QuoteTrack>();
   private lastKey: string | undefined;
   private lastRaw: string | undefined;
+  private lastBoardTick: number | undefined;
   private readonly used = new Set<string>();
   private readonly seenErrors = new Set<string>();
   private announced = false;
@@ -148,6 +150,10 @@ export class BrokerAgent {
     if (shadowOn) {
       const line = this.opts.shadow!.step(tick, slot, book, raw);
       if (line) this.log(line);
+    }
+    if (this.opts.dryRun && tick !== this.lastBoardTick) {
+      this.lastBoardTick = tick;
+      this.log(boardShadowLine(tick, book, this.tracks, this.params, this.opts.maxPublic ?? MAX_PUBLIC_MATCHES_PER_TICK));
     }
     const present = new Set([...book.bench.map((b) => b.id), ...book.sells.map((s) => String(s.id)), ...book.buys.map((b) => String(b.id))]);
     for (const id of [...this.used]) if (!present.has(id)) this.used.delete(id);
@@ -203,7 +209,7 @@ export class BrokerAgent {
         `${book.unsupported ? ` (+${book.unsupported} other)` : ""} · ${verb} ${this.opts.dryRun ? matches.length : sent} (surplus ${surplus})` +
         `${bench.held.length ? ` · held ${bench.held.length}` : ""}${refused ? ` · refused ${refused}` : ""}`,
     );
-    for (const m of matches) if (this.opts.dryRun) this.log(`  ${m.source} ${m.sell} x ${m.buy} at ${m.price} (ask ${m.ask}, bid ${m.bid}, surplus ${m.surplus})`);
+    for (const m of matches) if (this.opts.dryRun) this.log(`  ${m.source}${m.pairing ? `/${m.pairing}` : ""} ${m.sell} x ${m.buy} at ${m.price} (ask ${m.ask}, bid ${m.bid}, surplus ${m.surplus})`);
     return { status: "planned", tick, matches, sent, refused };
   }
 
