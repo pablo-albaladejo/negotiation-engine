@@ -314,6 +314,12 @@ export class DealersRoute {
         const lvl = levelOf(i.dealer);
         const share = expectedShare(ladder, i.dealer);
         const bonus = ev !== undefined && lvl !== undefined ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
+        // A cheap spare (value < CHEAP_SPARE_P) only goes to a dealer whose ladder it can still raise; otherwise it is
+        // kept (Workshop set or a later ladder gap). Abuela at L1 3/3 bought three commons at 5–6 P for 0 score.
+        if (i.side === "sell" && bonus <= 0 && i.value !== undefined && i.value < CHEAP_SPARE_P) {
+          out.notes.push(`dealer ${i.dealer}: ${i.target} kept (value ${i.value} < ${CHEAP_SPARE_P} P and no ladder gain at L${lvl ?? "?"})`);
+          continue;
+        }
         const notes = [...(w !== 1 ? [`demand ×${w.toFixed(2)}`] : []), ...(bonus > 0 ? [`ladder +${bonus.toFixed(1)} P (L${lvl}, expected share ${share.toFixed(2)})`] : [])];
         out.intents.push({ ...base, kind: "open", ...(ev !== undefined && notes.length ? { ev: Math.round((ev * w + bonus) * 100) / 100, summary: `${what} · ${notes.join(" · ")}` } : {}) });
       } else {
@@ -377,6 +383,9 @@ export async function pageTargetCaps(client: BazaarClient, me: Me | undefined, p
  * page-card buys stay above it, so a cheap El Rastro accept never takes its cash. A target with no cap keeps the last
  * dealer ask (none asked, nothing kept).
  */
+/** Below this private value, a spare is sold to a dealer only for ladder gain. */
+export const CHEAP_SPARE_P = 8;
+
 export function pageReserveOf(state: GameState, me: Me | undefined, pageTargets: readonly string[], caps: ReadonlyMap<string, number> = new Map()): { refs: string[]; amount: number; why: string } {
   const refs = pageTargets.filter((t) => !me?.assets.some((a) => a.ref === t && (a.kind ?? "card") === "card"));
   let amount = 0;
