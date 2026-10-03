@@ -86,6 +86,8 @@ export interface AgentOptions {
    * su persona es cierto. Sin él, vale el de `negotiator`/por defecto (0: apagado).
    */
   firstStepFrac?: () => number;
+  /** β de la curva de su persona en este tick (`PersonaModel`): con β < 1 no se aplica el precio fijo. */
+  herBeta?: () => number | undefined;
 }
 
 interface Active {
@@ -475,6 +477,7 @@ export class BazaarAgent {
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, Math.floor(this.budgetLeft(me.cash)))) : target.reservation;
     const herAt = active.patience.herAtCounters();
     const cap = this.o.herLimitCap?.(thread.id);
+    const herBeta = this.o.herBeta?.();
     const view: ThreadView = {
       side: target.side,
       reservation,
@@ -491,6 +494,7 @@ export class BazaarAgent {
       ...(active.welcome ? { welcomeFirstDeal: true } : {}),
       ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
       ...(cap !== undefined ? { herLimitCap: cap } : {}),
+      ...(herBeta !== undefined ? { herBeta } : {}),
     };
     const firstStepFrac = this.o.firstStepFrac?.();
     let d: Decision = decide(view, firstStepFrac === undefined ? this.negotiatorParams : { ...this.negotiatorParams, firstStepFrac });

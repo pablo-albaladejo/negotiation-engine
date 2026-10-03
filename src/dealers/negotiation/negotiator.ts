@@ -50,6 +50,12 @@ export interface NegotiatorParams {
    */
   fixedAfterConcessions: number;
   /**
+   * El precio fijo solo vale contra una persona que concede pronto: con su β (`herBeta`) por debajo de esto, que no se
+   * mueva en las primeras rondas es lo que predice su curva (El Chato, β ≈ 0,35: 4 % del camino en la ronda 2), no su
+   * límite. Sin β conocida, se aplica como siempre.
+   */
+  fixedPriceMinBeta: number;
+  /**
    * Venta con su primera puja < esto × nuestro mínimo (o compra con su precio > nuestro máximo ÷ esto): tras una
    * contraoferta, si sigue igual de lejos, se cierra educadamente para no gastar su paciencia ni la cuota de tratos
    * (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
@@ -77,6 +83,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   reciprocity: 0.6,
   maxHolds: 1,
   fixedAfterConcessions: 2,
+  fixedPriceMinBeta: 1,
   lowballFrac: 0.7,
   // APAGADO por defecto; el coordinador lo enciende por persona solo con espejo cierto (`MIRROR_FIRST_STEP_FRAC`). Replay offline (modelo de personas.md § 3.3, con y sin espejo): en los 11 hilos guardados, igual (huecos
   // pequeños); en hilos sintéticos de rara/épica, peor (EV medio 11,42 → 10,92 con 0,12). Se prueba con --first-step-frac.
@@ -137,6 +144,8 @@ export interface ThreadView {
    * vendiendo, nunca pedir por debajo. Solo estrecha la reserva de la oferta; la aceptación sigue con la reserva privada.
    */
   herLimitCap?: number;
+  /** β estimada de la curva de su persona (`PersonaModel.strategy.beta`); sin ella, `undefined`. */
+  herBeta?: number;
 }
 
 export type Rule =
@@ -230,9 +239,11 @@ export function ourConcessions(side: Side, ourPrices: readonly number[]): number
 /**
  * Su precio no se ha movido tras `fixedAfterConcessions` concesiones nuestras (Abuela comprando comunes, hilo 56).
  * Solo cuando el dealer nos compra (vendemos): cuando nos vende, sí concede (hilo 178: 29→25), así que se negocia hasta su final.
+ * Y solo si su persona concede pronto (`herBeta` ≥ `fixedPriceMinBeta`): con β < 1 su curva no se mueve al principio.
  */
-export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "ourPrices" | "herCurrent">, p: Pick<NegotiatorParams, "fixedAfterConcessions">): boolean {
+export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "ourPrices" | "herCurrent" | "herBeta">, p: Pick<NegotiatorParams, "fixedAfterConcessions" | "fixedPriceMinBeta">): boolean {
   if (view.side !== "sell" || p.fixedAfterConcessions <= 0 || !view.herCurrent || view.herPrices.length === 0) return false;
+  if (view.herBeta !== undefined && view.herBeta < p.fixedPriceMinBeta) return false;
   const first = view.herPrices[0]!;
   if (view.herCurrent.price !== first || view.herPrices.some((x) => x !== first)) return false;
   return ourConcessions(view.side, view.ourPrices) >= p.fixedAfterConcessions;
