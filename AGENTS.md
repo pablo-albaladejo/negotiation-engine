@@ -24,7 +24,9 @@ src/
 ├─ trades/    El Rastro con otros equipos        (pnpm bazaar:trades)
 ├─ broker/    casar ofertas en nuestro venue     (pnpm bazaar:broker)
 ├─ venue/     abrir nuestro mercado              (pnpm bazaar:venue)
-└─ status/    resumen de solo lectura            (pnpm bazaar:status)
+├─ status/    resumen de solo lectura            (pnpm bazaar:status)
+├─ state/     GameState por tick y Conversation (solo GET)
+└─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
 test/        solo tests de guardarraíles (fast-check)
 scripts/     escaneo de la API y comprobación de docs
 docs/        lecciones de los dealers y kit oficial del Bazaar
@@ -46,6 +48,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:trades` | Ofertas entre equipos en El Rastro (en vivo con `--confirm`). |
 | `pnpm bazaar:broker` | Broker de nuestro venue (en vivo con `--confirm`). |
 | `pnpm bazaar:venue` | Plan de nuestro mercado (abrir exige `--confirm`). |
+| `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`). |
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
 | `pnpm bazaar:scan` | GET a todos los endpoints, guarda las respuestas. |
 | `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |
