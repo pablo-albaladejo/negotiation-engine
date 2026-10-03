@@ -63,13 +63,18 @@ export function planVenue(me: Me, venues: readonly VenueListing[], clock: Pick<C
     description: o.description ?? "Zero fees, every card welcome. Best bid and ask cross every tick.",
   };
   const level = me.level ?? 0;
-  const ours = (me as { venue?: unknown }).venue ?? venues.find((v) => v.owner && v.owner === me.id)?.venue ?? null;
+  // `/api/me` is the truth when it carries `venue` (null once ours closed; the public listing lags as "closing").
+  // A closed venue (its bond already refunded) no longer counts as ours: a new one can open.
+  const live = (v: unknown): boolean => !!v && (typeof v !== "object" || (v as { status?: unknown }).status !== "closed");
+  const mine = (me as { venue?: unknown }).venue;
+  const listed = venues.find((v) => v.owner && v.owner === me.id && (v as { status?: unknown }).status !== "closed");
+  const ours = mine !== undefined ? (live(mine) ? mine : null) : (listed?.venue ?? null);
   const hours = typeof clock.t_hours === "number" ? clock.t_hours : undefined;
   const checks: VenueCheck[] = [
     { name: "level", ok: level >= VENUE_MIN_LEVEL, detail: `level ${level} (needs ≥ ${VENUE_MIN_LEVEL})` },
     { name: "cash", ok: me.cash >= VENUE_COST, detail: `cash ${me.cash} P (needs ≥ ${VENUE_COST} = ${VENUE_BOND} bond + ${VENUE_OPENING_FEE} fee)` },
     { name: "name", ok: name.length > 0 && name.length <= VENUE_NAME_MAX, detail: `"${name}" is ${name.length} chars (max ${VENUE_NAME_MAX})` },
-    { name: "no venue yet", ok: !ours, detail: ours ? `we already run venue ${String(ours)}` : "we run no venue" },
+    { name: "no venue yet", ok: !ours, detail: ours ? `we already run venue ${typeof ours === "object" ? JSON.stringify(ours).slice(0, 80) : String(ours)}` : "we run no venue" },
     {
       name: "trading start",
       ok: hours === undefined || hours >= VENUE_TRADING_FROM_HOURS,
