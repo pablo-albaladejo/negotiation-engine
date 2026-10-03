@@ -458,7 +458,7 @@ export interface TradeParams {
   rastroBids?: boolean;
   /** `--rival-swap` (opt-in): a card-for-card swap we accept (we pay no cash, only the fee) is allowed without a page-completing card. */
   rivalSwap?: boolean;
-  /** No El Rastro listing below this price (P): the 5 % + 1 P fee eats the margin; that surplus is left for the dealers. */
+  /** No El Rastro listing below this price (P). The maker pays no fee, so this only stops dust listings; a team sale scores price − value, a dealer sale 0. */
   minListPrice: number;
   /** Venue-switch reserve (P above `cashFloor`, set by the coordinator): only page-completing buys may use it. */
   venueReserve?: number;
@@ -483,7 +483,7 @@ export const DEFAULT_TRADE_PARAMS: TradeParams = {
   relistBackoffTicks: 60,
   repriceHysteresis: 2,
   demandPremium: 0.15,
-  minListPrice: 8,
+  minListPrice: 4,
 };
 
 /**
@@ -733,6 +733,13 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       evals.push(evaluateOffer(o, source, state, params, mineIds, lockedIds));
     }
   }
+  // One verdict line per offer addressed to us, so missed team deals can be audited later.
+  for (const e of evals.filter((x) => x.source === "to_me")) {
+    const give = readSide(e.offer.give);
+    const want = readSide(e.offer.want);
+    const side = (x: Side) => [...x.assets.map((a) => a.ref ?? `#${a.id}`), ...x.cards.map((c) => `any ${c}`), ...(x.cash ? [`${x.cash} P`] : [])].join("+") || "-";
+    notes.push(`to-me #${e.offer.id} from ${e.offer.maker ?? "?"} on ${e.offer.venue ?? "?"}: we get ${side(give)} for ${side(want)} · ${e.kind} · value ${e.valueCreated.toFixed(1)} (needs ${e.required.toFixed(1)}) · ${e.ok ? "ok" : `no: ${e.reason}`}`);
+  }
   const opportunities = evals
     .filter((e) => !["own", "not-open", "expired", "addressed-to-other", "not-a-venue-offer", "missing-card", "unsupported", "last-free-copy"].includes(e.reason))
     .sort((a, b) => b.valueCreated - a.valueCreated || a.offer.id - b.offer.id);
@@ -901,7 +908,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       why = "reprice";
     }
     if ((why ? price : e.price) < params.minListPrice) {
-      cancels.push({ id: e.offer.id, reason: `${e.ref} at ${why ? price : e.price} P < El Rastro min ${params.minListPrice} P (fee eats the margin; left for the dealers)` });
+      cancels.push({ id: e.offer.id, reason: `${e.ref} at ${why ? price : e.price} P < El Rastro min ${params.minListPrice} P (dust listing)` });
       continue;
     }
     if (why) {
@@ -994,7 +1001,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     })
     .sort((a, b) => b.value - a.value || a.s.assetId - b.s.assetId);
   const cheap = [...new Set(newLists.filter((l) => l.target < params.minListPrice).map((l) => `${l.s.ref}@${l.target}`))];
-  if (cheap.length) notes.push(`${cheap.length} listings under El Rastro min ${params.minListPrice} P left for the dealers: ${cheap.join(" ")}`);
+  if (cheap.length) notes.push(`${cheap.length} listings under El Rastro min ${params.minListPrice} P skipped (dust): ${cheap.join(" ")}`);
   for (const l of newLists.filter((x) => x.target >= params.minListPrice)) {
     if (open >= openCap) {
       notes.push(`listing ${l.s.ref} skipped: open-offer cap ${openCap} (--max-offers)`);
