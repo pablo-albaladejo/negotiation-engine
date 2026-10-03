@@ -170,4 +170,19 @@ describe("dispersion scanner", () => {
       }),
     );
   });
+
+  it("never sells the last free copy of any card (page-target set or not)", () => {
+    fc.assert(
+      fc.property(world, fc.array(fc.integer({ min: 0, max: 3 }), { minLength: 4, maxLength: 4 }), (w, locked) => {
+        const { state, trade } = build({ ...w, locked }, 600);
+        const { intents } = proposeMarkets(state, new Map(), { scanner: true, trade, ledger: new ScannerLedger(), cashFloor: 0, pageTargets: [] });
+        for (const x of intents) {
+          const ref = CARDS.find((r) => x.locks?.includes(`sell:${r}`));
+          if (!ref) continue;
+          const free = trade.held.filter((a) => a.ref === ref && !a.locked && !trade.reserved.has(a.id)).length;
+          expect(free).toBeGreaterThanOrEqual(2);
+        }
+      }),
+    );
+  });
 });

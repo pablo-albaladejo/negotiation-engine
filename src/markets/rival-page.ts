@@ -1,6 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
+import { isLastFreeCopy } from "../shared/last-copy.js";
 import type { RivalsState, RivalTeam } from "../state/rivals.js";
 import {
   countHoldings,
@@ -354,10 +355,15 @@ export function proposeRivalPage(input: RivalPageInput, params: RivalPageParams 
         notes.push(`${TAG} skip ${ref} → ${team.team}: ${asm.reason}${f ? ` (feas ${f.kappa} [need ${Number.isFinite(f.needOther) ? f.needOther : "∞"}/${f.unseen} unseen] × want ${asm.p?.want})` : ""}`);
         continue;
       }
-      // The copy El Rastro is not listing (highest id first among the usable ones).
+      // The copy El Rastro is not listing (highest id first among the usable ones), never our last free copy.
       const copy = trade.held.filter((a) => a.ref === ref && usable(a.id) && !fresh.some((f) => f.assetId === a.id)).sort((x, y) => y.id - x.id)[0];
       if (!copy) {
         notes.push(`${TAG} skip ${ref} → ${team.team}: every copy is locked, reserved or busy`);
+        continue;
+      }
+      const gone = new Set(trade.held.filter((a) => !usable(a.id) || fresh.some((f) => f.assetId === a.id)).map((a) => a.id));
+      if (isLastFreeCopy(copy.id, trade.held, gone, trade.reserved)) {
+        notes.push(`${TAG} skip ${ref} → ${team.team}: last free copy (album)`);
         continue;
       }
       fresh.push({ asm: asm.p, assetId: copy.id });

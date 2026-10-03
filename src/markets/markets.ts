@@ -1,5 +1,6 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Intent } from "../coordinator/coordinator.js";
+import { freeCounts as freeCountsOf, isLastFreeCopy } from "../shared/last-copy.js";
 import type { GameState } from "../state/game-state.js";
 import type { PriceEntry, Quote, VenueInfo } from "../state/prices.js";
 import { countHoldings, type TradeState } from "../trades/trades.js";
@@ -161,8 +162,9 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   ledger.resetPending();
   const trade = ctx.trade;
   const counts = trade ? countHoldings(trade.held) : undefined;
-  // Sell side: copies locked in our own offers or reserved are already gone (the real last copy is never sold as a duplicate).
-  const freeCounts = trade ? countHoldings(trade.held.filter((a) => !a.locked && !trade.reserved.has(a.id))) : undefined;
+  // Sell side: copies locked in our own offers or reserved are already gone; the last free copy is never sold.
+  const lockedIds = new Set(trade?.held.filter((a) => a.locked).map((a) => a.id));
+  const freeCounts = trade ? freeCountsOf(trade.held, lockedIds, trade.reserved) : undefined;
   // Cash committed by this route's buys this tick (page-completing first, then scanner). Other routes' spend is not seen here.
   let committed = 0;
   const cash = state.ours.cash ?? 0;
@@ -200,12 +202,12 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
     const sv = valueFor(e, "sell", freeCounts, trade);
     const sell = sv && bestVenue(e, "sell", state.markets.venues, teams, sv.value);
     if (!sell || !sv || sell.net <= 0) continue;
-    const last = (freeCounts ? (freeCounts.get(e.ref) ?? 0) : e.holdings) <= 1;
-    if (last && targetSets.has(setOfRef(e.ref))) {
-      notes.push(`[scanner] ${e.ref}: last copy of a page-target set, not sold (bid ${sell.quote.price} on ${sell.venue.id})`);
+    const asset = freeAsset(e.ref, trade, assetsByRef);
+    const last = trade && asset !== undefined ? isLastFreeCopy(asset, trade.held, lockedIds, trade.reserved) : e.holdings <= 1;
+    if (asset !== undefined && last) {
+      notes.push(`[scanner] ${e.ref}: last free copy${targetSets.has(setOfRef(e.ref)) ? " of a page-target set" : ""}, not sold (bid ${sell.quote.price} on ${sell.venue.id})`);
       continue;
     }
-    const asset = freeAsset(e.ref, trade, assetsByRef);
     if (asset === undefined) notes.push(`[scanner] ${e.ref}: sell net ${sell.net} on ${sell.venue.id} but no free copy (locked or reserved)`);
     else candidates.push({ e, c: sell, v: sv, asset });
   }

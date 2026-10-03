@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { freeCounts, takesLastFreeCopy } from "../shared/last-copy.js";
 import type { Asset, Catalog } from "../shared/schemas.js";
 
 /**
@@ -531,8 +532,22 @@ function blank(offer: TradeOffer, source: Evaluation["source"], reason: string):
   return { offer, source, kind: "unknown", ok: false, reason, getCards: [], giveCards: [], payAssets: [], cashNet: 0, cardDelta: 0, fee: 0, risk: 0, valueCreated: 0, required: 0, spend: 0 };
 }
 
-/** Valor creado a nuestros valores si aceptamos `offer` (recibimos su `give`, entregamos su `want`). */
-export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], state: TradeState, params: TradeParams, mineIds: Set<number>, counts = countHoldings(state.held)): Evaluation {
+/**
+ * Copies locked elsewhere for the accept path: locked copies count as gone, except those locked only by our own El Rastro
+ * listing (we cancel that listing ourselves; it is not another route's).
+ */
+export function acceptLockedIds(state: Pick<TradeState, "held" | "mine">): Set<number> {
+  const ownListed = new Set(
+    state.mine.filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && !o.to).flatMap((o) => readSide(o.give).assets.map((a) => a.id)),
+  );
+  return new Set(state.held.filter((a) => a.locked && !ownListed.has(a.id)).map((a) => a.id));
+}
+
+/**
+ * Value created at our values if we accept `offer` (we get its `give`, hand over its `want`). Counts are FREE copies
+ * (locked elsewhere or reserved count as gone), and paying with our last free copy of a card is refused.
+ */
+export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], state: TradeState, params: TradeParams, mineIds: Set<number>, lockedIds = acceptLockedIds(state)): Evaluation {
   if (mineIds.has(offer.id) || offer.maker === state.myId) return blank(offer, source, "own");
   if ((offer.status ?? "open") !== "open") return blank(offer, source, "not-open");
   if (offer.expires_tick != null && offer.expires_tick <= state.tick) return blank(offer, source, "expired");
@@ -559,6 +574,8 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
     payAssets.push(pick.id);
     giveCards.push(ref);
   }
+  if (takesLastFreeCopy(payAssets, state.held, lockedIds, state.reserved)) return blank(offer, source, "last-free-copy");
+  const counts = freeCounts(state.held, lockedIds, state.reserved);
   const getCards = give.assets.map((a) => a.ref as string);
   const cashNet = give.cash - want.cash;
   const fee = tradeFee(give.cash + want.cash, getCards.length + giveCards.length, venueFeesOf(offer.venue, state.venueFees, params.fees));
@@ -632,6 +649,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   if (directed.length) state = { ...state, reserved: new Set([...state.reserved, ...directed]) };
   const mineIds = new Set(state.mine.map((o) => o.id));
   let counts = countHoldings(state.held);
+  const lockedIds = acceptLockedIds(state);
   const seen = new Set<number>();
   const evals: Evaluation[] = [];
   for (const [list, source] of [
@@ -641,11 +659,11 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     for (const o of list) {
       if (seen.has(o.id)) continue;
       seen.add(o.id);
-      evals.push(evaluateOffer(o, source, state, params, mineIds, counts));
+      evals.push(evaluateOffer(o, source, state, params, mineIds, lockedIds));
     }
   }
   const opportunities = evals
-    .filter((e) => !["own", "not-open", "expired", "addressed-to-other", "not-a-venue-offer", "missing-card", "unsupported"].includes(e.reason))
+    .filter((e) => !["own", "not-open", "expired", "addressed-to-other", "not-a-venue-offer", "missing-card", "unsupported", "last-free-copy"].includes(e.reason))
     .sort((a, b) => b.valueCreated - a.valueCreated || a.offer.id - b.offer.id);
 
   const budget = params.maxSpend - state.spent;

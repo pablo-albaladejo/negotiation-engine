@@ -30,7 +30,8 @@ function tradeState(over: Partial<TradeState> & { model: ValueModel }): TradeSta
     tick: TICK,
     myId: "t02",
     cash: 500,
-    held: [held(100, "RET-07")],
+    // Two copies: rival-page never sells our last free copy of a card.
+    held: [held(100, "RET-07"), held(101, "RET-07")],
     pageSets: ["RET"],
     board: [],
     mine: [],
@@ -91,12 +92,12 @@ describe("rival page", () => {
     );
   });
 
-  it("never lists from a page-target set, a page we nearly have, or a locked, reserved or busy asset", () => {
+  it("never lists from a page-target set, a page we nearly have, our last free copy, or a locked, reserved or busy asset", () => {
     fc.assert(
-      fc.property(fc.constantFrom("target", "have", "locked", "reserved", "busy", "trades"), arb.book, arb.mult, (why, book, mult) => {
+      fc.property(fc.constantFrom("target", "have", "locked", "reserved", "busy", "trades", "last"), arb.book, arb.mult, (why, book, mult) => {
         const m = model(book, mult);
         const t = team("t18", { albumFilled: 40, pagesComplete: 1, wants: ["RET-07"] });
-        const base = tradeState({ model: m, held: [held(100, "RET-07", why === "locked")] });
+        const base = tradeState({ model: m, held: why === "last" ? [held(100, "RET-07")] : [held(100, "RET-07", why === "locked"), held(101, "RET-07", why === "locked")] });
         const trade: TradeState =
           why === "have"
             ? { ...base, held: [held(100, "RET-07"), ...page("RET").slice(0, 6).map((r, k) => held(200 + k, r))] }
