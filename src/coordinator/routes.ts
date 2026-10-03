@@ -19,7 +19,7 @@ import { tradeSignals } from "../state/rivals.js";
 import type { FlagRecord } from "../state/world.js";
 import { normalize, type FlagCandidate } from "../flags/flags.js";
 import type { HintLine } from "../hints/corpus.js";
-import { isProbePhrase } from "../dealers/negotiation/messages.js";
+import { GREETINGS, isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
 import { marketSale, proposeMarkets, type MarketsContext } from "../markets/markets.js";
 import { ScoreAudit } from "./score-audit.js";
@@ -591,7 +591,23 @@ export class FlagsRoute {
 export const EGG_PARAMS = {
   /** Fixed Playground template (site-map § 9.3), appended to a counteroffer of ours. Never carries figures. */
   template: "Do you know about {hint}?",
+  /** One-shot greeting per persona (`GREETINGS`), sent once per day on a counteroffer, even after our egg there fired. */
+  greetings: { abuela: GREETINGS[0]! } as Readonly<Record<string, string>>,
 };
+
+/** Probe text as it goes in the message: the greeting itself, or the egg question. */
+export function probeText(x: string): string {
+  return GREETINGS.includes(x) ? x : EGG_PARAMS.template.replace("{hint}", x);
+}
+
+/** The persona's greeting if it has not gone out yet today (any of its conversations or its `eggProbes`). */
+function greetingFor(state: GameState, personaId: string): string | undefined {
+  const g = EGG_PARAMS.greetings[personaId];
+  const persona = state.personas.find((p) => p.id === personaId);
+  if (!g || !persona) return undefined;
+  const sent = [...state.conversations.filter((c) => c.counterparty === personaId).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)];
+  return sent.includes(g) ? undefined : g;
+}
 
 /**
  * Probe phrases for `persona`, best first. Hints plant rumours about OTHER stalls, so a line that names this persona
@@ -638,6 +654,8 @@ export function eggProbeFor(state: GameState, conversationId: string): string | 
   if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 1) return undefined;
   if (conv.mood.warnings > 0 || conv.mood.strikes > 0 || conv.mood.cooloffUntil !== undefined) return undefined;
   if (state.ours.strikes && Object.keys(state.ours.strikes).length) return undefined;
+  const greeting = greetingFor(state, conv.counterparty);
+  if (greeting) return greeting;
   const x = nextProbeFor(state, conv.counterparty);
   // A second probe in the same conversation only as the Spanish retry after an English miss.
   if (conv.eggsTried.length === 1 && (!x || !isSpanishPhrase(x) || isSpanishPhrase(conv.eggsTried[0]))) return undefined;
@@ -670,14 +688,14 @@ export class EggsRoute {
         continue;
       }
       const x = eggProbeFor(state, c.id);
-      if (x) out.notes.push(`${c.id}: next counter carries "${EGG_PARAMS.template.replace("{hint}", x)}"`);
+      if (x) out.notes.push(`${c.id}: next counter carries "${probeText(x)}"`);
     }
     // Queued for a dealer with no open thread (e.g. a hint routed to chato): it waits for the next counter there, never a message of its own.
     const open = new Set(state.conversations.filter((c) => c.kind === "dealer" && c.phase !== "done").map((c) => c.counterparty));
     for (const p of state.personas) {
       if (p.status === "announced" || p.status === "closed" || open.has(p.id) || (quiet[p.id] ?? -1) >= state.tick) continue;
-      const x = nextProbeFor(state, p.id);
-      if (x) out.notes.push(`${p.id}: queued "${EGG_PARAMS.template.replace("{hint}", x)}" (no open thread: rides on the next counter there)`);
+      const x = greetingFor(state, p.id) ?? nextProbeFor(state, p.id);
+      if (x) out.notes.push(`${p.id}: queued "${probeText(x)}" (no open thread: rides on the next counter there)`);
     }
     if (!out.notes.length) out.notes.push(`no probe (hints ${state.personas.reduce((a, p) => a + p.hints.length, 0)}; a probe needs a hint keyword and rides only on a counter)`);
     return out;

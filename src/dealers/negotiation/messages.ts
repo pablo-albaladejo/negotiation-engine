@@ -68,12 +68,19 @@ export function isProbePhrase(x: string): boolean {
 }
 
 /**
+ * Closed list of one-shot greetings that may ride on a counteroffer instead of an egg question (approved by Pablo:
+ * the news "Abuela Carmen gives out packs for her saint's day"). Whole sentences, never a digit.
+ */
+export const GREETINGS: readonly string[] = ["¡Felicidades por su santo, Abuela!"]; // game text
+
+/**
  * Text for a counteroffer at price `price` in round `round` (0 = opening). With `probe`, the template adds
- * a single polite egg question; if the phrase is not valid (`isProbePhrase`), it is not added.
+ * a single polite egg question, or the greeting itself if `probe` is one of `GREETINGS`; if the phrase is not
+ * valid (`isProbePhrase`), it is not added.
  */
 export function counterText(side: Side, round: number, price: number, probe?: string): string {
   const tpl = round === 0 ? pick(side === "buy" ? BUY_OPEN : SELL_OPEN, price) : pick(side === "buy" ? BUY_COUNTER : SELL_COUNTER, round - 1);
-  const ask = probe !== undefined && isProbePhrase(probe) ? ` Do you know about ${probe.trim()}?` : "";
+  const ask = probe !== undefined && GREETINGS.includes(probe) ? ` ${probe}` : probe !== undefined && isProbePhrase(probe) ? ` Do you know about ${probe.trim()}?` : "";
   const text = tpl.replace("{p}", String(Math.round(price))) + ask;
   if (!textMatchesPrice(text, price)) throw new Error("template figure differs from the price");
   return text;
@@ -83,9 +90,9 @@ export function closeText(round: number): string {
   return pick(CLOSE, round);
 }
 
-/** Text to hold the already-sent price `price` (round `round`), without opening a new offer. */
-export function holdText(round: number, price: number): string {
-  const text = pick(HOLD, round).replace("{p}", String(Math.round(price)));
+/** Text to hold the already-sent price `price` (round `round`), without opening a new offer; a `GREETINGS` entry may ride on it. */
+export function holdText(round: number, price: number, greeting?: string): string {
+  const text = pick(HOLD, round).replace("{p}", String(Math.round(price))) + (greeting !== undefined && GREETINGS.includes(greeting) ? ` ${greeting}` : "");
   if (!textMatchesPrice(text, price)) throw new Error("template figure differs from the price");
   return text;
 }

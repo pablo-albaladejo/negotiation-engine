@@ -1,5 +1,5 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
-import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
+import { closeText, counterText, GREETINGS, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
 import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter, type PageImpact } from "./planning/plan.js";
 import { readValueRules } from "../trades/trades.js";
@@ -616,8 +616,8 @@ export class BazaarAgent {
     if (d.action.kind !== "wait") {
       const a = d.action;
       const n = p.ourPrices.length;
-      const probe = a.kind === "counter" ? this.o.probe?.(thread.id) : undefined;
-      const text = a.kind === "counter" ? counterText(target.side, n, a.price, probe) : a.kind === "hold" ? holdText(n, a.price) : undefined;
+      const probe = a.kind === "counter" || a.kind === "hold" ? this.o.probe?.(thread.id) : undefined;
+      const text = a.kind === "counter" ? counterText(target.side, n, a.price, probe) : a.kind === "hold" ? holdText(n, a.price, probe) : undefined;
       const intent: Omit<DealerIntent, "dealer"> = {
         kind: a.kind,
         thread: thread.id,
@@ -662,13 +662,17 @@ export class BazaarAgent {
           return;
         }
         case "hold": {
-          const text = holdText(p.ourPrices.length, d.action.price);
+          // Only a greeting rides on a hold (a message we send anyway); egg questions stay on counters.
+          const probe = this.o.probe?.(thread.id);
+          const greeting = probe !== undefined && GREETINGS.includes(probe) ? probe : undefined;
+          const text = holdText(p.ourPrices.length, d.action.price, greeting);
           if (!textMatchesPrice(text, d.action.price)) throw new Error("text and figure do not match");
           active.lastSentTick = tick;
           active.lastTextOnly = true;
           active.holdsUsed += 1;
           active.patience.sent(tick, "hold", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text);
+          if (!this.o.dryRun && greeting !== undefined) this.o.onProbe?.(thread.id, greeting);
           emit({ ...base, action: "hold", ourPrice: d.action.price, text });
           return;
         }
