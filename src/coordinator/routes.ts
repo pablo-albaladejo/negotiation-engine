@@ -316,7 +316,8 @@ export class DealersRoute {
         const bonus = ev !== undefined && lvl !== undefined ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
         // A cheap spare (value < CHEAP_SPARE_P) only goes to a dealer whose ladder it can still raise; otherwise it is
         // kept (Workshop set or a later ladder gap). Abuela at L1 3/3 bought three commons at 5–6 P for 0 score.
-        if (i.side === "sell" && bonus <= 0 && i.value !== undefined && i.value < CHEAP_SPARE_P) {
+        // Exception: a pending one-shot greeting (Abuela's saint's day) needs a thread to ride on; the cheap spare opens it.
+        if (i.side === "sell" && bonus <= 0 && i.value !== undefined && i.value < CHEAP_SPARE_P && !greetingFor(state, i.dealer)) {
           out.notes.push(`dealer ${i.dealer}: ${i.target} kept (value ${i.value} < ${CHEAP_SPARE_P} P and no ladder gain at L${lvl ?? "?"})`);
           continue;
         }
