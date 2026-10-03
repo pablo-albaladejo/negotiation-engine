@@ -71,7 +71,11 @@ export interface PersonaEstimates {
   /** Dispersión del límite entre conversaciones (fracción del book); prior, no se reajusta. */
   limit_jitter?: number;
   /** Límite de bienvenida medido en la primera conversación (su apertura, en P y como fracción del book); `n` = 0 es el prior. */
-  welcome?: { limit: Range; frac_of_book: Range; n: number };
+  welcome?: { limit: Range; frac_of_book: Range; n: number; side?: "buys" | "sells" };
+  /** Prior de `patience_jitter` (rondas); no se reajusta. */
+  patience_jitter?: number;
+  /** `welcome_first_deal`: prior offline (true/false) o medido (true) si hay una conversación de bienvenida. */
+  welcome_first_deal?: boolean;
   bands: Record<string, BandEstimate>;
   /** Conversaciones usadas en el ajuste. */
   fittedFrom: number;
@@ -105,11 +109,19 @@ export interface PersonaPrior {
   openingMarkupBuy?: number;
   /** Espejo medido offline (`mirror_concessions`); manda sobre "unknown" y sobre datos poco decisivos. */
   mirror?: boolean;
+  /** false: el espejo no es identificable (Abuela: su curva ya explica los pasos); el veredicto de los datos no cuenta y sale "unknown". */
+  mirrorIdentifiable?: boolean;
   /** Seudo-observaciones del ajuste offline (0 = prior débil de siempre). Cuánto pesa frente a los datos nuevos. */
   priorWeight: number;
   limitJitter?: number;
   /** `welcome_first_deal`: su apertura de bienvenida como fracción del book (Abuela compra una común a 13 = 1,3 × book; `welcome_price_frac` ≈ 0,7). */
   welcomeFracOfBook?: number;
+  /** Lado de la bienvenida: `buys` = ella compra a su techo de bienvenida (Abuela), `sells` = ella vende a su suelo. */
+  welcomeSide?: "buys" | "sells";
+  /** `welcome_first_deal` medido offline (Chato: probablemente no). Si falta y hay `welcomeFracOfBook`, vale true. */
+  welcomeFirstDeal?: boolean;
+  /** `patience_jitter` medido offline (rondas); cota baja en Abuela. */
+  patienceJitter?: number;
   /** Límite medido offline por banda (`sells:<rareza>` / `buys:<rareza>`). */
   bands?: Record<string, PriorBand>;
   beta: number;
@@ -130,12 +142,15 @@ export const DEFAULT_PRIOR: PersonaPrior = { openingMarkup: 0.15, priorWeight: 0
 export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
   abuela: {
     openingMarkup: 0.135,
+    mirrorIdentifiable: false,
     beta: 3,
     maxRounds: 6,
     walkAfterRounds: 5.5,
     acceptMargin: 0.02,
     limitJitter: 0.05,
     welcomeFracOfBook: 1.3,
+    welcomeSide: "buys",
+    patienceJitter: 2,
     priorWeight: 4,
     bands: {
       "sells:common": { mean: 0.86, lo: 0.7, hi: 1, n: 5 },
@@ -153,6 +168,8 @@ export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
     walkAfterRounds: 7,
     mirror: true,
     limitJitter: 0.05,
+    welcomeFirstDeal: false,
+    patienceJitter: 1,
     priorWeight: 4,
     bands: {
       "buys:uncommon": { mean: 0.61, lo: 0.52, hi: 0.68, n: 3 },
@@ -286,7 +303,7 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
   // Las conversaciones de bienvenida miden el límite de bienvenida, no la curva: fuera del ajuste.
   const mine = all.filter((o) => !o.welcome);
   const welcomes = all.filter((o) => o.welcome);
-  const mirror = personaMirror(mine, prior.mirror);
+  const mirror = prior.mirrorIdentifiable === false ? "unknown" : personaMirror(mine, prior.mirror);
   const mk = markupSamples(mine, prior);
   const mkSell = blendRange(mk.sell, prior.openingMarkup, prior.priorWeight);
   const mkBuy = blendRange(mk.buy, prior.openingMarkupBuy ?? prior.openingMarkup, prior.priorWeight);
@@ -330,6 +347,8 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
     max_rounds: mrR,
     accept_margin: prior.acceptMargin,
     ...(prior.limitJitter !== undefined ? { limit_jitter: prior.limitJitter } : {}),
+    ...(prior.patienceJitter !== undefined ? { patience_jitter: prior.patienceJitter } : {}),
+    ...(welcomes.length ? { welcome_first_deal: true } : prior.welcomeFirstDeal !== undefined ? { welcome_first_deal: prior.welcomeFirstDeal } : prior.welcomeFracOfBook !== undefined ? { welcome_first_deal: true } : {}),
     ...welcomeEstimate(welcomes, prior),
     walk_after_rounds: r2(walk),
     mirror,
@@ -357,9 +376,9 @@ function welcomeEstimate(welcomes: readonly ConvObs[], prior: PersonaPrior): { w
   if (welcomes.length) {
     const lim = welcomes.map((o) => o.her[0]!);
     const frac = welcomes.map((o) => o.her[0]! / o.book);
-    return { welcome: { limit: r2(range(lim, 0)), frac_of_book: r2(range(frac, 0)), n: welcomes.length } };
+    return { welcome: { limit: r2(range(lim, 0)), frac_of_book: r2(range(frac, 0)), n: welcomes.length, side: welcomes[0]!.dealerSells ? "sells" : "buys" } };
   }
-  return prior.welcomeFracOfBook !== undefined ? { welcome: { limit: { mean: 0, lo: 0, hi: 0 }, frac_of_book: r2({ mean: prior.welcomeFracOfBook, lo: prior.welcomeFracOfBook, hi: prior.welcomeFracOfBook }), n: 0 } } : {};
+  return prior.welcomeFracOfBook !== undefined ? { welcome: { limit: { mean: 0, lo: 0, hi: 0 }, frac_of_book: r2({ mean: prior.welcomeFracOfBook, lo: prior.welcomeFracOfBook, hi: prior.welcomeFracOfBook }), n: 0, ...(prior.welcomeSide ? { side: prior.welcomeSide } : {}) } } : {};
 }
 
 /** Predicción de una conversación: su próximo precio, su límite y su camino hasta `max_rounds`. */

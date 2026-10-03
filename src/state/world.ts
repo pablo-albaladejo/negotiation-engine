@@ -6,6 +6,7 @@ import { liveTraceDir } from "../shared/trace.js";
 import type { Catalog } from "../shared/schemas.js";
 import type { Conversation } from "./conversation.js";
 import type { HintLine } from "../hints/corpus.js";
+import type { PersonaModel } from "./persona-model.js";
 
 /**
  * Mundo alrededor de las negociaciones: personas (dealers y las que vayan apareciendo), easter eggs, badges,
@@ -53,6 +54,8 @@ export interface Persona {
   flagsFromFirstMessage: boolean;
   /** Estrategia estimada de la persona y límite por banda (`src/dealers/history/persona-fit.ts`). Privado. */
   estimates?: PersonaEstimates;
+  /** Modelo acumulado de la persona (un campo por parámetro del YAML, con su fuente); el ajuste lo escribe y los demás lo leen. */
+  model?: PersonaModel;
 }
 
 export interface EggFind {
@@ -307,7 +310,7 @@ export function saveFlags(file: string, flags: readonly FlagRecord[]): void {
 /** «chato: unlocked-for-us · abuela deals 3/3». */
 export function formatPersona(p: Persona): string {
   const progress = p.progress ? ` · ${p.progress.dealer} deals ${p.progress.deals}/${p.progress.needed}` : p.unlock.always ? " · always open" : "";
-  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined, p.estimates ? `fit ${p.estimates.fittedFrom} conv (markup ${p.estimates.opening_markup.mean}, β ${p.estimates.beta.mean}, max_rounds ${p.estimates.max_rounds.mean}, mirror ${p.estimates.mirror}; ${Object.entries(p.estimates.bands).map(([b, e]) => `${b} ${e.limit.mean} [${e.limit.lo}–${e.limit.hi}] n${e.samples}${e.fewSamples ? "?" : ""}`).join(", ")})` : undefined].filter(Boolean);
+  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined, p.model ? undefined : p.estimates ? `fit ${p.estimates.fittedFrom} conv (markup ${p.estimates.opening_markup.mean}, β ${p.estimates.beta.mean}, max_rounds ${p.estimates.max_rounds.mean}, mirror ${p.estimates.mirror}; ${Object.entries(p.estimates.bands).map(([b, e]) => `${b} ${e.limit.mean} [${e.limit.lo}–${e.limit.hi}] n${e.samples}${e.fewSamples ? "?" : ""}`).join(", ")})` : undefined].filter(Boolean);
   return `${p.id}: ${p.status}${progress} · ${extra.join(" · ")}`;
 }
 

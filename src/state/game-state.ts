@@ -1,4 +1,6 @@
 import { updatePosterior, type Posterior } from "../dealers/history/persona-fit.js";
+import { buildPersonaModel, type PersonaModel } from "./persona-model.js";
+import { traitsOf } from "../dealers/dealer-profile.js";
 import { z } from "zod";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Clock, Me } from "../shared/schemas.js";
@@ -203,6 +205,11 @@ export interface BuildOptions {
    * (observaciones y estimaciones) para que quien lo cargó lo guarde.
    */
   posterior?: Posterior;
+  /**
+   * Modelos acumulados por persona (`persona-model.json`). Se actualizan EN SITIO cada tick para que quien los cargó los
+   * guarde; sin ellos (p. ej. el visor, que no guarda) se reconstruyen desde el posterior.
+   */
+  personaModels?: Record<string, PersonaModel>;
   /** Puestos del leaderboard del tick anterior (si este tick no se lee). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
@@ -294,6 +301,27 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (est) p.estimates = est;
   }
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
+  // Modelo de cada persona: el ajuste (estimates) lo escribe y se acumula sobre el del tick anterior.
+  for (const p of personas) {
+    const raw = (rawDealers.find((d) => (d as { id?: string }).id === p.id) ?? {}) as Record<string, unknown>;
+    const convs = conversations.filter((c) => c.kind === "dealer" && c.counterparty === p.id);
+    const hits = world.ours.flags.sent.filter((x) => x.persona === p.id && x.result === "hit");
+    p.model = buildPersonaModel({
+      id: p.id,
+      raw,
+      traits: traitsOf(raw),
+      ...(p.estimates ? { estimates: p.estimates } : {}),
+      strikes: convs.reduce((a, c) => a + c.mood.strikes, 0),
+      cooloffs: convs.filter((c) => c.mood.cooloffUntil !== undefined).length,
+      hintsFired: p.hints.filter((h) => h.candidate).length,
+      eggsFired: (world.eggs.byPersona[p.id]?.foundByOthers.length ?? 0) + world.ours.eggs.filter((x) => x.persona === p.id).length,
+      trapsSeen: hits.filter((x) => /deadline|rival|scarcity|pressure|fake|last one/i.test(x.reason)).length,
+      switchesSeen: hits.filter((x) => /switch|lesser|lower|card/i.test(x.reason)).length,
+      tick: clock.tick,
+      prev: opts.personaModels?.[p.id],
+    });
+    if (opts.personaModels) opts.personaModels[p.id] = p.model;
+  }
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
   // Caché de valores en el cliente: la mano nueva olvida lo que cambió; `/api/me` siembra lo que tenemos.
   client.noteHand(ours.holdings.byRef);

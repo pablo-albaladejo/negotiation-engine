@@ -1,4 +1,5 @@
 import { defaultPosteriorFile, loadPosterior, savePosterior } from "../dealers/history/persona-fit.js";
+import { defaultPersonaModelFile, formatPersonaModel, loadPersonaModels, savePersonaModels } from "../state/persona-model.js";
 import { parseArgs } from "node:util";
 import { BazaarClient, BazaarError } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
@@ -90,6 +91,8 @@ async function main() {
   const hintsFile = defaultHintsFile(root);
   const valuesFile = defaultValuesFile(root);
   const posteriorFile = defaultPosteriorFile(root);
+  const personaModelFile = defaultPersonaModelFile(root);
+  const personaModels = loadPersonaModels(personaModelFile);
   const valueCache = loadValueCache(valuesFile);
   let prevRanks = new Map<string, { rank?: number; score?: number }>();
   // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
@@ -127,6 +130,7 @@ async function main() {
       personaMemos,
       flags,
       posterior,
+      personaModels,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
       valueCache: valueCache.values,
@@ -141,6 +145,7 @@ async function main() {
     saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())));
     // Posterior del ajuste por persona: sale solo de lecturas (GET), se guarda también en dry-run. Nunca entra en un mensaje.
     savePosterior(posteriorFile, posterior);
+    savePersonaModels(personaModelFile, personaModels);
     prevTime = state.time;
     prevRanks = new Map(state.markets.venues.flatMap((v) => (v.owner ? [[v.owner, { ...(v.ownerRank !== undefined ? { rank: v.ownerRank } : {}), ...(v.ownerScore !== undefined ? { score: v.ownerScore } : {}) }] as const] : [])));
     if (withLb) lastLeaderboard = state.tick;
@@ -162,7 +167,10 @@ async function main() {
     for (const l of formatGameState(state)) console.log(`  ${l}`);
     if (dryRun && (state.clock.paused || (state.clock.doors && state.clock.doors !== "open"))) console.log("  (clock paused or doors closed: live mode would wait; dry-run shows what it would propose)");
     console.log("== personas ==");
-    for (const p of state.personas) console.log(`  ${formatPersona(p)}`);
+    for (const p of state.personas) {
+      console.log(`  ${formatPersona(p)}`);
+      if (p.model) console.log(`    ${formatPersonaModel(p.model)}`);
+    }
     console.log("== agenda (next 5) ==");
     for (const i of agenda.slice(0, 5)) console.log(`  ${formatAgendaItem(i)}`);
     if (!agenda.length) console.log("  (schedule empty or unreadable)");

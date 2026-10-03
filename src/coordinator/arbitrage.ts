@@ -1,4 +1,5 @@
-import { RARITY_BOOK, type PersonaEstimates } from "../dealers/history/persona-fit.js";
+import { RARITY_BOOK } from "../dealers/history/persona-fit.js";
+import type { PersonaModel } from "../state/persona-model.js";
 import type { Budget, Verdict } from "./coordinator.js";
 
 /**
@@ -23,19 +24,19 @@ export interface ArbitrageIdea {
 }
 
 /** Ideas por rareza ordenadas por margen; margen mínimo max(1 P, 5 % del book). */
-export function personaArbitrage(personas: readonly { id: string; estimates?: PersonaEstimates }[]): ArbitrageIdea[] {
+export function personaArbitrage(personas: readonly { id: string; model?: PersonaModel }[]): ArbitrageIdea[] {
   const ideas: ArbitrageIdea[] = [];
   for (const a of personas) {
-    for (const [band, sell] of Object.entries(a.estimates?.bands ?? {})) {
+    for (const [band, sell] of Object.entries(a.model?.bands ?? {})) {
       if (!band.startsWith("sells:")) continue;
       const rarity = band.slice("sells:".length);
       const minSpread = Math.max(1, 0.05 * (RARITY_BOOK[rarity] ?? 10));
       for (const b of personas) {
-        const buy = b.id === a.id ? undefined : b.estimates?.bands[`buys:${rarity}`];
+        const buy = b.id === a.id ? undefined : b.model?.bands[`buys:${rarity}`];
         if (!buy) continue;
-        const buyAt = Math.ceil(sell.limit.hi);
-        const sellAt = Math.floor(buy.limit.lo);
-        if (sellAt - buyAt >= minSpread) ideas.push({ rarity, buyFrom: a.id, sellTo: b.id, buyAt, sellAt, spread: sellAt - buyAt, samples: Math.min(sell.samples, buy.samples) });
+        const buyAt = Math.ceil(sell.limit.hi ?? Infinity);
+        const sellAt = Math.floor(buy.limit.lo ?? -Infinity);
+        if (sellAt - buyAt >= minSpread) ideas.push({ rarity, buyFrom: a.id, sellTo: b.id, buyAt, sellAt, spread: sellAt - buyAt, samples: Math.min(sell.limit.n, buy.limit.n) });
       }
     }
   }
