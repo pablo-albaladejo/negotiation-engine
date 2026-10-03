@@ -1,14 +1,14 @@
 # src/engine/ — Núcleo numérico
 
-Funciones puras que usa el Bazaar (`../dealers/negotiation/negotiator.ts` y `../duels/duels.ts`). Sin LLM ni red.
+Funciones puras que usan `../dealers/negotiation/negotiator.ts` (`concession`, `enforceGuardrails`), `../duels/duels.ts` y `../packs/packs.ts` (`enforceGuardrails`). Sin LLM ni red.
 
 ## Archivos
 
 - **`config.ts`** — `IssueSchema`: un issue negociable (nombre, mín., máx., dirección, peso).
 - **`issues.ts`** — Utilidad: `utility`, orientación comprador/vendedor, redondeo a favor y reserva.
-- **`offer.ts`** — `concession`: curva Boulware (β) entre apertura y reserva.
+- **`offer.ts`** — `concession`: fracción cedida t^(1/β) (Boulware); `generateOffer`: propuesta Boulware multi-issue con reciprocidad.
 - **`acceptance.ts`** — `decideAcceptance`: AC_next, AC_time y AC_combi.
-- **`guardrails.ts`** — `enforceGuardrails`: la oferta no cruza el mandato y concede de forma monótona.
+- **`guardrails.ts`** — `enforceGuardrails` (precio único) y `enforceOfferGuardrails` (multi-issue): la oferta no cruza el mandato y concede de forma monótona.
 - **`rng.ts`** — `createRng`: aleatoriedad con semilla reproducible.
 
 ## Links
