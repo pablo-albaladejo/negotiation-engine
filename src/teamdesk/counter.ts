@@ -1,5 +1,6 @@
 import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
+import { isKeepsake } from "../shared/asset-locks.js";
 import { isLastFreeCopy } from "../shared/last-copy.js";
 import {
   acceptLockedIds,
@@ -231,6 +232,11 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
       // Legendaries and epics too: their price is Pablo's call, not the margin rule's.
       const rarity = trade.model.meta.get(ref)?.rarity;
       const legendary = rarity === "legendary" || rarity === "epic" || rarity === undefined;
+      // Hidden cards are never sold (Pablo's rule), whatever their value: the shared keepsake guard.
+      if (isKeepsake({ ref, ...(rarity ? { rarity } : {}), your_value: asset.value })) {
+        notes.push(`${TAG} skip ${ref} → ${r.team}: hidden or keepsake card, never sold`);
+        continue;
+      }
       if (asset.value <= 0 || legendary) {
         notes.push(`${TAG} skip ${ref} → ${r.team}: ${legendary ? `rarity ${rarity ?? "unknown"}` : `your_value ${asset.value}`} (no floor from code; needs a price from Pablo)`);
         continue;
