@@ -5,9 +5,9 @@ import { liveTraceDir } from "../shared/trace.js";
 import { personaTypeOf, type FeedEvent, type PersonaType } from "../state/world.js";
 
 /**
- * Disparadores del feed (lo que no está en el calendario): cada evento se procesa una sola vez gracias a un
- * cursor (último id visto) que persiste en `results/bazaar-live/<fecha>/triggers.json` (solo en vivo; en dry-run
- * se lee pero no se guarda, así que vuelven a salir). Ningún disparador hace un POST.
+ * Feed triggers (what is not in the calendar): each event is processed only once thanks to a
+ * cursor (last id seen) persisted in `results/bazaar-live/<date>/triggers.json` (live only; in dry-run
+ * it is read but not saved, so they fire again). No trigger does a POST.
  */
 
 export interface Fired {
@@ -21,14 +21,14 @@ export interface Fired {
 export interface TriggerMemo {
   cursor?: number;
   limits?: Record<string, unknown>;
-  /** Personas con aviso, strike o cooloff: sin probes y tono más cuidadoso hasta ese tick. */
+  /** Personas with a warning, strike or cooloff: no probes and a more careful tone until that tick. */
   quiet?: Record<string, number>;
 }
 
 export interface TriggerResult {
   fired: Fired[];
   cursor?: number;
-  /** Personas anunciadas (esqueleto de ficha) y activadas (leer rasgos y menú, generar ficha y agente). */
+  /** Announced personas (card skeleton) and activated ones (read traits and menu, generate card and agent). */
   announced: string[];
   activated: string[];
   quiet: Record<string, number>;
@@ -36,7 +36,7 @@ export interface TriggerResult {
 
 const str = (x: unknown): string | undefined => (typeof x === "string" && x ? x : undefined);
 
-/** Ticks de silencio (sin probes) tras un aviso o strike si el evento no trae `until_tick`. */
+/** Quiet ticks (no probes) after a warning or strike if the event carries no `until_tick`. */
 export const QUIET_TICKS = 60;
 
 export function runTriggers(events: readonly FeedEvent[], memo: TriggerMemo, team: string | undefined, limitsNow: Record<string, unknown>, tick: number): TriggerResult {
@@ -72,7 +72,7 @@ export function runTriggers(events: readonly FeedEvent[], memo: TriggerMemo, tea
   return out;
 }
 
-// ---------------------------------------------------------------- memoria
+// ---------------------------------------------------------------- memo
 
 const SCHEMA = "bazaar-triggers/v1";
 export const defaultTriggersFile = (root: string, now: Date = new Date()) => join(liveTraceDir(root, now), "triggers.json");
@@ -83,7 +83,7 @@ export function loadTriggerMemo(file: string): TriggerMemo {
     const d = JSON.parse(readFileSync(file, "utf8")) as TriggerMemo & { schema?: string };
     return d.schema === SCHEMA ? d : {};
   } catch {
-    // Fichero corrupto: se arranca sin cursor.
+    // Corrupt file: start without a cursor.
     return {};
   }
 }
@@ -95,9 +95,9 @@ export function saveTriggerMemo(file: string, memo: TriggerMemo): void {
   renameSync(tmp, file);
 }
 
-// ---------------------------------------------------------------- fichas generadas
+// ---------------------------------------------------------------- generated cards
 
-/** Estrategia por defecto según el tipo, para una persona sin datos medidos. */
+/** Default strategy by type, for a persona without measured data. Text kept in Spanish: it is written into generated .md/.yaml docs. */
 const FALLBACK: Record<PersonaType, string> = {
   dealer: "negociador por rasgos (negotiatorForDealer): ancla, concesión adaptativa y paciencia por patience",
   collector: "como dealer, pero priorizar cartas que completan página; no vender la que le falta a nuestra página",
@@ -112,7 +112,7 @@ export interface GeneratedFile {
   content: string;
 }
 
-/** Ficha `personas/<id>.yaml` (esqueleto si solo está anunciada) y agente `.claude/agents/persona-<id>.md`. */
+/** Card `personas/<id>.yaml` (skeleton if only announced) and agent `.claude/agents/persona-<id>.md`. Generated docs content stays in Spanish. */
 export function personaFiles(id: string, info: unknown, opts: { announcedOnly: boolean; name?: string }): GeneratedFile[] {
   const o = (info && typeof info === "object" ? info : {}) as Record<string, unknown>;
   const name = str(o.name) ?? opts.name ?? id;

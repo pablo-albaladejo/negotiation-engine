@@ -3,10 +3,10 @@ import type { Intent } from "../coordinator/coordinator.js";
 import type { GameState } from "../state/game-state.js";
 
 /**
- * Agenda: el calendario (`/api/schedule` → `upcoming`) convertido en un playbook por acción, cada una con su
- * antelación y su efecto en las rutas. El coordinador la mira ANTES de que las rutas propongan: puede activar,
- * desactivar o reajustar rutas. Nada de aquí hace un POST: lo que tocaría escribir (abrir venue, abrir sobre)
- * sale como intención de agenda que solo se imprime; en vivo exige su CLI con --confirm y aprobación del usuario.
+ * Agenda: the calendar (`/api/schedule` → `upcoming`) turned into a per-action playbook, each with its
+ * lead time and its effect on the routes. The coordinator looks at it BEFORE the routes propose: it can enable,
+ * disable or readjust routes. Nothing here does a POST: what would need writing (open venue, open pack)
+ * comes out as an agenda intent that is only printed; live it requires its CLI with --confirm and user approval.
  */
 
 export interface AgendaItem {
@@ -14,9 +14,9 @@ export interface AgendaItem {
   action: string;
   note?: string;
   params: Record<string, unknown>;
-  /** Horas de juego hasta el evento (negativo si ya pasó). */
+  /** Game hours until the event (negative if it already passed). */
   inHours: number;
-  /** Hora de juego en que actuamos (evento − antelación). */
+  /** Game hour at which we act (event − lead time). */
   actAtHours: number;
   status: "due-now" | "due-soon" | "later";
   planned: string;
@@ -30,19 +30,19 @@ export interface DuelConfig {
 }
 
 export interface AgendaEffects {
-  /** Motivo para no abrir conversaciones nuevas (final, congelación, fin de ronda). */
+  /** Reason not to open new conversations (final, freeze, end of round). */
   stopOpens?: string;
-  /** Configuración de duelos que toca ya (antelación de 0,5 h). */
+  /** Duel configuration due now (0.5 h lead time). */
   duelConfig?: DuelConfig;
-  /** Las escaleras de la ronda se reinician: replanificar (3 mejores tratos por nivel y ronda). */
+  /** Round ladders reset: re-plan (3 best deals per level per round). */
   replanLadder?: boolean;
-  /** Set que sale: leer su catálogo y nuestros valores privados, y ampliar los objetivos de página. */
+  /** Set coming out: read its catalogue and our private values, and widen page targets. */
   newSet?: string;
-  /** Caja extra del reparto: replanificar compras. */
+  /** Extra cash from the grant: re-plan purchases. */
   extraCash?: number;
-  /** Bench duro: parámetros de broker más firmes. */
+  /** Hard bench: firmer broker parameters. */
   firmerBroker?: boolean;
-  /** Personas que se apagan (no abrir con ellas). */
+  /** Personas switching off (do not open with them). */
   disabledPersonas: string[];
   notes: string[];
   intents: Intent[];
@@ -56,7 +56,7 @@ interface Play {
 const name = (p: Record<string, unknown>, fallback: string) => (typeof p.name === "string" ? p.name : fallback);
 const isHard = (p: Record<string, unknown>, note?: string) => /hard/i.test(name(p, "") + (note ?? ""));
 
-/** Playbook por acción del calendario: antelación (horas de juego) y acción prevista. */
+/** Playbook per calendar action: lead time (game hours) and planned action. */
 export const PLAYBOOK: Record<string, Play> = {
   bench: { leadHours: 1, planned: (p, n) => (isHard(p, n) ? "check the auto-vs-board decision + shadow broker, firmer broker params" : "check the auto-vs-board decision + shadow broker (dry-run intent)") },
   round: { leadHours: 0, planned: () => "re-plan the ladder (3 best deals per level per round)" },
@@ -70,9 +70,9 @@ export const PLAYBOOK: Record<string, Play> = {
   persona: { leadHours: 0.25, planned: (p) => `${typeof p.id === "string" ? p.id : "persona"} ${p.enabled === false ? "closes: no new threads" : "changes"}` },
 };
 
-/** Ventana «pronto»: el momento de actuar cae en la próxima hora de juego. */
+/** "Soon" window: the moment to act falls within the next game hour. */
 const SOON_HOURS = 1;
-/** Un evento sigue «due now» hasta este margen después de su hora. */
+/** An event stays "due now" until this margin after its time. */
 const GRACE_HOURS = 0.25;
 
 export function agendaItems(schedule: Schedule | undefined, nowHours: number): AgendaItem[] {
@@ -89,7 +89,7 @@ export function agendaItems(schedule: Schedule | undefined, nowHours: number): A
     .sort((a, b) => a.atHours - b.atHours);
 }
 
-/** Efectos de lo que toca ya: el coordinador los aplica antes de pedir propuestas a las rutas. */
+/** Effects of what is due now: the coordinator applies them before asking the routes for proposals. */
 export function agendaEffects(items: readonly AgendaItem[], state: Pick<GameState, "env" | "ours">): AgendaEffects {
   const out: AgendaEffects = { disabledPersonas: [], notes: [], intents: [] };
   for (const i of items.filter((x) => x.status === "due-now")) {
@@ -136,7 +136,7 @@ export function agendaEffects(items: readonly AgendaItem[], state: Pick<GameStat
 
 const hours = (h: number) => (Math.abs(h) < 1 ? `${Math.round(h * 60)} min` : `${h.toFixed(2)} h`);
 
-/** «Duels I in 3.85 h → switch duel config … at h 6.0». */
+/** "Duels I in 3.85 h → switch duel config … at h 6.0". */
 export function formatAgendaItem(i: AgendaItem): string {
   const label = typeof i.params.name === "string" ? i.params.name : i.action;
   const when = i.inHours >= 0 ? `in ${hours(i.inHours)}` : `${hours(-i.inHours)} ago`;
