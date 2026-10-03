@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { assetsInOffers, assetsInThreads } from "../../../src/shared/asset-locks.js";
+import { assetsInOffers, assetsInThreads, isKeepsake, rememberHiddenCards } from "../../../src/shared/asset-locks.js";
 import { freeCounts } from "../../../src/shared/last-copy.js";
 import type { FeedEvent } from "./bazaar-board-core.js";
 
@@ -12,7 +12,7 @@ import type { FeedEvent } from "./bazaar-board-core.js";
 
 const num = z.number();
 const str = z.string();
-const HeldSchema = z.looseObject({ id: num, ref: str, kind: str.nullish(), name: str.nullish(), rarity: str.nullish(), your_value: num.nullish() });
+const HeldSchema = z.looseObject({ id: num, ref: str, kind: str.nullish(), name: str.nullish(), rarity: str.nullish(), print_run: num.nullish(), your_value: num.nullish() });
 const MeSchema = z.looseObject({ id: str.nullish(), assets: z.array(z.unknown()).nullish() });
 const CatalogSchema = z.looseObject({ sets: z.array(z.looseObject({ cards: z.array(z.looseObject({ id: str, name: str.nullish(), rarity: str.nullish() })).nullish() })).nullish() });
 const CraftedSchema = z.looseObject({ team: str.nullish(), name: str.nullish(), from: str.nullish(), to: str.nullish(), card: str.nullish() });
@@ -82,12 +82,15 @@ export function workshopOf(meRaw: unknown, threadsRaw: unknown, offersRaw: unkno
   const threads = (threadsRaw as { threads?: unknown } | null)?.threads;
   const busy = new Map([...assetsInThreads(Array.isArray(threads) ? threads : []), ...assetsInOffers(offersRaw, me.success ? me.data.id : null)]);
   const free = freeCounts(held, new Set(busy.keys()), new Set());
+  rememberHiddenCards(catalogRaw);
   const catalog = rarityByRef(catalogRaw);
 
   const byRarity = new Map<string, WorkshopSpare[]>();
   for (const [ref, n] of free) {
     if (n < 2) continue;
     const a = held.find((h) => h.ref === ref);
+    // Pablo, 3 Oct: hidden cards are never sold, and handing one to the Workshop gives it away too.
+    if (isKeepsake({ ref, rarity: a?.rarity ?? catalog.get(ref)?.rarity ?? null, print_run: a?.print_run ?? null, your_value: a?.your_value ?? null })) continue;
     const rarity = a?.rarity ?? catalog.get(ref)?.rarity ?? "?";
     const list = byRarity.get(rarity) ?? [];
     list.push({ ref, name: a?.name ?? catalog.get(ref)?.name ?? null, free: n, spare: n - 1, your_value: a?.your_value ?? null });

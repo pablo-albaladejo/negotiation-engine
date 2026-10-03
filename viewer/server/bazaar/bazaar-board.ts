@@ -380,6 +380,7 @@ export class BazaarBoard {
         await readJsonFile(join(this.bazaarDir, "values.json")),
         await readJsonFile(join(this.bazaarDir, "rivals.json")),
         team,
+        this.catalog?.raw ?? null,
       ),
       team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),

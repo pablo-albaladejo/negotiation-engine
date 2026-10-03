@@ -4,7 +4,7 @@ Todos los venues abiertos con su libro, en una pestaña del Bazaar: El Rastro pr
 
 Cada oferta va marcada frente a nosotros con NEG a nuestros valores como quien acepta (comisión incluida). Es una guía, nunca una cifra del agente:
 
-- **Bid por una carta que tenemos**: precio − valor − comisión. Solo en verde si es positivo y es repetida (mano ≥ 2); con una sola copia, «our last copy».
+- **Bid por una carta que tenemos**: precio − valor − comisión. Solo en verde si es positivo y es repetida (mano ≥ 2); con una sola copia, «our last copy». Las cartas ocultas nunca se venden: un bid por una de ellas sale como «never sold (hidden/keepsake)» y sin cifra.
 - **Ask por una carta que nos falta**: valor − precio − comisión.
 - **Ask por una carta que ya tenemos**: «dup», sin cifra (una segunda copia vale ~3–4, no nuestro valor).
 - **Ofertas dirigidas a nosotros**: resaltadas (también salen en «Team desk»).

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isKeepsake, rememberHiddenCards } from "../../../../src/shared/asset-locks.js";
 
 /**
  * «All venues»: every open venue's book as `bazaar:play` read it this tick (`<day>/venue-books.json`, no extra GETs on
@@ -70,7 +71,8 @@ export const RivalsFileSchema = z.looseObject({
 /** Venues we don't operate on: a deal there lifts a rival's market score (team decision, 3 Oct). */
 export const OFF_LIMITS = new Set(["v01", "v02", "v07", "v14"]);
 
-export type BookMark = "ours" | "lack" | "spare" | "last" | "dup" | "none";
+/** `keep`: a card we never sell (hidden, one-print, or an epic/legendary without a positive value; `isKeepsake`). */
+export type BookMark = "ours" | "lack" | "spare" | "last" | "keep" | "dup" | "none";
 
 export interface VenueBookRow {
   id: number;
@@ -129,9 +131,15 @@ export function venueBooksOf(
   valuesRaw: unknown,
   rivalsRaw: unknown,
   team: string | null,
+  catalogRaw: unknown = null,
 ): VenueBooksOut | null {
   const f = VenueBooksFileSchema.safeParse(fileRaw);
   if (!f.success) return null;
+  // Pablo, 3 Oct: hidden cards are never sold, so a bid for one is never a sale hint.
+  rememberHiddenCards(catalogRaw);
+  const rarity = new Map<string, string>();
+  for (const s of (catalogRaw as { sets?: { cards?: { id?: string; rarity?: string }[] }[] } | null)?.sets ?? [])
+    for (const c of s.cards ?? []) if (c.id && c.rarity) rarity.set(c.id, c.rarity);
   const vals = ValuesFileSchema.safeParse(valuesRaw);
   const hand = (vals.success ? vals.data.hand : null) ?? {};
   const values = (vals.success ? vals.data.values : null) ?? {};
@@ -204,8 +212,11 @@ export function venueBooksOf(
           neg = v !== null ? round1(v - price - fee) : null;
         } else mark = "dup";
       } else if (single !== null && side === "bid" && h !== null && h > 0) {
-        mark = h >= 2 ? "spare" : "last";
-        neg = v !== null ? round1(price - v - fee) : null;
+        if (isKeepsake({ ref: single, rarity: rarity.get(single) ?? null, your_value: v })) mark = "keep";
+        else {
+          mark = h >= 2 ? "spare" : "last";
+          neg = v !== null ? round1(price - v - fee) : null;
+        }
       }
       const ref0 = single ?? refs[0] ?? null;
       return [

@@ -87,6 +87,8 @@ export function markLabel(r: BoardBookRow): { text: string; tone: Tone } {
       };
     case "last":
       return { text: "our last copy", tone: "warn" };
+    case "keep":
+      return { text: "never sold (hidden/keepsake)", tone: "warn" };
     case "dup":
       return { text: `dup (we hold ×${r.hand ?? "?"})`, tone: "muted" };
     default:

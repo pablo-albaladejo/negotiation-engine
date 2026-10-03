@@ -430,7 +430,7 @@ export interface BoardBookRow {
   value: number | null;
   /** NEG at our values as the taker; null on a dup, several cards or no value. */
   neg: number | null;
-  mark: "ours" | "lack" | "spare" | "last" | "dup" | "none";
+  mark: "ours" | "lack" | "spare" | "last" | "keep" | "dup" | "none";
   wanted_by: string[];
   held_by: string[];
   expires_tick: number | null;
