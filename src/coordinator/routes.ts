@@ -302,6 +302,8 @@ export class DealersRoute {
 export class TradesRoute {
   readonly agent: TradesAgent;
   private last: { state: TradeState; plan: TickPlan } | undefined;
+  /** `--scanner`: listings are held back by a sale at our marginal value (otherwise by a duplicate sale at first-copy value). */
+  scanner = false;
 
   /** `params`: the coordinator's `--max-spend` and `--cash-floor` (otherwise the El Rastro defaults). */
   constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}) {
@@ -339,7 +341,7 @@ export class TradesRoute {
     for (const c of plan.cancels) out.intents.push({ id: `trades:cancel:${c.id}`, route: "trades", kind: "cancel", summary: `El Rastro: CANCEL #${c.id} (${c.reason})` });
     plan.posts.forEach((p, k) => {
       // Never list a card below a better bid the markets route would take this tick (v02 bid 22 vs our El Rastro listing at 14).
-      const sale = p.kind === "list" ? marketSale(state, p.ref) : undefined;
+      const sale = p.kind === "list" ? marketSale(state, p.ref, this.scanner ? this.last?.state : undefined) : undefined;
       if (sale && sale.quote.price > p.price) {
         out.notes.push(`El Rastro: list ${p.ref} @ ${p.price} P held back: bid ${sale.quote.price} P on ${sale.venue.id} (#${sale.quote.offer}, net ${sale.net}) goes through the markets route`);
         return;

@@ -16,14 +16,15 @@ export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda"
  * `venue`: mechanism change of our venue (`src/venue/route.ts`); at most one per tick, live behind its own gate.
  */
 export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda" | "unpack" | "venue";
-export type AcceptClass = "duel" | "page-completing" | "dealer-ladder" | "other";
+export type AcceptClass = "duel" | "page-completing" | "scanner" | "dealer-ladder" | "other";
 
 /** Accept priority (lower rank, earlier); at equal rank, higher expected value first. */
 export const ACCEPT_PRIORITY: Record<AcceptClass, { rank: number; why: string }> = {
   duel: { rank: 1, why: "duel: its value decays every round" },
   "page-completing": { rank: 2, why: "SAL-09 or a page-completing buy (+25 % page bonus)" },
-  "dealer-ladder": { rank: 3, why: "dealer ladder (best three deals per level count)" },
-  other: { rank: 4, why: "the rest" },
+  scanner: { rank: 3, why: "dispersion scanner: buy below / sell above our marginal value (net ≥ max(3 P, 15 %))" },
+  "dealer-ladder": { rank: 4, why: "dealer ladder (best three deals per level count)" },
+  other: { rank: 5, why: "the rest" },
 };
 
 export const DUEL_ACCEPT_QUOTA_ASSUMPTION = "ASSUMPTION: a duel accept shares the team accept quota (accepts_per_team_per_tick) with dealers and El Rastro";

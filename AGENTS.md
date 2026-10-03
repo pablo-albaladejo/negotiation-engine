@@ -64,7 +64,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:trades` | Ofertas entre equipos en El Rastro (en vivo con `--confirm`). |
 | `pnpm bazaar:broker` | Broker de nuestro venue (en vivo con `--confirm`). |
 | `pnpm bazaar:venue` | Plan de nuestro mercado (abrir exige `--confirm`). |
-| `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`; ventas dirigidas a rivales solo con `--rival-page`, pujas dirigidas con `--rival-buy`). |
+| `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`; ventas dirigidas a rivales solo con `--rival-page`, pujas dirigidas con `--rival-buy`; escáner de dispersión de la ruta de mercados solo con `--scanner` (opt-in) y `--scanner-spend-per-hour` (60) como tope de compra). |
 | `pnpm bazaar:audit` | Auditor de ineficiencias de solo lectura: compras repetidas, ida y vuelta con pérdida, copia del álbum perdida, dos rutas a la vez, fallos repetidos; `--date` informe, `--watch` en vivo. |
 | `pnpm bazaar:news` | Noticias del Bazaar (Radio Rastro, Boletín, El Tablón): `news.jsonl` y news-summary.json para el panel «Radio Rastro» del visor. Solo mostrar: nunca una cifra ni una decisión (`--once`, `--no-llm`). |
 | `pnpm bazaar:doctor` | Comprueba que todo está listo (✓/✗): `.env`, Node, git, tests, API, puerto del visor y `bazaar:play --dry-run --once` (`--fast`). |

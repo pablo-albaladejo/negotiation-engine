@@ -23,7 +23,8 @@ import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/pric
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
 import { executeRivalBuy, proposeRivalBuy, type RivalBuyPlan } from "../markets/rival-buy.js";
-import { executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
+import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
+import { ScannerLedger } from "../markets/scanner.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
 import { executeVenueMechanism, proposeVenueMechanism } from "../venue/route.js";
@@ -75,6 +76,8 @@ async function main() {
       "allow-venue-switch": { type: "boolean", default: false },
       "rival-page": { type: "boolean", default: false },
       "rival-buy": { type: "boolean", default: false },
+      scanner: { type: "boolean", default: false },
+      "scanner-spend-per-hour": { type: "string", default: "60" },
       "plan-log": { type: "string", default: "" },
     },
   });
@@ -99,10 +102,14 @@ async function main() {
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
   });
   const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") });
+  trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
   const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });
   const eggs = new EggsRoute();
+  // Dispersion scanner (markets route): executed deals per game hour, in memory for the run (a restart counts from zero).
+  const scannerLedger = new ScannerLedger();
+  const scannerSpendPerHour = num(values["scanner-spend-per-hour"], "--scanner-spend-per-hour");
   // plan.jsonl: by default only live (like decisions.jsonl, same date); --plan-log forces a path, also in dry-run.
   const planFile = values["plan-log"] || (live ? defaultPlanLogFile(root) : undefined);
   const convFile = defaultConversationsFile(root);
@@ -286,7 +293,14 @@ async function main() {
         async () => {
           const byRef = new Map<string, number[]>();
           for (const a of me?.assets ?? []) if ((a.kind ?? "card") === "card") byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a.id]);
-          const m = proposeMarkets(state, byRef);
+          const m = proposeMarkets(state, byRef, {
+            scanner: values.scanner === true,
+            ...(trades.lastState ? { trade: trades.lastState, directedRefs: new Set(directedListings(trades.lastState).map((d) => d.ref)) } : {}),
+            ledger: scannerLedger,
+            cashFloor: num(values["cash-floor"], "--cash-floor"),
+            spendPerHour: scannerSpendPerHour,
+            pageTargets,
+          });
           // Directed listings to a rival that lacks one page card (never throws: off with a note on bad data).
           try {
             const r = proposeRivalPage({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, pageTargets, cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
@@ -367,7 +381,7 @@ async function main() {
       }
     };
     report("duels", await duels.execute(selected));
-    report("markets", await executeMarkets(client, selectedIntents, dryRun));
+    report("markets", await executeMarkets(client, selectedIntents, dryRun, scannerLedger));
     // Rival-page listings go out only live AND with the opt-in --rival-page; otherwise "would" lines.
     report("markets", await executeRivalPage(client, selectedIntents, rivalPlan, dryRun || !values["rival-page"], undefined, undefined, state.tick));
     // Rival-buy bids go out only live AND with the opt-in --rival-buy; otherwise "would" lines.
