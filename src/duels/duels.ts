@@ -309,7 +309,11 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   // Engine guardrail on surplus: never rises above the previous offer nor drops below the minimum.
   target = enforceGuardrails({ role: "seller", reservation: params.minSurplus }, target, prevSurplus);
   // What we would actually offer next: if we can't concede, the current offer.
-  const nextSurplus = canConcede || prevSurplus === undefined ? target : prevSurplus;
+  let nextSurplus = canConcede || prevSurplus === undefined ? target : prevSurplus;
+  // When the curve doesn't move us and the rival did, we'd send the 1 P micro-step below: judge acceptance against it.
+  if (canConcede && state.rivalMovedSinceOurLast && prevSurplus !== undefined && nextSurplus >= prevSurplus) {
+    nextSurplus = Math.max(params.minSurplus, prevSurplus - 1);
+  }
 
   // Never close outside our limit: `rivalSurplus` only exists if their offer respects `your_limit`.
   if (rival && rivalSurplus !== undefined && rivalSurplus >= params.minSurplus) {
@@ -318,6 +322,8 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     if (rivalSurplus >= params.acceptShare * openingSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
     // Compare with the deal we'd expect by going on, not our next offer: the midpoint of theirs and ours, since rivals
     // meet us halfway. 2558: rival 29, next 32 → we countered and closed 11 P lower.
+    // Within 1 P of our next offer: take it now. 2489: rival 122, we sent 121.
+    if (rivalSurplus >= nextSurplus - 1) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
     const expected = (rivalSurplus + nextSurplus) / 2;
     if (rivalSurplus >= (1 - decay) ** params.acceptLookahead * expected) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
   }
