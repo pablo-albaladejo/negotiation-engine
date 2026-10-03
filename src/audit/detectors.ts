@@ -21,6 +21,9 @@ export const DETECTORS = [
   "double-act",
   "repeat-failure",
   "churn",
+  "repeated-price",
+  "duel-unanswered",
+  "dealer-spam",
   "stale-source",
 ] as const;
 export type Detector = (typeof DETECTORS)[number];
@@ -50,11 +53,13 @@ export const BOOK_GAP_P = 1;
 export const CHURN_COUNT = 3;
 export const CHURN_TICKS = 20;
 export const REPEAT_FAILURES = 3;
+/** Day-2 hint 6: a 429 means "wait for the next tick", it is not an error (nor are the client's retry codes). */
+export const NOT_A_FAILURE = new Set(["rate_limited", "too_many_failures", "wait_for_tick", "http_429", "429"]);
 
 const round = (x: number): number => Math.round(x * 10) / 10;
 const severityOf = (loss: number | undefined): Alert["severity"] => (loss === undefined ? "medium" : loss >= 10 ? "high" : loss >= 3 ? "medium" : "low");
 
-function alert(a: Omit<Alert, "v" | "ts" | "severity"> & { severity?: Alert["severity"] }): Alert {
+export function alert(a: Omit<Alert, "v" | "ts" | "severity"> & { severity?: Alert["severity"] }): Alert {
   return { v: 1, ts: new Date().toISOString(), severity: a.severity ?? severityOf(a.lossP), ...a, ...(a.lossP !== undefined ? { lossP: round(a.lossP) } : {}) };
 }
 
@@ -370,7 +375,8 @@ export function repeatFailure(views: TickView[]): Alert[] {
   const out: Alert[] = [];
   const streaks = new Map<string, { start: number; ticks: number[]; line: string; reported: boolean }>();
   for (const v of views) {
-    const shapes = new Map(v.failures.map((f) => [f.id && !/^\w+$/.test(f.id) ? f.id : f.shape, f.line]));
+    const failures = v.failures.filter((f) => !NOT_A_FAILURE.has(f.shape.split(":").at(-1) ?? ""));
+    const shapes = new Map(failures.map((f) => [f.id && !/^\w+$/.test(f.id) ? f.id : f.shape, f.line]));
     for (const [shape, s] of streaks) if (!shapes.has(shape)) streaks.delete(shape);
     for (const [shape, line] of shapes) {
       const s = streaks.get(shape) ?? { start: v.tick, ticks: [], line, reported: false };

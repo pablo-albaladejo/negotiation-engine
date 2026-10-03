@@ -6,8 +6,9 @@ import { loadBazaarEnv } from "../shared/env.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.js";
 import { albumCopyLost, bookGaps, cashFloor, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
+import { dealerSpam, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
-import { daySnapshots, latestCatalog, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readValuesFile, Tail, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
+import { daySnapshots, DuelSendParser, latestCatalog, parseDealerEvent, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readDuelsState, readValuesFile, Tail, type DealerEvent, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
 
 /**
  * `pnpm bazaar:audit`: read-only inefficiency monitor. Reads local traces (recorder stream, decisions, plan.jsonl or
@@ -71,6 +72,8 @@ const events = new Map<number, StreamEvent>();
 const planLines = new Map<number, PlanLine>();
 const play = new PlayLogParser();
 const decisions: DecisionNote[] = [];
+const dealerEvents: DealerEvent[] = [];
+const duelsStateFile = join(dayDir, "duels-state.json");
 let streamTeam: string | undefined;
 
 function readAll(): void {
@@ -92,6 +95,8 @@ function readAll(): void {
   for (const line of tails["play.log"].read()) play.push(line);
   for (const t of play.ticks.keys()) seenTick("play.log", t);
   for (const line of tails.decisions.read()) {
+    const ev = parseDealerEvent(line);
+    if (ev) dealerEvents.push(ev);
     const d = parseDecision(line);
     if (!d) continue;
     decisions.push(d);
@@ -160,6 +165,25 @@ function tickViews(): TickView[] {
   return [...views.values()].sort((a, b) => a.tick - b.tick);
 }
 
+/** Duel counters and accepts we sent: play.log, plus the duel lines of each plan.jsonl execution (deduplicated later per duel and tick). */
+function duelSends(): DuelSendParser["sends"] {
+  const fromPlan = new DuelSendParser();
+  for (const p of [...planLines.values()].sort((a, b) => a.tick - b.tick)) {
+    for (const e of p.execution) if (e.route === "duels") for (const l of (e.detail ?? "").split("\n")) fromPlan.push(l.trim(), p.tick);
+  }
+  return [...play.duels.sends, ...fromPlan.sends];
+}
+
+/** Dealer errors in plan.jsonl execution lines: `dealer abuela: [tick 406] · error · buy:RET-02 · error persona_quota`. */
+function planDealerErrors(): { tick: number; dealer: string; target: string; code: string; line: string }[] {
+  return [...planLines.values()].flatMap((p) =>
+    p.execution.flatMap((e) => {
+      const m = /dealer (\w+): \[tick \d+\] · error · (\S+) · .*\berror ([\w-]+)/.exec(e.detail ?? "");
+      return m ? [{ tick: p.tick, dealer: m[1]!, target: m[2]!, code: m[3]!, line: e.detail ?? "" }] : [];
+    }),
+  );
+}
+
 function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger: Ledger } {
   const team = me?.id ?? streamTeam ?? snapshots.find((s) => s.me?.id)?.me?.id ?? undefined;
   if (!team) throw new Error("our team id is unknown: no hello in stream-team.jsonl, no snapshot and no /api/me");
@@ -191,6 +215,13 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     const l = health("play.log");
     return l.ok ? { ok: true, why: `${p.why} → play.log fallback (${l.why})` } : { ok: false, why: `${p.why}; ${l.why}` };
   };
+  // Our duel sends come from the coordinator's execution lines: without plan.jsonl or play.log we cannot tell silence apart.
+  const duelCoverage = (): { ok: boolean; why: string } => {
+    const st = health("stream-team");
+    const c = coord();
+    return st.ok && c.ok ? { ok: true, why: `${st.why}; our sends from ${c.why}` } : { ok: false, why: [st, c].filter((h) => !h.ok).map((h) => h.why).join("; ") };
+  };
+  const conduct: ConductInput = { team, events: [...events.values()], dealerEvents, duelSends: duelSends(), duelMemory: readDuelsState(duelsStateFile), date, clock };
   const requirements: Record<Detector, { ok: boolean; why: string }> = {
     "dup-buy": need("stream-team", "baseline", "values"),
     "round-trip-loss": need("stream-team"),
@@ -203,6 +234,9 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     "double-act": coord(),
     "repeat-failure": coord(),
     churn: need("stream-team"),
+    "repeated-price": need("stream-team", "decisions"),
+    "duel-unanswered": duelCoverage(),
+    "dealer-spam": need("stream-team", "decisions"),
     "stale-source": { ok: true, why: "file ticks against the clock" },
   };
 
@@ -235,6 +269,9 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     ...doubleAct(views, ledger),
     ...repeatFailure(views),
     ...churn(ledger),
+    ...repeatedPrice(conduct),
+    ...duelUnanswered(conduct),
+    ...dealerSpam(conduct, planDealerErrors()),
     ...stale,
   ].sort((a, b) => a.tick - b.tick);
   const deduped = markOverlaps(alerts);

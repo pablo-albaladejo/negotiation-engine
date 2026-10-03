@@ -85,9 +85,12 @@ export interface StreamEvent {
   type: string;
   scope: string;
   payload: Record<string, unknown>;
+  /** Wall-clock time the recorder received it (ISO). */
+  recv?: string;
 }
 
 const RecordSchema = z.looseObject({
+  recv: z.string().optional(),
   event: z.string(),
   data: z.looseObject({ id: num.optional(), tick: num.optional(), scope: z.string().optional(), payload: z.record(z.string(), z.unknown()).optional() }).optional(),
 });
@@ -102,7 +105,7 @@ export function parseStreamLine(line: string): { event?: StreamEvent; team?: str
     return m?.[1] ? { team: m[1] } : {};
   }
   if (d.id === undefined || d.tick === undefined || !d.payload) return {};
-  return { event: { id: d.id, tick: d.tick, type: r.data.event, scope: d.scope ?? "", payload: d.payload } };
+  return { event: { id: d.id, tick: d.tick, type: r.data.event, scope: d.scope ?? "", payload: d.payload, ...(r.data.recv ? { recv: r.data.recv } : {}) } };
 }
 
 // ---------------------------------------------------------------- plan.jsonl (coordinator, schema from src/coordinator/plan-log.ts)
@@ -112,6 +115,41 @@ export type { PlanLine };
 export function parsePlanLine(line: string): PlanLine | undefined {
   const r = PlanLineSchema.safeParse(parseJson(line));
   return r.success ? r.data : undefined;
+}
+
+// ---------------------------------------------------------------- duel sends (play.log and plan.jsonl execution details)
+
+/** A duel counter or accept we actually sent (`[sent]`), with the duel agent's rule. */
+export interface DuelSend {
+  tick: number;
+  duel: number;
+  action: "counter" | "accept";
+  price?: number;
+  rule?: string;
+  line: string;
+}
+
+/**
+ * `formatDuelEntry` prints `duel 300 · buyer · price · limit … · ticks left 10` and then
+ * `→ COUNTER 92 P (surplus 24.0, round 1, concede) "…" [sent]` (or `→ ACCEPT rival 109 P (surplus 12.0, accept-share) [sent]`).
+ * Only `[sent]` lines count: dry-run, deferred and skipped entries never reached the rival.
+ */
+export class DuelSendParser {
+  readonly sends: DuelSend[] = [];
+  private duel: number | undefined;
+
+  push(line: string, tick: number): void {
+    const head = /^duel (\d+) · (?:seller|buyer) · /.exec(line);
+    if (head) {
+      this.duel = Number(head[1]);
+      return;
+    }
+    const sent = /^→ (COUNTER|ACCEPT) (?:rival )?(\d+(?:\.\d+)?) P\b.*?\(([^()]*)\).*\[sent\]/.exec(line);
+    if (!sent || this.duel === undefined) return;
+    const rule = sent[3]!.split(",").at(-1)?.trim();
+    this.sends.push({ tick, duel: this.duel, action: sent[1] === "ACCEPT" ? "accept" : "counter", price: Number(sent[2]), ...(rule ? { rule } : {}), line });
+    this.duel = undefined;
+  }
 }
 
 // ---------------------------------------------------------------- play.log fallback
@@ -138,6 +176,8 @@ export class PlayLogParser {
   private current: PlayTick | undefined;
   private cashFloor: number | undefined;
   private marketProposals = new Map<string, { side: "buy" | "sell"; ref: string; line: string }>();
+  /** Duel counters and accepts sent, from the execution block of each tick. */
+  readonly duels = new DuelSendParser();
 
   push(raw: string): void {
     const line = raw.replace(/^\d\d:\d\d:\d\d\s+/, "").trim();
@@ -155,6 +195,7 @@ export class PlayLogParser {
     }
     const cur = this.current;
     if (!cur) return;
+    this.duels.push(line, cur.tick);
     const cash = /^us: .*· cash (-?\d+(?:\.\d+)?) P/.exec(line);
     if (cash) cur.cash = Number(cash[1]);
     const prop = /^\[markets\] accept: (SELL|BUY) ([A-Z]+-\d+) on (\w+) at \d+(?:\.\d+)? P \(offer #(\d+)\)/.exec(line);
@@ -198,6 +239,72 @@ export function parseDecision(line: string): DecisionNote | undefined {
   if (!r.success || r.data.thread === undefined) return undefined;
   const d = r.data;
   return { tick: d.tick, dealer: d.dealer, thread: d.thread as number, ...(d.target ? { target: d.target } : {}), ...(d.reservation !== undefined ? { reservation: d.reservation } : {}), ...(d.ourPrice !== undefined ? { ourPrice: d.ourPrice } : {}) };
+}
+
+/** Every dealer-agent decision, errors included (`action: error`, with `error` and `target` but no thread). */
+export interface DealerEvent {
+  tick: number;
+  dealer: string;
+  action: string;
+  dryRun: boolean;
+  rule?: string;
+  error?: string;
+  target?: string;
+  thread?: number;
+  ourPrice?: number;
+}
+
+const DealerEventSchema = z.looseObject({
+  tick: num,
+  dealer: z.string(),
+  action: z.string(),
+  dryRun: z.boolean().optional(),
+  rule: z.string().optional(),
+  error: z.string().optional(),
+  target: z.string().optional(),
+  thread: num.optional(),
+  ourPrice: num.optional(),
+});
+
+export function parseDealerEvent(line: string): DealerEvent | undefined {
+  const r = DealerEventSchema.safeParse(parseJson(line));
+  if (!r.success) return undefined;
+  const d = r.data;
+  return {
+    tick: d.tick,
+    dealer: d.dealer,
+    action: d.action,
+    dryRun: d.dryRun ?? false,
+    ...(d.rule ? { rule: d.rule } : {}),
+    ...(d.error ? { error: d.error } : {}),
+    ...(d.target ? { target: d.target } : {}),
+    ...(d.thread !== undefined ? { thread: d.thread } : {}),
+    ...(d.ourPrice !== undefined ? { ourPrice: d.ourPrice } : {}),
+  };
+}
+
+// ---------------------------------------------------------------- duels-state.json (duel agent memory)
+
+/** Our offers per duel as the duel agent remembers them (prices only, no ticks) and the tick of our last one. */
+export interface DuelMemory {
+  ourPrices: number[];
+  lastOurTick?: number;
+}
+
+const DuelsStateSchema = z.looseObject({
+  duels: z.record(z.string(), z.looseObject({ ourOffers: z.array(z.looseObject({ price: num.nullish() })).default([]), lastOurTick: num.nullish() })),
+});
+
+export function readDuelsState(file: string): Map<number, DuelMemory> {
+  const out = new Map<number, DuelMemory>();
+  if (!existsSync(file)) return out;
+  const r = DuelsStateSchema.safeParse(parseJson(readFileSync(file, "utf8")));
+  if (!r.success) return out;
+  for (const [id, d] of Object.entries(r.data.duels)) {
+    const ourPrices = d.ourOffers.flatMap((o) => (typeof o.price === "number" ? [o.price] : []));
+    out.set(Number(id), { ourPrices, ...(typeof d.lastOurTick === "number" ? { lastOurTick: d.lastOurTick } : {}) });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- snapshots: baseline /api/me and catalog
