@@ -84,3 +84,9 @@ Sin `--live --confirm` nunca es en vivo. Con `--detach` se confirma en la termin
 - [ ] Caja: 40 P esta noche. Cambiar exige 250 + 20 + suelo; los 150 P de la subvención llegan a las 09:05.
 - [ ] Dealers: welcome-counter con un dealer nuevo; probes de eggs; flags de presión (solo con aprobación); cuánto se desvía la predicción del ajuste de curva; cortesía.
 - [ ] ¿La aceptación de un duelo comparte el cupo de aceptaciones del equipo? ¿Abrir un sobre lo usa? ¿El venue auto cruza sin nuestra aceptación?
+
+## Con cada dealer
+
+- **Dealer nuevo:** nuestra primera conversación debe ser **venderle** algo. La bienvenida de Abuela compró una común a 13, ~2,2× su techo normal (~5,8). Esa conversación mide su límite de bienvenida y queda fuera del ajuste de la curva.
+- **Chato:** pasos grandes y constantes, y paciencia (copia el paso que damos, no se mueve hasta r ≈ 2–3). `bazaar:play` ya enciende la primera concesión grande solo contra él.
+- Estimaciones de Abuela y Chato: [`docs/bazaar/dealer-fit-2026-10-03.md`](docs/bazaar/dealer-fit-2026-10-03.md).
