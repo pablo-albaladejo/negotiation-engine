@@ -79,5 +79,31 @@ export async function agentStatuses(bazaarDir: string): Promise<AgentStatus[]> {
     const { tick, detail } = best.file.endsWith(".jsonl") ? describe(await lastLine(best.path)) : { tick: null, detail: null };
     out.push({ agent, last_at: best.mtime.toISOString(), last_tick: tick, detail });
   }
+  // The shadow broker only writes bench.jsonl during a bench: its heartbeat (every poll) says whether it is alive.
+  const hb = await brokerHeartbeat(bazaarDir);
+  const i = out.findIndex((a) => a.agent === "broker");
+  const prev = i >= 0 ? out[i]!.last_at : null;
+  if (hb?.last_at && i >= 0 && (prev === null || Date.parse(hb.last_at) > Date.parse(prev))) out[i] = hb;
   return out;
+}
+
+/** `broker-heartbeat.json` at the root of `results/bazaar-live/` ({ts, tick, mode, mechanism}); null if missing or unreadable. */
+async function brokerHeartbeat(bazaarDir: string): Promise<AgentStatus | null> {
+  try {
+    const path = await resolveInside(bazaarDir, "broker-heartbeat.json");
+    if (!path) return null;
+    const fh = await open(path, "r");
+    let raw: string;
+    try {
+      raw = (await fh.readFile()).toString("utf8");
+    } finally {
+      await fh.close();
+    }
+    const hb = JSON.parse(raw) as { ts?: unknown; tick?: unknown; mode?: unknown; mechanism?: unknown };
+    const at = typeof hb.ts === "string" && !Number.isNaN(Date.parse(hb.ts)) ? hb.ts : (await stat(path)).mtime.toISOString();
+    const detail = [typeof hb.mode === "string" ? hb.mode : null, typeof hb.mechanism === "string" ? `venue ${hb.mechanism}` : null].filter(Boolean).join(" · ");
+    return { agent: "broker", last_at: at, last_tick: typeof hb.tick === "number" ? hb.tick : null, detail: detail || null };
+  } catch {
+    return null;
+  }
 }
