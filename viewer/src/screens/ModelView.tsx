@@ -29,6 +29,7 @@ import {
   timeSummary,
   triggerLines,
   type GameModel,
+  type MechanismDecisionView,
   type HintFilters,
   type PriceFilters,
   type PriceSort,
@@ -644,7 +645,7 @@ function Markets({ model, onOpen }: { model: GameModel; onOpen: (id: string) => 
           ) : (
             <Muted>No venue of ours.</Muted>
           )}
-          <Flag kind={venue?.mechanism === "auto" ? "walk" : "decision"}>auto earns half: the plan is a board venue + broker</Flag>
+          <VenueDecision decision={model.state?.venue?.mechanismDecision} />
           <span>
             bench points {fmt(s.bench_points)} · efficiency {fmt(s.bench_efficiency, 2)} · market-making {fmt(s.mm_points)}
           </span>
@@ -662,6 +663,41 @@ function Markets({ model, onOpen }: { model: GameModel; onOpen: (id: string) => 
         </div>
       </Card>
     </div>
+  );
+}
+
+const RECOMMENDATION_TEXT = {
+  "stay-auto": "stay auto",
+  "insufficient-data": "stay auto (not enough data yet)",
+  "switch-to-board": "switch to board",
+  "stay-board": "stay board",
+  "back-to-auto": "go back to auto",
+} as const;
+
+/** Recomendación auto o board del Market Test (la calcula el código con las sesiones medidas en sombra). */
+function VenueDecision({ decision: d }: { decision: MechanismDecisionView | undefined }) {
+  if (!d) return <Muted>Mechanism decision not available yet (no GameState).</Muted>;
+  const measured = d.sessions.filter((s) => s.ratio !== undefined).length;
+  const switching = d.recommendation === "switch-to-board" || d.recommendation === "back-to-auto";
+  const hb = d.heartbeat;
+  return (
+    <>
+      <Flag kind={switching ? "decision" : "walk"}>
+        now {d.current} · recommendation: {RECOMMENDATION_TEXT[d.recommendation]}
+      </Flag>
+      <Muted>{d.reason}</Muted>
+      <span>
+        measured sessions {measured}/2 · mean shadow/auto {d.meanRatio !== undefined ? fmt(d.meanRatio, 2) : "-"} · confidence {fmt(d.confidence, 2)}
+        {d.nextBenchAt !== undefined ? ` · next bench h ${fmt(d.nextBenchAt, 2)}${d.nextBenchHard ? " (hard)" : ""}${d.ticksToBench !== undefined ? ` in ${d.ticksToBench} ticks` : ""}` : ""}
+      </span>
+      <span>
+        shadow broker: {hb ? <strong>{hb.mode} · {hb.ageSec} s ago{hb.ageSec > 120 ? " (stale)" : ""}</strong> : <strong>no heartbeat</strong>}
+      </span>
+      <Muted>
+        Switch to board needs: ≥ 2 measured sessions, mean shadow/auto ≥ 1.10, worst ≥ 0.95, cash ≥ {d.costs.bond + d.costs.fee}+floor (bond {d.costs.bond} + fee {d.costs.fee} + 20) P
+        {d.costs.cashAvailable !== undefined ? `, now ${fmt(d.costs.cashAvailable)} P` : ""}, healthy broker, not near a bench. Switching needs team approval (--confirm --allow-venue-switch).
+      </Muted>
+    </>
   );
 }
 

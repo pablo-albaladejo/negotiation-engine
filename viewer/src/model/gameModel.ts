@@ -121,6 +121,21 @@ export interface ModelFeedLine {
   persona?: string | null;
 }
 
+export interface MechanismDecisionView {
+  current: string;
+  recommendation: "stay-auto" | "switch-to-board" | "insufficient-data" | "stay-board" | "back-to-auto";
+  reason: string;
+  confidence: number;
+  sessions: { benchAt: number; hard: boolean; ratio?: number }[];
+  costs: { bond: number; fee: number; cashAvailable?: number };
+  nextBenchAt?: number;
+  nextBenchHard?: boolean;
+  ticksToBench?: number;
+  meanRatio?: number;
+  hardPassed: number;
+  heartbeat?: { ageSec: number; mode: string };
+}
+
 export interface ModelState {
   tick: number;
   builtAt: string;
@@ -153,6 +168,8 @@ export interface ModelState {
   };
   conversations: ModelConversation[];
   missing: string[];
+  /** Decisión auto o board del Market Test (`src/venue/mechanism.ts`), calculada con las sesiones medidas en sombra. */
+  venue?: { mechanismDecision: MechanismDecisionView };
   personas?: unknown[];
   world?: { eggs?: { byPersona?: Record<string, { foundByOthers?: unknown[]; left?: number; leftAssumed?: boolean }> } } & Record<string, unknown>;
   time?: Record<string, unknown>;

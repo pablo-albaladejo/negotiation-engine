@@ -1,4 +1,5 @@
 import { open, readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
@@ -7,6 +8,9 @@ import { loadPosterior, type PersonaEstimates } from "../../../src/dealers/histo
 import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../../src/coordinator/coordinator.js";
 import { parseOffers, readSide } from "../../../src/trades/trades.js";
 import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../../../src/coordinator/routes.js";
+import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, ticksPerHourOf } from "../../../src/venue/mechanism.js";
+import { DEFAULT_HEARTBEAT_FILE, DEFAULT_SESSIONS_FILE, loadBenchSessions, loadHeartbeat, publicSession } from "../../../src/broker/shadow.js";
+import { ScheduleSchema } from "../../../src/duels/schemas.js";
 import type { ApiResponse } from "../api.js";
 import { FeedEventSchema, feedLine, parseList, type FeedLine } from "./bazaar-board-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
@@ -455,7 +459,27 @@ export class BazaarModel {
     const stateAny = state as GameState & Record<string, unknown>;
     const venuesRaw = record(stateAny.markets).venues ? null : await client.raw("GET", "/api/venues").catch(() => null);
     const nowOut = await this.nowOf(client, state, me, market?.rastro ?? null, Array.isArray(record(stateAny.markets).venues) ? (record(stateAny.markets).venues as unknown[]) : Array.isArray(record(venuesRaw).venues) ? (record(venuesRaw).venues as unknown[]) : [], intents);
-    const sched = scheduleEvents(await client.raw("GET", "/api/schedule").catch(() => null));
+    const schedRaw = await client.raw("GET", "/api/schedule").catch(() => null);
+    const sched = scheduleEvents(schedRaw);
+    // ¿auto o board? Misma regla que `bazaar:play`: sesiones y latido del broker en sombra (disco, solo lectura).
+    const schedParsed = ScheduleSchema.safeParse(schedRaw);
+    const nowHours = state.time.gameHour ?? state.clock.tHours;
+    const heartbeat = loadHeartbeat(join(this.bazaarDir, DEFAULT_HEARTBEAT_FILE));
+    state.venue = {
+      mechanismDecision: decideMechanism(
+        {
+          ...(state.ours.venue?.mechanism ? { current: state.ours.venue.mechanism } : {}),
+          sessions: loadBenchSessions(join(this.bazaarDir, DEFAULT_SESSIONS_FILE)).map(publicSession),
+          ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}),
+          ...(nowHours !== undefined ? { nowHours } : {}),
+          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours),
+          ...(schedParsed.success ? { schedule: schedParsed.data } : {}),
+          ...(heartbeat ? { heartbeat } : {}),
+          now: new Date(),
+        },
+        { ...DEFAULT_MECHANISM_THRESHOLDS, cashFloor: PLAY_DEFAULTS.cashFloor },
+      ),
+    };
     const feed = parseList(FeedEventSchema, record(this.deps.feed?.() ?? null).events ?? this.deps.feed?.());
     const triggers = feed.filter((e) => TRIGGER.test(e.type ?? "")).slice(-15).reverse().map(feedLine);
     const eggsFeed = feed
