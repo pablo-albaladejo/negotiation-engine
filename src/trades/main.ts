@@ -2,7 +2,7 @@ import { parseArgs } from "node:util";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
 import { DEFAULT_TRADE_PARAMS, type TradeParams } from "./trades.js";
-import { TradesAgent, type TradesApi } from "./agent.js";
+import { defaultListBackoffFile, TradesAgent, type TradesApi } from "./agent.js";
 
 /**
  * `pnpm bazaar:trades --dry-run --once`: reads the El Rastro board, our offers, the feed and our
@@ -61,7 +61,7 @@ export async function runTradesCli(
     client = new BazaarClient({ url: env.url, key: env.key });
   }
   log(`trades: ${dryRun ? "DRY-RUN" : "LIVE"} · max-offers ${params.maxOffers} · max-spend ${params.maxSpend} P · max-bids ${params.maxBids} · min-margin ${params.minMargin} P · expires ${params.expiresInTicks} ticks · cash-floor ${params.cashFloor} P`);
-  const agent = new TradesAgent(client, params, { dryRun, log, top: n("top", values.top, 10) });
+  const agent = new TradesAgent(client, params, { dryRun, log, top: n("top", values.top, 10), backoffFile: defaultListBackoffFile(process.cwd()) });
   const maxTicks = values.once ? 1 : values.ticks !== undefined ? n("ticks", values.ticks, 1) : Infinity;
   for (let i = 0; i < maxTicks; i++) {
     await agent.step();

@@ -13,6 +13,7 @@ import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.
 import { arbitrageLines, personaArbitrage } from "./arbitrage.js";
 import { defaultPlanLogFile, holdingsOf, planExecution, planIntent, writePlanLine, type PlanExecution } from "./plan-log.js";
 import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
+import { defaultListBackoffFile } from "../trades/agent.js";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { duelsApi } from "../duels/schemas.js";
@@ -103,7 +104,7 @@ async function main() {
     pageTargets,
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
   });
-  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") });
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));

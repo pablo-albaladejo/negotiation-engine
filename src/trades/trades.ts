@@ -371,8 +371,11 @@ export interface TradeParams {
   maxNewPerTick: number;
   /** Cash never spent below this (acceptances and open bids). */
   cashFloor: number;
-  /** After this many postings of the same listing with no fill and no visible bid, reposts back off exponentially. */
+  /** After this many postings (new or reprice) of the same asset with no fill, it is neither reposted nor repriced for `relistBackoffTicks`. */
   relistBackoffAfter: number;
+  relistBackoffTicks: number;
+  /** A listing is repriced only if its target moved at least this much (P), or a rival asks less for the same card. */
+  repriceHysteresis: number;
   /** Extra ask premium on a card another team asked for or that brings a team within 2 of a page (`TradeState.rivals`). */
   demandPremium: number;
   /** Cash kept for page-completing cards we still lack: only buys of `refs` may use it. */
@@ -394,7 +397,9 @@ export const DEFAULT_TRADE_PARAMS: TradeParams = {
   maxBids: 12,
   maxNewPerTick: 12,
   cashFloor: 0,
-  relistBackoffAfter: 3,
+  relistBackoffAfter: 6,
+  relistBackoffTicks: 60,
+  repriceHysteresis: 2,
   demandPremium: 0.15,
 };
 
@@ -665,15 +670,35 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       c = applyCards(c, [ref], []);
     }
   }
-  // Demand from other teams lifts the ask (never the floor): base = reference (or floor) × (1 + premium).
+  // One ask per card, computed once per tick for every listed copy: the floor is the highest among its spare copies.
+  // Rivals asking for the same card: undercut the cheapest by 1 P, no premium. Otherwise the reference (or the floor)
+  // × (1 + premium), where demand from other teams lifts the premium (never the floor).
   const demanded = (ref: string) => (state.rivals?.demand.get(ref)?.length ?? 0) > 0;
-  const listTarget = (ref: string, loss: number) => {
-    const floor = minAsk(loss, params.minMargin, fees);
-    const reference = priceReference(ref, state.model, state.settlements, asks);
-    const extra = demanded(ref) ? params.demandPremium : 0;
-    const target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + params.askPremium + extra)) : Math.ceil(floor * (1 + extra)));
-    return { floor, reference, target };
+  const cheapestAsk = (ref: string): number | undefined => {
+    const xs = asks.filter((q) => q.ref === ref).map((q) => q.price);
+    return xs.length ? Math.min(...xs) : undefined;
   };
+  const targets = new Map<string, { floor: number; reference: PriceRef | undefined; target: number }>();
+  const listTarget = (ref: string) => {
+    const known = targets.get(ref);
+    if (known) return known;
+    const floor = Math.max(...spares.filter((s) => s.ref === ref).map((s) => minAsk(s.loss, params.minMargin, fees)));
+    const rival = cheapestAsk(ref);
+    let reference: PriceRef | undefined;
+    let target: number;
+    if (rival !== undefined) {
+      reference = { price: rival, source: "cheapest rival ask" };
+      target = Math.max(floor, rival - 1);
+    } else {
+      reference = priceReference(ref, state.model, state.settlements, asks);
+      const extra = demanded(ref) ? params.demandPremium : 0;
+      target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + params.askPremium + extra)) : Math.ceil(floor * (1 + extra)));
+    }
+    const out = { floor, reference, target };
+    targets.set(ref, out);
+    return out;
+  };
+  const backingOff = (assetId: number) => (state.listBackoff?.get(assetId) ?? -Infinity) > state.tick;
 
   // Bids: page cards we don't hold from the album's sets; `missing` = page cards still missing (fewer first).
   const bidTargets = new Map<string, { cap: number; target: number; value: number; reference: PriceRef | undefined; gain: number; missing: number }>();
@@ -710,8 +735,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     return true;
   };
 
-  // Existing listings: valid ones are kept; below the floor are repriced now; old ones, slowly.
-  for (const e of existing.filter((x) => x.kind === "list")) {
+  // Existing listings: valid ones are kept; below the floor are repriced now; the rest jump to the card's target when it
+  // moved by ≥ `repriceHysteresis`, a rival asks less than we do, or another copy of the card is listed at another price.
+  const existingLists = existing.filter((x) => x.kind === "list");
+  for (const e of existingLists) {
     const id = e.assetId as number;
     if (!heldIds.has(id) || reserved.has(id)) {
       cancels.push({ id: e.offer.id, reason: `asset ${id} no longer available` });
@@ -723,18 +750,19 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       cancels.push({ id: e.offer.id, reason: `asset ${id} is our last free ${e.ref} (album copy)` });
       continue;
     }
-    const { floor, target, reference } = listTarget(e.ref, spare.loss);
+    const { floor, target, reference } = listTarget(e.ref);
     const loss = spare.loss;
-    const age = state.tick - (e.offer.created_tick ?? state.tick);
-    const backingOff = (state.listBackoff?.get(id) ?? -Infinity) > state.tick && !bids.some((q) => q.ref === e.ref);
+    const rival = cheapestAsk(e.ref);
+    const undercut = rival !== undefined && rival < e.price;
+    const split = existingLists.some((x) => x.ref === e.ref && x.price !== e.price);
     let price = e.price;
     let why: PlannedPost["why"] | undefined;
     if (e.price < floor) {
       price = floor;
       why = "safety";
-    } else if (!backingOff && age >= params.repriceAfterTicks && target !== e.price) {
-      price = Math.max(floor, slowReprice(e.price, target, params.repriceFrac));
-      if (price !== e.price) why = "reprice";
+    } else if (!backingOff(id) && target !== e.price && (Math.abs(target - e.price) >= params.repriceHysteresis || undercut || split)) {
+      price = target;
+      why = "reprice";
     }
     if (why) {
       const post: PlannedPost = { key: e.key, kind: "list", ref: e.ref, price, value: price - tradeFee(price, 1, fees) - loss, limit: floor, reference, why, replaces: e.offer.id, body: listBody(id, price, params) };
@@ -815,9 +843,9 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
 
   // New listings of duplicates (by value created), then new bids (by value created).
   const newLists = spares
-    .filter((s) => !listedAssets.has(s.assetId) && !((state.listBackoff?.get(s.assetId) ?? -Infinity) > state.tick && !bids.some((q) => q.ref === s.ref)))
+    .filter((s) => !listedAssets.has(s.assetId) && !backingOff(s.assetId))
     .map((s) => {
-      const { floor, target, reference } = listTarget(s.ref, s.loss);
+      const { floor, target, reference } = listTarget(s.ref);
       return { s, floor, target, reference, value: target - tradeFee(target, 1, fees) - s.loss };
     })
     .sort((a, b) => b.value - a.value || a.s.assetId - b.s.assetId);

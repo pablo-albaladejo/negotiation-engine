@@ -333,8 +333,8 @@ export class TradesRoute {
   scannerContext: Pick<MarketsContext, "ledger" | "cashFloor" | "spendPerHour"> = {};
 
   /** `params`: the coordinator's `--max-spend` and `--cash-floor` (otherwise the El Rastro defaults). */
-  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}) {
-    this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {} });
+  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}, backoffFile?: string) {
+    this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });
   }
 
   /** El Rastro state and plan of the last proposal (the rival-page listings reuse them; `undefined` before the first). */

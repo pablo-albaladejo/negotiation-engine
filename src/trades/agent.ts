@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog } from "../shared/schemas.js";
 import { assetsInOffers, assetsInThreads } from "../shared/asset-locks.js";
@@ -27,6 +29,27 @@ export interface TradesAgentOptions {
   top?: number;
   /** Ticks for which an acceptance of ours reserves its assets (settles on the next tick). */
   reserveTicks?: number;
+  /** Listing post counts and backoffs survive restarts here (written only live; `pnpm bazaar:play` restarts often). */
+  backoffFile?: string;
+}
+
+/** Shared by `pnpm bazaar:play` and `pnpm bazaar:trades`: asset ids are global, so one file for every day. */
+export const defaultListBackoffFile = (root: string): string => join(root, "results", "bazaar-live", "list-backoff.json");
+
+interface BackoffMemo {
+  posts: Record<string, number>;
+  until: Record<string, number>;
+}
+
+function loadBackoff(file: string | undefined): BackoffMemo {
+  if (!file || !existsSync(file)) return { posts: {}, until: {} };
+  try {
+    const d = JSON.parse(readFileSync(file, "utf8")) as Partial<BackoffMemo>;
+    return { posts: d.posts ?? {}, until: d.until ?? {} };
+  } catch {
+    // Corrupt file: start counting again.
+    return { posts: {}, until: {} };
+  }
 }
 
 export interface StepResult {
@@ -64,6 +87,18 @@ export class TradesAgent {
     private readonly opts: TradesAgentOptions,
   ) {
     this.log = opts.log ?? console.log;
+    const memo = loadBackoff(opts.backoffFile);
+    for (const [id, n] of Object.entries(memo.posts)) this.listPosts.set(Number(id), n);
+    for (const [id, t] of Object.entries(memo.until)) this.listBackoff.set(Number(id), t);
+  }
+
+  private saveBackoff(): void {
+    const file = this.opts.backoffFile;
+    if (!file) return;
+    mkdirSync(dirname(file), { recursive: true });
+    const tmp = `${file}.tmp-${process.pid}`;
+    writeFileSync(tmp, `${JSON.stringify({ posts: Object.fromEntries(this.listPosts), until: Object.fromEntries(this.listBackoff) })}\n`);
+    renameSync(tmp, file);
   }
 
   async state(): Promise<TradeState> {
@@ -100,7 +135,7 @@ export class TradesAgent {
     this.trackFilledBids(mine, clock.tick);
     for (const [id, until] of this.reservedUntil) if (until < clock.tick) this.reservedUntil.delete(id);
     const heldIds = new Set(held.map((a) => a.id));
-    for (const id of this.listPosts.keys()) {
+    for (const id of new Set([...this.listPosts.keys(), ...this.listBackoff.keys()])) {
       if (heldIds.has(id)) continue;
       this.listPosts.delete(id);
       this.listBackoff.delete(id);
@@ -189,6 +224,7 @@ export class TradesAgent {
     for (const c of plan.cancels) {
       if (await attempt(`cancel #${c.id}`, () => this.api.cancelOffer(c.id))) this.cancelled.add(c.id);
     }
+    let backoffChanged = false;
     for (const p of plan.posts) {
       if (p.replaces !== undefined && !this.cancelled.has(p.replaces)) {
         errors.push(`post ${p.kind} ${p.ref} @${p.price}: skipped, cancel of #${p.replaces} did not go through`);
@@ -199,16 +235,18 @@ export class TradesAgent {
       if (!ok && errors.at(-1)?.match(/wait_for_tick|rate_limited|too_many/)) break;
       // The server says the asset is busy elsewhere: it is neither listed nor used to pay for a few ticks.
       if (!ok && assetId !== undefined && errors.at(-1)?.includes("asset_locked")) this.reservedUntil.set(assetId, state.tick + (this.opts.reserveTicks ?? 2));
-      if (ok && assetId !== undefined) {
+      // Every post of an asset (new or reprice) counts; after `relistBackoffAfter` it rests `relistBackoffTicks` and counts again.
+      if (ok && assetId !== undefined && p.kind === "list") {
         const n = (this.listPosts.get(assetId) ?? 0) + 1;
-        this.listPosts.set(assetId, n);
-        const k = n - this.params.relistBackoffAfter;
-        if (k >= 0) this.listBackoff.set(assetId, state.tick + this.params.repriceAfterTicks * 2 ** (k + 1));
+        this.listPosts.set(assetId, n >= this.params.relistBackoffAfter ? 0 : n);
+        if (n >= this.params.relistBackoffAfter) this.listBackoff.set(assetId, state.tick + this.params.relistBackoffTicks);
+        backoffChanged = true;
       }
       // A bid may fill before the next read: it is recorded now with the id returned by the POST.
       const id = (lastResponse as { id?: unknown; offer?: { id?: unknown } } | undefined)?.id ?? (lastResponse as { offer?: { id?: unknown } } | undefined)?.offer?.id;
       if (ok && p.kind === "bid" && typeof id === "number") this.openBids.set(id, { cash: p.price, expires: state.tick + this.params.expiresInTicks });
     }
+    if (backoffChanged) this.saveBackoff();
     for (const line of sent) this.log(`sent: ${line}`);
     for (const line of errors) this.log(`error: ${line}`);
     return { plan, sent, errors };
