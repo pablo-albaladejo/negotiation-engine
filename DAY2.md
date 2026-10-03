@@ -47,7 +47,7 @@ Sin `--live --confirm` nunca es en vivo. Con `--detach` se confirma en la termin
 
 - El venue sigue en **auto**: en el Market Test, auto da **la mitad de los puntos**.
 - El broker en sombra (`broker` en `bazaar:up`) mide en dry-run qué habría cruzado nuestro broker con el bench, para comparar con auto. No envía nada.
-- Pasar a board solo si **el código lo recomienda** (la decisión la está construyendo otro agente en `src/venue`, `src/broker` y `src/state`) **y Pablo lo aprueba**: `--confirm --allow-venue-switch` (flag aún por llegar con esa decisión).
+- Pasar a board solo si **el código lo recomienda** (`decideMechanism` en `src/venue/mechanism.ts`: ≥ 2 sesiones medidas, ratio ≥ 1,10, peor sesión ≥ 0,95 y caja suficiente) **y Pablo lo aprueba**: `pnpm bazaar:play --confirm --allow-venue-switch` (`venueSwitchGate`, `src/venue/route.ts`). Hoy `executeVenueMechanism` solo imprime los pasos: el cierre del venue del kit está sin probar.
 
 ## Dónde se aprende cada tick
 

@@ -31,6 +31,7 @@ src/
 ├─ state/     GameState por tick, Conversation, personas, eggs y flags (solo GET)
 ├─ flags/     detector de mala fe: texto del dealer frente a la estructura de su oferta
 ├─ packs/     sobres: estado, comprar, abrir o vender cerrado (ruta de pnpm bazaar:play)
+├─ markets/   mercados entre El Rastro y otros venues: hueco neto = hueco − comisión − penalización por rival (ruta de pnpm bazaar:play)
 ├─ hints/     corpus de líneas de dealers (pistas de eggs; nunca una cifra)
 ├─ agenda/    calendario como playbook y disparadores del feed (los usa pnpm bazaar:play)
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
@@ -64,6 +65,8 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:record` | Graba el stream en vivo (`/api/events/stream`, team y public) en `results/` para reconstruir el día. |
 | `pnpm bazaar:dump` | Volcado del estado y del día (cartas, hilos, duelos, feed) en `results/` (solo lectura). |
 | `pnpm viewer` | Visor en http://127.0.0.1:5199/#bazaar |
+| `pnpm viewer:typecheck` · `pnpm viewer:test` | TypeScript y tests del visor (antes de comitear si se toca `viewer/`). |
+| `pnpm test:watch` | Tests de guardarraíles en modo watch. |
 | `pnpm ds:test` | Test de seguridad del sistema de diseño (sin HTML inyectado). |
 
 Detalle de cada pieza: [`src/AGENTS.md`](src/AGENTS.md).
