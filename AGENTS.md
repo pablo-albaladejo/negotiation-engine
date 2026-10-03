@@ -68,7 +68,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:audit` | Auditor de ineficiencias de solo lectura: compras repetidas, ida y vuelta con pérdida, copia del álbum perdida, dos rutas a la vez, fallos repetidos; `--date` informe, `--watch` en vivo. |
 | `pnpm bazaar:news` | Noticias del Bazaar (Radio Rastro, Boletín, El Tablón): `news.jsonl` y news-summary.json para el panel «Radio Rastro» del visor. Solo mostrar: nunca una cifra ni una decisión (`--once`, `--no-llm`). |
 | `pnpm bazaar:doctor` | Comprueba que todo está listo (✓/✗): `.env`, Node, git, tests, API, puerto del visor y `bazaar:play --dry-run --once` (`--fast`). |
-| `pnpm bazaar:up` | Doctor y recorder, visor, `bazaar:play`, broker en sombra, news y audit (`--no-audit` lo quita), en dry-run (en vivo: `--live --confirm`); `pnpm bazaar:down` para lo de `--detach`. Ver [`DAY2.md`](DAY2.md). |
+| `pnpm bazaar:up` | Doctor y recorder, visor, `bazaar:play`, broker en sombra, news y audit (`--no-audit` lo quita), en dry-run (en vivo: `--live --confirm`; `--broker-live` solo con ellos: broker con `--confirm` en vez de `--shadow`); `pnpm bazaar:down` para lo de `--detach`. Ver [`DAY2.md`](DAY2.md). |
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
 | `pnpm bazaar:scan` | GET a todos los endpoints, guarda las respuestas. |
 | `pnpm bazaar:feed` | Mensajes nuevos de nuestros hilos en vivo (solo lectura). |

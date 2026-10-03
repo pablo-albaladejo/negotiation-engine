@@ -4,7 +4,7 @@
 //   recorder → pnpm bazaar:record (records the stream; the only thing that keeps the feed's full history)
 //   viewer   → pnpm viewer (if the port already serves the viewer, it is reused and no other is started)
 //   play     → pnpm bazaar:play in a loop, in DRY RUN by default
-//   broker   → pnpm bazaar:broker --shadow in a loop (Market Test shadow; always dry-run; not started without .env.broker)
+//   broker   → pnpm bazaar:broker --shadow in a loop (Market Test shadow; dry-run unless --broker-live with --live --confirm, then --confirm; not started without .env.broker)
 //   news     → pnpm bazaar:news (Radio Rastro watcher for the viewer; display only, read-only GETs)
 //   audit    → pnpm bazaar:audit --watch (read-only inefficiency monitor: audit.jsonl + audit-status.json; --no-audit skips it)
 // Live only with `--live --confirm` and typing LIVE in the terminal. Ctrl-C stops all. A child that dies is
@@ -29,6 +29,7 @@ const { values } = parseArgs({
     "no-gate": { type: "boolean", default: false },
     "no-broker": { type: "boolean", default: false },
     "no-audit": { type: "boolean", default: false },
+    "broker-live": { type: "boolean", default: false },
     "viewer-port": { type: "string" },
     "play-args": { type: "string", default: "" },
   },
@@ -130,13 +131,17 @@ if (!live && playArgs.includes("--confirm")) {
   say("--play-args cannot carry --confirm in dry-run.");
   process.exit(2);
 }
+// --broker-live swaps the shadow broker for a live one (--confirm), only when --live --confirm are also given.
+if (values["broker-live"] && !live) say("--broker-live needs --live --confirm: keeping the broker in SHADOW.");
+const brokerLive = values["broker-live"] && live;
 const specs = [
   { name: "recorder", color: 36, cmd: "pnpm", args: ["bazaar:record"] },
   ...(reuseViewer ? [] : [{ name: "viewer", color: 35, cmd: "pnpm", args: ["viewer"], env: { VIEWER_PORT: String(viewerPort) } }]),
   { name: "play", color: live ? 31 : 33, cmd: "pnpm", args: ["bazaar:play", ...playArgs], gated: !live && !values["no-gate"] },
-  // Shadow broker: ALWAYS --shadow (dry-run without announcing; also with --live), watches the bench to compare against auto in the Market Test.
+  // Broker: --shadow by default (dry-run without announcing; also with --live), watches the bench to compare against auto in the Market Test.
+  // With --broker-live (and --live --confirm) it is the ONLY broker child and runs with --confirm (live matching) instead of --shadow.
   // Loads .env.broker itself (loadBrokerEnv). Reads every 5 s (not every 1 s) so as not to spend API quota.
-  ...(noBroker ? [] : [{ name: "broker", color: 34, cmd: "pnpm", args: ["bazaar:broker", "--shadow", "--poll-ms", "5000"] }]),
+  ...(noBroker ? [] : [{ name: "broker", color: brokerLive ? 31 : 34, cmd: "pnpm", args: ["bazaar:broker", brokerLive ? "--confirm" : "--shadow", "--poll-ms", "5000"] }]),
   // News watcher (display only): up already logs it to news.log, so it does not write its own copy.
   { name: "news", color: 92, cmd: "pnpm", args: ["bazaar:news", "--no-file-log"] },
   // Auditor: read-only (local traces, GET /api/me at most every 5 min), same in dry-run and live.

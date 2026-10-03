@@ -18,7 +18,7 @@ En primer plano, **Ctrl-C para todos los procesos**. El doctor sale con 1 si alg
 | `recorder` | `pnpm bazaar:record`: graba el stream (team y public). Lo único que guarda el feed entero. | `results/bazaar-live/<fecha>/stream-*.jsonl` |
 | `viewer` | `pnpm viewer` en http://127.0.0.1:5199/#bazaar. Si ya hay un visor en 5199 se reutiliza; si otro proceso ocupa el puerto, usa el siguiente libre. | — |
 | `play` | `pnpm bazaar:play` en bucle, **dry-run**: estado, agenda, disparadores, intenciones y arbitraje cada tick. En dry-run espera con las puertas cerradas o el reloj en pausa (`--no-gate` para correrlo igual). | corpus de pistas, caché de valores y posterior por persona en `results/bazaar-live/` |
-| `broker` | `pnpm bazaar:broker --shadow --poll-ms 5000` en bucle: **broker en sombra** del Market Test. `--shadow` = `--dry-run --no-announce`; siempre, también con `--live`. | — |
+| `broker` | `pnpm bazaar:broker --shadow --poll-ms 5000` en bucle: **broker en sombra** del Market Test. `--shadow` = `--dry-run --no-announce`; siempre, también con `--live`, salvo `--broker-live` (ver abajo). | — |
 | `news` | `pnpm bazaar:news`: noticias de Radio Rastro (stream del recorder y `GET /api/news` cada 30 s) y un resumen (LLM o reglas) para el panel «Radio Rastro» de Now. Solo mostrar. | `results/bazaar-live/<fecha>/news.jsonl` y `news-summary.json` |
 
 - **Logs:** `results/logs/<fecha>/<proceso>.log` (con hora) y `up-events.log` (arranques, caídas, reinicios). Con `--detach`, la salida de up va a `up.log`.
@@ -33,6 +33,8 @@ pnpm bazaar:up --live --confirm     # aviso grande y hay que escribir LIVE; cual
 ```
 
 Sin `--live --confirm` nunca es en vivo. Con `--detach` se confirma en la terminal antes de pasar a segundo plano. El broker en sombra sigue en dry-run también en vivo.
+
+`--broker-live` cambia el broker en sombra por uno en vivo (`pnpm bazaar:broker --confirm --poll-ms 5000`, casa ofertas de verdad): solo vale junto a `--live --confirm`; sin ellos avisa y deja el broker en `--shadow`. En vivo con `--broker-live` solo hay un broker (no se lanza también el de sombra). Por defecto no cambia nada.
 
 **Antes de pasar a vivo:**
 
@@ -49,6 +51,19 @@ Sin `--live --confirm` nunca es en vivo. Con `--detach` se confirma en la termin
 - El venue sigue en **auto**: en el Market Test, auto da **la mitad de los puntos**.
 - El broker en sombra (`broker` en `bazaar:up`) mide en dry-run qué habría cruzado nuestro broker con el bench, para comparar con auto. No envía nada.
 - Pasar a board solo si **el código lo recomienda** (`decideMechanism` en `src/venue/mechanism.ts`: ≥ 2 sesiones medidas, ratio ≥ 1,10, peor sesión ≥ 0,95 y caja suficiente) **y Pablo lo aprueba**: `pnpm bazaar:play --confirm --allow-venue-switch` (`venueSwitchGate`, `src/venue/route.ts`). Hoy `executeVenueMechanism` solo imprime los pasos: el cierre del venue del kit está sin probar.
+
+### Runbook: pasar v04 a board tras el Market Test (necesita el OK de Pablo)
+
+Por qué (tick 479, `GET /api/leaderboard` y `/api/venues`): el mercado por encima de 7,5 lo da el **valor creado entre otros equipos en nuestro venue** (RULES: no se puede operar en el propio venue), no el mecanismo. t14 y t17 (auto, con 1 trade) sacan 11,86 y 10,26; t13 y t03 (board, 0 trades) sacan 5,49 y 3,61. Los líderes board (t10, t12) casan pujas **«cualquier copia»** (`want.cards`), algo que el puesto auto no hace. Ese es el motivo para cambiar. Un board que solo case por cotización iguala al auto (mitad del bench) y, si falla, baja de 7,5.
+
+1. **Cuándo:** después del Market Test del tick ~681 (sesiones cada 2 h: 201, 441, 681…). Si en una sesión no hay venue abierto, puntúa 0. Por eso, no cerrar v04 en los 20 ticks anteriores a una sesión.
+2. **Caja:** abrir cuesta 250 P de fianza + 20 P; la fianza de v04 vuelve tras un periodo de espera de duración desconocida. Hacen falta **≥ 290 P** libres (270 + suelo de 20). En el tick 479 había **201 P** (faltan 89). Las únicas repetidas (LAT-04, SAL-03) valen menos de 4 P: no cubren el hueco. Hay que dejar de gastar en El Rastro hasta tenerlos (choca con subir `--max-spend` a 250), nunca vendiendo copias únicas de página.
+3. **Antes:** comprobar en `broker.log` (sombra) que el casado «cualquier copia» encuentra pares en el libro real.
+4. **Pasos** (cada uno con OK):
+   - Cerrar v04: `POST /api/venues/v04/close` (equipo).
+   - `pnpm bazaar:venue --mechanism board --confirm`, con nombre y descripción que anuncien «any copy, 0 fee». Guarda la clave nueva en `.env.broker`.
+   - Parar el broker en sombra y lanzar `pnpm bazaar:broker --confirm`, o reiniciar `bazaar:up --live --confirm --broker-live` (lo coordina la sesión que lleva los reinicios).
+5. **Vigilar:** `broker.log` (matches por tick), `mm_points` y `market` en `/api/leaderboard`. Si el broker cae, el venue no casa: reiniciarlo antes de la siguiente sesión.
 
 ## Dónde se aprende cada tick
 
