@@ -225,6 +225,7 @@ export class DealersRoute {
           probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
           firstStepFrac: () => (this.state?.personas.find((p) => p.id === id)?.model?.strategy.mirror_concessions.value === true ? MIRROR_FIRST_STEP_FRAC : 0),
           herBeta: () => this.state?.personas.find((p) => p.id === id)?.model?.strategy.beta.value ?? undefined,
+          herWalkAfterRounds: () => this.state?.personas.find((p) => p.id === id)?.model?.strategy.walk_after_rounds.value ?? undefined,
           unlockChase: () => (this.state ? unlockChaseFor(this.state, id) : undefined),
           packValueOf: (pack) => this.state?.packs.types.find((t) => t.id === pack)?.ourValue,
           pageTargets: this.o.pageTargets,
@@ -427,6 +428,9 @@ export class TradesRoute {
     const saleCtx: MarketsContext = trade ? { ...this.scannerContext, directedRefs: new Set(directedListings(trade).map((d) => d.ref)), pageTargets } : {};
     // The scanner's sales this tick, computed once (marketSale would rerun proposeMarkets per listing).
     const scannerSales = trade ? proposeMarkets(state, new Map(), { ...saleCtx, scanner: true, trade }).sales : undefined;
+    // `sell:<ref>` (one sale of a card per tick across routes) goes on the first listing of each card only: a second spare
+    // copy repriced in the same tick must not be dropped by its sibling (its cancel would leave it unlisted and churn).
+    const listedRefs = new Map<string, number>();
     plan.posts.forEach((p, k) => {
       // Never list a card below a better bid the markets route would take this tick (v02 bid 22 vs our El Rastro listing at 14).
       const sale = p.kind === "list" ? (scannerSales ? scannerSales.get(p.ref) : marketSale(state, p.ref)) : undefined;
@@ -438,7 +442,10 @@ export class TradesRoute {
         out.notes.push(`El Rastro: bid ${p.ref} @ ${p.price} P held back: a dealer thread of ours is buying it`);
         return;
       }
-      const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [`sell:${p.ref}`] : [`buy:${p.ref}`])];
+      const nth = p.kind === "list" ? (listedRefs.get(p.ref) ?? 0) : 0;
+      if (p.kind === "list") listedRefs.set(p.ref, nth + 1);
+      const sellLock = nth === 0 ? `sell:${p.ref}` : `sell:${p.ref}#${nth + 1}`;
+      const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [sellLock] : [`buy:${p.ref}`])];
       out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, price: p.price, ref: p.ref, locks, summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` });
     });
     out.notes.push(`El Rastro: ${plan.evaluated} offers read, ${plan.opportunities.length} opportunities${plan.notes.length ? ` · ${plan.notes.slice(0, 2).join(" · ")}` : ""}`);
@@ -451,7 +458,8 @@ export class TradesRoute {
     const trimmed: TickPlan = {
       ...plan,
       ...(plan.accept && selected.has(`trades:accept:${plan.accept.offer.id}`) ? {} : { accept: undefined }),
-      cancels: plan.cancels.filter((c) => selected.has(`trades:cancel:${c.id}`)),
+      // A reprice cancel goes only with its replacement: if the new post was dropped, the old offer stays up.
+      cancels: plan.cancels.filter((c) => selected.has(`trades:cancel:${c.id}`) && plan.posts.every((p, k) => p.replaces !== c.id || selected.has(`trades:post:${k}`))),
       posts: plan.posts.filter((_, k) => selected.has(`trades:post:${k}`)),
     } as TickPlan;
     if (!trimmed.accept) delete (trimmed as { accept?: unknown }).accept;
@@ -597,6 +605,8 @@ function nextProbeFor(state: GameState, personaId: string): string | undefined {
   if (!persona) return undefined;
   const eggs = state.world.eggs.byPersona[persona.id];
   if (eggs && eggs.left <= 0) return undefined;
+  // Eggs are once per team: after ours fired at this persona, more probes there only risk a spam label (Abuela kept getting them).
+  if (state.ours.eggs.some((e) => e.persona === persona.id)) return undefined;
   const tried = new Set([...state.conversations.filter((c) => c.counterparty === persona.id).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)].map(normalize));
   return probePhrasesFor(state.hints.all, persona.id).find((k) => !tried.has(normalize(k)) && !tried.has(normalize(EGG_PARAMS.template.replace("{hint}", k))));
 }
