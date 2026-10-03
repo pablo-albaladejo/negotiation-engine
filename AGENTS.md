@@ -13,6 +13,12 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 - **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/shared/asset-locks.ts`).
 - **Nada en vivo sin aprobación**: los POST reales exigen quitar `--dry-run` y, donde aplica, `--confirm`.
 
+## Idioma
+
+- **Código, identificadores, comentarios y textos de desarrollo (logs, CLI, errores, UI) en inglés; la documentación (`*.md`) en español.**
+- El texto que va al juego (plantillas, frases de sondeo, regex sobre texto de dealers) es dato y conserva su idioma.
+- `pnpm docs:check` lo comprobará (el chequeo se añade aparte).
+
 ## Arquitectura
 
 ```
@@ -89,7 +95,7 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 ## Links a subcarpetas
 
 - [`src/`](src/AGENTS.md) — agente del Bazaar, una carpeta por concepto
-- [`src/engine/`](src/engine/AGENTS.md) — núcleo numérico
+- [`src/engine/`](src/engine/AGENTS.md) — núcleo numérico (el resto de `src/*` se enlaza desde `src/`)
 - [`test/`](test/AGENTS.md) — tests
 - [`scripts/`](scripts/AGENTS.md) — utilidades
 - [`docs/`](docs/AGENTS.md) — lecciones y kit
