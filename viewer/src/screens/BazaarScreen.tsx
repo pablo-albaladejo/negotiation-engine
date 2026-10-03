@@ -47,7 +47,7 @@ import { NowView } from "./now/NowView.js";
 
 export interface BazaarScreenProps {
   board: Board;
-  /** Snapshots locales de `score.jsonl` (historia de la cifra y qué la movió). */
+  /** Local snapshots from `score.jsonl` (history of the figure and what moved it). */
   model: BazaarModel;
   filters: BoardFilters;
   onFiltersChange: (filters: BoardFilters) => void;
@@ -144,8 +144,8 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
   );
 }
 
-/** Conversación completa: mensajes literales (nunca interpretados) alineados por tick con nuestras
- * decisiones (`decisions.jsonl`), y la línea de tiempo de ofertas. */
+/** Full conversation: verbatim messages (never interpreted) aligned by tick with our
+ * decisions (`decisions.jsonl`), and the offers timeline. */
 function ConversationDetail({ board, row, conv, model }: { board: Board; row: BoardRow; conv: ModelConversation | null; model: GameModel | null }) {
   const steps = boardTimeline(row);
   const party = partyOf(board, row);
@@ -212,8 +212,8 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
   );
 }
 
-/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite por tick, nuestro valor, el final y, si
- * el modelo lo tiene, el camino previsto (discontinuo) en los ticks siguientes. */
+/** Negotiation curve: our offers, theirs, our limit per tick, our value, the end and, if
+ * the model has it, the predicted path (dashed) over the following ticks. */
 function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConversation | null; model: GameModel | null }) {
   const base = offerCurve(row);
   if (!base) return conv ? <ModelCurve conv={conv} model={model} /> : null;
@@ -263,7 +263,7 @@ function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConv
   );
 }
 
-/** Props del gráfico con la predicción del dealer (su camino con banda, su límite, la retirada); nada si no hay. */
+/** Chart props with the dealer's prediction (its path with band, its limit, the walk-away); nothing if absent. */
 function predictionProps(o: PredictionOverlay | null) {
   if (!o) return {};
   return { predicted: o.predicted, theirLimit: o.theirLimit, ...(o.walkMarker ? { walkMarker: o.walkMarker } : {}) };
@@ -278,21 +278,21 @@ function predictionLegend(o: PredictionOverlay | null) {
   ];
 }
 
-/** Añade a la caja del cursor lo previsto del dealer en esa ronda. */
+/** Adds to the cursor box what is predicted for the dealer at that round. */
 function withPredictionLines(o: PredictionOverlay | null, lines: string[] | null, round: number, head: string): string[] | null {
   const extra = o ? predictionLines(o, round) : [];
   if (extra.length === 0) return lines;
   return [...(lines ?? [head]), ...extra];
 }
 
-/** Caja del cursor con el paso previsto, si cae en esa ronda. */
+/** Cursor box with the predicted step, if it falls on that round. */
 function plannedLines(curve: OfferCurve, planned: { round: number; value: number }[], lines: string[] | null, round: number): string[] | null {
   const p = planned.find((x, k) => k > 0 && x.round === round) ?? (planned.length === 1 ? planned.find((x) => x.round === round) : undefined);
   if (!p) return lines;
   return [...(lines ?? [`tick ${curve.firstTick + round - 1}`]), `planned ${p.value}`];
 }
 
-/** Curva solo del modelo (duelo o conversación sin precios registrados en el tablero): eje X = paso. */
+/** Model-only curve (duel or conversation without prices recorded on the board): X axis = step. */
 function ModelCurve({ conv, model }: { conv: ModelConversation; model: GameModel | null }) {
   const out = modelCurve(conv);
   if (!out) return null;
@@ -329,7 +329,7 @@ function ModelCurve({ conv, model }: { conv: ModelConversation; model: GameModel
   );
 }
 
-/** Cajón de una conversación que solo está en el modelo (sin fila en el tablero). */
+/** Drawer for a conversation that is only in the model (no board row). */
 function ModelOnlyDetail({ conv, model }: { conv: ModelConversation; model: GameModel | null }) {
   return (
     <Card title={`Conversation · ${conv.counterparty} (${conv.kind}) · ${sideLabel(conv)} · ${conv.id}`}>
@@ -666,8 +666,8 @@ function History({ board, rows, title, filters, onFiltersChange }: { board: Boar
 }
 
 /**
- * Panel lateral fijo para la conversación abierta: se lee sin perder el sitio en la página.
- * Se cierra con el botón, con Escape o pulsando fuera.
+ * Fixed side panel for the open conversation: readable without losing your place on the page.
+ * Closes with the button, with Escape or by clicking outside.
  */
 function Drawer({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
   useEffect(() => {
@@ -720,9 +720,9 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 
 /**
- * Cabina del Bazaar: arriba lo que hay que decidir (marcador, próximas citas, lo abierto ahora),
- * luego álbum, qué movió la cifra y si nuestros agentes están vivos; el historial y el mercado,
- * plegados. Todo sale de `/api/bazaar/board`; la UI no calcula la cifra.
+ * Bazaar cockpit: on top what must be decided (scoreboard, upcoming appointments, what is open now),
+ * then album, what moved the figure and whether our agents are alive; history and market
+ * collapsed. Everything comes from `/api/bazaar/board`; the UI does not compute the figure.
  */
 export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenProps) {
   const [view, setView] = useState<View>("now");
@@ -731,7 +731,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? null;
   const conv = filters.row ? modelConversationFor(model, selected?.id ?? filters.row) ?? modelConversationFor(model, filters.row) : null;
   const open = (id: string) => onFiltersChange({ ...filters, row: id });
-  /** Desde el modelo: la fila del tablero si existe; si no, la conversación del modelo. */
+  /** From the model: the board row if it exists; otherwise the model conversation. */
   const openModel = (id: string) => open(board.rows.some((r) => r.id === boardRowIdFor(id)) ? boardRowIdFor(id) : id);
   const { trades, duels } = historyGroups(board.rows);
   const duelPoints = board.header?.duel_points;

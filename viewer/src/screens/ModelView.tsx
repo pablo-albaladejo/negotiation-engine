@@ -38,10 +38,10 @@ import {
 } from "../model/gameModel.js";
 
 /**
- * Vista «Model»: lo que piensa nuestro agente en este tick, no un espejo de la API. Sigue el diagrama de tres
- * capas del spec (entorno → estado → decisión), luego línea de tiempo, coordinador, objetivos, personas y
- * pistas, conversaciones, mercados, y eggs y flags. Todo sale de `/api/bazaar/model` (dry-run, solo GET).
- * El texto de los dealers (pistas) se pinta solo como texto plano.
+ * «Model» view: what our agent thinks at this tick, not a mirror of the API. Follows the three-layer
+ * diagram of the spec (environment → state → decision), then timeline, coordinator, goals, personas and
+ * hints, conversations, markets, and eggs and flags. Everything comes from `/api/bazaar/model` (dry-run, GET only).
+ * Dealer text (hints) is rendered as plain text only.
  */
 
 const col = { display: "flex", flexDirection: "column", gap: "var(--space-2)" } as const;
@@ -55,7 +55,7 @@ function Muted({ children }: { children: ReactNode }) {
   return <span className="nr-muted">{children}</span>;
 }
 
-// ---------------------------------------------------------------- 1. entorno → estado → decisión
+// ---------------------------------------------------------------- 1. environment → state → decision
 
 function ThreeLayers({ model, board }: { model: GameModel; board: Board }) {
   const s = model.state;
@@ -127,7 +127,7 @@ function ThreeLayers({ model, board }: { model: GameModel; board: Board }) {
   );
 }
 
-// ---------------------------------------------------------------- línea de tiempo
+// ---------------------------------------------------------------- timeline
 
 const EVENT_COLOR: Record<string, string> = { duels: "var(--warn)", bench: "var(--us)", round: "var(--ok)", grant_all: "var(--ok)", set_release: "var(--them)", day_closes: "var(--muted)", day_opens: "var(--muted)", finale: "var(--warn)", freeze: "var(--warn)" };
 
@@ -367,7 +367,7 @@ function Goals({ model, board }: { model: GameModel; board: Board }) {
   );
 }
 
-// ---------------------------------------------------------------- 4. personas y pistas
+// ---------------------------------------------------------------- 4. personas and hints
 
 function SelectBox({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) {
   const id = useId();
@@ -493,7 +493,7 @@ function Personas({ model }: { model: GameModel }) {
   );
 }
 
-// ---------------------------------------------------------------- conversaciones del modelo
+// ---------------------------------------------------------------- model conversations
 
 function RarityDot({ rarity }: { rarity: string | undefined }) {
   if (!rarity) return null;
@@ -538,10 +538,10 @@ function ConversationsTable({ convs, onOpen }: { convs: ModelConversation[]; onO
   );
 }
 
-/** Texto o «—» si viene vacío o como «-». */
+/** Text or «—» if empty or «-». */
 const dash = (s: string | undefined): string => (s && s.trim() !== "" && s.trim() !== "-" ? s : "—");
 
-/** Estado y estrategia de una conversación (cajón lateral). Privado: solo local. */
+/** State and strategy of a conversation (side drawer). Private: local only. */
 export function ConversationModelPanel({ conv, model = null }: { conv: ModelConversation; model?: GameModel | null }) {
   const herWalk = herWalkText(model, conv);
   const p = conv.strategy.plan;
@@ -674,7 +674,7 @@ const RECOMMENDATION_TEXT = {
   "back-to-auto": "go back to auto",
 } as const;
 
-/** Recomendación auto o board del Market Test (la calcula el código con las sesiones medidas en sombra). */
+/** Market Test auto-or-board recommendation (computed by the code from the sessions measured in shadow). */
 function VenueDecision({ decision: d }: { decision: MechanismDecisionView | undefined }) {
   if (!d) return <Muted>Mechanism decision not available yet (no GameState).</Muted>;
   const measured = d.sessions.filter((s) => s.ratio !== undefined).length;
@@ -888,7 +888,7 @@ function Prices({ model }: { model: GameModel }) {
   );
 }
 
-// ---------------------------------------------------------------- eggs y flags
+// ---------------------------------------------------------------- eggs and flags
 
 function EggsAndFlags({ model }: { model: GameModel }) {
   const o = model.state?.ours;
