@@ -151,11 +151,13 @@ export function findChains(input: ForexInput): ForexState {
         const fees = b.fee + s.fee;
         const margin = r1(s.price - b.price - fees);
         if (margin < FOREX_MIN_MARGIN) continue;
-        const automated = b.kind === "dealer" && s.kind === "dealer";
+        // Run only between dealers and on a card we hold: a bought copy of a card we lack would stay in the album unsold.
+        const lacking = !(input.holdings[ref] ?? 0);
+        const automated = b.kind === "dealer" && s.kind === "dealer" && !lacking;
         const maxBuy = Math.floor(Math.min(b.hi, s.lo - fees - FOREX_MIN_MARGIN));
         const minSell = Math.ceil(Math.max(maxBuy + fees + FOREX_MIN_MARGIN, s.lo));
         const base = { card: ref, buy: b, sell: s };
-        const step = automated ? stepOf(base, input) : { current: -1, status: "shown only: a venue leg is not automated" };
+        const step = automated ? stepOf(base, input) : { current: -1, status: lacking ? "shown only: we lack the card, a bought copy would stay in the album" : "shown only: a venue leg is not automated" };
         const mine = input.team ? input.trades.filter((t) => t.team === input.team && t.ref === ref) : [];
         const doneToday = Math.min(mine.filter((t) => t.dealer === b.at && t.side === "sells").length, mine.filter((t) => t.dealer === s.at && t.side === "buys").length);
         chains.push({

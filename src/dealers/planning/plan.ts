@@ -281,7 +281,9 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
         if (input.cardTopic === false) return;
         for (const v of vals) {
           const fx = forexBuyRoute(dealer.id, v.id);
-          if (fx && forexLots(me) < FOREX_MAX_LOTS) {
+          // Only a card we already hold: the copy we buy is then the one we resell (our first stays). A card we lack would
+          // stay in the album unsold (3 Oct: SAL-11 epic Picaros ~140 -> Pilar ~195, 143 P of 181 tied up for nothing).
+          if (fx && v.held && forexLots(me) < FOREX_MAX_LOTS) {
             // Forex buy: valued at her rival's plausible bid; our max is the route's, so the resale clears the margin.
             const reservation = Math.min(cap, fx.maxBuy);
             const room = cap >= fx.maxBuy;
