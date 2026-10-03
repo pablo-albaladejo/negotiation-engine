@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
-import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
+import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter, type PageImpact } from "./planning/plan.js";
 import { readValueRules } from "../trades/trades.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
@@ -204,8 +204,8 @@ export class BazaarAgent {
   }
 
   /** What can still be spent: what is left of the hour, of the run and of the cash above the floor. */
-  budgetLeft(cash: number | undefined = this.lastCash): number {
-    return this.team.left(cash);
+  budgetLeft(cash: number | undefined = this.lastCash, keepPageReserve = false): number {
+    return this.team.left(cash, keepPageReserve);
   }
 
   /** Deals with this dealer in the last game hour. */
@@ -526,7 +526,8 @@ export class BazaarAgent {
     const busy = await busyAssets(this.api, me.id);
     const sell = spareTargets(me).find((t) => free(t) && !sellBlocked(t.topic, busy));
     if (sell) return sell;
-    const budget = this.budgetLeft(me.cash);
+    // Only page cards are bought here: they stay above the page reserve.
+    const budget = this.budgetLeft(me.cash, true);
     if (budget < 1) return undefined;
     this.catalog ??= await this.api.catalog();
     const missing = missingPageCards(me, this.catalog).filter((m) => (this.skip.get(`buy:${m.id}`) ?? -1) <= tick);
@@ -551,7 +552,8 @@ export class BazaarAgent {
     const chasing = active.chase !== undefined && this.chasePersona(me) === active.chase;
     const chaseOver = active.chase !== undefined && !chasing && target.value !== undefined;
     const ownRes = chaseOver ? (target.side === "buy" ? Math.min(target.reservation, Math.floor(target.value!)) : Math.max(target.reservation, Math.ceil(target.value!))) : target.reservation;
-    const spendable = target.pageCompleting ? this.team.pageLeft(me.cash) : this.budgetLeft(me.cash);
+    const page = (target as { page?: PageImpact }).page;
+    const spendable = target.pageCompleting ? this.team.pageLeft(me.cash) : this.budgetLeft(me.cash, !!page && page.after > page.have);
     const reservation = target.side === "buy" ? Math.max(0, Math.min(ownRes, me.cash, Math.floor(spendable))) : ownRes;
     const acceptValue = chasing && target.value !== undefined ? target.value + (target.side === "buy" ? UNLOCK_CHASE_TOLERANCE : -UNLOCK_CHASE_TOLERANCE) : target.value;
     const herAt = active.patience.herAtCounters();

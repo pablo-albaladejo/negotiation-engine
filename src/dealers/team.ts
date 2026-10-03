@@ -23,7 +23,7 @@ export class TeamBudget {
   readonly maxSpendPerHour: number;
   readonly maxSpendTotal: number;
   readonly cashFloor: number;
-  /** Cash kept for page-completing cards we still lack (set by the coordinator each tick); only `pageLeft` may use it. */
+  /** Cash kept for page-completing cards we still lack (set by the coordinator each tick); other page-card buys stay above it. */
   pageReserve = 0;
 
   constructor(o: TeamBudgetOptions) {
@@ -41,9 +41,12 @@ export class TeamBudget {
     return this.spentRun;
   }
 
-  /** What can still be spent: what is left of the hour, of the run and of the cash above the floor. */
-  left(cash?: number): number {
-    const byCash = cash === undefined ? Infinity : cash - this.cashFloor - this.pageReserve;
+  /**
+   * What can still be spent: what is left of the hour, of the run and of the cash above the floor. The page reserve
+   * only holds back buys that bring in a page card we lack (`keepPageReserve`); loose-surplus and pack buys ignore it.
+   */
+  left(cash?: number, keepPageReserve = false): number {
+    const byCash = cash === undefined ? Infinity : cash - this.cashFloor - (keepPageReserve ? this.pageReserve : 0);
     return Math.min(this.maxSpendPerHour - this.spentThisHour(), this.maxSpendTotal - this.spentRun, byCash);
   }
 
