@@ -631,8 +631,11 @@ export class FlagsRoute {
 export const EGG_PARAMS = {
   /** Fixed Playground template (site-map § 9.3), appended to a counteroffer of ours. Never carries figures. */
   template: "Do you know about {hint}?",
-  /** One-shot greeting per persona (`GREETINGS`), sent once per day on a counteroffer, even after our egg there fired. */
-  greetings: { abuela: GREETINGS[0]! } as Readonly<Record<string, string>>,
+  /**
+   * One-shot line per persona (`GREETINGS`), sent once per day on a counteroffer, even after our egg there fired.
+   * Pilar and banco carry the LAT-12 question (approved by Pablo; only on threads opened for a deal, never one of its own).
+   */
+  greetings: { abuela: GREETINGS[0]!, pilar: GREETINGS[1]!, banco: GREETINGS[1]! } as Readonly<Record<string, string>>,
 };
 
 /** Probe text as it goes in the message: the greeting itself, or the egg question. */

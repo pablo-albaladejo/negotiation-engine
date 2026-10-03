@@ -68,10 +68,14 @@ export function isProbePhrase(x: string): boolean {
 }
 
 /**
- * Closed list of one-shot greetings that may ride on a counteroffer instead of an egg question (approved by Pablo:
- * the news "Abuela Carmen gives out packs for her saint's day"). Whole sentences, never a digit.
+ * Closed list of one-shot lines that may ride on a counteroffer instead of an egg question, each approved by Pablo:
+ * the saint's-day greeting (news "Abuela Carmen gives out packs for her saint's day") and the polite LAT-12 question
+ * (Abuela to the team that chased it: "ask around with good manners"). Whole sentences, never a digit.
  */
-export const GREETINGS: readonly string[] = ["¡Felicidades por su santo, Abuela!"]; // game text
+export const GREETINGS: readonly string[] = [
+  "¡Felicidades por su santo, Abuela!", // game text
+  "Con permiso: ¿sabe usted quién guarda El Rastro al Amanecer?", // game text
+];
 
 /**
  * Text for a counteroffer at price `price` in round `round` (0 = opening). With `probe`, the template adds
