@@ -209,6 +209,10 @@ export class BazaarClient {
   openVenue(body: { name: string; fee_bps: number; fee_per_card: number; rules: Record<string, unknown>; description: string }): Promise<unknown> {
     return this.raw("POST", "/api/venues", body);
   }
+  /** Closes our market (bond back after a cooldown). Only from `bazaar:venue --replace` without --dry-run and with --confirm. */
+  closeVenue(venue: string): Promise<unknown> {
+    return this.raw("POST", `/api/venues/${encodeURIComponent(venue)}/close`);
+  }
   levels(): Promise<unknown> {
     return this.raw("GET", "/api/levels");
   }

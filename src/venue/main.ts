@@ -1,16 +1,30 @@
 import { chmodSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { ScheduleSchema } from "../duels/schemas.js";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
+import { currentVenueOf, formatSwitchPlan, planVenueSwitch } from "./switch.js";
 import { formatVenuePlan, planVenue, type Mechanism } from "./venue.js";
 
 /**
  * `pnpm bazaar:venue --dry-run`: prints which venue it would open (GET only). Actually opening requires dropping
  * `--dry-run` AND passing `--confirm`, and meeting level ≥ 2 and cash ≥ 270. The broker key is saved in
- * `.env.broker` (git-ignored, mode 600) and never printed.
+ * `.env.broker` (git-ignored, mode 600) and never printed. `--replace` closes our venue and opens one with the
+ * other mechanism (`src/venue/switch.ts`): same flags, plus cash ≥ 290 and no bench within 20 ticks.
  */
-export type VenueApi = Pick<BazaarClient, "me" | "venues" | "clock" | "openVenue">;
+export type VenueApi = Pick<BazaarClient, "me" | "venues" | "clock" | "openVenue" | "closeVenue" | "request">;
+
+function saveBrokerKey(res: Record<string, unknown>, log: (line: string) => void): Record<string, unknown> {
+  const { broker_key: brokerKey, ...rest } = res;
+  if (typeof brokerKey === "string") {
+    const file = resolve(process.cwd(), ".env.broker");
+    writeFileSync(file, `BAZAAR_BROKER_KEY=${brokerKey}\n`, { mode: 0o600 });
+    chmodSync(file, 0o600);
+    log(`broker key received and saved to ${file} (not printed)`);
+  }
+  return rest;
+}
 
 export async function runVenueCli(argv: string[], log: (line: string) => void = console.log, api?: VenueApi): Promise<number> {
   const { values } = parseArgs({
@@ -20,6 +34,7 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
       confirm: { type: "boolean", default: false },
       name: { type: "string" },
       mechanism: { type: "string", default: "auto" },
+      replace: { type: "boolean", default: false },
     },
   });
   const mechanism = values.mechanism as Mechanism;
@@ -33,6 +48,7 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
     }
     client = new BazaarClient({ url: env.url, key: env.key });
   }
+  if (values.replace) return replaceVenue(client, mechanism, values, log);
   const [me, venues, clock] = await Promise.all([client.me(), client.venues(), client.clock()]);
   const plan = planVenue(me, venues.venues, clock, { ...(values.name ? { name: values.name } : {}), mechanism });
   const dryRun = values["dry-run"] || !values.confirm;
@@ -49,15 +65,38 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
     log("REFUSED: requirements not met.");
     return 2;
   }
-  const res = (await client.openVenue(plan.body)) as Record<string, unknown>;
-  const { broker_key: brokerKey, ...rest } = res;
-  if (typeof brokerKey === "string") {
-    const file = resolve(process.cwd(), ".env.broker");
-    writeFileSync(file, `BAZAAR_BROKER_KEY=${brokerKey}\n`, { mode: 0o600 });
-    chmodSync(file, 0o600);
-    log(`broker key received and saved to ${file} (not printed)`);
-  }
+  const rest = saveBrokerKey((await client.openVenue(plan.body)) as Record<string, unknown>, log);
   log(`opened: ${JSON.stringify(rest)}`);
+  return 0;
+}
+
+/** Close our venue, check the close took effect, then open the new one. Each step stops the run if it fails. */
+async function replaceVenue(client: VenueApi, mechanism: Mechanism, values: { "dry-run"?: boolean; confirm?: boolean; name?: string }, log: (line: string) => void): Promise<number> {
+  const [me, venues, clock, schedule] = await Promise.all([client.me(), client.venues(), client.clock(), client.request("GET", "/api/schedule", ScheduleSchema).catch(() => undefined)]);
+  const plan = planVenueSwitch(me, venues.venues, clock, schedule, { mechanism, ...(values.name ? { name: values.name } : {}) });
+  const dryRun = values["dry-run"] || !values.confirm;
+  for (const line of formatSwitchPlan(plan, dryRun)) log(line);
+  if (values["dry-run"]) {
+    log("DRY-RUN: nothing sent.");
+    return 0;
+  }
+  if (!values.confirm) {
+    log("REFUSED: replacing the venue closes ours and spends 270 P; run without --dry-run AND with --confirm (only with the user's approval).");
+    return 2;
+  }
+  if (!plan.ok || !plan.from) {
+    log("REFUSED: requirements not met.");
+    return 2;
+  }
+  log(`closed: ${JSON.stringify(await client.closeVenue(plan.from.id))}`);
+  const after = currentVenueOf(await client.me());
+  if (after && after.id === plan.from.id && (after.status ?? "open") === "open") {
+    log(`STOPPED: ${plan.from.id} still shows as open after the close; not opening a new venue.`);
+    return 2;
+  }
+  const rest = saveBrokerKey((await client.openVenue(plan.open.body)) as Record<string, unknown>, log);
+  log(`opened: ${JSON.stringify(rest)}`);
+  log(mechanism === "board" ? "NEXT: the live broker must run (pnpm bazaar:broker --confirm); ask the coordinating session to restart it." : "NEXT: put the broker back in shadow (pnpm bazaar:broker --shadow).");
   return 0;
 }
 

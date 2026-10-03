@@ -5,7 +5,8 @@ import { DEFAULT_MECHANISM_THRESHOLDS, VENUE_SWITCH_BOND, VENUE_SWITCH_FEE, type
  * `venue-mechanism` coordinator route: proposes `venue:switch-to-board` (close v04 + open a board venue + start
  * the live broker) when the rule recommends it, and `venue:back-to-auto` as a safety net if we are on board without a
  * live broker before a bench. Never proposes moving to board less than `noSwitchWithinTicks` from a bench.
- * Executing requires `--confirm` AND `--allow-venue-switch` (express user approval); even so it only prints the steps.
+ * Executing requires `--confirm` AND `--allow-venue-switch` (express user approval); even so it only prints the steps
+ * (`pnpm bazaar:venue --replace`).
  */
 
 export const SWITCH_TO_BOARD_ID = "venue:switch-to-board";
@@ -62,7 +63,7 @@ export function venueSwitchGate(f: VenueSwitchFlags): { execute: boolean; reason
 
 /**
  * What this route selected. With the gate closed it only says it does not go out; with the gate open it prints the steps
- * for the operator (the kit's close `POST /api/venues/{id}/close` has not been tested: it is not sent from here).
+ * for the operator (`pnpm bazaar:venue --replace`: the switch is never sent from the coordinator).
  */
 export function executeVenueMechanism(selected: readonly Intent[], venueId: string | undefined, f: VenueSwitchFlags): string[] {
   const mine = selected.filter((i) => i.route === "venue");
@@ -73,10 +74,9 @@ export function executeVenueMechanism(selected: readonly Intent[], venueId: stri
     if (!gate.execute) return [`venue: ${i.id} NOT executed (${gate.reason})`];
     const mechanism = i.id === SWITCH_TO_BOARD_ID ? "board" : "auto";
     return [
-      `venue: ${i.id} APPROVED (${gate.reason}); run in order, by hand:`,
-      `  1. POST /api/venues/${v}/close (kit close_venue; unverified)`,
-      `  2. pnpm bazaar:venue --mechanism ${mechanism} --confirm`,
-      mechanism === "board" ? "  3. pnpm bazaar:broker --confirm (live broker; stop the shadow one)" : "  3. pnpm bazaar:broker --shadow (back to shadow)",
+      `venue: ${i.id} APPROVED (${gate.reason}); run by hand (closes ${v}, checks the close, opens the new venue):`,
+      `  1. pnpm bazaar:venue --replace --mechanism ${mechanism} --dry-run, then the same with --confirm instead of --dry-run`,
+      mechanism === "board" ? "  2. pnpm bazaar:broker --confirm (live broker; stop the shadow one)" : "  2. pnpm bazaar:broker --shadow (back to shadow)",
     ];
   });
 }

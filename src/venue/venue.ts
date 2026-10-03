@@ -52,7 +52,7 @@ const MECHANISM_WHY: Record<Mechanism, string> = {
   board: "mechanism board: only our broker matches (GET /api/broker/book, POST /api/broker/matches); can beat the auto stall in the Market Test, but scores 0 if no broker runs",
 };
 
-export function planVenue(me: Me, venues: readonly VenueListing[], clock: Pick<Clock, "tick"> & { t_hours?: unknown }, o: { name?: string; mechanism?: Mechanism } = {}): VenuePlan {
+export function planVenue(me: Me, venues: readonly VenueListing[], clock: Pick<Clock, "tick"> & { t_hours?: unknown }, o: { name?: string; mechanism?: Mechanism; description?: string } = {}): VenuePlan {
   const name = o.name ?? DEFAULT_VENUE_NAME;
   const mechanism = o.mechanism ?? "auto";
   const body: VenueBody = {
@@ -60,7 +60,7 @@ export function planVenue(me: Me, venues: readonly VenueListing[], clock: Pick<C
     fee_bps: 0,
     fee_per_card: 0,
     rules: { mechanism },
-    description: "Zero fees, every card welcome. Best bid and ask cross every tick.",
+    description: o.description ?? "Zero fees, every card welcome. Best bid and ask cross every tick.",
   };
   const level = me.level ?? 0;
   const ours = (me as { venue?: unknown }).venue ?? venues.find((v) => v.owner && v.owner === me.id)?.venue ?? null;

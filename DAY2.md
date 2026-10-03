@@ -62,8 +62,8 @@ Por qué (tick 479, `GET /api/leaderboard` y `/api/venues`): el mercado por enci
 2. **Caja:** abrir cuesta 250 P de fianza + 20 P; la fianza de v04 vuelve tras un periodo de espera de duración desconocida. Hacen falta **≥ 290 P** libres (270 + suelo de 20). En el tick 479 había **201 P** (faltan 89). Las únicas repetidas (LAT-04, SAL-03) valen menos de 4 P: no cubren el hueco. Hay que dejar de gastar en El Rastro hasta tenerlos (choca con subir `--max-spend` a 250), nunca vendiendo copias únicas de página.
 3. **Antes:** comprobar en `broker.log` (sombra) que el casado «cualquier copia» encuentra pares en el libro real.
 4. **Pasos** (cada uno con OK):
-   - Cerrar v04: `POST /api/venues/v04/close` (equipo).
-   - `pnpm bazaar:venue --mechanism board --confirm`, con nombre y descripción que anuncien «any copy, 0 fee». Guarda la clave nueva en `.env.broker`.
+   - `pnpm bazaar:venue --replace --mechanism board --dry-run`: imprime el plan y comprueba caja (≥ 290), mecanismo y ventana de bench (≥ 20 ticks). Probado en el tick 630: rechaza por caja (27 P).
+   - Con el OK, lo mismo con `--confirm` en vez de `--dry-run`: cierra v04, comprueba que se cerró y abre el venue board con la descripción «any copy, 0 fee». Guarda la clave nueva en `.env.broker`.
    - Parar el broker en sombra y lanzar `pnpm bazaar:broker --confirm`, o reiniciar `bazaar:up --live --confirm --broker-live` (lo coordina la sesión que lleva los reinicios).
 5. **Vigilar:** `broker.log` (matches por tick), `mm_points` y `market` en `/api/leaderboard`. Si el broker cae, el venue no casa: reiniciarlo antes de la siguiente sesión.
 

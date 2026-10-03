@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { arbitrate, type Budget } from "../src/coordinator/coordinator.js";
 import { DEFAULT_MECHANISM_THRESHOLDS, decideMechanism, type BenchSession } from "../src/venue/mechanism.js";
 import { executeVenueMechanism, proposeVenueMechanism, SWITCH_TO_BOARD_ID, venueSwitchGate } from "../src/venue/route.js";
+import { planVenueSwitch } from "../src/venue/switch.js";
+import { VENUE_COST } from "../src/venue/venue.js";
+import type { Me } from "../src/shared/schemas.js";
 
 const N = DEFAULT_MECHANISM_THRESHOLDS.noSwitchWithinTicks;
 const budget: Budget = { accepts: 1, messagesPerConversation: 1, maxOpenThreads: 5, openThreadsNow: 0, offersPerTick: 1, maxOpenOffers: 5, openOffersNow: 0, missing: [] };
@@ -72,5 +75,30 @@ describe("venue mechanism switch", () => {
     expect(decideMechanism({ ...base, nowHours: 6.9 }).recommendation).toBe("stay-auto");
     const { heartbeat: _hb, ...noHb } = base;
     expect(decideMechanism(noHb).recommendation).toBe("stay-auto");
+  });
+});
+
+describe("venue replace (bazaar:venue --replace)", () => {
+  const FLOOR = DEFAULT_MECHANISM_THRESHOLDS.cashFloor;
+  // 120 ticks per game hour (tick_seconds 30); the bench starts at hour 10.
+  const schedule = { upcoming: [{ at_hours: 10, action: "bench", params: { ticks: 16 } }] } as never;
+  it("is allowed only with cash ≥ new venue + floor, outside a bench and ≥ noSwitchWithinTicks before one", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 1000 }), fc.double({ min: 7, max: 12, noNaN: true }), fc.constantFrom("auto", "board"), (cash, tHours, mechanism) => {
+        const me = { id: "t02", cash, level: 5, venue: { venue: "v04", status: "open", rules: { mechanism } } } as unknown as Me;
+        const clock = { tick: Math.round(tHours * 120), t_hours: tHours, tick_seconds: 30 };
+        const plan = planVenueSwitch(me, [], clock, schedule, { mechanism: "board" });
+        const benchEnd = 10 + 16 / 120;
+        const ticksToBench = tHours >= benchEnd ? undefined : tHours >= 10 ? 0 : Math.floor((10 - tHours) * 120);
+        expect(plan.ticksToBench).toBe(ticksToBench);
+        const expected = cash >= VENUE_COST + FLOOR && mechanism === "auto" && (ticksToBench === undefined || ticksToBench >= N);
+        expect(plan.ok).toBe(expected);
+        if (plan.ok) expect(plan.open.body.rules.mechanism).toBe("board");
+      }),
+    );
+  });
+  it("refuses without an open venue to replace", () => {
+    const me = { id: "t02", cash: 1000, level: 5, venue: null } as unknown as Me;
+    expect(planVenueSwitch(me, [], { tick: 0, t_hours: 20, tick_seconds: 30 }, undefined, { mechanism: "board" }).ok).toBe(false);
   });
 });
