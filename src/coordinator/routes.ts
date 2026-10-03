@@ -16,6 +16,7 @@ import type { FlagRecord } from "../state/world.js";
 import type { FlagCandidate } from "../flags/flags.js";
 import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
+import { marketSale } from "../markets/markets.js";
 
 /**
  * Coordinator routes. Each proposes its tick intents WITHOUT sending them (GET only) and, live, executes
@@ -317,7 +318,16 @@ export class TradesRoute {
       });
     }
     for (const c of plan.cancels) out.intents.push({ id: `trades:cancel:${c.id}`, route: "trades", kind: "cancel", summary: `El Rastro: CANCEL #${c.id} (${c.reason})` });
-    plan.posts.forEach((p, k) => out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, locks: ("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` }));
+    plan.posts.forEach((p, k) => {
+      // Never list a card below a better bid the markets route would take this tick (v02 bid 22 vs our El Rastro listing at 14).
+      const sale = p.kind === "list" ? marketSale(state, p.ref) : undefined;
+      if (sale && sale.quote.price > p.price) {
+        out.notes.push(`El Rastro: list ${p.ref} @ ${p.price} P held back: bid ${sale.quote.price} P on ${sale.venue.id} (#${sale.quote.offer}, net ${sale.net}) goes through the markets route`);
+        return;
+      }
+      const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [`sell:${p.ref}`] : [])];
+      out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, locks, summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` });
+    });
     out.notes.push(`El Rastro: ${plan.evaluated} offers read, ${plan.opportunities.length} opportunities${plan.notes.length ? ` · ${plan.notes.slice(0, 2).join(" · ")}` : ""}`);
     return out;
   }

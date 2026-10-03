@@ -34,6 +34,16 @@ describe("coordinator arbitration", () => {
     expect(sel(budget({ closedPersonas: ["chato"] }))).toEqual(expect.not.arrayContaining(["dealers:open:chato:sell:2"]));
   });
 
+  it("one sale of a card per tick: a selected market accept of RET-06 blocks the El Rastro listing of another copy", () => {
+    const market: Intent = { id: "markets:accept:v02:4230", route: "markets", kind: "accept", acceptClass: "other", ev: 8, conversation: "market:v02:4230", summary: "sell RET-06 @22", locks: ["offer:4230", "asset:11", "sell:RET-06"] };
+    const listing: Intent = { id: "trades:post:0", route: "trades", kind: "listing", ev: 2, summary: "list RET-06 @14", locks: ["asset:12", "sell:RET-06"] };
+    const v = arbitrate([listing, market], budget());
+    expect(v.find((x) => x.intent.id === "trades:post:0")).toMatchObject({ selected: false, reason: expect.stringContaining("sell:RET-06") });
+    // If the market accept does not get the quota, the listing is the only sale and goes out.
+    const busy = arbitrate([accept("duel", "duel", 5), listing, market], budget());
+    expect(busy.find((x) => x.intent.id === "trades:post:0")?.selected).toBe(true);
+  });
+
   it("never selects more accepts than accepts_per_team_per_tick, across all routes, duel first", () => {
     const intents = [accept("trade", "other", 90), accept("ladder", "dealer-ladder", 50), accept("duel", "duel", 5), accept("page", "page-completing", 60)];
     const v = arbitrate(intents, budget());

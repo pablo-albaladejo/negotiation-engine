@@ -52,6 +52,10 @@ export interface MarketChoice {
   net: number;
 }
 
+/** Offers whose accept failed because they are no longer open: never proposed again this run (v02 #4230 kept showing a 22 P bid). */
+const deadOffers = new Set<number>();
+const DEAD_OFFER_CODES = new Set(["offer_not_open", "not_found", "http_404", "closed"]);
+
 /** Best venue to buy or sell this card (net gap); on a tie, El Rastro. */
 export function bestVenue(e: PriceEntry, side: "buy" | "sell", venues: readonly VenueInfo[], teams: number): MarketChoice | undefined {
   if (e.value === undefined) return undefined;
@@ -59,7 +63,7 @@ export function bestVenue(e: PriceEntry, side: "buy" | "sell", venues: readonly 
   for (const v of venues) {
     if (!v.canTrade || (v.status && v.status !== "open")) continue;
     const q = side === "buy" ? e.byVenue[v.id]?.ask : e.byVenue[v.id]?.bid;
-    if (!q || !fairPrice(side, q.price, e.book)) continue;
+    if (!q || deadOffers.has(q.offer) || !fairPrice(side, q.price, e.book)) continue;
     const edge = side === "buy" ? e.value - q.price : q.price - e.value;
     const fee = feeOf(v, q.price);
     const penalty = rivalPenalty(v, teams);
@@ -67,6 +71,14 @@ export function bestVenue(e: PriceEntry, side: "buy" | "sell", venues: readonly 
     if (!best || net > best.net || (net === best.net && v.house && !best.venue.house)) best = { ref: e.ref, side, venue: v, quote: q, edge: Math.round(edge * 10) / 10, fee, penalty, net };
   }
   return best;
+}
+
+/** The sale of `ref` the markets route would propose this tick (a duplicate, net ≥ `minNetEdge`), if any. */
+export function marketSale(state: GameState, ref: string): MarketChoice | undefined {
+  const e = state.markets?.prices.find((x) => x.ref === ref);
+  if (!e || e.holdings <= 1) return undefined;
+  const c = bestVenue(e, "sell", state.markets.venues, Math.max(1, ...state.markets.venues.map((v) => v.ownerRank ?? 0)));
+  return c && c.net >= MARKET_PARAMS.minNetEdge ? c : undefined;
 }
 
 export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string, number[]>): { intents: Intent[]; notes: string[] } {
@@ -107,7 +119,8 @@ function intent(c: MarketChoice, e: PriceEntry, asset: number | undefined): Inte
     acceptClass: c.side === "buy" && e.completesPage ? "page-completing" : "other",
     ev: c.net,
     price: c.quote.price,
-    locks: [`offer:${c.quote.offer}`, ...(asset !== undefined ? [`asset:${asset}`] : [`buy:${e.ref}`])],
+    // `sell:<ref>`: one sale of a card per tick across routes (El Rastro lists the same card with that lock).
+    locks: [`offer:${c.quote.offer}`, ...(asset !== undefined ? [`asset:${asset}`, `sell:${e.ref}`] : [`buy:${e.ref}`])],
     summary: `${c.side.toUpperCase()} ${e.ref} on ${c.venue.id} at ${c.quote.price} P (offer #${c.quote.offer}): edge ${c.edge} − fee ${c.fee} − rival ${c.penalty} = net ${c.net}${auto}`,
   };
 }
@@ -126,6 +139,7 @@ export async function executeMarkets(client: BazaarClient, selected: readonly In
       await client.acceptOffer(offer, asset ? [Number(asset.slice(6))] : undefined);
       lines.push(`markets: accepted #${offer}`);
     } catch (e) {
+      if (e instanceof BazaarError && DEAD_OFFER_CODES.has(e.code)) deadOffers.add(offer);
       lines.push(`markets: #${offer} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
     }
   }
