@@ -227,6 +227,14 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
         notes.push(`${TAG} skip ${ref} → ${r.team}: no free copy (listed, locked or reserved)`);
         continue;
       }
+      // A copy with no private value (an egg gift such as LAT-13: your_value 0) has no floor from code: never countered.
+      // Legendaries and epics too: their price is Pablo's call, not the margin rule's.
+      const rarity = trade.model.meta.get(ref)?.rarity;
+      const legendary = rarity === "legendary" || rarity === "epic" || rarity === undefined;
+      if (asset.value <= 0 || legendary) {
+        notes.push(`${TAG} skip ${ref} → ${r.team}: ${legendary ? `rarity ${rarity ?? "unknown"}` : `your_value ${asset.value}`} (no floor from code; needs a price from Pablo)`);
+        continue;
+      }
       // A spare (not the requested card) only if it is not our last free copy.
       if (ref !== r.ref && isLastFreeCopy(asset.id, trade.held, lockedIds, trade.reserved)) continue;
       const { floor, anchor, price } = priceFor(key, asset.value, r.venue);

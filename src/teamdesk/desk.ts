@@ -179,6 +179,11 @@ export async function executeTeamDesk(
       lines.push(`${TAG} ${what}: skipped, server value unreadable`);
       continue;
     }
+    if (serverValue <= 0 || p.value <= 0) {
+      lines.push(`${TAG} ${what}: skipped, your_value ${Math.min(serverValue, p.value)} (no floor from code)`);
+      log("failed", serverValue, null, "zero value: needs a price from Pablo");
+      continue;
+    }
     const floor = deskFloor(Math.max(serverValue, p.value), venueFeesOf(p.venue, ctx.trade?.venueFees, RASTRO_FEES));
     if (p.price < floor) {
       lines.push(`${TAG} ${what}: skipped, server value ${serverValue} lifts the floor to ${floor}`);
