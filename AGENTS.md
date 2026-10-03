@@ -17,7 +17,7 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 
 - **Código, identificadores, comentarios y textos de desarrollo (logs, CLI, errores, UI) en inglés; la documentación (`*.md`) en español.**
 - El texto que va al juego (plantillas, frases de sondeo, regex sobre texto de dealers) es dato y conserva su idioma.
-- `pnpm docs:check` lo comprobará (el chequeo se añade aparte).
+- Lo comprueba `pnpm docs:check` (`scripts/check-english.mjs`): falla si un comentario del código está en castellano. Para conservar texto del juego, poner `game text` en un comentario de esa línea o de la anterior.
 
 ## Arquitectura
 
@@ -56,7 +56,7 @@ results/     trazas en vivo (fuera de git)
 |---------|-------------|
 | `pnpm test` | Tests de guardarraíles (límite, cifra = texto, un activo en un sitio, topes). Deben pasar antes de cada commit. |
 | `pnpm typecheck` | TypeScript. |
-| `pnpm docs:check` | Enlaces e identificadores de los AGENTS.md, y el árbol de carpetas (≤ 10 ficheros y un AGENTS.md enlazado por carpeta). |
+| `pnpm docs:check` | Enlaces e identificadores de los AGENTS.md, el árbol de carpetas (≤ 10 ficheros y un AGENTS.md enlazado por carpeta) y que los comentarios del código estén en inglés. |
 | `pnpm bazaar` | Agente de dealers (`--serious`, `--dry-run`, `--once`, `--max-spend`, `--cash-floor`…). |
 | `pnpm bazaar:duels` | Duelos 1 contra 1. |
 | `pnpm bazaar:trades` | Ofertas entre equipos en El Rastro (en vivo con `--confirm`). |
