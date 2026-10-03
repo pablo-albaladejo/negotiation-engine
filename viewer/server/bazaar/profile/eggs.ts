@@ -57,6 +57,10 @@ export interface PersonaEggs {
 export interface OurGift {
   tick: number;
   from: string | null;
+  /** The persona's display name, from the gift reason («gift from Abuela Carmen») or an egg event. */
+  from_name: string | null;
+  /** What we were doing with that persona when it arrived: our thread, our message that tick (our own text), the deal. */
+  context: { thread: number | null; our_offer: string | null; our_tick: number | null; deal: { tick: number; price: number | null; refs: string[] } | null } | null;
   cards: EggCard[];
   cash: number;
   packs: string[];
@@ -69,6 +73,8 @@ export interface EggsOut {
   /** Our badges, in award order (`badge.awarded`). */
   badges: { badge: string; tick: number }[];
   gifts: OurGift[];
+  /** Gifts per persona across the field: how many, to how many teams, and ours. */
+  gifts_by_persona: { persona: string; total: number; teams: number; ours: number }[];
 }
 
 const PROBE_WINDOW = 6;
@@ -148,6 +154,29 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
       .sort((a, b) => b.tick - a.tick)[0];
     ours.push({ tick, persona: f.data.persona, persona_name: f.data.persona_name ?? null, probe: probe ? { phrase: probe.phrase, tick: probe.tick } : null, prize, order: p.found.length });
   }
+  // Our side of the conversation with a persona around a tick (our own messages and the deals: structure only).
+  const contextOf = (persona: string, tick: number): OurGift["context"] => {
+    let msg: { thread: number | null; offer: string | null; tick: number } | null = null;
+    let deal: { tick: number; price: number | null; refs: string[] } | null = null;
+    for (const x of unique) {
+      if (x.tick == null) continue;
+      const p = (x.payload ?? {}) as Record<string, unknown>;
+      if (x.type === "thread.message" && p.sender === team && p.with === persona && x.tick <= tick && tick - x.tick <= 2) {
+        type Side = { cash?: unknown; types?: unknown[]; assets?: unknown[] };
+        const o = (p.offer ?? {}) as { give?: Side; want?: Side };
+        const side = (x?: Side) => [...(typeof x?.cash === "number" && x.cash ? [`${x.cash} P`] : []), ...strings(x?.assets), ...strings(x?.types).map((t) => t.replace(/^(card|pack):/, ""))].join(" + ") || "—";
+        msg = { thread: typeof p.thread === "number" ? p.thread : null, offer: p.offer ? `we give ${side(o.give)} for ${side(o.want)}` : null, tick: x.tick };
+      } else if (x.type === "settlement" && !deal && x.tick >= tick - 2 && x.tick <= tick + 6) {
+        const parties = Array.isArray(p.parties) ? p.parties : [];
+        if (parties.includes(team) && parties.includes(persona)) {
+          const items = Array.isArray(p.items) ? p.items : [];
+          deal = { tick: x.tick, price: typeof p.price === "number" ? p.price : null, refs: strings(items) };
+        }
+      }
+    }
+    return msg || deal ? { thread: msg?.thread ?? null, our_offer: msg?.offer ?? null, our_tick: msg?.tick ?? null, deal } : null;
+  };
+  const giftCount = new Map<string, { total: number; teams: Set<string>; ours: number }>();
   const badges: EggsOut["badges"] = [];
   const gifts: OurGift[] = [];
   for (const e of unique) {
@@ -157,9 +186,17 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
       if (b.success && b.data.team === team && b.data.badge) badges.push({ badge: b.data.badge, tick: e.tick });
     } else if (e.type === "gift.given") {
       const g = GivenSchema.safeParse(e.payload);
+      if (g.success && e.actor && g.data.team) {
+        const c = giftCount.get(e.actor) ?? { total: 0, teams: new Set<string>(), ours: 0 };
+        c.total += 1;
+        c.teams.add(g.data.team);
+        if (g.data.team === team) c.ours += 1;
+        giftCount.set(e.actor, c);
+      }
       if (g.success && g.data.team === team)
-        gifts.push({ tick: e.tick, from: e.actor ?? null, cards: strings(g.data.cards).map(cardOf), cash: g.data.cash ?? 0, packs: strings(g.data.packs), reason: g.data.reason ?? null });
+        gifts.push({ tick: e.tick, from: e.actor ?? null, from_name: /gift from (.+)$/.exec(g.data.reason ?? "")?.[1] ?? null, context: e.actor ? contextOf(e.actor, e.tick) : null, cards: strings(g.data.cards).map(cardOf), cash: g.data.cash ?? 0, packs: strings(g.data.packs), reason: g.data.reason ?? null });
     }
   }
-  return { badges, gifts, ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
+  const gifts_by_persona = [...giftCount].map(([persona, c]) => ({ persona, total: c.total, teams: c.teams.size, ours: c.ours })).sort((a, b) => b.total - a.total);
+  return { badges, gifts, gifts_by_persona, ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
 }

@@ -618,7 +618,17 @@ export interface BoardEggs {
   personas: BoardPersonaEggs[];
   /** Absent on an older server. */
   badges?: { badge: string; tick: number }[];
-  gifts?: { tick: number; from: string | null; cards: BoardEggCard[]; cash: number; packs: string[]; reason: string | null }[];
+  gifts?: {
+    tick: number;
+    from: string | null;
+    from_name?: string | null;
+    context?: { thread: number | null; our_offer: string | null; our_tick: number | null; deal: { tick: number; price: number | null; refs: string[] } | null } | null;
+    cards: BoardEggCard[];
+    cash: number;
+    packs: string[];
+    reason: string | null;
+  }[];
+  gifts_by_persona?: { persona: string; total: number; teams: number; ours: number }[];
 }
 
 export interface BoardGrant {
