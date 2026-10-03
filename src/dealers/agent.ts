@@ -139,12 +139,12 @@ interface Active {
   chase?: string;
 }
 
-const HOUR_MS = 3_600_000;
 const STOP_CODES = new Set(["sold_out", "locked", "asset_locked", "insufficient_cash", "invalid", "not_found", "http_404", "closed"]);
 
 export class BazaarAgent {
   private active: Active | undefined;
-  private blockedUntilMs = 0;
+  /** Game hour until which the dealer's hourly quota is spent (`persona_quota`): its allotment is per game hour, not per wall-clock hour. */
+  private blockedUntilHour = -1;
   private cooloffUntilTick = -1;
   private readonly skip = new Map<string, number>();
   private readonly team: TeamBudget;
@@ -276,8 +276,8 @@ export class BazaarAgent {
         emit({ action: "idle", rule: this.dealsDone >= (this.o.maxDeals ?? Infinity) ? "max-deals" : "max-threads" });
         return out;
       }
-      if (this.now() < this.blockedUntilMs || tick < this.cooloffUntilTick) {
-        emit({ action: "blocked", rule: this.now() < this.blockedUntilMs ? "persona_quota" : "cooloff" });
+      if (this.hoursNow < this.blockedUntilHour || tick < this.cooloffUntilTick) {
+        emit({ action: "blocked", rule: this.hoursNow < this.blockedUntilHour ? "persona_quota" : "cooloff" });
         return out;
       }
       if (this.o.dealsPerHour !== undefined && this.dealsLastHour() >= this.o.dealsPerHour) {
@@ -774,7 +774,7 @@ export class BazaarAgent {
   }
 
   private applyReason(reason: string | undefined, untilTick: number | undefined, tick: number) {
-    if (reason === "persona_quota") this.blockedUntilMs = (Math.floor(this.now() / HOUR_MS) + 1) * HOUR_MS + 5_000;
+    if (reason === "persona_quota") this.blockedUntilHour = Math.floor(this.hoursNow) + 1;
     if (reason === "cooloff") this.cooloffUntilTick = untilTick ?? tick + 10;
   }
 
