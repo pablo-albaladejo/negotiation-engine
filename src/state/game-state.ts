@@ -7,6 +7,7 @@ import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
+import { buildPriceSheet, formatPriceSheet, valuesWanted, type PriceEntry } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
@@ -73,6 +74,8 @@ export interface GameState {
     /** Campos de strikes que traiga `/api/me`, si alguno (hoy no aparece ninguno). */
     strikes?: Record<string, unknown>;
   } & OursWorld;
+  /** Hoja de precios por carta (sets publicados): escasez, dealers, mejores ask/bid, último trato, valor y huecos. */
+  markets: { prices: PriceEntry[] };
   /** Corpus de pistas completo (lo ya guardado + lo nuevo de este tick) y lo nuevo para añadir a `hints.jsonl`. */
   hints: { all: HintLine[]; fresh: HintLine[] };
   /** Personas (dealers y las que aparezcan por `/api/levels` o el feed), con estado y progreso de desbloqueo. */
@@ -180,6 +183,10 @@ export interface BuildOptions {
   hintCorpus?: readonly HintLine[];
   /** Semilla del corpus desde `results/` (solo la primera vez, sin `hints.jsonl`). */
   hintSeed?: readonly Raw[];
+  /** Caché de valores privados (`values.json`); se amplía con unos pocos GET por tick. */
+  valueCache?: Map<string, number>;
+  /** Máximo de `/api/me/value` por tick (por defecto 4). */
+  valueFetchesPerTick?: number;
 }
 
 /** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
@@ -195,7 +202,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       return undefined;
     }
   };
-  const [me, schedule, dealers, live, threads, board, myOffers, leaderboard, feed, levels, catalog] = await Promise.all([
+  const [me, schedule, dealers, live, threads, board, myOffers, leaderboard, feed, levels, catalog, venues] = await Promise.all([
     settle("me", client.me()),
     settle("schedule", duels.schedule()),
     settle("dealers", client.dealers()),
@@ -207,7 +214,11 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     settle("feed", client.feed(200)),
     settle("levels", client.levels()),
     settle("catalog", client.catalog()),
+    settle("venues", client.venues()),
   ]);
+  // Otros venues abiertos (sin El Rastro): su libro para la hoja de precios.
+  const others = (venues?.venues ?? []).filter((v) => v.venue && v.venue !== "rastro" && (v as { status?: unknown }).status !== "closed");
+  const otherBoards = await Promise.all(others.map(async (v) => ({ venue: v.venue!, offers: parseOffers(await settle(`board ${v.venue}`, client.board(v.venue!))) })));
   const events = parseFeed(feed);
   const rawDealers = (dealers?.dealers ?? []) as unknown[];
   const c = clock as Clock & Record<string, unknown>;
@@ -255,6 +266,24 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   });
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
+  const valueCache = opts.valueCache ?? new Map<string, number>();
+  for (const [ref, v] of Object.entries(ours.values)) valueCache.set(ref, v);
+  const priceInputs = {
+    ...(catalog ? { catalog } : {}),
+    dealers: rawDealers,
+    boards: [{ venue: "rastro", offers }, ...otherBoards],
+    ...(me?.id ? { team: me.id } : {}),
+    events,
+    holdings: ours.holdings.byRef,
+    pages: ours.album.pages,
+    pageTargets: opts.pageTargets ?? [],
+  };
+  // Pocos GET de valor por tick: las cartas sin valor con ask o bid a la vista, las de página primero.
+  for (const ref of valuesWanted(buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) }), opts.valueFetchesPerTick ?? 4)) {
+    const v = await settle(`value ${ref}`, client.value(ref));
+    if (v !== undefined) valueCache.set(ref, v);
+  }
+  const prices = buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) });
   const time = buildTime(clock, schedule, leaderboard, opts.prevTime?.scheduleHash);
   const prevWeight = opts.prevTime?.round?.weight;
   if (time.round && time.round.weight === undefined && prevWeight !== undefined && opts.prevTime?.round?.n === time.round.n) time.round.weight = prevWeight;
@@ -280,6 +309,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       cooloffs,
       ...world.ours,
     },
+    markets: { prices },
     hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
@@ -345,6 +375,7 @@ export function formatGameState(g: GameState): string[] {
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
   lines.push(...formatHints(g.hints.all));
+  lines.push(...formatPriceSheet(g.markets.prices));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
 }
