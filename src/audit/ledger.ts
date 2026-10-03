@@ -282,11 +282,20 @@ export function replay(input: ReplayInput): Ledger {
           const side: OurTrade["side"] = mineIn.length && mineOut.length ? "swap" : mineIn.length ? "buy" : "sell";
           const n = mineIn.length + mineOut.length;
           const price = (st.price ?? 0) / n;
-          const fee = (st.fee ?? 0) / n;
+          // El Rastro charges only the side that accepts (verified on our cash, ticks 320–380). The offer this fill
+          // consumed decides who accepted: a quote of the other side means we accepted and paid; else one of ours means
+          // they accepted (no fee for us); with neither in the book, assume we paid.
+          const madeBy = (maker: (m: string | null | undefined) => boolean): boolean =>
+            [...book.values()].some(
+              (e) => maker(e.offer.maker) && e.venue === st.venue && e.cash === st.price && cards.some((i) => (e.side === "ask" && e.assetId === i.id) || (e.side === "bid" && e.offer.maker === i.to && e.ref === i.ref)),
+            );
+          const weMade = !madeBy((m) => m !== team) && madeBy((m) => m === team);
+          const paidFee = weMade ? 0 : (st.fee ?? 0);
+          const fee = paidFee / n;
           const counterparty = (st.parties ?? []).find((x) => x !== team) ?? st.persona ?? undefined;
           const link = st.persona && st.price ? threadFor(st.persona, st.price, tick) : {};
           const from = st.persona ? `dealer:${st.persona}` : st.venue ? `venue:${st.venue}` : "unknown";
-          if (side === "buy") spendByTick.set(tick, (spendByTick.get(tick) ?? 0) + (st.price ?? 0) + (st.venue ? (st.fee ?? 0) : 0));
+          if (side === "buy") spendByTick.set(tick, (spendByTick.get(tick) ?? 0) + (st.price ?? 0) + (st.venue ? paidFee : 0));
           for (const i of [...mineOut, ...mineIn]) {
             const before = counts();
             const tSide = side === "swap" ? "swap" : i.to === team ? "buy" : "sell";

@@ -16,7 +16,7 @@ Solo lectura: lee las trazas locales del día y avisa de lo que nos cuesta punto
 
 ## Reglas
 
-- Valoración reutilizada: `buildValueModel`, `valueDelta` y `tradeFee` de [`src/trades/`](../trades/AGENTS.md) y `nextCopyValue` de [`src/dealers/`](../dealers/AGENTS.md). Supuesto conservador de comisiones: la paga quien vende (puja neta = puja − comisión; ask = precio + comisión).
+- Valoración reutilizada: `buildValueModel`, `valueDelta` y `tradeFee` de [`src/trades/`](../trades/AGENTS.md) y `nextCopyValue` de [`src/dealers/`](../dealers/AGENTS.md). Comisiones: El Rastro solo cobra a quien acepta (comprobado con nuestra caja, ticks 320–380). Un trato nuestro lleva comisión solo si aceptamos; si se llenó una oferta que publicamos, 0. Las cotizaciones de otros equipos se valoran como si las tomáramos (puja neta = puja − comisión; ask = precio + comisión).
 - Lo arranca `pnpm bazaar:up` como hijo audit (`--no-audit` lo quita); ver [`scripts/ops/`](../../scripts/ops/AGENTS.md).
 
 ## Links
