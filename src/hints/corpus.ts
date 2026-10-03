@@ -77,11 +77,12 @@ export function namedPersonas(persona: string, text: string, ctx: CandidateConte
  * Moscow gold. He will know." / "Pregúntale por el oro de Moscú, él sabrá." without a name; the only male stall next
  * to her is El Chato, whom she names in the same story ("El Chato next door knows more"). Chato missed the Moscow gold
  * in both languages (threads 900 and 906), so the banker Don Ernesto (`banco`, level 5; the Moscow gold was the Bank of
- * Spain's reserve) goes first once he is a known persona. Narrow on purpose: one speaker, an ordered list of targets
+ * Spain's reserve) goes first once he is a known persona, then the Pícaros brothers (Paco and Nando, each a «him»).
+ * Narrow on purpose: one speaker, an ordered list of targets
  * (the first known one wins); it only routes a probe phrase, never a figure.
  */
 const POINTER_TARGETS: Readonly<Record<string, { re: RegExp; targets: readonly string[] }>> = {
-  abuela: { re: /\b(ask him|he will know|he['’]ll know|preguntale|el sabra)\b/, targets: ["banco", "chato"] },
+  abuela: { re: /\b(ask him|he will know|he['’]ll know|preguntale|el sabra)\b/, targets: ["banco", "picaros", "chato"] },
 };
 
 /** Persona an unnamed pointer in `text` sends the probe to (first known of `POINTER_TARGETS`), if any. */
