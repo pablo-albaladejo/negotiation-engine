@@ -4,7 +4,7 @@ Resumen de solo lectura; nunca hace un POST.
 
 ## Archivos
 
-- **`main.ts`** — CLI de `pnpm bazaar:status`: equipo, reloj, límites, dealers, hilos y desglose de la cifra.
+- **`main.ts`** — CLI de `pnpm bazaar:status`: equipo, activos, desglose de la cifra, reloj, límites, dealers, niveles e hilos (solo GET).
 
 ## Links
 
