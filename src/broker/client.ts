@@ -6,13 +6,13 @@ import { ClockSchema, ErrorBodySchema, type Clock } from "../shared/schemas.js";
 
 export interface BrokerEnv {
   url: string;
-  /** Clave del broker (cabecera X-Broker-Key). Nunca se imprime ni se escribe en trazas. */
+  /** Broker key (X-Broker-Key header). Never printed or written to traces. */
   key: string | undefined;
 }
 
 /**
- * Lee `BAZAAR_BROKER_KEY` (o `BROKER_KEY`) y `BAZAAR_URL`; carga `.env.broker` y `.env` de la raíz si
- * existen (las variables ya exportadas tienen prioridad).
+ * Reads `BAZAAR_BROKER_KEY` (or `BROKER_KEY`) and `BAZAAR_URL`; loads `.env.broker` and `.env` from the root if
+ * they exist (variables already exported take priority).
  */
 export function loadBrokerEnv(options: { env?: NodeJS.ProcessEnv; cwd?: string } = {}): BrokerEnv {
   const env = options.env ?? process.env;
@@ -40,7 +40,7 @@ export interface BrokerClientOptions {
 
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Cliente del broker: libro, reloj, cruces y anuncio. Mismo cubo de fichas que `BazaarClient`; las escrituras no se reintentan tras un fallo de red. */
+/** Broker client: book, clock, matches and announcement. Same token bucket as `BazaarClient`; writes are not retried after a network failure. */
 export class BrokerClient {
   private readonly fetchFn: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -114,15 +114,15 @@ export class BrokerClient {
     if (!parsed.success) throw new BazaarError("bad_response", "GET /api/clock: unexpected shape", 200);
     return parsed.data as Clock & { t_hours?: number };
   }
-  /** Libro del venue (se valida con `parseBrokerBook`). */
+  /** Venue book (validated with `parseBrokerBook`). */
   book(): Promise<unknown> {
     return this.raw("GET", "/api/broker/book");
   }
-  /** Calendario (`action: bench`, `at_hours`) para saber cuándo corre el Market Test. */
+  /** Calendar (`action: bench`, `at_hours`) to know when the Market Test runs. */
   schedule(): Promise<unknown> {
     return this.raw("GET", "/api/schedule");
   }
-  /** Mercados públicos (para leer el mecanismo de nuestro venue). */
+  /** Public markets (to read our venue's mechanism). */
   venues(): Promise<unknown> {
     return this.raw("GET", "/api/venues");
   }

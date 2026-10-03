@@ -4,13 +4,13 @@ import type { BenchSession, Heartbeat } from "../venue/mechanism.js";
 import { benchRun, DEFAULT_BENCH_PARAMS, observeBench, planBench, type BenchParams, type BenchQuote, type BrokerBook, type QuoteTrack } from "./broker.js";
 
 /**
- * Broker en sombra del Market Test: durante cada bench lee el libro (solo GET, también en un venue auto) y apunta
- * qué habría casado nuestro planificador (`planBench`) frente a lo que cruzó el motor auto (lista `recent` del libro).
- * Excedente por cotizaciones (bid − ask): proxy, porque los límites ocultos no se ven. Nada se envía.
+ * Market Test shadow broker: during each bench it reads the book (GET only, also on an auto venue) and records
+ * what our planner (`planBench`) would have matched versus what the auto engine crossed (`recent` list of the book).
+ * Surplus by quotes (bid − ask): proxy, because hidden limits are not visible. Nothing is sent.
  *
- * ASSUMPTION (por verificar en vivo): en un venue auto el motor cruza antes de que leamos, así que el libro de la
- * sombra se reconstruye con lo que queda más las dos patas de cada cruce nuevo de `recent` (si trae cotizaciones o las
- * vimos antes). Si `recent` no trae ids de banco, `autoSurplus` queda en 0 y la sesión no cuenta como medida.
+ * ASSUMPTION (to verify live): on an auto venue the engine crosses before we read, so the shadow's book is
+ * rebuilt from what remains plus the two legs of each new crossing in `recent` (if it carries quotes or we
+ * saw them before). If `recent` carries no bank ids, `autoSurplus` stays 0 and the session does not count as measured.
  */
 
 export const DEFAULT_SESSIONS_FILE = "bench-sessions.json";
@@ -19,7 +19,7 @@ export const DEFAULT_HEARTBEAT_FILE = "broker-heartbeat.json";
 export const defaultSessionsFile = (root = process.cwd()) => join(root, "results", "bazaar-live", DEFAULT_SESSIONS_FILE);
 export const defaultHeartbeatFile = (root = process.cwd()) => join(root, "results", "bazaar-live", DEFAULT_HEARTBEAT_FILE);
 
-/** Sesión con lo necesario para seguir tras un reinicio (cruces ya contados, ofertas ya usadas, cotizaciones vistas). */
+/** Session with what is needed to continue after a restart (crossings already counted, offers already used, quotes seen). */
 export interface SessionMemo extends BenchSession {
   firstTick: number;
   lastTick: number;
@@ -40,7 +40,7 @@ const isObj = (x: unknown): x is Obj => typeof x === "object" && x !== null && !
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
 const id = (x: unknown): string | undefined => (typeof x === "string" ? x : typeof x === "number" ? String(x) : undefined);
 
-/** Cruces de banco en `recent` del libro, tolerante (forma sin verificar: sell/buy o sell_offer/buy_offer, ask/bid opcionales). */
+/** Bank crossings in the book's `recent`, tolerant (unverified shape: sell/buy or sell_offer/buy_offer, ask/bid optional). */
 export function parseRecentBenchFills(raw: unknown): AutoFill[] {
   const out: AutoFill[] = [];
   for (const r of isObj(raw) && Array.isArray(raw.recent) ? raw.recent : []) {
@@ -86,7 +86,7 @@ export function loadHeartbeat(file: string): Heartbeat | undefined {
 
 export const saveHeartbeat = (file: string, hb: Heartbeat) => writeJson(file, hb);
 
-/** Sin el estado interno (lo que lee el coordinador). */
+/** Without internal state (what the coordinator reads). */
 export function publicSession(s: SessionMemo): BenchSession {
   return {
     benchAt: s.benchAt,
@@ -104,8 +104,8 @@ export function publicSession(s: SessionMemo): BenchSession {
 const ratioOf = (shadow: number, auto: number) => (auto > 0 ? Number((shadow / auto).toFixed(3)) : undefined);
 
 /**
- * Un paso de la sombra (uno por tick). Puro sobre `session` y `tracks` (los muta): suma los cruces nuevos de auto y
- * lo que habría casado el planificador con el libro reconstruido. Devuelve la línea del paso.
+ * One shadow step (one per tick). Pure over `session` and `tracks` (it mutates them): adds the new auto crossings and
+ * what the planner would have matched with the rebuilt book. Returns the step's line.
  */
 export function shadowStep(
   session: SessionMemo,
@@ -133,7 +133,7 @@ export function shadowStep(
       session.autoUnknown += 1;
     } else {
       session.autoSurplus += bid - ask;
-      // Las dos patas vuelven al libro de la sombra: en un board seguirían ahí hasta que las casara nuestro broker.
+      // Both legs go back into the shadow book: on a board they would stay there until our broker matched them.
       for (const [oid, side, quote] of [[f.sell, "ask", ask], [f.buy, "bid", bid]] as const) {
         if (used.has(oid) || book.bench.some((b) => b.id === oid)) continue;
         extra.push({ id: oid, run: benchRun(oid)!, side, quote, index: book.bench.length + extra.length });
@@ -160,7 +160,7 @@ export function shadowStep(
   );
 }
 
-/** Sombra con estado en disco: una sesión por bench (`benchAt`), retomada tras un reinicio. */
+/** Shadow with state on disk: one session per bench (`benchAt`), resumed after a restart. */
 export class BenchShadow {
   readonly sessions: SessionMemo[];
   private readonly tracks = new Map<string, QuoteTrack>();
@@ -173,7 +173,7 @@ export class BenchShadow {
     this.sessions = loadBenchSessions(file);
   }
 
-  /** Solo dentro de un bench (`slot`); una vez por tick. Guarda la sesión tras cada paso. */
+  /** Only within a bench (`slot`); once per tick. Saves the session after each step. */
   step(tick: number, slot: { atHours: number; hard: boolean } | undefined, book: BrokerBook, rawBook: unknown): string | undefined {
     if (!slot || tick === this.lastTick) return undefined;
     this.lastTick = tick;

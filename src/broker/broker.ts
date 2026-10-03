@@ -1,12 +1,12 @@
 /**
- * Lógica pura del broker de nuestro venue: lee el libro (`GET /api/broker/book`) de forma tolerante y
- * decide qué cruzar. Sin E/S. El Market Test puntúa la ganancia entre los límites reales de las ofertas
- * de banco (`bench_offers`) que casamos; el precio solo reparte, no cambia la eficiencia.
+ * Pure logic of our venue's broker: reads the book (`GET /api/broker/book`) tolerantly and
+ * decides what to cross. No I/O. The Market Test scores the gain between the real limits of the bank offers
+ * (`bench_offers`) we match; the price only splits, it does not change efficiency.
  */
 
 export interface BenchQuote {
   id: string;
-  /** Tanda del banco: "b12" en el id "b12-7". Solo se cruzan ofertas de la misma tanda. */
+  /** Bank batch: "b12" in the id "b12-7". Only offers of the same batch are crossed. */
   run: string;
   side: "ask" | "bid";
   quote: number;
@@ -37,9 +37,9 @@ export interface BrokerBook {
   bench: BenchQuote[];
   sells: PublicSell[];
   buys: PublicBuy[];
-  /** Ofertas públicas bien formadas que no son venta de una carta ni puja por un tipo. */
+  /** Well-formed public offers that are neither a card sale nor a bid for a type. */
   unsupported: number;
-  /** Ofertas con forma inesperada (se saltan; nunca rompen el bucle). */
+  /** Offers with an unexpected shape (skipped; they never break the loop). */
   errors: string[];
 }
 
@@ -50,18 +50,18 @@ export interface BrokerMatch {
   price: number;
   ask: number;
   bid: number;
-  /** Excedente entre cotizaciones (bid − ask). */
+  /** Surplus between quotes (bid − ask). */
   surplus: number;
-  /** Excedente entre límites estimados (solo banco; igual a `surplus` sin historial). */
+  /** Surplus between estimated limits (bank only; equal to `surplus` without history). */
   estSurplus: number;
 }
 
 export interface BenchParams {
-  /** Ticks que se observa una oferta nueva antes de cruzarla (salvo urgencia). 0 = como el puesto auto. */
+  /** Ticks a new offer is observed before crossing it (except urgency). 0 = like the auto stall. */
   holdTicks: number;
-  /** Rebaja supuesta entre cotización y límite de una oferta firme (nunca se mueve), en fracción. */
+  /** Assumed shade between quote and limit of a firm offer (it never moves), as a fraction. */
   firmShade: number;
-  /** Edad (ticks) a partir de la cual una oferta se trata como a punto de irse. */
+  /** Age (ticks) from which an offer is treated as about to leave. */
   maxAgeTicks: number;
 }
 
@@ -74,18 +74,18 @@ const isObj = (x: unknown): x is Obj => typeof x === "object" && x !== null && !
 const posNum = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : undefined);
 const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
 
-/** "b12-7" → "b12"; `undefined` si el id no tiene la forma tanda-número. */
+/** "b12-7" → "b12"; `undefined` if the id does not have the batch-number shape. */
 export function benchRun(id: string): string | undefined {
   const m = /^([A-Za-z]+\d+)-(\d+)$/.exec(id);
   return m ? m[1] : undefined;
 }
 
-/** Comisión del venue por un precio (redondeada hacia arriba, más la cuota por carta). */
+/** Venue fee for a price (rounded up, plus the per-card fee). */
 export function venueFee(price: number, feeBps: number, feePerCard: number): number {
   return Math.ceil((feeBps * price) / 10_000) + feePerCard;
 }
 
-/** Punto medio entero dentro de [ask, bid], bajado hasta que el comprador pueda pagar también la comisión. */
+/** Integer midpoint within [ask, bid], lowered until the buyer can also pay the fee. */
 export function fairPrice(ask: number, bid: number, fee: (price: number) => number = () => 0): number | undefined {
   if (!(bid >= ask)) return undefined;
   let p = Math.floor((ask + bid) / 2);
@@ -99,7 +99,7 @@ function cardKey(x: unknown): string | undefined {
   return undefined;
 }
 
-/** Libro tolerante: lo que no encaja va a `errors` y se salta. */
+/** Tolerant book: what does not fit goes to `errors` and is skipped. */
 export function parseBrokerBook(raw: unknown): BrokerBook {
   const book: BrokerBook = { feeBps: 0, feePerCard: 0, bench: [], sells: [], buys: [], unsupported: 0, errors: [] };
   if (!isObj(raw)) {
@@ -146,7 +146,7 @@ export function parseBrokerBook(raw: unknown): BrokerBook {
   return book;
 }
 
-/** Huella del libro: tick + ids y cotizaciones. Mismo estado ⇒ no se vuelve a enviar nada. */
+/** Book fingerprint: tick + ids and quotes. Same state ⇒ nothing is sent again. */
 export function bookStateKey(tick: number, book: BrokerBook): string {
   const parts = [
     ...book.bench.map((b) => `${b.id}@${b.quote}`),
@@ -156,7 +156,7 @@ export function bookStateKey(tick: number, book: BrokerBook): string {
   return `${tick}|${parts.join(",")}`;
 }
 
-// ------------------------------------------------------------------ paciencia del banco
+// ------------------------------------------------------------------ bank patience
 
 export interface QuoteTrack {
   side: "ask" | "bid";
@@ -164,15 +164,15 @@ export interface QuoteTrack {
   lastTick: number;
   first: number;
   last: number;
-  /** Último paso hacia el mercado (ask baja, bid sube), en P. */
+  /** Last step toward the market (ask goes down, bid goes up), in P. */
   lastStep: number;
   lastMoveTick?: number;
   moves: number;
-  /** Ticks distintos en los que se ha visto. */
+  /** Distinct ticks in which it has been seen. */
   seen: number;
 }
 
-/** Actualiza el historial de cotizaciones del banco (muta y devuelve `tracks`); olvida los ids que ya no están. */
+/** Updates the bank's quote history (mutates and returns `tracks`); forgets ids that are no longer there. */
 export function observeBench(tracks: Map<string, QuoteTrack>, bench: BenchQuote[], tick: number): Map<string, QuoteTrack> {
   const present = new Set<string>();
   for (const b of bench) {
@@ -204,13 +204,13 @@ export function temperOf(t: QuoteTrack | undefined): Temper {
   return t.moves === 0 ? "firm" : "settled";
 }
 
-/** A punto de irse: relaja su cotización ahora (se le acaba la paciencia) o ya lleva `maxAgeTicks`. */
+/** About to leave: relaxes its quote now (its patience is running out) or is already `maxAgeTicks` old. */
 export function isUrgent(t: QuoteTrack | undefined, tick: number, params: BenchParams): boolean {
   if (!t) return false;
   return temperOf(t) === "relaxing" || tick - t.firstTick >= params.maxAgeTicks;
 }
 
-/** Límite oculto estimado: una firme esconde `firmShade`; una que relaja, al menos un paso más. */
+/** Estimated hidden limit: a firm one hides `firmShade`; one that relaxes, at least one more step. */
 export function estimatedLimit(q: BenchQuote, t: QuoteTrack | undefined, params: BenchParams): number {
   const temper = temperOf(t);
   const slack = temper === "firm" ? q.quote * params.firmShade : temper === "relaxing" && t ? t.lastStep : 0;
@@ -219,15 +219,15 @@ export function estimatedLimit(q: BenchQuote, t: QuoteTrack | undefined, params:
 
 export interface BenchPlan {
   matches: BrokerMatch[];
-  /** Pares que cruzan pero se aplazan (ofertas nuevas y pacientes, `holdTicks`). */
+  /** Pairs that cross but are deferred (new, patient offers, `holdTicks`). */
   held: BrokerMatch[];
 }
 
 /**
- * Por tanda: pujas por límite estimado descendente, cada una contra el ask libre de menor límite
- * estimado cuya cotización cubre (bid ≥ ask, con comisión). Sin historial es exactamente el cruce del
- * puesto auto (asks ascendentes contra bids descendentes mientras bid ≥ ask, al punto medio). Cada
- * oferta se usa una vez como mucho.
+ * Per batch: bids by descending estimated limit, each against the free ask of lowest estimated
+ * limit whose quote covers it (bid ≥ ask, with fee). Without history it is exactly the auto
+ * stall's crossing (ascending asks against descending bids while bid ≥ ask, at the midpoint). Each
+ * offer is used at most once.
  */
 export function planBench(
   book: BrokerBook,
@@ -274,9 +274,9 @@ export function planBench(
 }
 
 /**
- * Ofertas reales del venue, carta a carta: el ask más bajo contra la puja más alta (de otro maker) que
- * cubre ask + comisión, al punto medio rebajado hasta que el comprador pueda pagar la comisión. Si hay
- * más de `max` cruces, se quedan los de mayor excedente.
+ * Real offers of the venue, card by card: the lowest ask against the highest bid (from another maker) that
+ * covers ask + fee, at the midpoint lowered until the buyer can pay the fee. If there are
+ * more than `max` matches, those with the highest surplus are kept.
  */
 export function planPublic(book: BrokerBook, max = MAX_PUBLIC_MATCHES_PER_TICK): BrokerMatch[] {
   const fee = (p: number) => venueFee(p, book.feeBps, book.feePerCard);
@@ -294,5 +294,6 @@ export function planPublic(book: BrokerBook, max = MAX_PUBLIC_MATCHES_PER_TICK):
   return out.sort((a, b) => b.surplus - a.surplus).slice(0, Math.max(0, max));
 }
 
+// game text: kept in Spanish (ends with a Spanish phrase)
 export const ANNOUNCEMENT =
   "Welcome to Team 2 · El Rastro Express: zero fees (0 % and 0 P per card). Crossing offers are matched at the fair midpoint. Bienvenidos, sin comisiones.";

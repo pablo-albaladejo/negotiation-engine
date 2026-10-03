@@ -5,12 +5,12 @@ import { DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
 import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, saveHeartbeat } from "./shadow.js";
 
 /**
- * `pnpm bazaar:broker --dry-run --once`: lee reloj, libro y mercados (solo GET) e imprime qué cruzaría.
- * En vivo hace falta quitar `--dry-run` Y pasar `--confirm`; entonces corre sin fin (Ctrl-C para parar),
- * leyendo cada `--poll-ms` y enviando solo cuando cambia el estado del libro.
- * En dry-run es la sombra del Market Test (`--shadow` = `--dry-run --no-announce`): durante cada bench apunta en
- * `results/bazaar-live/bench-sessions.json` lo que casaría frente a lo que cruzó auto, y en cualquier modo deja un
- * latido en `results/bazaar-live/broker-heartbeat.json` (lo lee el coordinador para decidir auto o board).
+ * `pnpm bazaar:broker --dry-run --once`: reads clock, book and markets (GET only) and prints what it would cross.
+ * Live requires dropping `--dry-run` AND passing `--confirm`; then it runs endlessly (Ctrl-C to stop),
+ * reading every `--poll-ms` and sending only when the book state changes.
+ * In dry-run it is the Market Test shadow (`--shadow` = `--dry-run --no-announce`): during each bench it records in
+ * `results/bazaar-live/bench-sessions.json` what it would match versus what auto crossed, and in any mode it leaves a
+ * heartbeat in `results/bazaar-live/broker-heartbeat.json` (read by the coordinator to decide auto or board).
  */
 export async function runBrokerCli(
   argv: string[],
@@ -50,7 +50,7 @@ export async function runBrokerCli(
   if (!client) {
     const env = loadBrokerEnv();
     if (!env.key) {
-      log("Falta BAZAAR_BROKER_KEY (ponla en .env.broker o en el entorno).");
+      log("Missing BAZAAR_BROKER_KEY (set it in .env.broker or in the environment).");
       return 2;
     }
     client = new BrokerClient({ url: env.url, key: env.key });
@@ -66,7 +66,7 @@ export async function runBrokerCli(
   log(
     `broker: ${dryRun ? "DRY-RUN" : "LIVE"} · hold ${bench.holdTicks} ticks · firm shade ${bench.firmShade} · max age ${bench.maxAgeTicks} ticks · max public ${maxPublic}/tick · poll ${pollMs} ms`,
   );
-  // Sombra y latido solo con E/S real (sin sink inyectado). La sombra nunca envía nada: solo en dry-run.
+  // Shadow and heartbeat only with real I/O (no injected sink). The shadow never sends anything: dry-run only.
   const files = sink ? {} : { ...(dryRun ? { shadow: new BenchShadow(defaultSessionsFile(), bench) } : {}), heartbeat: (hb: Parameters<typeof saveHeartbeat>[1]) => saveHeartbeat(defaultHeartbeatFile(), hb) };
   const agent = new BrokerAgent(client, { dryRun, log, sink: out, bench, maxPublic, announce: !values["no-announce"] && !values.shadow, ...files });
   const maxSteps = values.once ? 1 : values.steps !== undefined ? n("steps", values.steps, 1) : Infinity;

@@ -20,10 +20,10 @@ import {
   type QuoteTrack,
 } from "./broker.js";
 
-/** Lo que el bucle necesita del cliente (inyectable en tests). */
+/** What the loop needs from the client (injectable in tests). */
 export type BrokerApi = Pick<BrokerClient, "clock" | "book" | "venues" | "match" | "announce"> & Partial<Pick<BrokerClient, "schedule">>;
 
-/** Una línea JSONL por cruce (planeado, enviado o rechazado) o por foto del banco. Sin clave. */
+/** One JSONL line per match (planned, sent or refused) or per bank snapshot. No key. */
 export interface BrokerRecord {
   ts: string;
   tick: number;
@@ -46,7 +46,7 @@ export interface BrokerSink {
   write(record: BrokerRecord): void;
 }
 
-/** `results/bazaar-live/<fecha>/broker.jsonl` (cruces) y `bench.jsonl` (fotos del banco para calibrar). */
+/** `results/bazaar-live/<date>/broker.jsonl` (matches) and `bench.jsonl` (bank snapshots for calibration). */
 export class FileBrokerSink implements BrokerSink {
   constructor(private readonly dir: string) {
     mkdirSync(dir, { recursive: true });
@@ -68,9 +68,9 @@ export interface BrokerAgentOptions {
   maxPublic?: number;
   announce?: boolean;
   now?: () => Date;
-  /** Sombra del Market Test (solo dry-run): apunta por bench lo que casaríamos frente a lo que cruzó auto. */
+  /** Market Test shadow (dry-run only): records per bench what we would match versus what auto crossed. */
   shadow?: BenchShadow;
-  /** Latido por paso (el coordinador lo lee para saber si el broker está sano). */
+  /** Heartbeat per step (the coordinator reads it to know whether the broker is healthy). */
   heartbeat?: (hb: Heartbeat) => void;
 }
 
@@ -85,9 +85,9 @@ export interface BrokerStep {
 const errText = (e: unknown) => (e instanceof BazaarError ? e.code : e instanceof Error ? e.message : String(e));
 
 /**
- * Bucle del broker: lee reloj y libro; si el estado (tick + ids + cotizaciones) no cambió, no hace nada;
- * si cambió, planea con `planBench` + `planPublic` (puros) y envía cada cruce (nada en dry-run). Una
- * oferta ya casada no se vuelve a usar mientras siga en el libro. Anuncia el venue una vez.
+ * Broker loop: reads clock and book; if the state (tick + ids + quotes) did not change, it does nothing;
+ * if it changed, it plans with `planBench` + `planPublic` (pure) and sends each match (nothing in dry-run). An
+ * already matched offer is not reused while it stays in the book. Announces the venue once.
  */
 export class BrokerAgent {
   readonly tracks = new Map<string, QuoteTrack>();
@@ -199,8 +199,8 @@ export class BrokerAgent {
   }
 
   /**
-   * Bench en curso según `/api/schedule` (se relee cada 30 ticks). Sin calendario legible pero con banco en el libro,
-   * la hora entera en curso (los benches caen en horas enteras).
+   * Bench in progress per `/api/schedule` (re-read every 30 ticks). Without a readable calendar but with a bank in the book,
+   * the whole hour in progress (benches fall on whole hours).
    */
   private async benchSlot(tick: number, hours: number | undefined, benchVisible: boolean): Promise<{ atHours: number; hard: boolean } | undefined> {
     if (this.api.schedule && (!this.schedule || tick - this.schedule.tick >= 30)) {
