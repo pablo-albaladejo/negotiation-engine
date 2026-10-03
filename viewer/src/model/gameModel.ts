@@ -682,6 +682,37 @@ export function filterHints(hints: readonly HintView[], f: HintFilters): HintVie
   );
 }
 
+/** Hints that differ only in their numbers ("I think 16 P…", "I think 18 P…"), as one line. */
+export interface HintGroup {
+  key: string;
+  persona: string;
+  /** Text of the latest hint, numbers kept as they are. */
+  text: string;
+  count: number;
+  lastTick: number | null;
+  candidate: boolean;
+  reasons: string[];
+  classification: string | null;
+}
+
+/** Groups by persona + text with digits masked; keeps the input order (latest first). */
+export function groupHints(hints: readonly HintView[]): HintGroup[] {
+  const out = new Map<string, HintGroup>();
+  for (const h of hints) {
+    const key = `${h.persona}|${h.text.replace(/\d+([.,]\d+)?/g, "#")}`;
+    const g = out.get(key);
+    if (!g) {
+      out.set(key, { key, persona: h.persona, text: h.text, count: 1, lastTick: h.tick, candidate: h.candidate, reasons: [...h.reasons], classification: h.classification });
+      continue;
+    }
+    g.count += 1;
+    g.candidate ||= h.candidate;
+    g.classification ??= h.classification;
+    for (const r of h.reasons) if (!g.reasons.includes(r)) g.reasons.push(r);
+  }
+  return [...out.values()];
+}
+
 // ---------------------------------------------------------------- flags
 
 /** Flags sent (state or `flags.json`) and their balance; candidates from the conversations. */

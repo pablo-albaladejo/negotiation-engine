@@ -16,6 +16,7 @@ import {
   decisionLabel,
   filterHints,
   filterPrices,
+  groupHints,
   packsOf,
   venuesOf,
   priceRows,
@@ -391,18 +392,18 @@ function SelectBox({ label, value, options, onChange }: { label: string; value: 
 
 function Hints({ model }: { model: GameModel }) {
   const all = hintsOf(model);
-  const [f, setF] = useState<HintFilters>({ candidatesOnly: false, classification: "", persona: "", q: "" });
+  const [f, setF] = useState<HintFilters>({ candidatesOnly: true, classification: "", persona: "", q: "" });
   const searchId = useId();
   const candId = useId();
   const personas = [...new Set(all.map((h) => h.persona))].sort();
   const classes = [...new Set(all.map((h) => h.classification).filter((c): c is string => c !== null))].sort();
-  const shown = filterHints(all, f);
+  const shown = groupHints(filterHints(all, f));
   const counts = personas.map((p) => `${p} ${all.filter((h) => h.persona === p).length}`);
   return (
     <Card title={`Hints corpus (${all.length})`}>
       <div style={col}>
         <Muted>
-          Dealer text kept only as a hint for eggs (narrow exception to «structure only»): never a figure, shown as plain text. {counts.length ? `Per persona: ${counts.join(" · ")}` : ""}
+          Dealer text kept only as an egg hint, never a figure. Lines that differ only in numbers are grouped (×N). {counts.length ? counts.join(" · ") : ""}
         </Muted>
         <div className="nr-filters" role="group" aria-label="Hint filters">
           <div className="nr-filter-field">
@@ -422,22 +423,17 @@ function Hints({ model }: { model: GameModel }) {
         </div>
         {shown.length > 0 ? (
           <ul style={list} aria-label="Hints, latest first">
-            {shown.slice(0, 200).map((h) => (
-              <li key={h.key} style={{ borderTop: "1px solid var(--line)", paddingTop: "var(--space-1)" }}>
-                <div style={row}>
-                  <strong>{h.persona}</strong>
-                  <Muted>{[h.tick !== null ? `tick ${h.tick}` : null, h.hour !== null ? `h ${fmt(h.hour, 2)}` : null, h.wall, h.source, h.messageId ? `msg ${h.messageId}` : null].filter(Boolean).join(" · ")}</Muted>
-                  {h.classification ? <Flag kind="decision">{h.classification}</Flag> : null}
-                  {h.candidate ? <Flag kind="injection">candidate</Flag> : null}
-                  {h.reasons.map((r) => (
-                    <Pill key={r} kind="sample">
-                      {r}
-                    </Pill>
-                  ))}
-                </div>
-                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{h.text}</div>
+            {shown.slice(0, 100).map((h) => (
+              <li key={h.key} style={{ ...row, flexWrap: "nowrap", borderTop: "1px solid var(--line)", paddingTop: "var(--space-1)" }}>
+                <strong style={{ flex: "none" }}>{h.persona}</strong>
+                <Muted>{`${h.count > 1 ? `×${h.count} · ` : ""}${h.lastTick !== null ? `t${h.lastTick}` : ""}`}</Muted>
+                {h.classification ? <Flag kind="decision">{h.classification}</Flag> : null}
+                <span title={[h.text, ...h.reasons].join("\n")} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {h.text}
+                </span>
               </li>
             ))}
+            {shown.length > 100 ? <Muted>{`…and ${shown.length - 100} more (narrow with the filters)`}</Muted> : null}
           </ul>
         ) : (
           <Muted>{all.length ? "Nothing matches these filters." : "No hints recorded yet (hints.jsonl not there or empty)."}</Muted>
