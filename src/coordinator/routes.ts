@@ -110,6 +110,15 @@ const DEALER_REASON: Record<DealerIntent["kind"], string> = {
   close: "no deal within our limit",
 };
 
+/**
+ * *demand_markup* (personas.md § 3.2): su límite de venta sube según se agota el stock de la hora, así que comprarle
+ * pronto en la hora de juego sale más barato. Peso de las aperturas de compra: ×1,25 al empezar la hora, ×0,75 al acabar.
+ */
+export function demandWeight(gameHour: number | undefined): number {
+  if (gameHour === undefined) return 1;
+  return 1.25 - 0.5 * (gameHour - Math.floor(gameHour));
+}
+
 export class DealersRoute {
   private readonly agents = new Map<string, BazaarAgent>();
   private readonly team: TeamBudget;
@@ -200,7 +209,8 @@ export class DealersRoute {
         const page = i.side === "buy" && i.cards.some((c) => completesPage(c, me, state.ours.album.pages, this.o.pageTargets));
         out.intents.push({ ...base, kind: "accept", acceptClass: page ? "page-completing" : "dealer-ladder" });
       } else if (i.kind === "open") {
-        out.intents.push({ ...base, kind: "open" });
+        const w = i.side === "buy" ? demandWeight(state.time.gameHour) : 1;
+        out.intents.push({ ...base, kind: "open", ...(ev !== undefined && w !== 1 ? { ev: Math.round(ev * w * 100) / 100, summary: `${what} · demand ×${w.toFixed(2)}` } : {}) });
       } else {
         out.intents.push({ ...base, kind: "message" });
       }
