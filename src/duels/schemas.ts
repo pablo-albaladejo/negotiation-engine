@@ -3,30 +3,30 @@ import type { BazaarClient } from "../shared/client.js";
 import { ClockSchema, type Clock } from "../shared/schemas.js";
 
 /**
- * Esquemas de los duelos (`/api/duels`) y de `/api/schedule`. Tolerantes como `schemas.ts`: el
- * servidor añade campos y no sabemos la forma exacta de `rival_offer` ni de `deadline`, así que se
- * aceptan las variantes plausibles y `normalizeRivalOffer` las reduce a `{ price, days? }`.
+ * Duel schemas (`/api/duels`) and `/api/schedule`. Tolerant like `schemas.ts`: the
+ * server adds fields and we don't know the exact shape of `rival_offer` or `deadline`, so the
+ * plausible variants are accepted and `normalizeRivalOffer` reduces them to `{ price, days? }`.
  */
 
 const num = z.number();
 
-/** Oferta del rival: un número (solo precio), `{ price, days }` o nada si aún no ha hablado. */
+/** Rival's offer: a number (price only), `{ price, days }` or nothing if they haven't spoken yet. */
 export const RivalOfferSchema = z.union([num, z.looseObject({ price: num.nullish(), days: num.nullish() }), z.null()]).optional();
 
-/** Peso privado por día de entrega: un número (P por día) o una tabla por día (array u objeto "0".."10"). */
+/** Private weight per delivery day: a number (P per day) or a per-day table (array or object "0".."10"). */
 export const DaysWeightSchema = z.union([num, z.array(num), z.record(z.string(), num), z.null()]).optional();
 
-/** El servidor real usa `duel` como id, `deadline_tick` y `rounds`; se normalizan a id/deadline/round. */
+/** The real server uses `duel` as id, `deadline_tick` and `rounds`; they are normalized to id/deadline/round. */
 const normalizeDuel = (raw: unknown): unknown => {
   if (!raw || typeof raw !== "object") return raw;
   const r = raw as Record<string, unknown>;
   return { ...r, id: r.id ?? r.duel, deadline: r.deadline ?? r.deadline_tick, round: r.round ?? r.rounds };
 };
 
-/** Un mensaje del hilo del duelo; `sender` es "you" en los nuestros, cualquier otra cosa en los del rival. */
+/** A message in the duel thread; `sender` is "you" for ours, anything else for the rival's. */
 export const DuelMessageSchema = z.looseObject({
   sender: z.string().nullish(),
-  /** El servidor real usa `from` ("you" | nombre del rival); `sender` queda por compatibilidad. */
+  /** The real server uses `from` ("you" | rival name); `sender` stays for compatibility. */
   from: z.string().nullish(),
   price: num.nullish(),
   days: num.nullish(),
@@ -34,7 +34,7 @@ export const DuelMessageSchema = z.looseObject({
 });
 export type DuelMessage = z.infer<typeof DuelMessageSchema>;
 
-/** `your_offer`: nuestra ultima oferta segun el servidor (para no reabrir tras un reinicio sin memoria). */
+/** `your_offer`: our last offer according to the server (to avoid reopening after a restart without memory). */
 export const YourOfferSchema = z
   .looseObject({ id: z.union([z.number(), z.string()]).nullish(), price: num.nullish(), days: num.nullish(), tick: num.nullish() })
   .nullish();
@@ -49,7 +49,7 @@ export const DuelSchema = z.preprocess(normalizeDuel, z.looseObject({
   deadline: z.union([num, z.string(), z.null()]).optional(),
   issues: z.array(z.string()).default(["price"]),
   your_days_weight: DaysWeightSchema,
-  /** Decay por ronda del trato (práctica: 0,06). */
+  /** Decay per round of the deal (practice: 0.06). */
   decay_per_round: num.nullish(),
   status: z.string().nullish(),
   round: num.nullish(),
@@ -73,7 +73,7 @@ export interface StructuredOffer {
   days?: number;
 }
 
-/** Oferta estructurada del rival (nunca su texto); `undefined` si no hay precio finito. */
+/** Rival's structured offer (never their text); `undefined` if there is no finite price. */
 export function normalizeRivalOffer(raw: Duel["rival_offer"]): StructuredOffer | undefined {
   if (raw === null || raw === undefined) return undefined;
   if (typeof raw === "number") return Number.isFinite(raw) ? { price: raw } : undefined;
@@ -81,15 +81,15 @@ export function normalizeRivalOffer(raw: Duel["rival_offer"]): StructuredOffer |
   return typeof raw.days === "number" && Number.isFinite(raw.days) ? { price: raw.price, days: raw.days } : { price: raw.price };
 }
 
-/** Un precio/día finitos de un mensaje, estructurados; `undefined` si no trae precio. */
+/** A finite price/day from a message, structured; `undefined` if it carries no price. */
 function offerOfMessage(m: Pick<DuelMessage, "price" | "days">): StructuredOffer | undefined {
   if (typeof m.price !== "number" || !Number.isFinite(m.price)) return undefined;
   return typeof m.days === "number" && Number.isFinite(m.days) ? { price: m.price, days: m.days } : { price: m.price };
 }
 
 /**
- * Oferta vigente del rival: `rival_offer` si la trae, si no el precio del último mensaje suyo
- * (`sender` distinto de "you") que tenga uno. Nunca lee el texto del mensaje, solo su precio/días.
+ * Current rival offer: `rival_offer` if present, otherwise the price of their last message
+ * (`sender` other than "you") that has one. Never reads the message text, only its price/days.
  */
 export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): StructuredOffer | undefined {
   const direct = normalizeRivalOffer(duel.rival_offer);
@@ -97,7 +97,7 @@ export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): St
   const messages = duel.messages ?? [];
   for (let k = messages.length - 1; k >= 0; k--) {
     const m = messages[k]!;
-    // Solo mensajes que sabemos que son del rival: el servidor marca los nuestros con from="you".
+    // Only messages known to be the rival's: the server marks ours with from="you".
     const who = m.from ?? m.sender;
     if (who == null || who === "you") continue;
     const offer = offerOfMessage(m);
@@ -107,8 +107,8 @@ export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): St
 }
 
 /**
- * Concesiones nuestras desde la última oferta con precio del rival: cuántas veces cambiamos precio o días en
- * nuestros mensajes posteriores (la apertura no cuenta). Solo lee `from`, `price` y `days`, nunca el texto.
+ * Our concessions since the rival's last offer with a price: how many times we changed price or days in
+ * our later messages (the opening doesn't count). Only reads `from`, `price` and `days`, never the text.
  */
 export function concessionsSinceRival(messages: readonly Pick<DuelMessage, "from" | "sender" | "price" | "days">[]): number {
   let n = 0;
@@ -129,14 +129,14 @@ export function concessionsSinceRival(messages: readonly Pick<DuelMessage, "from
   return n;
 }
 
-/** Nuestra última oferta según el servidor (`your_offer`); sirve para no reabrir tras un reinicio sin memoria. */
+/** Our last offer according to the server (`your_offer`); used to avoid reopening after a restart without memory. */
 export function ourOfferFrom(duel: Pick<Duel, "your_offer">): StructuredOffer | undefined {
   const o = duel.your_offer;
   if (!o) return undefined;
   return offerOfMessage(o);
 }
 
-/** Cuerpo del POST de un mensaje de duelo: con días, el precio va también dentro de `offer` (como el SDK). */
+/** Body of the duel message POST: with days, the price also goes inside `offer` (like the SDK). */
 export function duelMessageBody(text: string, offer: StructuredOffer): Record<string, unknown> {
   const price = Math.round(offer.price);
   if (offer.days === undefined) return { text, price };
@@ -144,7 +144,7 @@ export function duelMessageBody(text: string, offer: StructuredOffer): Record<st
   return { text, price, days, offer: { price, days } };
 }
 
-/** Las rutas de duelos que usa el bucle; inyectable en los tests. */
+/** The duel routes the loop uses; injectable in tests. */
 export interface DuelsApi {
   clock(): Promise<Clock>;
   duels(done?: boolean): Promise<Duels>;
@@ -153,7 +153,7 @@ export interface DuelsApi {
   accept(duelId: number | string): Promise<unknown>;
 }
 
-/** Adaptador sobre `BazaarClient` (sin tocarlo): mismas cabeceras, límite de ritmo y errores tipados. */
+/** Adapter over `BazaarClient` (without touching it): same headers, rate limit and typed errors. */
 export function duelsApi(client: BazaarClient): DuelsApi {
   return {
     clock: () => client.request("GET", "/api/clock", ClockSchema),

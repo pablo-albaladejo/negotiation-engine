@@ -3,21 +3,21 @@ import type { Side } from "../negotiation/negotiator.js";
 import type { Catalog, Me } from "../../shared/schemas.js";
 
 /**
- * Qué negociar con el dealer: vender repetidas (reserva = nuestro your_value de esa copia) y comprar
- * cartas que faltan para completar páginas (reserva = your_value × seguridad, recortada por el
- * presupuesto de la hora y la caja). Sin red: los valores privados llegan por `valueOf`.
+ * What to negotiate with the dealer: sell duplicates (reservation = our your_value for that copy) and buy
+ * missing cards to complete pages (reservation = your_value × safety, capped by the hour's
+ * budget and cash). No network: private values arrive through `valueOf`.
  */
 
 export interface Target {
   key: string;
   side: Side;
   topic: Topic;
-  /** Reserva privada (compra: máximo; venta: mínimo). Solo para el motor y la traza local. */
+  /** Private reservation (buy: maximum; sell: minimum). Only for the engine and the local trace. */
   reservation: number;
   label: string;
-  /** Nuestro valor privado de lo que se compra o vende (esperado si es por rareza y set): un trato crea valor si el precio lo mejora. */
+  /** Our private value of what is bought or sold (expected, if by rarity and set): a deal creates value if the price improves on it. */
   value?: number;
-  /** Su lista publicada para esa rareza (tope del ancla de venta, `sellAnchorCapMult`); sin ella, sin tope. */
+  /** Her published list for that rarity (cap on the sell anchor, `sellAnchorCapMult`); without it, no cap. */
   herList?: number | undefined;
 }
 
@@ -29,7 +29,7 @@ export function rarityOf(card: { rarity?: string | null | undefined; print_run?:
   return card.print_run ? RARITY_BY_RUN[card.print_run] : undefined;
 }
 
-/** Repetidas: por carta, se queda la copia que más valemos; el resto se ofrece. */
+/** Duplicates: per card, we keep the copy we value most; the rest are offered. */
 export function spareTargets(me: Me): Target[] {
   const byRef = new Map<string, Me["assets"]>();
   for (const a of me.assets) {
@@ -61,7 +61,7 @@ export interface MissingCard {
   book: number | undefined;
 }
 
-/** Cartas de página (comunes, infrecuentes, raras) que no tenemos; primero los sets a los que les faltan menos. */
+/** Page cards (common, uncommon, rare) we don't have; sets missing the fewest first. */
 export function missingPageCards(me: Me, catalog: Catalog): MissingCard[] {
   const held = new Set(me.assets.filter((a) => a.kind === "card").map((a) => a.ref));
   const perSet: MissingCard[][] = [];
@@ -75,10 +75,10 @@ export function missingPageCards(me: Me, catalog: Catalog): MissingCard[] {
 }
 
 export interface BuyPlanOptions {
-  /** Lo que queda del presupuesto de la hora. */
+  /** What is left of the hour's budget. */
   budget: number;
   cash: number;
-  /** Fracción del your_value que estamos dispuestos a pagar (conservador). */
+  /** Fraction of your_value we are willing to pay (conservative). */
   safety: number;
   maxLookups: number;
 }
@@ -91,7 +91,7 @@ export async function buyTargets(missing: readonly MissingCard[], valueOf: (card
     const value = await valueOf(card.id);
     const reservation = Math.min(cap, Math.floor(value * o.safety));
     if (reservation < 1) continue;
-    // Si su precio de libro supera mucho lo que valemos la carta, no hay zona de acuerdo probable.
+    // If her book price is far above what we value the card at, an agreement zone is unlikely.
     if (card.book !== undefined && reservation < card.book * 0.6) continue;
     out.push({
       key: `buy:${card.id}`,
@@ -106,9 +106,9 @@ export async function buyTargets(missing: readonly MissingCard[], valueOf: (card
 }
 
 /**
- * Alternativa si el dealer no vende cartas concretas: `{buy: {rarity, set}}`. Puede tocarnos
- * cualquier carta de esa rareza y set (también una repetida), así que la reserva es la media de
- * nuestro valor de todas ellas × seguridad. Solo rarezas que vende el dealer y sets con huecos.
+ * Alternative if the dealer doesn't sell specific cards: `{buy: {rarity, set}}`. We may get
+ * any card of that rarity and set (a duplicate too), so the reservation is the mean of
+ * our value of all of them × safety. Only rarities the dealer sells and sets with gaps.
  */
 export async function raritySetTargets(
   missing: readonly MissingCard[],

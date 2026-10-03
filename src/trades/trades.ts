@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { Asset, Catalog } from "../shared/schemas.js";
 
 /**
- * Trades con otros equipos en El Rastro: valoración a NUESTROS valores privados y decisiones puras y
- * deterministas (aceptar, listar repetidas, pujar por cartas de página). Solo se lee la estructura de
- * cada oferta (give/want); el texto de otros equipos nunca entra aquí.
+ * Trades with other teams in El Rastro: valuation at OUR private values and pure,
+ * deterministic decisions (accept, list duplicates, bid for page cards). Only the structure of
+ * each offer (give/want) is read; other teams' text never enters here.
  */
 
 const num = z.number();
@@ -29,7 +29,7 @@ export const TradeOfferSchema = z.looseObject({
 });
 export type TradeOffer = z.infer<typeof TradeOfferSchema>;
 
-/** Ofertas válidas de una lista (`[...]` o `{offers}`); una oferta rara se descarta sin tumbar el resto. */
+/** Valid offers from a list (`[...]` or `{offers}`); an odd offer is dropped without taking down the rest. */
 export function parseOffers(raw: unknown): TradeOffer[] {
   const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as { offers?: unknown }).offers) ? (raw as { offers: unknown[] }).offers : [];
   return list.flatMap((o) => {
@@ -38,7 +38,7 @@ export function parseOffers(raw: unknown): TradeOffer[] {
   });
 }
 
-/** `/api/me/offers`: el servidor responde `{offers}` o `{open, queued, to_me}`. */
+/** `/api/me/offers`: the server answers `{offers}` or `{open, queued, to_me}`. */
 export function parseMyOffers(raw: unknown, myId: string): { mine: TradeOffer[]; toMe: TradeOffer[] } {
   const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   if ("open" in obj || "queued" in obj || "to_me" in obj) {
@@ -51,9 +51,9 @@ export function parseMyOffers(raw: unknown, myId: string): { mine: TradeOffer[];
 export interface Side {
   cash: number;
   assets: { id: number; ref: string | null }[];
-  /** Cartas pedidas/dadas por tipo (`card:SAL-07` o `cards: ["SAL-07"]`). */
+  /** Cards asked/given by kind (`card:SAL-07` or `cards: ["SAL-07"]`). */
   cards: string[];
-  /** Tipos que no sabemos valorar (p. ej. una rareza genérica): la oferta no se toca. */
+  /** Kinds we can't value (e.g. a generic rarity): the offer is left alone. */
   unsupported: string[];
 }
 
@@ -67,14 +67,14 @@ export function readSide(side: TradeOffer["give"]): Side {
   return out;
 }
 
-// ---------------------------------------------------------------- valoración
+// ---------------------------------------------------------------- valuation
 
 export interface ValueRules {
-  /** Valor de la 1.ª, 2.ª, 3.ª copia como fracción del valor base (más allá, 0). */
+  /** Value of the 1st, 2nd, 3rd copy as a fraction of the base value (beyond that, 0). */
   marginals: number[];
-  /** Página completa (comunes + infrecuentes + raras): fracción de la suma de sus bases. */
+  /** Complete page (commons + uncommons + rares): fraction of the sum of their bases. */
   pageBonus: number;
-  /** Set entero (con épica y legendaria): fracción extra de la suma de todo el set. */
+  /** Whole set (with epic and legendary): extra fraction of the sum of the whole set. */
   masterBonus: number;
 }
 export const DEFAULT_VALUE_RULES: ValueRules = { marginals: [1, 0.25, 0.1], pageBonus: 0.25, masterBonus: 0.1 };
@@ -88,10 +88,10 @@ export interface CardMeta {
 
 export interface ValueModel {
   rules: ValueRules;
-  /** Valor base privado (primera copia) por carta. */
+  /** Private base value (first copy) per card. */
   base: Map<string, number>;
   meta: Map<string, CardMeta>;
-  /** Cartas de página por set (comunes, infrecuentes, raras). */
+  /** Page cards per set (commons, uncommons, rares). */
   pages: Map<string, string[]>;
   sets: Map<string, string[]>;
 }
@@ -99,7 +99,7 @@ export interface ValueModel {
 export interface HeldAsset {
   id: number;
   ref: string;
-  /** `your_value` de esa copia: lo que perdemos si sale (para repetidas, el marginal de la última copia). */
+  /** `your_value` of that copy: what we lose if it leaves (for duplicates, the marginal of the last copy). */
   value: number;
   locked: boolean;
 }
@@ -139,10 +139,10 @@ export function median(xs: number[]): number | undefined {
 }
 
 /**
- * Bases privadas: de lo que tenemos (`your_value` ÷ marginal de la última copia) y de `/api/me/value`
- * para cartas que no tenemos (`zeroValues`, valor de la primera copia). Si esa primera copia completaría
- * la página, la API ya incluye el bonus: se usa multiplicador del set × book para no contarlo dos veces.
- * Las cartas sin dato de un set conocido se estiman igual (multiplicador mediano × book).
+ * Private bases: from what we hold (`your_value` ÷ marginal of the last copy) and from `/api/me/value`
+ * for cards we don't hold (`zeroValues`, value of the first copy). If that first copy would complete
+ * the page, the API already includes the bonus: set multiplier × book is used so it isn't counted twice.
+ * Cards with no data in a known set are estimated the same way (median multiplier × book).
  */
 export function buildValueModel(catalog: Catalog, held: HeldAsset[], zeroValues: Map<string, number>, rules: ValueRules = readValueRules(catalog)): ValueModel {
   const meta = new Map<string, CardMeta>();
@@ -193,7 +193,7 @@ export function buildValueModel(catalog: Catalog, held: HeldAsset[], zeroValues:
   return { rules, base, meta, pages, sets };
 }
 
-/** Valor de una colección a nuestros valores: copias con marginales decrecientes + bonus de página y set. */
+/** Value of a collection at our values: copies with decreasing marginals + page and set bonus. */
 export function portfolioValue(counts: Map<string, number>, model: ValueModel): number {
   let v = 0;
   for (const [ref, n] of counts) {
@@ -225,8 +225,8 @@ export function valueDelta(counts: Map<string, number>, give: string[], get: str
 }
 
 /**
- * Penalización por quitar nuestra ÚNICA copia de una página casi completa (≥ `protectHave` cartas, aún sin
- * completar): el bonus que dejaríamos de cobrar. Una página ya completa ya lo cuenta `portfolioValue`.
+ * Penalty for removing our ONLY copy of a nearly complete page (≥ `protectHave` cards, not yet
+ * complete): the bonus we would stop collecting. An already complete page is already counted by `portfolioValue`.
  */
 export function pageRisk(counts: Map<string, number>, give: string[], model: ValueModel, protectHave: number): number {
   const after = applyCards(counts, give, []);
@@ -241,7 +241,7 @@ export function pageRisk(counts: Map<string, number>, give: string[], model: Val
   return risk;
 }
 
-// ---------------------------------------------------------------- comisiones y precios límite
+// ---------------------------------------------------------------- fees and limit prices
 
 export interface FeeModel {
   /** El Rastro: 5 % = 500 bps. */
@@ -250,13 +250,13 @@ export interface FeeModel {
 }
 export const RASTRO_FEES: FeeModel = { bps: 500, perCard: 1 };
 
-/** Comisión de un trato, redondeada hacia arriba (el feed muestra 9 P → 2 P). Se asume que la pagamos nosotros. */
+/** Fee of a deal, rounded up (the feed shows 9 P → 2 P). Assumed to be paid by us. */
 export function tradeFee(cash: number, cards: number, fees: FeeModel): number {
   if (cash <= 0 && cards <= 0) return 0;
   return Math.ceil((Math.max(0, cash) * fees.bps) / 10_000 + cards * fees.perCard - 1e-9);
 }
 
-/** Precio mínimo entero al que vender una carta que nos cuesta `loss` y aún ganar `margin` tras comisión. */
+/** Minimum integer price at which to sell a card that costs us `loss` and still earn `margin` after fee. */
 export function minAsk(loss: number, margin: number, fees: FeeModel): number {
   let p = Math.max(1, Math.ceil((loss + margin + fees.perCard) / (1 - fees.bps / 10_000)));
   while (p - tradeFee(p, 1, fees) - loss < margin) p++;
@@ -264,14 +264,14 @@ export function minAsk(loss: number, margin: number, fees: FeeModel): number {
   return p;
 }
 
-/** Puja máxima entera por una carta que nos vale `gain` dejando `margin` tras comisión (0 = no hay puja posible). */
+/** Maximum integer bid for a card worth `gain` to us leaving `margin` after fee (0 = no bid possible). */
 export function maxBid(gain: number, margin: number, fees: FeeModel): number {
   let b = Math.floor((gain - margin - fees.perCard) / (1 + fees.bps / 10_000));
   while (b >= 1 && gain - b - tradeFee(b, 1, fees) < margin) b--;
   return Math.max(0, b);
 }
 
-// ---------------------------------------------------------------- referencias de precio (feed y tablón)
+// ---------------------------------------------------------------- price references (feed and board)
 
 export interface Quote {
   ref: string;
@@ -279,7 +279,7 @@ export interface Quote {
   price: number;
 }
 
-/** Liquidaciones de una sola carta entre equipos en un venue (`/api/feed`, tipo `settlement`): precio por carta. */
+/** Single-card settlements between teams at a venue (`/api/feed`, type `settlement`): price per card. */
 export function parseSettlements(raw: unknown): Quote[] {
   const events = raw && typeof raw === "object" && Array.isArray((raw as { events?: unknown }).events) ? (raw as { events: unknown[] }).events : Array.isArray(raw) ? raw : [];
   const out: Quote[] = [];
@@ -295,7 +295,7 @@ export function parseSettlements(raw: unknown): Quote[] {
   return out;
 }
 
-/** Ventas de una sola carta por efectivo (asks) y compras de una carta por efectivo (bids), sin las nuestras. */
+/** Single-card cash sales (asks) and single-card cash purchases (bids), excluding ours. */
 export function boardQuotes(board: TradeOffer[], mineIds: Set<number>, model: ValueModel, tick: number): { asks: Quote[]; bids: Quote[] } {
   const asks: Quote[] = [];
   const bids: Quote[] = [];
@@ -321,8 +321,8 @@ export interface PriceRef {
 }
 
 /**
- * Precio de referencia de una carta: mediana de liquidaciones de esa carta, luego de su rareza; si no
- * hay, mediana de lo que se pide en el tablón (carta, luego rareza); si no, su book.
+ * Reference price of a card: median of that card's settlements, then of its rarity; if none,
+ * median of what is asked on the board (card, then rarity); otherwise its book.
  */
 export function priceReference(ref: string, model: ValueModel, settlements: Quote[], asks: Quote[]): PriceRef | undefined {
   const rarity = model.meta.get(ref)?.rarity;
@@ -340,27 +340,27 @@ export function priceReference(ref: string, model: ValueModel, settlements: Quot
   return book ? { price: book, source: "book" } : undefined;
 }
 
-// ---------------------------------------------------------------- parámetros y estado
+// ---------------------------------------------------------------- parameters and state
 
 export interface TradeParams {
   fees: FeeModel;
-  /** Margen mínimo absoluto (P) de valor creado para aceptar, listar o pujar. */
+  /** Minimum absolute margin (P) of value created to accept, list or bid. */
   minMargin: number;
-  /** Margen mínimo relativo al efectivo del trato al aceptar. */
+  /** Minimum margin relative to the deal's cash when accepting. */
   marginFrac: number;
-  /** Página "casi completa" a proteger: cartas distintas que ya tenemos. */
+  /** "Nearly complete" page to protect: distinct cards we already hold. */
   protectPageHave: number;
-  /** Pedimos un poco por encima de la referencia (liquidaciones, si no tablón). */
+  /** We ask slightly above the reference (settlements, otherwise board). */
   askPremium: number;
-  /** Sin pujas comparables por esa carta, pujamos esta fracción de la referencia. */
+  /** With no comparable bids for that card, we bid this fraction of the reference. */
   bidDiscount: number;
   expiresInTicks: number;
-  /** Reprecio lento: solo ofertas con al menos esta edad, en pasos de `repriceFrac` (mín. 1 P). */
+  /** Slow repricing: only offers at least this old, in steps of `repriceFrac` (min. 1 P). */
   repriceAfterTicks: number;
   repriceFrac: number;
   /** Tope de ofertas abiertas nuestras en El Rastro. */
   maxOffers: number;
-  /** Tope de gasto de la ejecución (compras aceptadas + pujas abiertas, con comisión). */
+  /** Run spend cap (accepted purchases + open bids, with fee). */
   maxSpend: number;
   maxBids: number;
   maxNewPerTick: number;
@@ -387,7 +387,7 @@ export interface TradeState {
   myId: string;
   cash: number;
   held: HeldAsset[];
-  /** Sets con página en el álbum: candidatos a pujas. */
+  /** Sets with a page in the album: bid candidates. */
   pageSets: string[];
   board: TradeOffer[];
   mine: TradeOffer[];
@@ -395,11 +395,11 @@ export interface TradeState {
   /** Liquidaciones recientes entre equipos (referencia de precio). */
   settlements: Quote[];
   model: ValueModel;
-  /** Límites del servidor en vigor (`/api/clock` → limits). */
+  /** Server limits in force (`/api/clock` → limits). */
   limits: { offersPerTick: number; maxOpenOffers: number; acceptsPerTick: number };
-  /** Gastado ya en esta ejecución. */
+  /** Already spent in this run. */
   spent: number;
-  /** Activos comprometidos (aceptación pendiente de liquidar). */
+  /** Committed assets (acceptance pending settlement). */
   reserved: Set<number>;
 }
 
@@ -418,7 +418,7 @@ export interface Evaluation {
   risk: number;
   valueCreated: number;
   required: number;
-  /** Salida neta de caja (lo que cuenta contra `maxSpend`). */
+  /** Net cash outflow (what counts against `maxSpend`). */
   spend: number;
 }
 
@@ -434,7 +434,7 @@ export interface PlannedPost {
   kind: "list" | "bid";
   ref: string;
   price: number;
-  /** Valor creado si se llena a ese precio (con comisión). */
+  /** Value created if filled at that price (with fee). */
   value: number;
   /** Suelo (venta) o techo (puja) a nuestros valores. */
   limit: number;
@@ -446,9 +446,9 @@ export interface PlannedPost {
 
 export interface TickPlan {
   tick: number;
-  /** Ofertas leídas (tablón + dirigidas a nosotros). */
+  /** Offers read (board + addressed to us). */
   evaluated: number;
-  /** Las que podríamos aceptar (sin las nuestras, caducadas, ajenas, sin la carta pedida o no valorables). */
+  /** Those we could accept (excluding ours, expired, foreign, without the requested card or not valuable). */
   opportunities: Evaluation[];
   accept?: Evaluation;
   cancels: { id: number; reason: string }[];
@@ -456,11 +456,11 @@ export interface TickPlan {
   notes: string[];
   openAfter: number;
   committedAfter: number;
-  /** Mediana de liquidaciones por rareza (lo que el dry-run enseña). */
+  /** Median of settlements by rarity (what the dry-run shows). */
   settledByRarity: Record<string, { n: number; median: number }>;
 }
 
-// ---------------------------------------------------------------- evaluación de ofertas ajenas
+// ---------------------------------------------------------------- evaluation of others' offers
 
 function blank(offer: TradeOffer, source: Evaluation["source"], reason: string): Evaluation {
   return { offer, source, kind: "unknown", ok: false, reason, getCards: [], giveCards: [], payAssets: [], cashNet: 0, cardDelta: 0, fee: 0, risk: 0, valueCreated: 0, required: 0, spend: 0 };
@@ -510,7 +510,7 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   return { ...base, ok: true, reason: "value" };
 }
 
-// ---------------------------------------------------------------- plan del tick
+// ---------------------------------------------------------------- tick plan
 
 interface ExistingOffer {
   offer: TradeOffer;
@@ -539,7 +539,7 @@ function classifyMine(o: TradeOffer, held: HeldAsset[]): ExistingOffer | undefin
 const listBody = (assetId: number, price: number, p: TradeParams): OfferBody => ({ venue: "rastro", give: { assets: [assetId] }, want: { cash: price }, expires_in_ticks: p.expiresInTicks });
 const bidBody = (ref: string, price: number, p: TradeParams): OfferBody => ({ venue: "rastro", give: { cash: price }, want: { cards: [ref] }, expires_in_ticks: p.expiresInTicks });
 
-/** Siguiente precio con reprecio lento: hacia `target` como mucho un paso de `repriceFrac` (mín. 1 P). */
+/** Next price with slow repricing: towards `target` at most one step of `repriceFrac` (min. 1 P). */
 export function slowReprice(current: number, target: number, frac: number): number {
   const step = Math.max(1, Math.round(current * frac));
   return current + Math.max(-step, Math.min(step, target - current));
@@ -555,10 +555,10 @@ function settledByRarity(settlements: Quote[], model: ValueModel): TickPlan["set
 }
 
 /**
- * Decide un tick: como mucho una aceptación (la de más valor creado que quepa en caja y en `maxSpend`),
- * cancelaciones (ofertas nuestras inválidas o fuera de presupuesto), repricios lentos y ofertas nuevas
- * (repetidas a la venta, pujas por cartas de página) dentro de `maxOffers`, el límite del servidor y
- * las altas por tick. Puro y determinista.
+ * Decides a tick: at most one acceptance (the one with the most value created that fits in cash and `maxSpend`),
+ * cancellations (our invalid or over-budget offers), slow reprices and new offers
+ * (duplicates for sale, bids for page cards) within `maxOffers`, the server limit and
+ * the per-tick creations. Pure and deterministic.
  */
 export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const notes: string[] = [];
@@ -597,7 +597,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const { asks, bids } = boardQuotes(state.board, mineIds, state.model, state.tick);
   const fees = params.fees;
 
-  // Nuestras ofertas de El Rastro (las de hilos con dealers no se tocan).
+  // Our El Rastro offers (those in dealer threads are left alone).
   const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !(o.venue === "rastro" && o.thread == null)).length;
   const existing = state.mine
     .filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && (o.expires_tick == null || o.expires_tick > state.tick))
@@ -608,7 +608,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const listedAssets = new Set(existing.filter((e) => e.assetId !== undefined).map((e) => e.assetId as number));
   const heldIds = new Set(state.held.map((a) => a.id));
 
-  // Repetidas: copias sobrantes (la de id más alto), y su pérdida secuencial a nuestros valores.
+  // Duplicates: surplus copies (the one with the highest id), and their sequential loss at our values.
   const spares: { assetId: number; ref: string; loss: number }[] = [];
   for (const [ref, n] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
     if (n < 2) continue;
@@ -627,7 +627,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     return { floor, reference, target };
   };
 
-  // Pujas: cartas de página que no tenemos de los sets del álbum.
+  // Bids: page cards we don't hold from the album's sets.
   const bidTargets = new Map<string, { cap: number; target: number; value: number; reference: PriceRef | undefined; gain: number }>();
   for (const set of state.pageSets) {
     for (const ref of state.model.pages.get(set) ?? []) {
@@ -660,7 +660,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     return true;
   };
 
-  // Listados existentes: válidos se mantienen; bajo el suelo se reprecian ya; viejos, despacio.
+  // Existing listings: valid ones are kept; below the floor are repriced now; old ones, slowly.
   for (const e of existing.filter((x) => x.kind === "list")) {
     const id = e.assetId as number;
     if (!heldIds.has(id) || reserved.has(id)) {
@@ -694,7 +694,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     kept.push(e);
   }
 
-  // Pujas existentes: inválidas fuera; por encima del techo, al techo ya; presupuesto por valor.
+  // Existing bids: invalid out; above the ceiling, to the ceiling now; budget by value.
   let committed = 0;
   let bidCount = 0;
   const bidBudget = Math.min(budget - acceptSpend, state.cash - acceptCash);
@@ -746,7 +746,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const openCap = Math.min(params.maxOffers, state.limits.maxOpenOffers - nonRastroOpen);
   let open = kept.length + posts.length;
 
-  // Nuevos listados de repetidas (por valor creado), luego nuevas pujas (por valor creado).
+  // New listings of duplicates (by value created), then new bids (by value created).
   const newLists = spares
     .filter((s) => !listedAssets.has(s.assetId))
     .map((s) => {

@@ -14,25 +14,25 @@ import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./ne
 import { busyAssets, sellBlocked } from "../shared/asset-locks.js";
 
 /**
- * Bucle observar → decidir → actuar contra un dealer, un hilo a la vez. Toda cifra sale de
- * `decide`; el texto, de plantillas con la misma cifra. En `dryRun` no hace ningún POST.
+ * Observe → decide → act loop against one dealer, one thread at a time. Every figure comes from
+ * `decide`; the text comes from templates with the same figure. In `dryRun` it makes no POST.
  */
 
 export type BazaarApi = Pick<BazaarClient, "me" | "catalog" | "value" | "myThreads" | "myOffers" | "thread" | "openThread" | "say" | "closeThread" | "accept">;
 
-/** Lo que el agente va a enviar (un POST), para que el coordinador lo arbitre antes. Solo para uso local: lleva nuestro valor privado. */
+/** What the agent is about to send (a POST), so the coordinator can arbitrate it first. Local use only: it carries our private value. */
 export interface DealerIntent {
   dealer: string;
   kind: "open" | "accept" | "counter" | "hold" | "close";
   thread?: number;
-  /** Clave del objetivo (`buy:SAL-09`, `sell:438`...). */
+  /** Target key (`buy:SAL-09`, `sell:438`...). */
   target: string;
   side: "buy" | "sell";
-  /** Precio de la oferta suya que aceptamos o de nuestra contraoferta. */
+  /** Price of her offer that we accept, or of our counteroffer. */
   price?: number;
-  /** Nuestro valor privado de lo que se compra o vende (nunca sale en un mensaje). */
+  /** Our private value of what is bought or sold (never leaves in a message). */
   value?: number;
-  /** Cartas implicadas (la pedida, la revelada en rareza+set o la del activo que vendemos). */
+  /** Cards involved (the requested one, the one revealed on rarity+set, or the asset we sell). */
   cards: string[];
   text?: string;
   rule?: string;
@@ -41,52 +41,52 @@ export interface DealerIntent {
 export interface AgentOptions {
   dealer: DealerRef;
   dryRun: boolean;
-  /** Gasto máximo por hora de reloj en compras (P). */
+  /** Maximum spend per game-clock hour on purchases (P). */
   maxSpendPerHour: number;
-  /** Fracción de your_value que pagamos como máximo. */
+  /** Fraction of your_value that we pay at most. */
   safety?: number;
   maxLookups?: number;
-  /** Sobrescribe parámetros del negociador (ancla, Boulware, aguantes...); el resto queda por defecto. */
+  /** Overrides negotiator parameters (anchor, Boulware, holds...); the rest stays at defaults. */
   negotiator?: Partial<NegotiatorParams>;
-  /** Ficha del dealer: con ella los objetivos salen del planificador por menú (`plan.ts`); sin ella, del antiguo. */
+  /** Dealer record: with it, targets come from the menu planner (`plan.ts`); without it, from the legacy one. */
   menu?: DealerInfo;
-  /** Modo serio: sin ficha del dealer no se abre nada (el planificador antiguo vende a cualquiera, sin mirar su menú). */
+  /** Serious mode: without the dealer record nothing is opened (the legacy planner sells to anyone, ignoring her menu). */
   requireMenu?: boolean;
-  /** Topes de la ejecución: tratos (se para al llegar), conversaciones abiertas en total y gasto en compras. */
+  /** Run caps: deals (stops on reaching), total open conversations, and purchase spend. */
   maxDeals?: number;
   maxThreads?: number;
   maxSpendTotal?: number;
-  /** `--only`: solo estos objetivos del planificador por menú, en este orden (aunque no dejen margen sobre su lista). */
+  /** `--only`: only these menu-planner targets, in this order (even if they leave no room over her list). */
   only?: readonly OnlyFilter[];
-  /** Topes compartidos entre dealers (gasto, suelo de caja, una aceptación por tick); si falta, uno propio. */
+  /** Caps shared between dealers (spend, cash floor, one accept per tick); if missing, its own. */
   team?: TeamBudget;
-  /** Tratos por hora de juego con este dealer (`menu.deals_per_team_per_hour`); al llegar, no abre más hasta que pase la hora. */
+  /** Deals per game hour with this dealer (`menu.deals_per_team_per_hour`); on reaching it, no more are opened until the hour passes. */
   dealsPerHour?: number;
-  /** Resumen de cada conversación terminada (cartas, copias, apertura/final, paciencia...). */
+  /** Summary of each finished conversation (cards, copies, opening/final, patience...). */
   onThreadSummary?: (s: ThreadSummary) => void;
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
   /**
-   * Coordinador (`pnpm bazaar:play`): cada POST (abrir, aceptar, contraoferta, aguante, cierre) pasa antes por aquí;
-   * si devuelve false no se envía nada ni cambia el estado del hilo. Sin `gate`, el agente actúa solo (como siempre).
+   * Coordinator (`pnpm bazaar:play`): every POST (open, accept, counteroffer, hold, close) goes through here first;
+   * if it returns false nothing is sent and the thread state doesn't change. Without `gate`, the agent acts alone (as always).
    */
   gate?: (intent: DealerIntent) => boolean;
   /**
-   * Probe de egg a caballo de una contraoferta (nunca un mensaje aparte): frase X para «Do you know about X?» en este
-   * hilo, o `undefined`. Lo decide el coordinador (uno por conversación, nunca la misma X con la misma persona).
+   * Egg probe riding on a counteroffer (never a separate message): phrase X for «Do you know about X?» in this
+   * thread, or `undefined`. The coordinator decides it (one per conversation, never the same X with the same persona).
    */
   probe?: (thread: number) => string | undefined;
-  /** Se llama tras enviar (en vivo) una contraoferta con probe, para apuntarlo en `eggsTried`. */
+  /** Called after sending (live) a counteroffer with a probe, to record it in `eggsTried`. */
   onProbe?: (thread: number, phrase: string) => void;
-  /** Tope de nuestras ofertas por su límite previsto (ajuste por persona, `offerCap`); `undefined` sin predicción. */
+  /** Cap on our offers by her predicted limit (per-persona adjustment, `offerCap`); `undefined` without a prediction. */
   herLimitCap?: (thread: number) => number | undefined;
   /**
-   * `firstStepFrac` de este tick para este dealer (ver `NegotiatorParams`): el coordinador lo activa solo si el espejo de
-   * su persona es cierto. Sin él, vale el de `negotiator`/por defecto (0: apagado).
+   * `firstStepFrac` of this tick for this dealer (see `NegotiatorParams`): the coordinator enables it only if the mirror of
+   * her persona holds. Without it, the one from `negotiator`/defaults applies (0: off).
    */
   firstStepFrac?: () => number;
-  /** β de la curva de su persona en este tick (`PersonaModel`): con β < 1 no se aplica el precio fijo. */
+  /** β of her persona's curve at this tick (`PersonaModel`): with β < 1 the fixed price is not applied. */
   herBeta?: () => number | undefined;
 }
 
@@ -94,30 +94,30 @@ interface Active {
   id: number;
   target: Target;
   lastSentTick?: number;
-  /** Precios que hemos enviado en este hilo (fuente fiable; el hilo solo se usa al retomarlo). */
+  /** Prices we have sent in this thread (reliable source; the thread is only used when resuming it). */
   sent: number[];
-  /** Aguantes (mismo precio, sin oferta nueva) ya gastados en este hilo. */
+  /** Holds (same price, no new offer) already spent in this thread. */
   holdsUsed: number;
-  /** Mensajes, respuestas, tics hasta su final y su respuesta a cada paso nuestro. */
+  /** Messages, replies, ticks until her end and her response to each of our steps. */
   patience: PatienceLog;
   openTick?: number;
   openTs?: string;
-  /** Cartas de la conversación y copias que teníamos al abrir; ids de activos al abrir (para ver qué llegó). */
+  /** Cards of the conversation and copies we held at opening; asset ids at opening (to see what arrived). */
   cards: string[];
   copiesBefore: Record<string, number>;
   assetIds?: Set<number>;
   negBefore?: number;
   ladderBefore?: number;
-  /** Rareza+set: carta que ella ofrece, ya revalorada a nuestro valor. */
+  /** Rarity+set: card she offers, already revalued at our value. */
   revealed?: string;
   lastRule?: string;
-  /** Compra que aceptamos nosotros: su precio ya se contó en el presupuesto (no se cuenta dos veces al cerrar). */
+  /** Purchase we accept ourselves: its price was already counted in the budget (not counted twice on close). */
   acceptedPrice?: number;
-  /** Nuestro último mensaje fue solo texto (aguante): nunca dos seguidos sin oferta. */
+  /** Our last message was text only (hold): never two in a row without an offer. */
   lastTextOnly?: boolean;
-  /** Primera conversación del equipo con este dealer (`welcome_first_deal`: su apertura es su límite). */
+  /** The team's first conversation with this dealer (`welcome_first_deal`: her opening is her limit). */
   welcome?: boolean;
-  /** Precio aceptado con `welcome-first-deal`: su límite medido para este dealer y esta banda. */
+  /** Price accepted with `welcome-first-deal`: her measured limit for this dealer and this band. */
   measuredLimit?: number;
 }
 
@@ -130,15 +130,15 @@ export class BazaarAgent {
   private cooloffUntilTick = -1;
   private readonly skip = new Map<string, number>();
   private readonly team: TeamBudget;
-  /** Horas de juego de cada trato con este dealer (cuota por hora). */
+  /** Game hours of each deal with this dealer (hourly quota). */
   private readonly dealHours: number[] = [];
   private hoursNow = 0;
   private lastCash: number | undefined;
-  /** Caja del paso anterior: si un trato cierra sin precio visible, la caída de caja es lo gastado. */
+  /** Cash at the previous step: if a deal closes with no visible price, the cash drop is what was spent. */
   private prevCash: number | undefined;
   private readonly values = new Map<string, number>();
   private catalog: Catalog | undefined;
-  /** Si el dealer rechaza `{buy: {card}}`, se compra por rareza y set. */
+  /** If the dealer rejects `{buy: {card}}`, we buy by rarity and set. */
   private cardTopicOk = true;
   private readonly now: () => number;
   private readonly log: (line: string) => void;
@@ -165,7 +165,7 @@ export class BazaarAgent {
     return this.o.gate ? this.o.gate({ dealer: this.o.dealer.id, ...intent }) : true;
   }
 
-  /** Ficha releída de `/api/dealers/{id}` (el menú puede cambiar a mitad de partida). */
+  /** Record re-read from `/api/dealers/{id}` (the menu can change mid-game). */
   setMenu(menu: DealerInfo): void {
     this.o.menu = menu;
   }
@@ -178,22 +178,22 @@ export class BazaarAgent {
     return this.team.spentThisHour();
   }
 
-  /** Lo que aún se puede gastar: lo que queda de la hora, de la ejecución y de la caja por encima del suelo. */
+  /** What can still be spent: what is left of the hour, of the run and of the cash above the floor. */
   budgetLeft(cash: number | undefined = this.lastCash): number {
     return this.team.left(cash);
   }
 
-  /** Tratos con este dealer en la última hora de juego. */
+  /** Deals with this dealer in the last game hour. */
   dealsLastHour(): number {
     return this.dealHours.filter((h) => h > this.hoursNow - 1).length;
   }
 
-  /** Hay una conversación abierta con este dealer. */
+  /** There is an open conversation with this dealer. */
   busy(): boolean {
     return !!this.active;
   }
 
-  /** La ejecución terminó: se alcanzó el tope de tratos, o el de conversaciones y no queda ninguna abierta. */
+  /** The run is over: the deal cap was reached, or the conversation cap with none left open. */
   done(): boolean {
     return this.dealsDone >= (this.o.maxDeals ?? Infinity) || (!this.active && this.threadsOpened >= (this.o.maxThreads ?? Infinity));
   }
@@ -202,7 +202,7 @@ export class BazaarAgent {
     return { deals: this.dealsDone, threads: this.threadsOpened, spent: this.spentRun };
   }
 
-  /** Plan legible del dry-run (mismo planificador y misma caché de valores que el bucle). Solo GET. */
+  /** Readable dry-run plan (same planner and same value cache as the loop). GET only. */
   async plan(): Promise<string[]> {
     if (!this.o.menu) return ["(no dealer menu: the legacy planner is used; no plan to show)"];
     const me = await this.api.me();
@@ -299,14 +299,14 @@ export class BazaarAgent {
     return out;
   }
 
-  /** Tras un reinicio: retoma el hilo abierto con el dealer, reconstruyendo el objetivo desde su topic. */
+  /** After a restart: resumes the thread open with the dealer, rebuilding the target from its topic. */
   private async adoptOpenThread(me: Me, tick: number): Promise<void> {
     const list = await this.api.myThreads("open");
     const summary = list.threads.find((t) => isDealer(this.o.dealer, t.with) && (t.status ?? "open") === "open");
     if (!summary) return;
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
-    // Un activo, un sitio también al retomar: si el activo ya está en otra oferta u otro hilo abierto, este hilo se cierra.
+    // One asset, one place when resuming too: if the asset is already in another open offer or thread, this thread is closed.
     const busyWhy = target?.side === "sell" ? sellBlocked(target.topic, (await busyAssets(this.api, me.id, thread.id)) ?? new Map()) : undefined;
     if (busyWhy) {
       this.log(`  thread ${thread.id}: not resumed, ${busyWhy}: ${this.o.dryRun ? "would close it politely" : "closing it politely"}`);
@@ -324,8 +324,8 @@ export class BazaarAgent {
   }
 
   /**
-   * `welcome_first_deal`: es la primera conversación del equipo con este dealer si no es uno de los ya pasados
-   * (`WELCOME_FIRST_DEAL_PAST`), este agente no abrió otra antes y el servidor no lista otro hilo nuestro con él.
+   * `welcome_first_deal`: it is the team's first conversation with this dealer if it is not one of those already past
+   * (`WELCOME_FIRST_DEAL_PAST`), this agent didn't open another before and the server lists no other thread of ours with it.
    */
   private async isFirstConversation(threadId?: number): Promise<boolean> {
     if (WELCOME_FIRST_DEAL_PAST.has(this.o.dealer.id) || this.threadsOpened > 0) return false;
@@ -359,7 +359,7 @@ export class BazaarAgent {
     return undefined;
   }
 
-  /** Lo que se apunta al abrir (o retomar) una conversación para su resumen. */
+  /** What is recorded when opening (or resuming) a conversation for its summary. */
   private openSnapshot(me: Me, target: Target, tick: number): Pick<Active, "openTick" | "openTs" | "cards" | "copiesBefore" | "assetIds" | "negBefore" | "ladderBefore"> {
     const cards = cardsOfTarget(target, me);
     const score = (me.score ?? {}) as { neg_points?: unknown; ladder_points?: unknown };
@@ -420,7 +420,7 @@ export class BazaarAgent {
     };
   }
 
-  /** Su lista para esta conversación: al comprar, la de esa entrada del menú; al vender, su lista de venta de esa rareza. */
+  /** Her list for this conversation: when buying, that of the menu entry; when selling, her sell list for that rarity. */
   private listFor(target: Target): number | undefined {
     const sells = this.o.menu?.menu.sells ?? [];
     const t = target.topic as { buy?: { card?: string; rarity?: string }; sell?: unknown };
@@ -443,7 +443,7 @@ export class BazaarAgent {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
       const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
-      // Un activo, un sitio: nada que ya esté en otro hilo abierto o en una oferta abierta (El Rastro, otro dealer).
+      // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
       const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy));
@@ -471,7 +471,7 @@ export class BazaarAgent {
     const selfId = selfIdOf(thread, me);
     const p = threadPrices(thread, target.side, this.o.dealer, selfId);
     active.patience.observe(tick, p.herCurrent?.price, !!p.herCurrent?.final, herReplies(thread, this.o.dealer, selfId));
-    // Nuestro último intento cuenta aunque el hilo no lo muestre (p. ej. el POST falló a medias): nunca se repite.
+    // Our last attempt counts even if the thread doesn't show it (e.g. the POST half-failed): never repeated.
     const lastTried = active.sent[active.sent.length - 1];
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, Math.floor(this.budgetLeft(me.cash)))) : target.reservation;
@@ -498,13 +498,13 @@ export class BazaarAgent {
     };
     const firstStepFrac = this.o.firstStepFrac?.();
     let d: Decision = decide(view, firstStepFrac === undefined ? this.negotiatorParams : { ...this.negotiatorParams, firstStepFrac });
-    // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.
+    // Before any accept (and on each of her offers): the shape of her offer must be the thread's; otherwise we close.
     const mismatch = await this.structureProblem(thread, target, d, reservation);
     if (mismatch) {
       this.log(`  thread ${thread.id}: structure-mismatch (${mismatch}): closing politely, never accepting`);
       d = { action: { kind: "close" }, rule: "structure-mismatch", effectiveReservation: d.effectiveReservation };
     } else if (d.action.kind === "accept" && target.side === "sell") {
-      // Justo antes de vender: el activo no puede estar ya en otra oferta u otro hilo (p. ej. listado en El Rastro).
+      // Right before selling: the asset can't already be in another offer or thread (e.g. listed in El Rastro).
       const busy = await busyAssets(this.api, me.id, thread.id);
       const why = sellBlocked(target.topic, busy);
       if (why) {
@@ -548,21 +548,21 @@ export class BazaarAgent {
           if (!this.o.dryRun) await this.api.accept(d.action.offerId);
           this.team.markAccept(tick);
           if (!this.o.dryRun && target.side === "buy") {
-            // Se cuenta al aceptar, con el precio de su oferta: no depende de leer luego el hilo cerrado.
+            // Counted on accept, with the price of her offer: doesn't depend on reading the closed thread later.
             this.team.record(d.action.price);
             this.spentRun += d.action.price;
             active.acceptedPrice = d.action.price;
           }
-          // welcome_first_deal: su apertura es su límite; se guarda como límite medido de este dealer y esta banda.
+          // welcome_first_deal: her opening is her limit; stored as the measured limit of this dealer and this band.
           if (d.rule === "welcome-first-deal") active.measuredLimit = d.action.price;
           emit({ ...base, action: "accept", ourPrice: d.action.price, ...(d.rule === "welcome-first-deal" ? { measuredLimit: d.action.price } : {}), ...(p.ourPrices.length === 0 ? { tookOpening: true } : {}), patience: active.patience.summary(tick) });
           return;
         case "counter": {
           const probe = this.o.probe?.(thread.id);
           const text = counterText(target.side, p.ourPrices.length, d.action.price, probe);
-          if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
-          if (d.action.price === p.ourPrices[p.ourPrices.length - 1]) throw new Error("precio repetido");
-          // Se apunta antes del POST: si falla (o el servidor lo aceptó y la respuesta no valida), no se reenvía.
+          if (!textMatchesPrice(text, d.action.price)) throw new Error("text and figure do not match");
+          if (d.action.price === p.ourPrices[p.ourPrices.length - 1]) throw new Error("repeated price");
+          // Recorded before the POST: if it fails (or the server accepted it and the response doesn't validate), it is not resent.
           active.lastSentTick = tick;
           active.lastTextOnly = false;
           active.sent.push(d.action.price);
@@ -574,7 +574,7 @@ export class BazaarAgent {
         }
         case "hold": {
           const text = holdText(p.ourPrices.length, d.action.price);
-          if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
+          if (!textMatchesPrice(text, d.action.price)) throw new Error("text and figure do not match");
           active.lastSentTick = tick;
           active.lastTextOnly = true;
           active.holdsUsed += 1;
@@ -585,7 +585,7 @@ export class BazaarAgent {
         }
         case "close": {
           if (!this.o.dryRun) {
-            // La despedida es texto sin oferta: solo si el mensaje anterior no lo fue ya.
+            // The farewell is text without an offer: only if the previous message wasn't one already.
             if (view.canMessage && !active.lastTextOnly) await this.api.say(thread.id, closeText(p.ourPrices.length)).catch(() => undefined);
             await this.api.closeThread(thread.id);
             this.skip.set(target.key, tick + ticksPerHour);
@@ -607,9 +607,9 @@ export class BazaarAgent {
   }
 
   /**
-   * Problema de forma: alguna oferta suya contradice el hilo (nos vende algo en una venta, pide otros activos...) o
-   * la que aceptaríamos no es exactamente «efectivo > 0 por nuestros activos» (venta) o «la carta pedida por efectivo
-   * ≤ límite» (compra). Devuelve el motivo para la traza, o `undefined` si todo cuadra.
+   * Shape problem: one of her offers contradicts the thread (sells us something in a sale, asks for other assets...) or
+   * the one we would accept is not exactly "cash > 0 for our assets" (sell) or "the requested card for cash
+   * ≤ limit" (buy). Returns the reason for the trace, or `undefined` if everything adds up.
    */
   private async structureProblem(thread: Thread, target: Target, d: Decision, reservation: number): Promise<string | undefined> {
     const exp = expectationOf(target.topic, target.side, await this.cardMatcher(target));
@@ -624,7 +624,7 @@ export class BazaarAgent {
     return c.ok ? undefined : `${c.reason} in offer ${offer.id}`;
   }
 
-  /** Rareza+set: la carta que nos dé debe ser de esa rareza y set (según el catálogo). */
+  /** Rarity+set: the card she gives us must be of that rarity and set (per the catalog). */
   private async cardMatcher(target: Target): Promise<((ref: string) => boolean) | undefined> {
     const rs = (target.topic as { buy?: { card?: string; rarity?: string; set?: string } }).buy;
     if (!rs?.rarity || rs.card) return undefined;
@@ -641,7 +641,7 @@ export class BazaarAgent {
       this.dealsDone += 1;
       this.dealHours.push(this.hoursNow);
       if (target.side === "buy" && acceptedPrice === undefined) {
-        // Trato sin precio visible ("deal at ?"): caída de caja desde el paso anterior; si tampoco, el límite (conservador).
+        // Deal with no visible price ("deal at ?"): cash drop since the previous step; failing that, the limit (conservative).
         const drop = this.prevCash !== undefined && me ? this.prevCash - me.cash : undefined;
         const source = settled !== undefined ? "thread offers" : drop !== undefined && drop > 0 ? "cash delta" : "our limit (price unknown)";
         settled ??= drop !== undefined && drop > 0 ? drop : target.reservation;
@@ -670,8 +670,8 @@ export class BazaarAgent {
   }
 
   /**
-   * Rareza+set: su oferta dice qué carta da (`give.types` = "card:SAL-05", hilo 184). Se revalora a nuestro valor
-   * de esa carta, así una repetida baja el límite y el negociador cierra en vez de pagar por ella (SAL-07 a 23).
+   * Rarity+set: her offer says which card she gives (`give.types` = "card:SAL-05", thread 184). It is revalued at our value
+   * of that card, so a duplicate lowers the limit and the negotiator closes instead of paying for it (SAL-07 at 23).
    */
   private async repriceRevealed(thread: Thread, active: Active): Promise<void> {
     const topic = active.target.topic as { buy?: { rarity?: string; card?: string } };
@@ -705,13 +705,13 @@ export class BazaarAgent {
   }
 }
 
-/** Nuestro id de equipo en el hilo ("t02"): `thread.team`, si no `me.id` o `me.score.team`. */
+/** Our team id in the thread ("t02"): `thread.team`, else `me.id` or `me.score.team`. */
 export function selfIdOf(thread: Thread, me: Me): string | undefined {
   const score = me.score as { team?: unknown } | null | undefined;
   return thread.team ?? me.id ?? (typeof score?.team === "string" ? score.team : undefined);
 }
 
-/** Precio al que cerró: la oferta aceptada (vigentes o de los mensajes) si se ve; si no, la última oferta del dealer. */
+/** Price it closed at: the accepted offer (standing or from the messages) if visible; otherwise the dealer's last offer. */
 export function settledPrice(thread: Thread, target: Target, dealer: DealerRef): number | undefined {
   const all = [...thread.standing_offers, ...thread.messages.map((m) => StandingOfferSchema.safeParse(m.offer)).flatMap((r) => (r.success ? [r.data] : []))];
   const accepted = all.find((o) => /accept|settl|fill|deal|done/i.test(o.status ?? ""));
@@ -738,7 +738,7 @@ function describe(r: TraceRecord): string {
   return r.summary ? `${withPatience}\n${formatThreadSummary(r.summary)}` : withPatience;
 }
 
-/** Mensajes del dealer posteriores a nuestro primer mensaje en el hilo (sus respuestas, sin su apertura). */
+/** Dealer messages after our first message in the thread (her replies, excluding her opening). */
 export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): number {
   const isUs = (who: string | null | undefined) => (selfId ? !!who && who.toLowerCase() === selfId.toLowerCase() : !isDealer(dealer, who));
   let started = false;
@@ -752,7 +752,7 @@ export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): 
 
 const NOT_A_TOPIC_PROBLEM = new Set(["insufficient_cash", "persona_quota", "cooloff", "sold_out", "wait_for_tick", "rate_limited", "locked", "bad_key"]);
 
-/** El servidor rechazó abrir un hilo `{buy: {card}}` por el topic (400/422 sin otro motivo conocido). */
+/** The server refused to open a `{buy: {card}}` thread because of the topic (400/422 with no other known reason). */
 export function isCardTopicRefusal(e: unknown, target: Target): boolean {
   return (
     e instanceof BazaarError &&
@@ -763,7 +763,7 @@ export function isCardTopicRefusal(e: unknown, target: Target): boolean {
   );
 }
 
-/** Cartas de un objetivo: la carta pedida, la del activo que vendemos o las de esa rareza y set (hasta que ella diga cuál). */
+/** Cards of a target: the requested card, that of the asset we sell, or those of that rarity and set (until she says which). */
 export function cardsOfTarget(target: Target, me: Me): string[] {
   const t = target.topic as { buy?: { card?: string; rarity?: string; set?: string }; sell?: { assets?: number[] } };
   if (t.buy?.card) return [t.buy.card];

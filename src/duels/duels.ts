@@ -7,53 +7,53 @@ import type { Duel, StructuredOffer } from "./schemas.js";
 import { numbersIn } from "../dealers/negotiation/messages.js";
 
 /**
- * Decisión pura y determinista de un duelo del Bazaar (1 contra 1, un mensaje por lado y tick).
- * El pastel se encoge con cada ronda de charla, así que se concede deprisa (β > 1, curva conceder del
- * motor) hacia un suelo que conserva parte del excedente de apertura y se cierra en ~`maxRounds`.
- * Todo se mide en excedente propio en P: vendedor precio − límite, comprador límite − precio, más el
- * valor de los días de entrega (`daysValue`) cuando el duelo negocia `days`. La aceptación es la del
- * motor (`decideAcceptance`, AC_next y último movimiento) sobre un issue sintético `surplus`; el
- * precio nunca cruza `your_limit` (`enforceGuardrails`). Solo se lee la oferta estructurada del rival.
+ * Pure, deterministic decision for a Bazaar duel (1 vs 1, one message per side per tick).
+ * The pie shrinks with every round of talk, so we concede fast (β > 1, the engine's concede curve)
+ * towards a floor that keeps part of the opening surplus and closes in ~`maxRounds`.
+ * Everything is measured in own surplus in P: seller price − limit, buyer limit − price, plus the
+ * value of the delivery days (`daysValue`) when the duel negotiates `days`. Acceptance is the
+ * engine's (`decideAcceptance`, AC_next and last move) over a synthetic `surplus` issue; the
+ * price never crosses `your_limit` (`enforceGuardrails`). Only the rival's structured offer is read.
  */
 
 export const DAYS_MIN = 0;
 export const DAYS_MAX = 10;
 
 export interface DuelParams {
-  /** Apertura: el vendedor pide límite × (1 + a); el comprador ofrece límite ÷ (1 + a). */
+  /** Opening: the seller asks limit × (1 + a); the buyer offers limit ÷ (1 + a). */
   anchorMargin: number;
-  /** β de la curva `concession` del motor (> 1 concede pronto). */
+  /** β of the engine's `concession` curve (> 1 concedes early). */
   beta: number;
   /** Rondas (mensajes nuestros) hasta llegar al suelo. */
   maxRounds: number;
-  /** Suelo: fracción del excedente de apertura que no se concede antes del final. */
+  /** Floor: fraction of the opening surplus that is not conceded before the end. */
   floorShare: number;
-  /** Excedente mínimo de cualquier trato (P); por debajo, mejor no cerrar. */
+  /** Minimum surplus of any deal (P); below it, better not to close. */
   minSurplus: number;
-  /** Tics restantes en los que ya es el último movimiento: aceptar todo lo aceptable. */
+  /** Remaining ticks at which it is already the last move: accept anything acceptable. */
   lastMoveTicks: number;
-  /** Tics restantes desde los que, si el rival ha ofertado alguna vez, se mueve hacia un trato (parte la diferencia; nunca bajo el suelo). */
+  /** Remaining ticks from which, if the rival has ever offered, we move towards a deal (split the difference; never below the floor). */
   endgameTicks: number;
-  /** P por día de entrega si el duelo no trae `your_days_weight` (supuesto; 0 = indiferente). */
+  /** P per delivery day if the duel has no `your_days_weight` (assumption; 0 = indifferent). */
   assumedDaysWeight: number;
-  /** Multiplicador de `your_days_weight` (por si llega en otra escala que P por día). */
+  /** Multiplier for `your_days_weight` (in case it arrives on a scale other than P per day). */
   daysWeightScale: number;
-  /** Decay por ronda si el duelo no trae `decay_per_round` (el valor del trato se encoge cada ronda: 0,06–0,1). */
+  /** Decay per round if the duel has no `decay_per_round` (the deal's value shrinks each round: 0.06–0.1). */
   decay: number;
-  /** Aceptar pronto: la oferta del rival nos deja al menos esta fracción del excedente de apertura. */
+  /** Accept early: the rival's offer leaves us at least this fraction of the opening surplus. */
   acceptShare: number;
-  /** Rondas de decay con que se descuenta nuestra siguiente oferta al compararla con la del rival (AC_next con decay). */
+  /** Decay rounds by which our next offer is discounted when compared with the rival's (AC_next with decay). */
   acceptLookahead: number;
-  /** Concesiones nuestras permitidas sin una contraoferta nueva del rival (nunca dos seguidas: 1). */
+  /** Our allowed concessions without a new counteroffer from the rival (never two in a row: 1). */
   maxSilentConcessions: number;
-  /** Tics que se espera a un rival callado antes de esa única concesión sin respuesta. */
+  /** Ticks to wait for a silent rival before that single unanswered concession. */
   silentWaitTicks: number;
 }
 
 export const DEFAULT_DUEL_PARAMS: DuelParams = {
   anchorMargin: 0.5,
   beta: 2,
-  // v2: 3 rondas hasta el suelo (antes 4): en práctica, los regateos de 6–7 rondas perdieron un 30–35 % por decay.
+  // v2: 3 rounds to the floor (was 4): in practice, 6–7 round hagglings lost 30–35 % to decay.
   maxRounds: 3,
   floorShare: 0.3,
   minSurplus: 1,
@@ -62,17 +62,17 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   assumedDaysWeight: 0,
   daysWeightScale: 1,
   decay: 0.08,
-  // Replay de los 27 duelos de práctica: 0,5 aceptaba demasiado pronto (89, 200); con 0,65 queda neutral (407 frente a 415 P reales).
+  // Replay of the 27 practice duels: 0.5 accepted too early (89, 200); with 0.65 it is neutral (407 vs 415 real P).
   acceptShare: 0.65,
   acceptLookahead: 1,
   maxSilentConcessions: 1,
   silentWaitTicks: 2,
 };
 
-/** Valor para nosotros (P) de cada día de entrega 0..10. */
+/** Value to us (P) of each delivery day 0..10. */
 export type DaysValue = readonly number[];
 
-/** Tabla de valor por día desde `your_days_weight` (número = P por día; array u objeto = por día). */
+/** Per-day value table from `your_days_weight` (number = P per day; array or object = per day). */
 export function daysValueFrom(raw: Duel["your_days_weight"], params: DuelParams): { table: DaysValue; assumption?: string } {
   const days = Array.from({ length: DAYS_MAX - DAYS_MIN + 1 }, (_, k) => DAYS_MIN + k);
   const scale = params.daysWeightScale;
@@ -90,19 +90,19 @@ export function daysValueFrom(raw: Duel["your_days_weight"], params: DuelParams)
 
 export interface DuelState {
   role: Role;
-  /** `your_limit`: coste del vendedor o valor del comprador. Privado: nunca sale en el texto. */
+  /** `your_limit`: seller's cost or buyer's value. Private: never appears in the text. */
   limit: number;
   withDays: boolean;
   daysValue: DaysValue;
   /** Nuestras ofertas enviadas, en orden. */
   ourOffers: readonly StructuredOffer[];
-  /** Ofertas estructuradas distintas del rival, en orden; la última es la vigente. */
+  /** Distinct structured offers from the rival, in order; the last is the current one. */
   rivalOffers: readonly StructuredOffer[];
-  /** El rival ha hecho una oferta nueva desde nuestro último mensaje. */
+  /** The rival has made a new offer since our last message. */
   rivalMovedSinceOurLast: boolean;
-  /** Concesiones nuestras (cambios de precio/días) desde la última oferta del rival; la apertura no cuenta. */
+  /** Our concessions (price/days changes) since the rival's last offer; the opening doesn't count. */
   concessionsSinceRival?: number;
-  /** Decay por ronda del duelo (`decay_per_round`); si falta, `params.decay`. */
+  /** Decay per round of the duel (`decay_per_round`); if missing, `params.decay`. */
   decay?: number;
   ticksSinceOurLast?: number;
   ticksLeft?: number;
@@ -115,7 +115,7 @@ export interface DuelDecision {
   offer?: StructuredOffer;
   text?: string;
   rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "waiting-for-rival" | "match-stale";
-  /** Excedente objetivo de la oferta (o el de la oferta del rival que se acepta). */
+  /** Target surplus of the offer (or that of the rival's offer being accepted). */
   surplus: number;
   round: number;
 }
@@ -127,13 +127,13 @@ function daysAt(table: DaysValue, days: number | undefined): number {
   return table[Math.round(days) - DAYS_MIN] ?? Number.NEGATIVE_INFINITY;
 }
 
-/** Nuestro excedente (P) de una oferta: lado del precio respecto al límite más el valor de sus días. */
+/** Our surplus (P) of an offer: price side relative to the limit plus the value of its days. */
 export function surplusOf(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, offer: StructuredOffer): number {
   const price = sign(state.role) * (offer.price - state.limit);
   return state.withDays ? price + daysAt(state.daysValue, offer.days) : price;
 }
 
-/** El precio no cruza el límite (vendedor ≥, comprador ≤) y, con días, son enteros en 0..10. */
+/** The price doesn't cross the limit (seller ≥, buyer ≤) and, with days, they are integers in 0..10. */
 export function withinLimit(state: Pick<DuelState, "role" | "limit" | "withDays">, offer: StructuredOffer): boolean {
   if (!Number.isFinite(offer.price) || offer.price < 1) return false;
   if (state.role === "seller" ? offer.price < state.limit : offer.price > state.limit) return false;
@@ -152,7 +152,7 @@ export function floorSurplus(state: Pick<DuelState, "role" | "limit" | "withDays
   return Math.max(params.minSurplus, params.floorShare * openingSurplus(state, params));
 }
 
-/** Excedente objetivo de nuestra oferta número `round` (0 = apertura) por la curva del motor. */
+/** Target surplus of our offer number `round` (0 = opening) by the engine's curve. */
 export function targetSurplus(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, params: DuelParams, round: number): number {
   const open = openingSurplus(state, params);
   const floor = floorSurplus(state, params);
@@ -160,9 +160,9 @@ export function targetSurplus(state: Pick<DuelState, "role" | "limit" | "withDay
 }
 
 /**
- * Lo que estimamos que el rival valora los días: su último día pedido y cuánto (P) le cuesta cada día
- * de distancia a él. Intensidad = nuestra pendiente media × 2 si ha movido el precio sin mover los
- * días (le importan más), × 0,5 si ha movido los días hacia nuestro día preferido; × 1 sin más datos.
+ * What we estimate the rival values days at: their last requested day and how much (P) each day
+ * of distance from it costs them. Intensity = our average slope × 2 if they moved the price without moving the
+ * days (they care more), × 0.5 if they moved the days towards our preferred day; × 1 with no further data.
  */
 export function estimateRivalDaysWeight(state: Pick<DuelState, "daysValue" | "rivalOffers">): { days: number; weight: number } | undefined {
   const withDays = state.rivalOffers.filter((o) => o.days !== undefined);
@@ -181,9 +181,9 @@ export function estimateRivalDaysWeight(state: Pick<DuelState, "daysValue" | "ri
 }
 
 /**
- * Oferta con nuestro excedente ≈ `target`: con días, el día que maximiza el valor conjunto estimado
- * (el nuestro menos lo que estimamos que pierde el rival al alejarnos de su día; logrolling) y el precio que nos deja en `target`. Empates: el día más
- * cercano al último del rival. El precio se redondea a nuestro favor y nunca cruza el límite.
+ * Offer with our surplus ≈ `target`: with days, the day that maximizes the estimated joint value
+ * (ours minus what we estimate the rival loses by moving away from their day; logrolling) and the price that leaves us at `target`. Ties: the day
+ * closest to the rival's last. The price is rounded in our favor and never crosses the limit.
  */
 export function offerForSurplus(state: DuelState, target: number): StructuredOffer {
   const s = sign(state.role);
@@ -240,17 +240,17 @@ const HOLD_DAYS = [
   "Thank you. I think {p} P with delivery on day {d} is fair for both of us. Shall we settle, please?",
 ];
 
-/** Todas las plantillas de duelo (para el guardarraíl de cortesía y lista negra). */
+/** All duel templates (for the politeness and blacklist guardrail). */
 export const DUEL_TEMPLATES: readonly string[] = [...OPEN_PRICE, ...COUNTER_PRICE, ...HOLD_PRICE, ...OPEN_DAYS, ...COUNTER_DAYS, ...HOLD_DAYS];
 
-/** El texto lleva exactamente las cifras de la oferta estructurada: el precio y, con días, los días. */
+/** The text carries exactly the figures of the structured offer: the price and, with days, the days. */
 export function textMatchesOffer(text: string, offer: StructuredOffer): boolean {
   const expected = offer.days === undefined ? [Math.round(offer.price)] : [Math.round(offer.price), Math.round(offer.days)];
   const nums = numbersIn(text);
   return nums.length === expected.length && nums.every((n, k) => n === expected[k]);
 }
 
-/** Plantilla amable en inglés con las mismas cifras que la oferta; lanza si no coinciden. */
+/** Friendly English template with the same figures as the offer; throws if they don't match. */
 export function duelText(kind: "open" | "counter" | "hold", round: number, offer: StructuredOffer): string {
   const withDays = offer.days !== undefined;
   const list = {
@@ -264,7 +264,7 @@ export function duelText(kind: "open" | "counter" | "hold", round: number, offer
   return text;
 }
 
-/** Issue sintético del motor: nuestro excedente en P, cuanto más mejor. */
+/** Synthetic engine issue: our surplus in P, the more the better. */
 function surplusIssue(state: DuelState): Issue {
   const span = Math.max(1000, 20 * Math.abs(state.limit) + 20 * Math.max(...state.daysValue.map(Math.abs)));
   return { name: "surplus", min: -span, max: span, direction: "higher-better", weight: 1 };
@@ -279,17 +279,17 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   const previous = state.ourOffers.at(-1);
   const prevSurplus = previous ? surplusOf(state, previous) : undefined;
   const decay = state.decay ?? params.decay;
-  // En el final, solo se mueve hacia un trato si el rival ha ofertado alguna vez; si nunca ha
-  // hablado no hay nada que partir y conviene mantener la oferta vigente en vez de ceder solo.
+  // At the end, only move towards a deal if the rival has ever offered; if they never
+  // spoke there is nothing to split and it's better to keep the current offer than to concede alone.
   const endgameWithRival = endgame && rivalHasOffered;
-  // Nunca dos concesiones sin una contraoferta nueva del rival: sin ella, como mucho `maxSilentConcessions`
-  // (una), tras esperar `silentWaitTicks` o ya en el final. En práctica, 8 de 10 duelos sin trato tuvieron un
-  // rival callado; 2 de esos rivales aceptaron una oferta nuestra sin decir nada.
+  // Never two concessions without a new rival counteroffer: without one, at most `maxSilentConcessions`
+  // (one), after waiting `silentWaitTicks` or already at the end. In practice, 8 of 10 duels without a deal had a
+  // silent rival; 2 of those rivals accepted an offer of ours without saying anything.
   const silentLeft = (state.concessionsSinceRival ?? 0) < params.maxSilentConcessions;
   const waitedEnough = (state.ticksSinceOurLast ?? 0) >= params.silentWaitTicks;
   const canConcede = !previous || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival));
 
-  // Siguiente excedente objetivo: curva del motor, en el final partir la diferencia con el rival.
+  // Next target surplus: engine curve, at the end split the difference with the rival.
   let target = targetSurplus(state, params, round);
   let rule: DuelDecision["rule"] = round === 0 ? "opening" : state.rivalMovedSinceOurLast ? "concede" : "silent-concede";
   const rivalSurplus = rival && withinLimit(state, rival) ? surplusOf(state, rival) : undefined;
@@ -297,20 +297,20 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     target = Math.max(floorSurplus(state, params), (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
     rule = "endgame";
   }
-  // Guardarraíl del motor sobre el excedente: nunca sube respecto a la oferta anterior ni baja del mínimo.
+  // Engine guardrail on surplus: never rises above the previous offer nor drops below the minimum.
   target = enforceGuardrails({ role: "seller", reservation: params.minSurplus }, target, prevSurplus);
-  // Lo que de verdad ofreceríamos después: si no podemos conceder, la oferta vigente.
+  // What we would actually offer next: if we can't concede, the current offer.
   const nextSurplus = canConcede || prevSurplus === undefined ? target : prevSurplus;
 
-  // Nunca se cierra fuera de nuestro límite: `rivalSurplus` solo existe si su oferta respeta `your_limit`.
+  // Never close outside our limit: `rivalSurplus` only exists if their offer respects `your_limit`.
   if (rival && rivalSurplus !== undefined && rivalSurplus >= params.minSurplus) {
-    // Aceptar pronto: cada ronda encoge el trato (`decay`); una oferta que ya deja una parte razonable, o que vale
-    // más que nuestra siguiente oferta descontada una ronda, se acepta ya.
+    // Accept early: each round shrinks the deal (`decay`); an offer that already leaves a reasonable share, or is worth
+    // more than our next offer discounted one round, is accepted now.
     if (rivalSurplus >= params.acceptShare * openingSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
     if (rivalSurplus >= (1 - decay) ** params.acceptLookahead * nextSurplus) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
   }
 
-  // Aceptación del motor (AC_next; en el último movimiento, todo lo que respete la reserva).
+  // Engine acceptance (AC_next; on the last move, anything that respects the reservation).
   if (rival && rivalSurplus !== undefined) {
     const issue = surplusIssue(state);
     const time: TimeInfo = {
@@ -335,10 +335,10 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   if (!canConcede) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
 
   let offer = offerForSurplus(state, target);
-  // Con días, el redondeo de otro día podría pedir más que la oferta anterior: entonces se repite.
+  // With days, rounding to another day could ask for more than the previous offer: then we repeat.
   if (previous && prevSurplus !== undefined && surplusOf(state, offer) > prevSurplus) offer = previous;
   const same = previous !== undefined && previous.price === offer.price && previous.days === offer.days;
-  // Repetir la misma oferta a un rival callado no aporta nada: se espera sin mensaje.
+  // Repeating the same offer to a silent rival adds nothing: wait without a message.
   if (same && !state.rivalMovedSinceOurLast) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
   const kind = round === 0 ? "open" : same ? "hold" : "counter";
   return { action: "counter", offer, text: duelText(kind, round, offer), rule, surplus: surplusOf(state, offer), round };

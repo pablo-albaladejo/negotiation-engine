@@ -7,15 +7,15 @@ import type { Clock } from "../shared/schemas.js";
 import { liveTraceDir } from "../shared/trace.js";
 
 /**
- * Bucle de duelos: un paso por tick. Lee `/api/duels`, decide cada duelo con `decideDuel` y envía
- * como mucho un mensaje por duelo y tick y una aceptación por equipo y tick (la de más excedente;
- * las demás esperan al tick siguiente). La memoria por duelo (nuestras ofertas y las del rival) vive
- * en el proceso y, si se da `stateFile`, también en disco (escritura atómica tras cada tick con POSTs)
- * para que un reinicio la recupere en vez de reabrir o volver a conceder desde cero. La oferta del
- * rival se lee de `rival_offer` o, si falta, del último mensaje suyo (`rivalOfferFrom`); la nuestra,
- * de la memoria o, si no hay memoria para ese duelo (reinicio sin fichero), de `your_offer`
- * (`ourOfferFrom`), para no reabrir con un ancla nueva ni repetir el primer mensaje. En `dryRun` no
- * hay ningún POST ni se toca la memoria (ni el fichero).
+ * Duel loop: one step per tick. Reads `/api/duels`, decides each duel with `decideDuel` and sends
+ * at most one message per duel per tick and one acceptance per team per tick (the one with the most surplus;
+ * the others wait for the next tick). Per-duel memory (our offers and the rival's) lives
+ * in the process and, if `stateFile` is given, on disk too (atomic write after each tick with POSTs)
+ * so a restart recovers it instead of reopening or conceding again from scratch. The rival's
+ * offer is read from `rival_offer` or, if missing, from their last message (`rivalOfferFrom`); ours,
+ * from memory or, if there is no memory for that duel (restart without a file), from `your_offer`
+ * (`ourOfferFrom`), to avoid reopening with a new anchor or repeating the first message. In `dryRun` there
+ * are no POSTs and memory (and the file) is not touched.
  */
 
 interface Memory {
@@ -34,12 +34,12 @@ interface PersistedDuelsState {
   duels?: Record<string, Memory>;
 }
 
-/** `results/bazaar-live/<fecha>/duels-state.json`: dónde persiste la memoria si no se indica otro fichero. */
+/** `results/bazaar-live/<date>/duels-state.json`: where memory persists if no other file is given. */
 export function defaultDuelsStateFile(root: string, now: Date = new Date()): string {
   return join(liveTraceDir(root, now), "duels-state.json");
 }
 
-/** Carga la memoria persistida; vacía si el fichero no existe o no es válido (nunca lanza). */
+/** Loads the persisted memory; empty if the file does not exist or is invalid (never throws). */
 export function loadDuelsMemory(file: string): Map<string, Memory> {
   const map = new Map<string, Memory>();
   if (!existsSync(file)) return map;
@@ -48,12 +48,12 @@ export function loadDuelsMemory(file: string): Map<string, Memory> {
     if (data.schema !== DUELS_STATE_SCHEMA || !data.duels) return map;
     for (const [id, mem] of Object.entries(data.duels)) map.set(id, mem);
   } catch {
-    // Fichero corrupto o ilegible: se arranca sin memoria (el payload del servidor sigue dando rival_offer/your_offer).
+    // Corrupt or unreadable file: start without memory (the server payload still provides rival_offer/your_offer).
   }
   return map;
 }
 
-/** Guarda toda la memoria con rename atómico (fichero temporal + rename), como `lessons.ts`. */
+/** Saves all memory with an atomic rename (temp file + rename), like `lessons.ts`. */
 export function saveDuelsMemory(file: string, memory: ReadonlyMap<string, Memory>): void {
   mkdirSync(dirname(file), { recursive: true });
   const duels: Record<string, Memory> = {};
@@ -72,10 +72,10 @@ export interface DuelStepEntry {
   rival?: StructuredOffer;
   ticksLeft?: number;
   decision: DuelDecision;
-  /** Lo que se hizo: enviado, simulado (dry-run), aplazado (otra aceptación en este tick) o error. */
+  /** What was done: sent, simulated (dry-run), deferred (another acceptance this tick) or error. */
   outcome: "sent" | "dry-run" | "deferred" | "skipped" | `error:${string}`;
   assumption?: string;
-  /** Si la aceptación falló con no_offer: resultado de la contraoferta que iguala la oferta del rival. */
+  /** If the acceptance failed with no_offer: result of the counteroffer that matches the rival's offer. */
   fallback?: string;
 }
 
@@ -84,7 +84,7 @@ export interface DuelStepReport {
   entries: DuelStepEntry[];
 }
 
-/** Decisión de un duelo vivo, aún sin ejecutar. */
+/** Decision for a live duel, not yet executed. */
 export interface PlannedDuel {
   duel: Duel;
   state: DuelState;
@@ -104,11 +104,11 @@ export interface DuelsAgentOptions {
   dryRun: boolean;
   params?: Partial<DuelParams>;
   now?: () => number;
-  /** Fichero de memoria persistida (rename atómico); si se da, se carga al construir y se reescribe tras cada tick con POSTs. */
+  /** Persisted memory file (atomic rename); if given, it is loaded on construction and rewritten after each tick with POSTs. */
   stateFile?: string;
 }
 
-/** Tics hasta `deadline`: número de tick (o epoch en s/ms) o fecha ISO; `undefined` si no se entiende. */
+/** Ticks until `deadline`: tick number (or epoch in s/ms) or ISO date; `undefined` if not understood. */
 export function ticksLeft(deadline: Duel["deadline"], clock: Pick<Clock, "tick" | "tick_seconds">, nowMs: number): number | undefined {
   if (deadline === null || deadline === undefined) return undefined;
   const tickSeconds = clock.tick_seconds && clock.tick_seconds > 0 ? clock.tick_seconds : 60;
@@ -145,7 +145,7 @@ export class DuelsAgent {
     return String(duelId);
   }
 
-  /** Estado puro de un duelo a partir de la respuesta del servidor y de la memoria (sin mutarla en dry-run). */
+  /** Pure state of a duel from the server response and memory (without mutating it in dry-run). */
   stateOf(duel: Duel, clock: Clock): { state: DuelState; rival?: StructuredOffer; assumption?: string } {
     const mem = this.memory.get(this.key(duel.id)) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
     const withDays = duel.issues.includes("days");
@@ -157,8 +157,8 @@ export class DuelsAgent {
       rivalOffers.push(rival);
       moved = true;
     }
-    // Sin memoria para este duelo (duelo nuevo o reinicio sin fichero de estado): se lee `your_offer`
-    // del servidor como nuestra última oferta, para no reabrir con un ancla nueva ni repetir el primer mensaje.
+    // No memory for this duel (new duel or restart without a state file): `your_offer` is read
+    // from the server as our last offer, to avoid reopening with a new anchor or repeating the first message.
     const ourOffers = mem.ourOffers.length === 0 ? [...(ourOfferFrom(duel) ? [ourOfferFrom(duel)!] : [])] : mem.ourOffers;
     const lastOurTick = mem.lastOurTick ?? (ourOffers.length > 0 ? (duel.your_offer?.tick ?? undefined) : undefined);
     const left = ticksLeft(duel.deadline, clock, this.now());
@@ -178,7 +178,7 @@ export class DuelsAgent {
     return { state, ...(rival ? { rival } : {}), ...("assumption" in days && days.assumption ? { assumption: days.assumption } : {}) };
   }
 
-  /** Propuesta del tick sin enviar nada: reloj y decisión de cada duelo vivo (solo GET). */
+  /** Tick proposal without sending anything: clock and decision for each live duel (GET only). */
   async propose(): Promise<DuelProposal> {
     const clock = await this.api.clock();
     const { duels } = await this.api.duels();
@@ -195,7 +195,7 @@ export class DuelsAgent {
     return { clock, planned };
   }
 
-  /** Paso autónomo (`pnpm bazaar:duels`): una aceptación por tick, la de más excedente; el resto espera. */
+  /** Autonomous step (`pnpm bazaar:duels`): one acceptance per tick, the one with the most surplus; the rest wait. */
   async step(): Promise<DuelStepReport> {
     const proposal = await this.propose();
     const accepts = proposal.planned
@@ -206,9 +206,9 @@ export class DuelsAgent {
   }
 
   /**
-   * Ejecuta una propuesta. `accepts`: duelos cuya aceptación se intenta, en orden; como mucho una sale (si falla,
-   * p. ej. no_offer, se prueba la siguiente). Las demás aceptaciones quedan aplazadas. `messages`: si se da, solo
-   * esos duelos envían su mensaje (el coordinador reparte el cupo); los demás quedan `skipped`.
+   * Executes a proposal. `accepts`: duels whose acceptance is attempted, in order; at most one goes through (if it fails,
+   * e.g. no_offer, the next is tried). The other acceptances are deferred. `messages`: if given, only
+   * those duels send their message (the coordinator allocates the quota); the rest are `skipped`.
    */
   async execute(proposal: DuelProposal, choice: { accepts: readonly (number | string)[]; messages?: ReadonlySet<string> }): Promise<DuelStepReport> {
     const { clock, planned } = proposal;
@@ -231,7 +231,7 @@ export class DuelsAgent {
       entries.push(entry);
       if (p.already || p.decision.action === "wait") continue;
       if (p.decision.action === "accept") {
-        entry.outcome = "deferred"; // se resuelven abajo, en el orden dado
+        entry.outcome = "deferred"; // resolved below, in the given order
         continue;
       }
       if (choice.messages && !choice.messages.has(this.key(p.duel.id))) continue;
@@ -252,13 +252,13 @@ export class DuelsAgent {
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
       if (entry.outcome === "sent") acceptDone = true;
-      // no_offer: nuestra contraoferta posterior anuló la oferta del rival (rival_offer queda obsoleta).
-      // No se puede aceptar, pero sí igualarla: proponemos exactamente su precio/días y el rival la cierra.
+      // no_offer: our later counteroffer voided the rival's offer (rival_offer is stale).
+      // We can't accept it, but we can match it: we propose exactly their price/days and the rival closes it.
       else if (entry.outcome === "error:no_offer" && p.rival && !sameOffer(p.rival, p.state.ourOffers.at(-1))) {
         const offer: StructuredOffer = { ...p.rival };
-        // Con días, el mensaje siempre lleva `days` (si no, missing_days): si su oferta no los trae, nuestro mejor día.
+        // With days, the message always carries `days` (otherwise missing_days): if their offer has none, our best day.
         if (p.state.withDays && offer.days === undefined) offer.days = DAYS_MIN + p.state.daysValue.indexOf(Math.max(...p.state.daysValue));
-        // Guardarraíl: nunca se iguala una oferta fuera de nuestro límite.
+        // Guardrail: never match an offer outside our limit.
         if (!withinLimit(p.state, offer)) {
           entry.fallback = "match skipped: outside our limit";
           continue;
@@ -307,7 +307,7 @@ export class DuelsAgent {
   }
 }
 
-/** Una línea legible por entrada (dry-run y log del bucle). Muestra nuestro límite solo en la consola local. */
+/** One readable line per entry (dry-run and loop log). Shows our limit only on the local console. */
 export function formatDuelEntry(e: DuelStepEntry, withDays = e.issues.includes("days")): string {
   const fmt = (o: StructuredOffer | undefined) => (o ? (withDays ? `${o.price} P/day ${o.days ?? "?"}` : `${o.price} P`) : "-");
   const d = e.decision;
@@ -321,7 +321,7 @@ export function formatDuelEntry(e: DuelStepEntry, withDays = e.issues.includes("
   return `${head}\n  → ${what} [${e.outcome}]${e.fallback ? ` → ${e.fallback}` : ""}${e.assumption ? `\n  assumption: ${e.assumption}` : ""}`;
 }
 
-/** "no duels scheduled now" y la próxima sesión de duelos de `/api/schedule` (tics y minutos aproximados al ritmo actual). */
+/** "no duels scheduled now" and the next duel session from `/api/schedule` (ticks and minutes approximated at the current pace). */
 export function formatNextDuels(schedule: Schedule, clock: Pick<Clock, "tick_seconds">): string {
   const now = schedule.now_hours ?? 0;
   const next = schedule.upcoming.filter((u) => u.action === "duels" && u.at_hours >= now).sort((a, b) => a.at_hours - b.at_hours)[0];

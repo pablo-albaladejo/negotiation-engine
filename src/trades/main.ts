@@ -5,9 +5,9 @@ import { DEFAULT_TRADE_PARAMS, type TradeParams } from "./trades.js";
 import { TradesAgent, type TradesApi } from "./agent.js";
 
 /**
- * `pnpm bazaar:trades --dry-run --once`: lee el tablón de El Rastro, nuestras ofertas, el feed y nuestros
- * valores, e imprime oportunidades (valor creado a nuestros valores), aceptación, listados y pujas; no
- * envía nada. En vivo hace falta quitar `--dry-run` Y pasar `--confirm` (solo con aprobación del usuario).
+ * `pnpm bazaar:trades --dry-run --once`: reads the El Rastro board, our offers, the feed and our
+ * values, and prints opportunities (value created at our values), acceptance, listings and bids; it does not
+ * send anything. Live requires dropping `--dry-run` AND passing `--confirm` (only with user approval).
  */
 export async function runTradesCli(
   argv: string[],
@@ -53,7 +53,7 @@ export async function runTradesCli(
   if (!client) {
     const env = loadBazaarEnv();
     if (!env.key) {
-      log("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
+      log("Missing BAZAAR_KEY (set it in .env or in the environment).");
       return 2;
     }
     client = new BazaarClient({ url: env.url, key: env.key });

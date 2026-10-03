@@ -17,14 +17,14 @@ import {
   type TradeState,
 } from "./trades.js";
 
-/** Lo que el bucle de trades necesita del cliente (inyectable en tests). */
+/** What the trades loop needs from the client (injectable in tests). */
 export type TradesApi = Pick<BazaarClient, "me" | "catalog" | "clock" | "value" | "board" | "myOffers" | "myThreads" | "feed" | "postOffer" | "cancelOffer" | "acceptOffer">;
 
 export interface TradesAgentOptions {
   dryRun: boolean;
   log?: (line: string) => void;
   top?: number;
-  /** Ticks que una aceptación nuestra reserva sus activos (liquida en el siguiente tick). */
+  /** Ticks for which an acceptance of ours reserves its assets (settles on the next tick). */
   reserveTicks?: number;
 }
 
@@ -39,14 +39,14 @@ function num(x: unknown, fallback: number): number {
 }
 
 /**
- * Bucle de trades con equipos: un paso por tick. Lee reloj, `/api/me`, nuestras ofertas, el tablón de
- * El Rastro y el feed; decide con `planTick` (puro) y, si no es dry-run, ejecuta: como mucho una
- * aceptación, luego cancelaciones y altas. Lleva el gasto de la ejecución (`spent`: compras aceptadas y
- * pujas nuestras que desaparecen sin cancelar antes de caducar) contra `maxSpend`.
+ * Trades loop with teams: one step per tick. Reads clock, `/api/me`, our offers, the El Rastro
+ * board and the feed; decides with `planTick` (pure) and, if not dry-run, executes: at most one
+ * acceptance, then cancellations and new listings. Tracks the run's spend (`spent`: accepted purchases and
+ * our bids that disappear without being cancelled before expiring) against `maxSpend`.
  */
 export class TradesAgent {
   private catalog: Catalog | undefined;
-  /** `/api/me/value` de cartas que no tenemos (valor de la primera copia): cacheado toda la ejecución. */
+  /** `/api/me/value` of cards we don't have (first-copy value): cached for the whole run. */
   private readonly zeroValues = new Map<string, number>();
   private readonly reservedUntil = new Map<number, number>();
   private readonly cancelled = new Set<number>();
@@ -68,7 +68,7 @@ export class TradesAgent {
     const myId = me.id ?? "";
     const rawOffers = await this.api.myOffers();
     const { mine, toMe } = parseMyOffers(rawOffers, myId);
-    // Un activo, un sitio: lo que está en un hilo abierto con un dealer (topic o oferta del hilo) no se lista ni se usa para pagar.
+    // One asset, one place: what is in an open thread with a dealer (topic or thread offer) is neither listed nor used to pay.
     const inThreads = [...assetsInThreads((await this.api.myThreads("open")).threads)].concat([...assetsInOffers(rawOffers, myId)].filter(([, where]) => where.includes("in thread")));
     const board = parseOffers(await this.api.board("rastro"));
     let settlements: TradeState["settlements"] = [];
@@ -117,7 +117,7 @@ export class TradesAgent {
     };
   }
 
-  /** Una puja nuestra que ya no está, sin cancelarla nosotros y antes de caducar, se dio por llenada. */
+  /** A bid of ours that is gone, without us cancelling it and before expiring, was taken as filled. */
   private trackFilledBids(mine: TradeState["mine"], tick: number): void {
     const now = new Map<number, { cash: number; expires: number }>();
     for (const o of mine) {
@@ -133,7 +133,7 @@ export class TradesAgent {
     this.openBids = now;
   }
 
-  /** Propuesta del tick sin enviar nada (solo GET): estado y plan de `planTick`. */
+  /** Tick proposal without sending anything (GET only): state and `planTick` plan. */
   async propose(): Promise<{ state: TradeState; plan: TickPlan }> {
     const state = await this.state();
     return { state, plan: planTick(state, this.params) };
@@ -147,8 +147,8 @@ export class TradesAgent {
   }
 
   /**
-   * Ejecuta un plan (quizá recortado por el coordinador: sin aceptación, menos altas): como mucho una aceptación,
-   * luego cancelaciones y altas. En dry-run no envía nada.
+   * Executes a plan (possibly trimmed by the coordinator: no acceptance, fewer listings): at most one acceptance,
+   * then cancellations and new listings. In dry-run it sends nothing.
    */
   async execute(state: TradeState, plan: TickPlan): Promise<StepResult> {
     const sent: string[] = [];
@@ -180,7 +180,7 @@ export class TradesAgent {
     for (const p of plan.posts) {
       const ok = await attempt(`post ${p.kind} ${p.ref} @${p.price}`, () => this.api.postOffer(p.body));
       if (!ok && errors.at(-1)?.match(/wait_for_tick|rate_limited|too_many/)) break;
-      // Una puja puede llenarse antes de la siguiente lectura: se apunta ya con el id que devuelve el POST.
+      // A bid may fill before the next read: it is recorded now with the id returned by the POST.
       const id = (lastResponse as { id?: unknown; offer?: { id?: unknown } } | undefined)?.id ?? (lastResponse as { offer?: { id?: unknown } } | undefined)?.offer?.id;
       if (ok && p.kind === "bid" && typeof id === "number") this.openBids.set(id, { cash: p.price, expires: state.tick + this.params.expiresInTicks });
     }

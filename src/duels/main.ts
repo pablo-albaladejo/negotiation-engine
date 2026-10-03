@@ -7,14 +7,14 @@ import { loadBazaarEnv } from "../shared/env.js";
 
 /**
  * `pnpm bazaar:duels [--dry-run] [--once] [--max-rounds 4] [--beta 2] [--anchor-margin 0.5] [--floor-share 0.3] [--assumed-days-weight 0] [--state-file path]`:
- * un paso por tick hasta Ctrl-C. `--dry-run` solo hace GET (clock, duels, schedule) e imprime lo que haría; ningún POST.
- * En vivo, persiste la memoria por duelo en `--state-file` (por defecto `results/bazaar-live/<fecha>/duels-state.json`,
- * rename atómico) para que un reinicio no reabra ni repita ofertas. Nunca imprime la clave.
+ * one step per tick until Ctrl-C. `--dry-run` only does GETs (clock, duels, schedule) and prints what it would do; no POSTs.
+ * Live, it persists per-duel memory in `--state-file` (default `results/bazaar-live/<date>/duels-state.json`,
+ * atomic rename) so a restart neither reopens nor repeats offers. Never prints the key.
  */
 
 function num(raw: string, name: string, min: number): number {
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < min) throw new Error(`${name} debe ser un número ≥ ${min}`);
+  if (!Number.isFinite(n) || n < min) throw new Error(`${name} must be a number ≥ ${min}`);
   return n;
 }
 
@@ -40,10 +40,10 @@ async function main() {
     floorShare: num(values["floor-share"], "--floor-share", 0),
     assumedDaysWeight: Number(values["assumed-days-weight"]),
   };
-  if (!Number.isFinite(params.assumedDaysWeight)) throw new Error("--assumed-days-weight debe ser un número");
+  if (!Number.isFinite(params.assumedDaysWeight)) throw new Error("--assumed-days-weight must be a number");
   const env = loadBazaarEnv();
   if (!env.key) {
-    console.error("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
+    console.error("Missing BAZAAR_KEY (set it in .env or in the environment).");
     process.exit(2);
   }
   const dryRun = values["dry-run"];

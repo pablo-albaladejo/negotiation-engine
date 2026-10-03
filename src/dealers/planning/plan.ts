@@ -4,37 +4,37 @@ import { rarityOf, type Target } from "./planner.js";
 import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
 
 /**
- * Planificador por menú: a partir de `/api/me`, `/api/catalog` y la ficha del dealer, ordena qué
- * comprarle (cartas concretas o rareza+set, por valor esperado a nuestros valores privados) y, si
- * ninguna compra deja margen, qué venderle (lo que compra, a la puja aprendida). Puro salvo `valueOf`.
+ * Menu planner: from `/api/me`, `/api/catalog` and the dealer record, ranks what to
+ * buy from her (specific cards or rarity+set, by expected value at our private values) and, if
+ * no purchase leaves room, what to sell her (what she buys, at the learned bid). Pure except `valueOf`.
  */
 
 /**
- * Su puja cuando nos compra es DESCONOCIDA hasta su primer precio en el hilo (hilos 56 y 125: la misma común
- * MAL-02 a 13 una vez y a 5–6 otra, sin causa conocida). El plan solo usa un techo plausible para decidir si
- * abrir: su lista de venta de esa rareza × 1,3 (13 sobre su lista 10 de comunes, lo más alto visto).
+ * Her bid when she buys from us is UNKNOWN until her first price in the thread (threads 56 and 125: the same common
+ * MAL-02 at 13 once and at 5–6 another time, no known cause). The plan only uses a plausible ceiling to decide whether to
+ * open: her sell list for that rarity × 1.3 (13 over her common list of 10, the highest seen).
  */
 export const PLAUSIBLE_BID_FRAC = 1.3;
-/** ASSUMPTION (sim): apertura de su venta sin opening_ask = list × 1,15 (Abuela, confirmado en vivo). */
+/** ASSUMPTION (sim): her sell opening without opening_ask = list × 1.15 (Abuela, confirmed live). */
 const ASSUMED_OPENING_MARKUP = 1.15;
 /**
- * Riesgo de repetida al comprar por rareza+set (la carta la elige ella; se supone uniforme entre las de esa
- * rareza y set): se descarta si P(repetida) > 0,34 y la pérdida en el peor caso (pagar el límite por la repetida
- * de menor valor) supera 3 P, porque cada trato puntúa a nuestro valor privado (SAL-07 a 23: neg_points −14,9).
- * Además el valor esperado debe superar su lista en `RARITY_SET_MARGIN` (al menos 2 P o el 10 % de la lista).
+ * Duplicate risk when buying by rarity+set (she picks the card; assumed uniform among those of that
+ * rarity and set): skipped if P(duplicate) > 0.34 and the worst-case loss (paying the limit for the lowest-value
+ * duplicate) exceeds 3 P, because each deal scores at our private value (SAL-07 at 23: neg_points −14.9).
+ * Also the expected value must exceed her list by `RARITY_SET_MARGIN` (at least 2 P or 10 % of the list).
  */
 export const MAX_DUPLICATE_P = 0.34;
 export const MAX_WORST_CASE_LOSS = 3;
 export const RARITY_SET_MARGIN = { min: 2, frac: 0.1 };
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
 /**
- * Nuestra ÚNICA copia en una página ≥ 70 % completa nunca se vende: ese último tramo es justo donde más pesa el
- * bonus de página en el valor de la carta (completar puntúa fuerte y perder una pieza tan cerca del final no se
- * recupera fácil), así que usamos el propio porcentaje de la página como proxy simple de "el bonus de página
- * manda en su valor" en vez de tratar de separar el valor de mercado del bonus. Las repetidas no tienen este
- * problema (la página no cambia) y se prefieren siempre; fuera de este umbral, una única copia solo se ofrece si
- * crea al menos `ONLY_COPY_MIN_SURPLUS` P (vender la única copia de un conjunto casi vacío por una miseria tampoco
- * compensa) — como solo se ofrece una copia a la vez, la página siempre queda como mucho en `have − 1`.
+ * Our ONLY copy on a page ≥ 70 % complete is never sold: that last stretch is exactly where the page
+ * bonus weighs most in the card's value (completing scores high and losing a piece so close to the end is not
+ * easily recovered), so we use the page's own percentage as a simple proxy for "the page bonus
+ * drives its value" instead of trying to separate market value from the bonus. Duplicates don't have this
+ * problem (the page doesn't change) and are always preferred; below this threshold, a single copy is only offered if it
+ * creates at least `ONLY_COPY_MIN_SURPLUS` P (selling the only copy of a nearly empty set for peanuts isn't
+ * worth it either) — since only one copy is offered at a time, the page always ends at most at `have − 1`.
  */
 export const ONLY_COPY_PAGE_COMPLETE_BLOCK = 0.7;
 export const ONLY_COPY_MIN_SURPLUS = 5;
@@ -45,7 +45,7 @@ export interface PageImpact {
   set: string;
   have: number;
   of: number;
-  /** Cartas de la página tras el trato (esperado al comprar por rareza+set). */
+  /** Page cards after the deal (expected when buying by rarity+set). */
   after: number;
 }
 
@@ -54,24 +54,24 @@ export interface Candidate extends Target {
   rarity: string | undefined;
   set: string | undefined;
   card?: string;
-  /** Compra: valor esperado de lo que recibimos; venta: valor de lo que entregamos. */
+  /** Buy: expected value of what we receive; sell: value of what we hand over. */
   value: number;
   herList: number | undefined;
-  /** Su primer precio esperado (al comprar, su apertura; al vender, su puja) y de dónde sale. */
+  /** Her expected first price (buying: her opening; selling: her bid) and where it comes from. */
   herOpening: number;
   herOpeningSource: string;
   /** Valor creado a su precio esperado: compra = valor − lista; venta = puja − valor. */
   surplus: number;
-  /** Compra: la reserva supera su lista; venta: su puja esperada alcanza nuestra reserva y crea valor. */
+  /** Buy: the reservation exceeds her list; sell: her expected bid reaches our reservation and creates value. */
   room: boolean;
   why: string;
   cards?: { id: string; value: number; held: boolean }[];
-  /** Rareza+set: probabilidad de recibir una repetida y pérdida si nos toca la peor repetida pagando el límite. */
+  /** Rarity+set: probability of receiving a duplicate and loss if we get the worst duplicate paying the limit. */
   duplicateP?: number;
   worstCaseLoss?: number;
-  /** Compra de carta concreta sobre una entrada de rareza+set: el dealer aún no ha aceptado `{buy: {card}}`. */
+  /** Specific-card buy on a rarity+set entry: the dealer has not yet accepted `{buy: {card}}`. */
   cardTopicUntested?: boolean;
-  /** Venta: su puja es desconocida hasta su primer precio en el hilo (`herOpening` es solo el techo plausible). */
+  /** Sell: her bid is unknown until her first price in the thread (`herOpening` is only the plausible ceiling). */
   bidUnknown?: boolean;
   copy?: "duplicate" | "only";
   page?: PageImpact;
@@ -82,11 +82,11 @@ export interface RankInput {
   catalog: Catalog;
   dealer: DealerInfo;
   valueOf: (card: string) => Promise<number>;
-  /** Fracción del valor que pagamos como máximo al comprar (y divisor del mínimo al vender). */
+  /** Fraction of the value we pay at most when buying (and divisor of the minimum when selling). */
   safety?: number;
-  /** Lo que queda para gastar (tope de la ejecución y de la hora). */
+  /** What is left to spend (cap of the run and of the hour). */
   budget: number;
-  /** Proponer cartas concretas (`{buy: {card}}`) sobre entradas de rareza+set; falso si el dealer ya lo rechazó. */
+  /** Propose specific cards (`{buy: {card}}`) on rarity+set entries; false if the dealer already refused it. */
   cardTopic?: boolean;
 }
 
@@ -110,8 +110,8 @@ function pagesOf(me: Me): Map<string, { have: number; of: number }> {
 const setOfCard = (ref: string, asset?: { set?: unknown }) => (typeof asset?.set === "string" ? asset.set : (ref.split("-")[0] ?? ref));
 
 /**
- * Guarda final del menú (hilo 257): vender solo lo que su `menu.buys` compra (rareza y sets) y comprar solo lo que
- * su `menu.sells` vende (la carta, o su rareza en esos sets). Devuelve el motivo si no lo permite.
+ * Final menu guard (thread 257): sell only what her `menu.buys` buys (rarity and sets) and buy only what
+ * her `menu.sells` sells (the card, or its rarity in those sets). Returns the reason if it does not allow it.
  */
 export function menuBlocks(dealer: DealerInfo, catalog: Catalog, c: Pick<Candidate, "side" | "rarity" | "set" | "card">): string | undefined {
   const rarity = c.rarity?.toLowerCase();
@@ -280,14 +280,14 @@ export interface Selection {
   reason: string;
 }
 
-/** Filtro de `--only`: lado y palabras (rareza, set, carta o id de activo), p. ej. `buy:uncommon:SAL`. */
+/** `--only` filter: side and words (rarity, set, card or asset id), e.g. `buy:uncommon:SAL`. */
 export interface OnlyFilter {
   raw: string;
   side: Side;
   tokens: string[];
 }
 
-/** `"buy:uncommon:SAL,buy:common:SAL"` → filtros en ese orden. Lanza si un elemento no empieza por buy/sell. */
+/** `"buy:uncommon:SAL,buy:common:SAL"` → filters in that order. Throws if an element doesn't start with buy/sell. */
 export function parseOnly(spec: string): OnlyFilter[] {
   return spec
     .split(",")
@@ -295,13 +295,13 @@ export function parseOnly(spec: string): OnlyFilter[] {
     .filter(Boolean)
     .map((raw) => {
       const [side, ...tokens] = raw.split(":").map((t) => t.trim());
-      if (side !== "buy" && side !== "sell") throw new Error(`--only: "${raw}" debe empezar por buy: o sell:`);
-      if (!tokens.length || tokens.some((t) => !t)) throw new Error(`--only: "${raw}" necesita rareza, set, carta o id`);
+      if (side !== "buy" && side !== "sell") throw new Error(`--only: "${raw}" must start with buy: or sell:`);
+      if (!tokens.length || tokens.some((t) => !t)) throw new Error(`--only: "${raw}" needs a rarity, set, card or id`);
       return { raw, side, tokens: tokens.map((t) => t.toLowerCase()) };
     });
 }
 
-/** Candidatos que casan con los filtros, en el orden de los filtros (y por ranking dentro de cada uno), sin repetir. */
+/** Candidates matching the filters, in filter order (and by ranking within each), without repeats. */
 export function applyOnly(cands: readonly Candidate[], filters: readonly OnlyFilter[]): Candidate[] {
   const out: Candidate[] = [];
   for (const f of filters) {
@@ -315,15 +315,15 @@ export function applyOnly(cands: readonly Candidate[], filters: readonly OnlyFil
 }
 
 /**
- * Hasta `maxThreads` conversaciones: compras con margen (una común y una infrecuente si ambas lo
- * tienen), recortadas por el gasto que queda; si faltan, ventas con margen (repetidas primero, luego
- * menor impacto en el álbum).
+ * Up to `maxThreads` conversations: buys with room (one common and one uncommon if both have
+ * it), capped by the remaining spend; if short, sells with room (duplicates first, then
+ * lowest album impact).
  */
 export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: number; maxSpend: number; only?: boolean }): Selection[] {
   const out: Selection[] = [];
   let committed = 0;
   if (o.only) {
-    // `--only`: en el orden pedido y sin exigir margen sobre su lista; el negociador sigue sin pasar de nuestro límite.
+    // `--only`: in the requested order and without requiring room over her list; the negotiator still never exceeds our limit.
     for (const c of cands) {
       if (out.length >= o.maxThreads) break;
       const reservation = c.side === "buy" ? Math.min(c.reservation, Math.floor(o.maxSpend - committed)) : c.reservation;
@@ -358,14 +358,14 @@ export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: n
 }
 
 export interface PathPreview {
-  /** Nuestros precios en orden si ella no se mueve de su primer precio. */
+  /** Our prices in order if she doesn't move from her first price. */
   prices: number[];
   outcome: string;
   rule: Rule;
   firstText: string | undefined;
 }
 
-/** Camino de precios previsto si ella no se mueve (lo aprendido con la Abuela al comprarnos comunes). */
+/** Expected price path if she doesn't move (what we learned from Abuela buying commons from us). */
 export function previewPath(c: Candidate, params: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS, maxRounds = 20): PathPreview {
   const prices: number[] = [];
   const herPrices = [c.herOpening];
@@ -407,11 +407,11 @@ export interface PlanCaps {
   maxDeals: number;
   maxSpend: number;
   maxThreads: number;
-  /** Fracción del valor usada como límite (solo para mostrarla). */
+  /** Fraction of the value used as the limit (display only). */
   safety?: number;
 }
 
-/** Texto del plan del dry-run: estado, candidatos ordenados, los elegidos y el primer mensaje de cada uno. */
+/** Dry-run plan text: status, ranked candidates, the chosen ones and the first message of each. */
 export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate[], chosen: readonly Selection[], caps: PlanCaps, params: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): string[] {
   const score = (me.score ?? {}) as { deals?: unknown };
   const deals = typeof score.deals === "number" ? score.deals : undefined;
