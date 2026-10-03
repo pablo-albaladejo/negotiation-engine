@@ -1,4 +1,5 @@
 import { DEFAULT_DUEL_PARAMS } from "../duels/duels.js";
+import { isKeepsake } from "../shared/asset-locks.js";
 import { alert, NOT_A_FAILURE, type Alert } from "./detectors.js";
 import type { DealerEvent, DuelMemory, DuelSend, StreamEvent } from "./sources.js";
 
@@ -331,6 +332,47 @@ export function dealerSaturated(input: ConductInput): Alert[] {
     for (const i of items) if (i.to === input.team && i.ref) received.add(i.ref);
   }
   return out;
+}
+
+/**
+ * `hidden-card-move` (Pablo, 3 Oct: hidden cards are never sold): any listing, offer or settlement of ours that gives
+ * away a keepsake (a catalog-hidden ref or a print_run 1 card, `isKeepsake` without rarity so a valued epic stays out).
+ * High severity: the lock in asset-locks should make this impossible, so one alert means a route bypassed it.
+ */
+export function hiddenCardMove(input: ConductInput): Alert[] {
+  type Asset = { id?: number; ref?: string; print_run?: number };
+  const out = new Map<string, Alert>();
+  for (const e of input.events) {
+    const p = e.payload;
+    const offer = (p.offer ?? undefined) as { maker?: string; give?: { assets?: Asset[] } } | undefined;
+    let given: Asset[] = [];
+    let what = "";
+    if (e.type === "offer.listed" && offer?.maker === input.team) [given, what] = [offer.give?.assets ?? [], "listed"];
+    else if (e.type === "thread.message" && p.sender === input.team && offer) [given, what] = [offer.give?.assets ?? [], `offered in thread ${asNum(p.thread) ?? "?"}`];
+    else if (e.type === "settlement") {
+      const items = (Array.isArray(p.items) ? p.items : []) as (Asset & { frm?: string })[];
+      [given, what] = [items.filter((i) => i.frm === input.team), `settled (settlement ${asNum(p.settlement) ?? "?"})`];
+    }
+    for (const a of given) {
+      if (!a.ref || !isKeepsake({ ref: a.ref, print_run: a.print_run })) continue;
+      const key = `hidden-card-move:${a.id ?? a.ref}:${what}`;
+      if (out.has(key)) continue;
+      out.set(
+        key,
+        alert({
+          tick: e.tick,
+          detector: "hidden-card-move",
+          severity: "high",
+          refs: [a.ref],
+          assets: a.id !== undefined ? [a.id] : [],
+          summary: `Hidden card ${a.ref}${a.id !== undefined ? ` (asset ${a.id})` : ""} ${what}: hidden cards are never sold (Pablo, 3 Oct); a route bypassed the keepsake lock.`,
+          evidence: { event: e.type, eventId: e.id, asset: a },
+          key,
+        }),
+      );
+    }
+  }
+  return [...out.values()];
 }
 
 /**

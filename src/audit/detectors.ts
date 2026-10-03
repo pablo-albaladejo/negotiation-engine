@@ -27,6 +27,7 @@ export const DETECTORS = [
   "duel-unanswered",
   "duel-left-on-table",
   "dealer-saturated",
+  "hidden-card-move",
   "dealer-spam",
   "stale-source",
 ] as const;
