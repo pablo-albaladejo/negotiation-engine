@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { DuelsAgent } from "../src/duels/agent.js";
-import { DAYS_MAX, DAYS_MIN, DEFAULT_DUEL_PARAMS, daysDirection, daysValueFrom, decideDuel, surplusOf, textMatchesOffer, type DuelState } from "../src/duels/duels.js";
+import { DAYS_MAX, DAYS_MIN, DEFAULT_DUEL_PARAMS, daysDirection, daysValueFrom, decideDuel, surplusOf, textMatchesOffer, withinLimit, type DuelState } from "../src/duels/duels.js";
 import { DuelSchema, type DuelsApi, type StructuredOffer } from "../src/duels/schemas.js";
 
 // Shapes `your_days_weight` might take on the live server (none seen yet: every recorded duel was price-only).
@@ -85,6 +85,46 @@ describe("days value is the real score, never shifted (Duels II: 'each delivery 
           expect(d.action).not.toBe("accept");
         }
       }),
+    );
+  });
+});
+
+describe("day deadlock: offer our best day when the rival's day leaves no room (Duels II 5659, 5679, 6029)", () => {
+  it("a day-stand offer stays within the limit, keeps the minimum surplus and never asks more than our previous offer", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("buyer" as const, "seller" as const),
+        fc.integer({ min: 30, max: 200 }),
+        fc.double({ min: 0.5, max: 8, noNaN: true }),
+        fc.integer({ min: -60, max: 60 }),
+        fc.integer({ min: -40, max: 40 }),
+        fc.integer({ min: 1, max: 12 }),
+        (role, limit, w, rivalShift, ourShift, ticksLeft) => {
+          const meaning = role === "buyer" ? "each delivery day costs you this much cash" : "each delivery day adds this much cash to your side";
+          const table = daysValueFrom(w, DEFAULT_DUEL_PARAMS, meaning).table;
+          const rivalDay = role === "buyer" ? 10 : 0;
+          const rivalPrice = Math.max(1, limit + rivalShift);
+          const previous: StructuredOffer = { price: Math.max(1, limit + ourShift), days: rivalDay };
+          const state: DuelState = {
+            role,
+            limit,
+            withDays: true,
+            daysValue: table,
+            ourOffers: [previous],
+            rivalOffers: [{ price: rivalPrice + (role === "buyer" ? 3 : -3), days: rivalDay }, { price: rivalPrice, days: rivalDay }],
+            rivalMovedSinceOurLast: true,
+            ticksLeft,
+          };
+          const d = decideDuel(state, DEFAULT_DUEL_PARAMS);
+          if (d.rule !== "day-stand") return;
+          const offer = d.offer!;
+          expect(withinLimit(state, offer)).toBe(true);
+          expect(surplusOf(state, offer)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus);
+          const prev = surplusOf(state, previous);
+          if (prev >= DEFAULT_DUEL_PARAMS.minSurplus) expect(surplusOf(state, offer)).toBeLessThanOrEqual(prev + 1e-9);
+          expect(textMatchesOffer(d.text!, offer)).toBe(true);
+        },
+      ),
     );
   });
 });
