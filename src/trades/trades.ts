@@ -165,6 +165,16 @@ export function buildValueModel(catalog: Catalog, held: HeldAsset[], zeroValues:
     const v = held.find((a) => a.ref === ref)?.value ?? 0;
     if (m > 0) base.set(ref, v / m);
   }
+  // On a complete page, `your_value` of a single copy also carries the page bonus its loss would break
+  // (RET common 122 = base 16 + bonus 106; /api/me/value of a second copy says 4). With singles
+  // v = b + B and the rest v = b·m(n), where B = pageBonus · Σb: B = pageBonus·(Σsingles v + Σrest v/m) / (1 + pageBonus·singles).
+  for (const page of pages.values()) {
+    if (page.length === 0 || !page.every((r) => (counts.get(r) ?? 0) > 0)) continue;
+    const singles = page.filter((r) => counts.get(r) === 1);
+    const raw = page.reduce((s, r) => s + (base.get(r) ?? 0), 0);
+    const bonus = (rules.pageBonus * raw) / (1 + rules.pageBonus * singles.length);
+    for (const r of singles) base.set(r, Math.max(0, (base.get(r) ?? 0) - bonus));
+  }
   const mult = (set: string): number | undefined =>
     median(
       (sets.get(set) ?? []).flatMap((r) => {
