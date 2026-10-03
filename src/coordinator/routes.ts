@@ -380,6 +380,9 @@ export class TradesRoute {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });
   }
 
+  /** Page reserve of the last proposal (P): directed bids of the markets route stay above it too. */
+  lastReserve = 0;
+
   /** El Rastro state and plan of the last proposal (the rival-page listings reuse them; `undefined` before the first). */
   get lastState(): TradeState | undefined {
     return this.last?.state;
@@ -393,6 +396,7 @@ export class TradesRoute {
     this.last = undefined;
     // Other teams' demand and supply lift asks and rank bids (absent rivals: the plan is unchanged).
     const reserve = pageReserveOf(state, me, pageTargets, await pageTargetCaps(this.client, me, pageTargets, this.params.pageBonusScored ?? false));
+    this.lastReserve = reserve.amount;
     this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? { refs: reserve.refs, amount: reserve.amount } : undefined);
     const { plan } = this.last;
     if (plan.accept) {

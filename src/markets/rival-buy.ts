@@ -46,6 +46,8 @@ export interface RivalBuyInput {
   /** `--page-targets` with `--page-bonus-scored`: only then their sets' page bonus counts in a bid; otherwise every card is bid at its standalone value. */
   pageTargets?: readonly string[];
   pageBonusScored?: boolean;
+  /** Cash kept for the page targets (`pageReserveOf`): every directed bid is a page card, so it stays above it. */
+  pageReserve?: number;
 }
 
 export interface RivalBuyPricing {
@@ -114,7 +116,7 @@ export function spendLeft(input: RivalBuyInput): number {
   const t = input.trade;
   if (!t) return 0;
   const accept = input.tradePlan?.accept?.spend ?? 0;
-  return Math.min(input.maxSpend - t.spent - (input.tradePlan?.committedAfter ?? 0) - accept, t.cash - input.cashFloor - (input.tradePlan?.committedAfter ?? 0) - accept);
+  return Math.min(input.maxSpend - t.spent - (input.tradePlan?.committedAfter ?? 0) - accept, t.cash - input.cashFloor - (input.pageReserve ?? 0) - (input.tradePlan?.committedAfter ?? 0) - accept);
 }
 
 /** Prices one card from one team; `ok: false` with the reason when no bid must go out. */

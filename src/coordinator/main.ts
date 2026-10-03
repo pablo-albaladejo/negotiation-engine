@@ -332,7 +332,7 @@ async function main() {
           }
           // Directed bids to a rival seen holding a spare of a page card we lack (same safety: off with a note).
           try {
-            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, pageReserve: trades.lastReserve, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
             rivalBuyPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);
