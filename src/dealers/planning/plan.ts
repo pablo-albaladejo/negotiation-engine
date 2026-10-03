@@ -357,6 +357,36 @@ export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: n
   return out;
 }
 
+/**
+ * Unlock chase: P of value we accept to give up on ONE deal with the dealer whose deals unlock a persona early
+ * (e.g. Pilar via Chato). Bounded: a buy pays at most value + 2, a sale charges at least value − 2.
+ */
+export const UNLOCK_CHASE_TOLERANCE = 2;
+
+/**
+ * Least harmful deal for an unlock chase when no candidate has room: sells of DUPLICATES (no album impact) whose
+ * plausible bid reaches value − tolerance, and buys of a known card (or a rarity+set with no duplicate risk) whose list
+ * fits value + tolerance and the spend left. Order: expected value created ≥ 0 first, duplicates before buys, then most
+ * value created. Reservation = value ± tolerance (capped by spend for buys). Pure.
+ */
+export function chaseCandidates(cands: readonly Candidate[], o: { tolerance: number; maxSpend: number }): Candidate[] {
+  const out: Candidate[] = [];
+  for (const c of cands) {
+    if (c.side === "sell") {
+      if (c.copy !== "duplicate") continue;
+      const reservation = Math.max(1, Math.ceil(c.value - o.tolerance));
+      if (c.herOpening < reservation) continue;
+      out.push({ ...c, reservation });
+      continue;
+    }
+    if (c.kind === "buy-rarity-set" && (c.duplicateP ?? 1) > 0) continue;
+    const reservation = Math.min(Math.floor(o.maxSpend), Math.floor(c.value + o.tolerance));
+    if (reservation < 1 || reservation < (c.herList ?? c.herOpening)) continue;
+    out.push({ ...c, reservation });
+  }
+  return out.sort((a, b) => Number(b.surplus >= 0) - Number(a.surplus >= 0) || Number(b.side === "sell") - Number(a.side === "sell") || b.surplus - a.surplus);
+}
+
 export interface PathPreview {
   /** Our prices in order if she doesn't move from her first price. */
   prices: number[];

@@ -125,6 +125,16 @@ export function demandWeight(gameHour: number | undefined): number {
   return 1.25 - 0.5 * (gameHour - Math.floor(gameHour));
 }
 
+/**
+ * Persona that one more deal with `dealer` could unlock early (the server seems to check the rule only when a deal with
+ * `early_deals_with` closes: Team 13 got Pilar on its 3rd Chato deal, we have 4 and she is still locked): active, not
+ * unlocked for us, and our level reaches `early_min_level`. The first such persona; `undefined` if none.
+ */
+export function unlockChaseFor(state: GameState, dealer: string): string | undefined {
+  const level = state.ours.level ?? 0;
+  return state.personas.find((p) => p.status === "active" && p.unlock.earlyDealsWith === dealer && !state.ours.unlocked.includes(p.id) && level >= (p.unlock.earlyMinLevel ?? 0))?.id;
+}
+
 export class DealersRoute {
   private readonly agents = new Map<string, BazaarAgent>();
   private readonly team: TeamBudget;
@@ -203,6 +213,7 @@ export class DealersRoute {
           probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
           firstStepFrac: () => (this.state?.personas.find((p) => p.id === id)?.model?.strategy.mirror_concessions.value === true ? MIRROR_FIRST_STEP_FRAC : 0),
           herBeta: () => this.state?.personas.find((p) => p.id === id)?.model?.strategy.beta.value ?? undefined,
+          unlockChase: () => (this.state ? unlockChaseFor(this.state, id) : undefined),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -229,6 +240,7 @@ export class DealersRoute {
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;
       await agent.step(clock);
+      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ")).map((l) => `dealer ${id}: ${l}`));
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }

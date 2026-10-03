@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
-import { applyOnly, formatPlan, menuBlocks, rankCandidates, selectCandidates, type OnlyFilter } from "./planning/plan.js";
+import { applyOnly, chaseCandidates, formatPlan, menuBlocks, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
 import { formatPatience, PatienceLog } from "./negotiation/patience.js";
@@ -88,6 +88,12 @@ export interface AgentOptions {
   firstStepFrac?: () => number;
   /** β of her persona's curve at this tick (`PersonaModel`): with β < 1 the fixed price is not applied. */
   herBeta?: () => number | undefined;
+  /**
+   * Unlock chase: the persona (e.g. "pilar") that a deal with THIS dealer would unlock early (active, not unlocked for us,
+   * `early_deals_with` = this dealer, our level ≥ `early_min_level`), or `undefined`. With no target with room, the agent
+   * then opens the least harmful deal within `UNLOCK_CHASE_TOLERANCE` (`chaseCandidates`), one at a time.
+   */
+  unlockChase?: () => string | undefined;
 }
 
 interface Active {
@@ -119,6 +125,8 @@ interface Active {
   welcome?: boolean;
   /** Price accepted with `welcome-first-deal`: her measured limit for this dealer and this band. */
   measuredLimit?: number;
+  /** Persona this conversation chases (unlock chase): its tolerance applies only while she is still locked for us. */
+  chase?: string;
 }
 
 const HOUR_MS = 3_600_000;
@@ -261,23 +269,25 @@ export class BazaarAgent {
         return out;
       }
       const target = await this.nextTarget(me, tick);
+      if (target?.chase) this.log(`unlock-chase ${target.chase} via ${this.o.dealer.id}: ${target.label} · our value ${Math.round((target.value ?? 0) * 10) / 10} · limit ${target.reservation} (tolerance ${UNLOCK_CHASE_TOLERANCE} P) · no target with room, one deal to trigger the unlock`);
       if (!target) {
         emit({ action: "idle", rule: "no-target" });
         return out;
       }
-      if (!this.allow({ kind: "open", target: target.key, side: target.side, ...(target.value !== undefined ? { value: target.value } : {}), cards: cardsOfTarget(target, me) })) return out;
+      if (!this.allow({ kind: "open", target: target.key, side: target.side, ...(target.value !== undefined ? { value: target.value } : {}), cards: cardsOfTarget(target, me), ...(target.chase ? { rule: "unlock-chase" } : {}) })) return out;
       if (this.o.dryRun) {
-        emit({ action: "open", target: target.key, side: target.side, reservation: target.reservation, rule: "dry-run" });
+        emit({ action: "open", target: target.key, side: target.side, reservation: target.reservation, rule: target.chase ? "unlock-chase (dry-run)" : "dry-run" });
         return out;
       }
       try {
         const welcome = await this.isFirstConversation();
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...this.openSnapshot(me, target, tick) };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...(target.chase ? { chase: target.chase } : {}), ...this.openSnapshot(me, target, tick) };
         this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
           action: "open",
+          ...(target.chase ? { rule: "unlock-chase" } : {}),
           thread: thread.id,
           target: target.key,
           side: target.side,
@@ -437,7 +447,13 @@ export class BazaarAgent {
     return v;
   }
 
-  private async nextTarget(me: Me, tick: number): Promise<Target | undefined> {
+  /** Persona to chase through this dealer right now: the route's answer, unless `/api/me` already lists her as unlocked. */
+  private chasePersona(me: Me): string | undefined {
+    const p = this.o.unlockChase?.();
+    return p && !(me.unlocked ?? me.unlocked_dealers ?? []).includes(p) ? p : undefined;
+  }
+
+  private async nextTarget(me: Me, tick: number): Promise<(Target & { chase?: string }) | undefined> {
     const free = (t: Target) => (this.skip.get(t.key) ?? -1) <= tick;
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
@@ -447,7 +463,13 @@ export class BazaarAgent {
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
       const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy));
-      return selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
+      const picked = selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
+      const chase = this.o.only ? undefined : this.chasePersona(me);
+      if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
+      if (!chase || picked) return picked;
+      const c = chaseCandidates(cands.filter(free), { tolerance: UNLOCK_CHASE_TOLERANCE, maxSpend: budget })[0];
+      if (!c) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: no deal within ${UNLOCK_CHASE_TOLERANCE} P of our value (duplicates to sell or cards to buy at ≤ value + ${UNLOCK_CHASE_TOLERANCE})`);
+      return c ? { ...c, chase } : undefined;
     }
     if (this.o.requireMenu) return undefined;
     const busy = await busyAssets(this.api, me.id);
@@ -474,7 +496,12 @@ export class BazaarAgent {
     // Our last attempt counts even if the thread doesn't show it (e.g. the POST half-failed): never repeated.
     const lastTried = active.sent[active.sent.length - 1];
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
-    const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, Math.floor(this.budgetLeft(me.cash)))) : target.reservation;
+    // Unlock chase: value ± tolerance while the persona is still locked; once unlocked, back to value-positive only.
+    const chasing = active.chase !== undefined && this.chasePersona(me) === active.chase;
+    const chaseOver = active.chase !== undefined && !chasing && target.value !== undefined;
+    const ownRes = chaseOver ? (target.side === "buy" ? Math.min(target.reservation, Math.floor(target.value!)) : Math.max(target.reservation, Math.ceil(target.value!))) : target.reservation;
+    const reservation = target.side === "buy" ? Math.max(0, Math.min(ownRes, me.cash, Math.floor(this.budgetLeft(me.cash)))) : ownRes;
+    const acceptValue = chasing && target.value !== undefined ? target.value + (target.side === "buy" ? UNLOCK_CHASE_TOLERANCE : -UNLOCK_CHASE_TOLERANCE) : target.value;
     const herAt = active.patience.herAtCounters();
     const cap = this.o.herLimitCap?.(thread.id);
     const herBeta = this.o.herBeta?.();
@@ -489,7 +516,7 @@ export class BazaarAgent {
       canMessage: active.lastSentTick !== tick,
       canAccept: this.team.canAccept(tick),
       holdsUsed: active.holdsUsed,
-      ...(target.value !== undefined ? { privateValue: target.value } : {}),
+      ...(acceptValue !== undefined ? { privateValue: acceptValue } : {}),
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
       ...(active.welcome ? { welcomeFirstDeal: true } : {}),
       ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
@@ -538,7 +565,7 @@ export class BazaarAgent {
         ...(target.value !== undefined ? { value: target.value } : {}),
         cards: active.revealed ? [active.revealed] : active.cards,
         ...(text ? { text } : {}),
-        rule: d.rule,
+        rule: chasing ? `unlock-chase/${d.rule}` : d.rule,
       };
       if (!this.allow(intent)) return;
     }
