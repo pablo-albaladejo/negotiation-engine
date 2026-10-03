@@ -14,6 +14,7 @@ import {
   filterBoardRows,
   KIND_LABEL,
   SCOPE_LABEL,
+  outcomeOf,
   statusLabel,
   type Board,
   type BazaarModel,
@@ -155,7 +156,8 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         price: show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
-        score: r.d_score === null ? "—" : toned(r.d_score),
+        // Dealer deals score 0 neg_points (score-audit.jsonl, 3 Oct): say so instead of leaving a blank.
+        score: r.kind.startsWith("dealer") && outcomeOf(r) === "deal" && !r.d_score ? "0 · dealers don't score" : r.d_score === null ? "—" : toned(r.d_score),
         ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
       }))}
       onRowClick={(i) => {

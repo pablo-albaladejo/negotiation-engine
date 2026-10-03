@@ -10,6 +10,7 @@ export {
   filterBoardRows,
   KIND_LABEL,
   parseBoardQuery,
+  outcomeOf,
   statusLabel,
   type Board,
   type BoardAgent,
