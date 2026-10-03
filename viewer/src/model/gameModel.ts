@@ -151,6 +151,8 @@ export interface ModelBoardSnapshot {
   rarest?: string;
   deals?: number;
   score?: number;
+  negotiating?: number;
+  market?: number;
   rank?: number;
 }
 

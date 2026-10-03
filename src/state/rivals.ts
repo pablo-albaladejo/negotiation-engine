@@ -38,6 +38,9 @@ export interface BoardSnapshot {
   rarest?: string;
   deals?: number;
   score?: number;
+  /** Score split: negotiating and market-making shares (both out of 30). */
+  negotiating?: number;
+  market?: number;
   rank?: number;
 }
 
@@ -136,6 +139,8 @@ export function ingestLeaderboard(ledger: RivalLedger, raw: unknown, tick: numbe
     set("rarest", str(rarest.ref));
     set("deals", num(r.deals));
     set("score", num(r.score));
+    set("negotiating", num(r.negotiating));
+    set("market", num(r.market));
     set("rank", num(r.rank));
     ledger.boards[team] = snap;
     const h = (ledger.history[team] ??= []);
