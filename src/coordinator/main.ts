@@ -28,6 +28,8 @@ import { executeRivalBuy, proposeRivalBuy, type RivalBuyPlan } from "../markets/
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { executeRivalSwap, proposeRivalSwap, type RivalSwapPlan } from "../markets/rival-swap.js";
 import { ScannerLedger } from "../markets/scanner.js";
+import { proposeTeamDesk, type DeskPlan } from "../teamdesk/counter.js";
+import { defaultDeskLogFile, deskOfferIds, executeTeamDesk, loadDeskLedger } from "../teamdesk/desk.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { defaultHintLabelsFile, HintLabeler, loadHintLabels } from "../hints/labels.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
@@ -83,6 +85,7 @@ async function main() {
       "rival-page": { type: "boolean", default: false },
       "rival-buy": { type: "boolean", default: false },
       "rival-swap": { type: "boolean", default: false },
+      "team-desk": { type: "boolean", default: false },
       "rastro-bids": { type: "boolean", default: false },
       "no-venue-reserve": { type: "boolean", default: false },
       scanner: { type: "boolean", default: false },
@@ -146,6 +149,8 @@ async function main() {
   // Other teams' holdings and wants: kept in memory, seeded from the recorder the first time.
   const rivalsFile = defaultRivalsFile(root);
   const rivalLedger = loadRivalLedger(rivalsFile, join(root, "results", "bazaar-live"));
+  // Team desk: counter-offers to rejected offers other teams make to us; the log seeds what it already sent today.
+  const deskLedger = loadDeskLedger(defaultDeskLogFile(root));
   const valueCache = loadValueCache(valuesFile);
   let prevRanks = new Map<string, { rank?: number; score?: number }>();
   // In dry-run the cursor lives only in memory (a loop without --once does not repeat triggers); live, on disk.
@@ -310,6 +315,8 @@ async function main() {
     let rivalPlan: RivalPagePlan = { posts: [], cancels: [] };
     let rivalBuyPlan: RivalBuyPlan = { posts: [], cancels: [] };
     let rivalSwapPlan: RivalSwapPlan = { posts: [], cancels: [] };
+    let deskPlan: DeskPlan = { incoming: [], posts: [], cancels: [] };
+    let deskIntents: Intent[] = [];
     const routeErrors: string[] = [];
     const me = await client.me().catch(() => undefined);
     for (const [route, run] of [
@@ -372,6 +379,16 @@ async function main() {
             } catch (e) {
               m.notes.push(`[rival-swap] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
             }
+          }
+          // Team desk: counter-offers to offers made to us that El Rastro rejects (intents only with the opt-in --team-desk).
+          try {
+            const r = proposeTeamDesk({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), ...(trades.lastState?.rivals ? { rivals: trades.lastState.rivals } : {}) }, undefined, undefined, deskOfferIds(deskLedger));
+            deskPlan = r.plan;
+            deskIntents = r.intents;
+            if (values["team-desk"]) m.intents.push(...r.intents);
+            m.notes.push(...r.notes);
+          } catch (e) {
+            m.notes.push(`[team-desk] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
           }
           return { ...m, strategies: new Map(), decisions: new Map() };
         },
@@ -442,6 +459,9 @@ async function main() {
     report("markets", await executeRivalBuy(client, selectedIntents, rivalBuyPlan, dryRun || !values["rival-buy"], undefined, undefined, state.tick));
     // Rival-swap offers go out only live AND with the opt-in --rival-swap (proposed only with it).
     report("markets", await executeRivalSwap(client, selectedIntents, rivalSwapPlan, dryRun || !rivalSwap, undefined, undefined, state.tick));
+    // Team-desk counters go out only live AND with the opt-in --team-desk; otherwise "would" lines (and the log).
+    const deskOn = values["team-desk"] === true;
+    report("markets", await executeTeamDesk(client, deskOn ? selectedIntents : deskIntents, deskPlan, dryRun || !deskOn, { tick: state.tick, ...(trades.lastState ? { myId: trades.lastState.myId } : {}), trade: trades.lastState, ledger: deskLedger }));
     report("packs", await executePacks(client, selectedIntents, dryRun));
     report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);

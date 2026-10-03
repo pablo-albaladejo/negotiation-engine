@@ -17,6 +17,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | [`venue/`](venue/AGENTS.md) | Plan para abrir nuestro mercado | `pnpm bazaar:venue` |
 | [`status/`](status/AGENTS.md) | Resumen de solo lectura | `pnpm bazaar:status` |
 | [`state/`](state/AGENTS.md) | `GameState` por tick (solo GET), la entidad `Conversation`, personas, eggs, regalos y flags | — |
+| [`teamdesk/`](teamdesk/AGENTS.md) | Contraofertas a las ofertas que otros equipos nos hacen | (`pnpm bazaar:play --team-desk`) |
 | [`markets/`](markets/AGENTS.md) | Mercados entre venues: hueco neto = hueco − comisión − penalización por rival | (`pnpm bazaar:play`) |
 | [`packs/`](packs/AGENTS.md) | Sobres: cerrados nuestros, valor esperado con el suministro, comprar, abrir o vender cerrado | (`pnpm bazaar:play`) |
 | [`hints/`](hints/AGENTS.md) | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
@@ -45,5 +46,5 @@ pnpm bazaar:venue --dry-run        # qué mercado abriría al llegar a nivel 2; 
 
 - ↑ [root `AGENTS.md`](../AGENTS.md)
 - → [`engine/`](engine/AGENTS.md) · [`shared/`](shared/AGENTS.md) · [`dealers/`](dealers/AGENTS.md) · [`duels/`](duels/AGENTS.md) · [`trades/`](trades/AGENTS.md) · [`broker/`](broker/AGENTS.md) · [`venue/`](venue/AGENTS.md) · [`status/`](status/AGENTS.md)
-- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`audit/`](audit/AGENTS.md)
+- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`teamdesk/`](teamdesk/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`audit/`](audit/AGENTS.md)
 - → [`test/`](../test/AGENTS.md) — solo tests de guardarraíles

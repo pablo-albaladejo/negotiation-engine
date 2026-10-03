@@ -41,6 +41,7 @@ src/
 ├─ hints/     corpus de líneas de dealers (pistas de eggs; nunca una cifra)
 ├─ agenda/    calendario como playbook y disparadores del feed (los usa pnpm bazaar:play)
 ├─ news/      noticias de Radio Rastro: visor y pista en GameState.news (nunca una cifra; pnpm bazaar:news)
+├─ teamdesk/  contraofertas a las ofertas que otros equipos nos hacen (pnpm bazaar:play --team-desk)
 ├─ audit/     auditor de ineficiencias de solo lectura (pnpm bazaar:audit)
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
 test/        solo tests de guardarraíles (fast-check)
