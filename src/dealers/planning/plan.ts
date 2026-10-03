@@ -16,6 +16,13 @@ import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
  */
 export const PLAUSIBLE_BID_FRAC = 1.3;
 /**
+ * Plausible bid ceiling by rarity for a dealer with no sell list for that rarity (Pilar only sells packs): the
+ * highest price she paid in public settlements on 3 Oct (21 uncommons at 17–25 P, one epic LAV-11 at 140). Without
+ * this fallback every sale to her was skipped and the planner reported `no-target`. Only decides whether to open;
+ * the reservation (value ÷ safety) still bounds the deal.
+ */
+export const MEASURED_BID_CEILING: Readonly<Record<string, number>> = { uncommon: 25, epic: 140 };
+/**
  * Value of buying ONE MORE copy of a card we hold `copies` of (thread 493: RET-06 held, valued at 40, paid 24 for a ~10 P
  * duplicate). The client's value cache is seeded with `your_value` of the copies we hold (what we lose if one leaves),
  * so for a held card the looked-up value can be the held copy's; the next copy is worth that ÷ marginal(n) × marginal(n+1).
@@ -306,8 +313,12 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const set = setOfCard(ref, top as { set?: unknown });
     if (!rarity || !buyRarities.get(rarity)?.has(set)) continue;
     const sellList = dealer.menu.sells.find((s) => s.rarity?.toLowerCase() === rarity)?.list_price ?? undefined;
-    if (sellList === undefined) continue;
-    const bid = { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` };
+    const measured = MEASURED_BID_CEILING[rarity];
+    if (sellList === undefined && measured === undefined) continue;
+    const bid =
+      sellList !== undefined
+        ? { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` }
+        : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements (${measured})` };
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
     for (const { a, copy } of offered) {
       if (typeof a.your_value !== "number") continue;
