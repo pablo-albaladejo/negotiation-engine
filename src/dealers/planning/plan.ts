@@ -343,7 +343,9 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
         : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements, else its book (${measured})` };
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
     for (const { a, copy } of offered) {
-      if (typeof a.your_value !== "number") continue;
+      // A value of 0 is unknown, not worthless (3 Oct: egg prize LAT-13, legendary print run 1, came with your_value 0 and
+      // was offered to banco at a minimum of 1 P): never sold until it has a real value.
+      if (typeof a.your_value !== "number" || a.your_value <= 0) continue;
       const value = a.your_value;
       const reservation = Math.max(1, Math.ceil(value / safety));
       const surplus = round1(bid.price - value);
