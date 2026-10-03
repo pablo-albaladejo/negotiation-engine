@@ -17,6 +17,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | `venue/` | Plan para abrir nuestro mercado | `pnpm bazaar:venue` |
 | `status/` | Resumen de solo lectura | `pnpm bazaar:status` |
 | `state/` | `GameState` por tick (solo GET), la entidad `Conversation`, personas, eggs, regalos y flags | — |
+| `markets/` | Mercados entre venues: hueco neto = hueco − comisión − penalización por rival | (`pnpm bazaar:play`) |
 | `packs/` | Sobres: cerrados nuestros, valor esperado con el suministro, comprar, abrir o vender cerrado | (`pnpm bazaar:play`) |
 | `hints/` | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
 | `agenda/` | Calendario como playbook (antelación y efecto por acción) y disparadores del feed | (`pnpm bazaar:play`) |
@@ -32,7 +33,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 ## shared/ — Lo común
 
 - **`shared/env.ts`** — `loadBazaarEnv`: `BAZAAR_URL` y `BAZAAR_KEY` del entorno o de `.env` (process.loadEnvFile). La clave nunca se imprime.
-- **`shared/client.ts`** — `BazaarClient`: cabecera X-Team-Key, `TokenBucket` (4 req/s, ráfaga 2; el servidor admite 5), reintento de rate_limited, wait_for_tick (duerme next_tick_in si waitOnTick; el bucle lo deja en falso y salta al siguiente tick), un POST nunca se repite tras fallo de red. Errores tipados `BazaarError` con `code`, `status` y `extra`.
+- **`shared/client.ts`** — `BazaarClient`: cabecera X-Team-Key, `TokenBucket` (4 req/s, ráfaga 2; el servidor admite 5), reintento de rate_limited, wait_for_tick (duerme next_tick_in si waitOnTick; el bucle lo deja en falso y salta al siguiente tick), un POST nunca se repite tras fallo de red. Errores tipados `BazaarError` con `code`, `status` y `extra`. Caché de valores privados en el propio cliente (`/api/me/value`): un valor dura una hora y `noteHand` olvida las cartas cuya cantidad cambió; `seedValues` siembra lo de `/api/me` y la caché en disco (`results/bazaar-live/values.json`). Todos los que comparten cliente (agentes, coordinador, visor) piden solo lo que falta.
 - **`shared/schemas.ts`** — Zod tolerante (campos extra permitidos). `/api/dealers` responde personas: `DealersSchema` acepta ambos nombres.
 - **`shared/asset-locks.ts`** — **guardarraíl crítico**: un activo, un sitio. `busyAssets` (hilos abiertos + `/api/me/offers`) y `sellBlocked` (dealers + El Rastro). El agente de dealers no abre un hilo de venta de un activo ya en otro hilo u oferta abierta (si no puede leerlos, no ofrece ninguno); `trades/agent.ts` no lista ni paga con un activo que esté en un hilo con un dealer.
 - **`shared/trace.ts`** — `FileTrace`: JSONL en `results/bazaar-live/<fecha>/decisions.jsonl` y `thread-<id>.jsonl` (tick, precios, reserva usada, acción, regla, resultado).
@@ -73,6 +74,10 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 
 - **`state/prices.ts`** — `buildPriceSheet`, la hoja de precios (`GameState.markets.prices`): una entrada por carta de los sets publicados (un set nuevo entra al pasar a `released`) con book, rareza, tirada, acuñadas y escasez, oculta, dealers que la venden o compran (por el menú), mejor ask y bid en El Rastro y en los otros venues abiertos (venue y oferta, sin las nuestras), último trato de una sola carta en el feed (settlement; si no hay, desconocido), nuestro valor privado (de `/api/me` y de la caché `results/bazaar-live/values.json`, con como mucho 4 GET de valor por tick con `valuesWanted`), cuántas tenemos y los huecos: buyEdge = valor − ask, sellEdge = bid − valor, dealerCap = min(valor, book) (**ASSUMPTION** de la anomalía de neg_points) y si completa página. `formatPriceSheet` imprime los 5 mejores huecos de compra y de venta.
 - **`state/time.ts`** — `buildTime`: tick, hora de juego, hora de pared, fase del día (abierto o cerrado), ronda y su peso (`leaderboard.rounds`; si no se leyó, el del tick anterior), segundos por tick, ticks que quedan hoy, deriva frente al plan (una hora de pared con puertas abiertas es una hora de juego; el plan sale de `clock.days` y de los `day_opens` del calendario) y `scheduleChanged` si la huella del calendario cambió desde el tick anterior («re-read»). `formatTime`: «h 2.65 · R1 ×0.5 · closed until Sat 09:00 · …».
+
+## markets/ — Mercados
+
+- **`markets/markets.ts`** — tabla de venues en `GameState.markets.venues` (dueño con su puesto y cifra, comisión, mecanismo, estado, profundidad; el nuestro, can't trade) y bid/ask por venue en la hoja de precios. `proposeMarkets`: para cada compra (lo que nos falta o completa página) o venta (repetidas) elige el venue con mejor hueco neto = hueco − comisión (ASSUMPTION: la pagamos nosotros) − `RIVAL_PENALTY` (0 en El Rastro, alta en venues del top 3, baja en la mitad baja: operar allí sube el Market-making del dueño y la cifra es relativa al líder); a igualdad, El Rastro. **HIPÓTESIS** sin verificar (RULES.md:75): en un venue auto una oferta que cruza se casa sin nuestra aceptación; se marca «fills without accept (unverified)» y aun así cuenta en el cupo. Hilos con un equipo en su venue solo para huecos grandes de página (propuesta). Juego limpio (`fairPrice`): no vendemos por debajo de la mitad del book ni compramos por encima del doble.
 
 ## packs/ — Sobres
 
@@ -116,6 +121,13 @@ Flags: `--dry-run`, `--once`, `--max-spend` (P en compras, tope de la ejecución
 
 - ↑ [root `AGENTS.md`](../AGENTS.md)
 - → [`engine/`](engine/AGENTS.md) — `concession` y `enforceGuardrails`
+- → [`state/`](state/AGENTS.md)
+- → [`coordinator/`](coordinator/AGENTS.md)
+- → [`agenda/`](agenda/AGENTS.md)
+- → [`flags/`](flags/AGENTS.md)
+- → [`hints/`](hints/AGENTS.md)
+- → [`markets/`](markets/AGENTS.md)
+- → [`packs/`](packs/AGENTS.md)
 - → [`test/`](../test/AGENTS.md) — solo tests de guardarraíles
 
 ## duels/ — Duelos

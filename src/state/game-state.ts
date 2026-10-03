@@ -8,7 +8,7 @@ import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
 import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";
-import { buildPriceSheet, formatPriceSheet, valuesWanted, type PriceEntry } from "./prices.js";
+import { buildPriceSheet, buildVenues, formatPriceSheet, formatVenues, valuesWanted, type PriceEntry, type VenueInfo } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
@@ -76,7 +76,7 @@ export interface GameState {
     strikes?: Record<string, unknown>;
   } & OursWorld;
   /** Hoja de precios por carta (sets publicados): escasez, dealers, mejores ask/bid, último trato, valor y huecos. */
-  markets: { prices: PriceEntry[] };
+  markets: { prices: PriceEntry[]; venues: VenueInfo[] };
   /** Sobres cerrados nuestros y tipos de sobre (valor esperado con el suministro, dealers, El Rastro). */
   packs: PacksState;
   /** Corpus de pistas completo (lo ya guardado + lo nuevo de este tick) y lo nuevo para añadir a `hints.jsonl`. */
@@ -186,10 +186,13 @@ export interface BuildOptions {
   hintCorpus?: readonly HintLine[];
   /** Semilla del corpus desde `results/` (solo la primera vez, sin `hints.jsonl`). */
   hintSeed?: readonly Raw[];
-  /** Caché de valores privados (`values.json`); se amplía con unos pocos GET por tick. */
-  valueCache?: Map<string, number>;
+  /** Caché de valores privados en disco (`values.json`) y su hora; siembra la del cliente si aún es fresca. */
+  valueCache?: ReadonlyMap<string, number>;
+  valueCacheAt?: number;
   /** Máximo de `/api/me/value` por tick (por defecto 4). */
   valueFetchesPerTick?: number;
+  /** Puestos del leaderboard del tick anterior (si este tick no se lee). */
+  prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
 
 /** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
@@ -269,9 +272,15 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   });
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
-  const valueCache = opts.valueCache ?? new Map<string, number>();
-  for (const [ref, v] of Object.entries(ours.values)) valueCache.set(ref, v);
+  // Caché de valores en el cliente: la mano nueva olvida lo que cambió; `/api/me` siembra lo que tenemos.
+  client.noteHand(ours.holdings.byRef);
+  if (opts.valueCache) client.seedValues(Object.fromEntries(opts.valueCache), opts.valueCacheAt ?? 0);
+  client.seedValues(ours.values);
+  const valueCache = new Map(Object.entries(client.cachedValues()));
+  const ranks = lb?.success ? new Map(lb.data.teams.map((t) => [t.team, { ...(t.rank != null ? { rank: t.rank } : {}), ...(t.score != null ? { score: t.score } : {}) }])) : opts.prevRanks ?? new Map();
+  const venueInfo = buildVenues((venues?.venues ?? []) as unknown[], [{ venue: "rastro", offers }, ...otherBoards], me?.id ?? undefined, ranks);
   const priceInputs = {
+    untradeable: new Set(venueInfo.filter((v) => !v.canTrade).map((v) => v.id)),
     ...(catalog ? { catalog } : {}),
     dealers: rawDealers,
     boards: [{ venue: "rastro", offers }, ...otherBoards],
@@ -312,7 +321,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       cooloffs,
       ...world.ours,
     },
-    markets: { prices },
+    markets: { prices, venues: venueInfo },
     packs: buildPacks({ ...(me ? { me } : {}), ...(catalog ? { catalog } : {}), dealers: rawDealers, rastro: offers, ...(me?.id ? { team: me.id } : {}), events, values: Object.fromEntries(valueCache) }),
     hints: { all: hintsAll, fresh },
     personas,
@@ -379,6 +388,7 @@ export function formatGameState(g: GameState): string[] {
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
   lines.push(...formatHints(g.hints.all));
+  lines.push("venues:", ...formatVenues(g.markets.venues));
   lines.push(...formatPriceSheet(g.markets.prices));
   lines.push(...formatPacks(g.packs));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);

@@ -212,8 +212,39 @@ export class BazaarClient {
   me(): Promise<Me> {
     return this.request("GET", "/api/me", MeSchema);
   }
+  /**
+   * Valor privado de una carta, con caché en el cliente: no cambia dentro del día salvo que cambie la mano
+   * (`noteHand` olvida las cartas cuya cantidad cambió) o pase una hora (`VALUE_TTL_MS`). Así un tick solo pide
+   * las que faltan, y todos los que comparten cliente (agentes, coordinador, visor) se benefician.
+   */
   async value(card: string): Promise<number> {
-    return (await this.request("GET", `/api/me/value?card=${encodeURIComponent(card)}`, ValueSchema)).your_value;
+    const hit = this.valueCache.get(card);
+    if (hit && Date.now() - hit.at < BazaarClient.VALUE_TTL_MS) return hit.v;
+    const v = (await this.request("GET", `/api/me/value?card=${encodeURIComponent(card)}`, ValueSchema)).your_value;
+    this.valueCache.set(card, { v, at: Date.now() });
+    return v;
+  }
+  static readonly VALUE_TTL_MS = 3_600_000;
+  private readonly valueCache = new Map<string, { v: number; at: number }>();
+  private lastHand: Record<string, number> | undefined;
+  /** Siembra valores ya conocidos (`your_value` de `/api/me`, o una caché en disco con su hora). */
+  seedValues(values: Readonly<Record<string, number>>, at: number = Date.now()): void {
+    for (const [card, v] of Object.entries(values)) {
+      const cur = this.valueCache.get(card);
+      if (!cur || cur.at <= at) this.valueCache.set(card, { v, at });
+    }
+  }
+  /** Valores en caché aún frescos (para guardarlos o mostrarlos). */
+  cachedValues(): Record<string, number> {
+    const now = Date.now();
+    return Object.fromEntries([...this.valueCache].filter(([, x]) => now - x.at < BazaarClient.VALUE_TTL_MS).map(([k, x]) => [k, x.v]));
+  }
+  /** Mano actual (copias por carta): olvida el valor de las cartas cuya cantidad cambió desde la última vez. */
+  noteHand(byRef: Readonly<Record<string, number>>): void {
+    if (this.lastHand) {
+      for (const ref of new Set([...Object.keys(byRef), ...Object.keys(this.lastHand)])) if ((byRef[ref] ?? 0) !== (this.lastHand[ref] ?? 0)) this.valueCache.delete(ref);
+    }
+    this.lastHand = { ...byRef };
   }
   myThreads(status?: string) {
     return this.request("GET", `/api/me/threads${status ? `?status=${encodeURIComponent(status)}` : ""}`, ThreadListSchema);

@@ -8,7 +8,7 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * los dealers y El Rastro. Si resulta que no, basta con sacar la clase "duel" del cupo en `arbitrate`.
  */
 
-export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs";
+export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs" | "markets";
 /**
  * `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último.
  * `unpack`: abrir un sobre cerrado; ASSUMPTION (sin verificar): no gasta el cupo de aceptaciones.

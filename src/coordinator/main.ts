@@ -16,6 +16,7 @@ import { defaultTriggersFile, loadTriggerMemo, personaFiles, runTriggers, saveTr
 import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
 import { executePacks, proposePacks } from "../packs/packs.js";
+import { executeMarkets, proposeMarkets } from "../markets/markets.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
@@ -79,6 +80,7 @@ async function main() {
   const hintsFile = defaultHintsFile(root);
   const valuesFile = defaultValuesFile(root);
   const valueCache = loadValueCache(valuesFile);
+  let prevRanks = new Map<string, { rank?: number; score?: number }>();
   // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
   let dryMemo = loadTriggerMemo(triggersFile);
   console.log(
@@ -114,15 +116,18 @@ async function main() {
       flags,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
-      valueCache,
+      valueCache: valueCache.values,
+      valueCacheAt: valueCache.at,
+      prevRanks,
       // Primera vez sin corpus: semilla con lo ya guardado en results/ (volcados, escaneos, streams).
       ...(existsSync(hintsFile) ? {} : { hintSeed: seedRaw(join(root, "results")) }),
     });
     // El corpus de pistas es solo lectura del juego (GET): se añade también en dry-run. Nunca entra en una cifra.
     appendHints(hintsFile, state.hints.fresh);
     // Valores privados ya pedidos (GET): se guardan también en dry-run para no repetir la consulta.
-    saveValueCache(valuesFile, valueCache);
+    saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())));
     prevTime = state.time;
+    prevRanks = new Map(state.markets.venues.flatMap((v) => (v.owner ? [[v.owner, { ...(v.ownerRank !== undefined ? { rank: v.ownerRank } : {}), ...(v.ownerScore !== undefined ? { score: v.ownerScore } : {}) }] as const] : [])));
     if (withLb) lastLeaderboard = state.tick;
     const budget = budgetFrom(state);
 
@@ -187,6 +192,14 @@ async function main() {
           return { ...p, strategies: new Map(), decisions: new Map() };
         },
       ],
+      [
+        "markets",
+        async () => {
+          const byRef = new Map<string, number[]>();
+          for (const a of me?.assets ?? []) if ((a.kind ?? "card") === "card") byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a.id]);
+          return { ...proposeMarkets(state, byRef), strategies: new Map(), decisions: new Map() };
+        },
+      ],
       ["agenda", async () => ({ intents: effects.intents, notes: [], strategies: new Map(), decisions: new Map() })],
     ] as const) {
       try {
@@ -232,6 +245,7 @@ async function main() {
     console.log(`== ${live ? "execution" : "dry-run (nothing sent)"} ==`);
     const lines = await duels.execute(selected);
     for (const l of lines) console.log(`  ${l}`);
+    for (const l of await executeMarkets(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     for (const l of await executePacks(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     const flagged = await flagsRoute.execute(state, selected);
     for (const l of [...flagged.lines, ...(await eggs.execute(state, selected))]) console.log(`  ${l}`);
