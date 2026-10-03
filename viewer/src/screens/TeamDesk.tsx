@@ -8,15 +8,27 @@ import { ComponentChip } from "./ScoreTree.js";
  * only: card, price, venue, team. Our floor and server value are local and kept visually secondary. Read-only.
  */
 
-const STATUS_COLOR: Record<string, string> = { would: "var(--muted)", sent: "var(--us)", filled: "var(--ok)", failed: "var(--warn)", expired: "var(--warn)", cancelled: "var(--muted)" };
+const STATUS_COLOR: Record<string, string> = { would: "var(--muted)", "expired, not sent": "var(--muted)", sent: "var(--us)", filled: "var(--ok)", failed: "var(--warn)", expired: "var(--warn)", cancelled: "var(--muted)" };
+/** «would» is a dry-run line: nothing was sent. */
+const STATUS_LABEL: Record<string, string> = { would: "not sent (dry-run)" };
 const statusChip = (s: string | null) => (
-  <span style={{ color: STATUS_COLOR[s ?? ""] ?? "var(--muted)", fontWeight: 700, fontSize: 12 }}>{s ?? "?"}</span>
+  <span style={{ color: STATUS_COLOR[s ?? ""] ?? "var(--muted)", fontWeight: 700, fontSize: 12 }}>{STATUS_LABEL[s ?? ""] ?? s ?? "?"}</span>
 );
+
+/** Chain state: the outcome if logged; past expiry → «expired» (or «expired, not sent» if our counter never went out). */
+function chainStatus(c: BoardDeskChain): string | null {
+  if (c.outcome?.status) return c.outcome.status;
+  const sent = c.steps.some((s) => s.status === "sent");
+  if (c.expired) return sent ? "expired" : "expired, not sent";
+  return c.status;
+}
 const signed = (v: number) => `${v > 0 ? "+" : ""}${v}`;
 
 function Chain({ c }: { c: BoardDeskChain }) {
   const last = [...c.steps].reverse().find((s) => s.price !== null);
   const neg = c.outcome?.status === "filled" ? c.outcome.negDelta : (last?.negIfFilled ?? null);
+  // Not sent, expired or closed without a fill: the figure is shown muted and never counts as pending.
+  const stale = c.outcome?.status !== "filled" && c.pending === false;
   const secondary = last && (last.floor !== null || last.serverValue !== null) ? [last.floor !== null ? `floor ${last.floor}` : null, last.serverValue !== null ? `value ${last.serverValue}` : null].filter(Boolean).join(" · ") : null;
   return (
     <li style={{ borderTop: "1px solid var(--line)", paddingTop: "var(--space-1)", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -26,6 +38,7 @@ function Chain({ c }: { c: BoardDeskChain }) {
             <span className="nr-muted">{`t${c.incomingTick ?? "?"} they offer `}</span>
             {`${c.incoming.weGet ?? "?"} for ${c.incoming.weGive ?? "?"}`}
             {c.incoming.verdict ? <span className="nr-muted">{` (${c.incoming.verdict})`}</span> : null}
+            {c.incomingExpires != null ? <span className="nr-muted">{` · expires t${c.incomingExpires}`}</span> : null}
           </span>
         ) : (
           <span className="nr-muted">no incoming offer logged</span>
@@ -34,10 +47,14 @@ function Chain({ c }: { c: BoardDeskChain }) {
         {neg !== null ? (
           <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
             <ComponentChip comp="neg" note={c.outcome?.status === "filled" ? "neg won (filled)" : "neg if our counter fills"} />
-            <span style={{ color: neg >= 0 ? "var(--ok)" : "var(--warn)" }}>{`${signed(neg)}${c.outcome?.status === "filled" ? "" : " if filled"}`}</span>
+            {stale ? (
+              <span className="nr-muted">{`${signed(neg)} if filled (not pending)`}</span>
+            ) : (
+              <span style={{ color: neg >= 0 ? "var(--ok)" : "var(--warn)" }}>{`${signed(neg)}${c.outcome?.status === "filled" ? "" : " if filled"}`}</span>
+            )}
           </span>
         ) : null}
-        {statusChip(c.outcome?.status ?? c.status)}
+        {statusChip(chainStatus(c))}
       </div>
       {c.steps.length > 0 ? (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -67,7 +84,7 @@ export function TeamDesk({ board }: { board: Board }) {
   return (
     <Card title={`Team desk · offers to us and our counters${teams.length ? ` · neg won ${signed(won)}${open ? ` · ${signed(open)} pending` : ""}` : ""}`}>
       {teams.length === 0 ? (
-        <span className="nr-muted">No team-desk activity today (bazaar:play writes team-desk.jsonl once its flag is on; dry-run lines show as «would»).</span>
+        <span className="nr-muted">No team-desk activity today (bazaar:play writes team-desk.jsonl once its flag is on; dry-run lines show as «not sent (dry-run)»).</span>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
           {teams.map((t) => (
@@ -76,7 +93,7 @@ export function TeamDesk({ board }: { board: Board }) {
                 <strong>{teamLabel(board, t.team)}</strong>
                 <span className="nr-muted">{`${t.chains.length} offer${t.chains.length === 1 ? "" : "s"}`}</span>
                 <span style={{ color: t.negWon > 0 ? "var(--ok)" : undefined }}>{`neg won ${signed(t.negWon)}`}</span>
-                {t.negOpen ? <span className="nr-muted">{`${signed(t.negOpen)} if pending counters fill`}</span> : null}
+                {t.negOpen ? <span className="nr-muted">{`${signed(t.negOpen)} if sent counters fill`}</span> : null}
               </div>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
                 {t.chains.map((c) => (

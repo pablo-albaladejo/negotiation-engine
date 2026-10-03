@@ -185,6 +185,12 @@ export interface BoardDeskChain {
   steps: BoardDeskStep[];
   outcome: { tick: number | null; status: string | null; negDelta: number | null; reason: string | null } | null;
   status: string | null;
+  /** Expiry tick of the incoming offer; absent on an older server. */
+  incomingExpires?: number | null;
+  /** Past its expiry with no outcome logged. */
+  expired?: boolean;
+  /** Counts toward «pending»: last counter sent, no outcome, not expired. */
+  pending?: boolean;
 }
 
 export interface BoardDeskTeam {

@@ -43,7 +43,7 @@ import {
   type VerdictCache,
 } from "./bazaar-board-core.js";
 import { agentStatuses, playMode, type AgentStatus } from "./bazaar-agents.js";
-import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, scoreNumbers, scorePartsOf, ScorePartsLineSchema, teamDeskOf, TeamDeskLineSchema, type TeamDeskTeam, type AlbumOut, type ScheduleOut, type ScorePartsLine, type ScorePartsOut } from "./bazaar-cockpit-core.js";
+import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, scoreNumbers, scorePartsOf, ScorePartsLineSchema, offerExpiriesOf, teamDeskOf, TeamDeskLineSchema, type TeamDeskTeam, type AlbumOut, type ScheduleOut, type ScorePartsLine, type ScorePartsOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
 import { workshopOf, type WorkshopOut } from "./bazaar-workshop.js";
@@ -401,7 +401,11 @@ export class BazaarBoard {
       offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
-      team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
+      team_desk: teamDeskOf(
+        (await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data,
+        offerExpiriesOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events]),
+        clock?.tick ?? null,
+      ),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),
     };

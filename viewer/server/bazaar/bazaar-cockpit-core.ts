@@ -238,6 +238,12 @@ export interface TeamDeskChain {
   outcome: { tick: number | null; status: string | null; negDelta: number | null; reason: string | null } | null;
   /** Status of the latest event (would, sent, filled, expired…). */
   status: string | null;
+  /** Expiry tick of the incoming offer (public stream), if known. */
+  incomingExpires: number | null;
+  /** The incoming offer (or our sent counter) is past its expiry and no outcome was logged. */
+  expired: boolean;
+  /** Counts toward «pending»: last counter sent (not a dry-run «would»), no outcome, not cancelled, not expired. */
+  pending: boolean;
 }
 
 export interface TeamDeskTeam {
@@ -245,15 +251,26 @@ export interface TeamDeskTeam {
   chains: TeamDeskChain[];
   /** Σ negDelta of filled counters. */
   negWon: number;
-  /** Σ negIfFilled of the latest counter of each chain still open. */
+  /** Σ negIfFilled of the latest counter of each pending chain (sent, not expired). */
   negOpen: number;
+}
+
+/** Expiry tick of every listed offer (`offer.listed` events of the public stream and feed), by offer id. */
+export function offerExpiriesOf(events: readonly { type?: string | null; payload?: unknown }[]): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const e of events) {
+    if (e.type !== "offer.listed") continue;
+    const o = (e.payload as { offer?: { id?: unknown; expires_tick?: unknown } } | null)?.offer;
+    if (typeof o?.id === "number" && typeof o.expires_tick === "number") out.set(o.id, o.expires_tick);
+  }
+  return out;
 }
 
 /**
  * Chains per team: incoming → counter → steps → outcome. A chain is keyed by the to-me offer id; events without one
  * join the chain of the offer they replace (`counter.replaces`), else of the same team and card.
  */
-export function teamDeskOf(lines: readonly TeamDeskLine[]): TeamDeskTeam[] {
+export function teamDeskOf(lines: readonly TeamDeskLine[], expiries: ReadonlyMap<number, number> = new Map(), tick: number | null = null): TeamDeskTeam[] {
   const chains = new Map<string, TeamDeskChain & { team: string }>();
   const byOffer = new Map<number, string>();
   const byRef = new Map<string, string>();
@@ -265,7 +282,7 @@ export function teamDeskOf(lines: readonly TeamDeskLine[]): TeamDeskTeam[] {
         : (c?.replaces != null ? byOffer.get(c.replaces) : undefined) ?? (c?.offerId != null ? byOffer.get(c.offerId) : undefined) ?? byRef.get(`${l.team}|${c?.ref ?? ""}`) ?? `${l.team}|ref:${c?.ref ?? "?"}`;
     let ch = chains.get(key);
     if (!ch) {
-      ch = { key, team: l.team, venue: l.venue ?? null, incoming: null, incomingTick: null, steps: [], outcome: null, status: null };
+      ch = { key, team: l.team, venue: l.venue ?? null, incoming: null, incomingTick: null, steps: [], outcome: null, status: null, incomingExpires: null, expired: false, pending: false };
       chains.set(key, ch);
     }
     if (l.venue) ch.venue = l.venue;
@@ -298,10 +315,17 @@ export function teamDeskOf(lines: readonly TeamDeskLine[]): TeamDeskTeam[] {
   const teams = new Map<string, TeamDeskTeam>();
   for (const ch of chains.values()) {
     const t = teams.get(ch.team) ?? { team: ch.team, chains: [], negWon: 0, negOpen: 0 };
+    const counter = [...ch.steps].reverse().find((s) => s.event !== "cancel");
+    const inId = ch.incoming?.id ?? null;
+    ch.incomingExpires = inId !== null ? (expiries.get(inId) ?? null) : null;
+    const counterExpires = counter?.offerId != null ? (expiries.get(counter.offerId) ?? null) : null;
+    const past = (x: number | null) => x !== null && tick !== null && tick > x;
+    ch.expired = !ch.outcome && (past(ch.incomingExpires) || past(counterExpires));
+    ch.pending = !ch.outcome && ch.status !== "cancelled" && counter?.status === "sent" && !ch.expired;
     const { team: _team, ...chain } = ch;
     t.chains.push(chain);
     if (ch.outcome?.status === "filled") t.negWon += ch.outcome.negDelta ?? 0;
-    else if (!ch.outcome && ch.status !== "cancelled") t.negOpen += [...ch.steps].reverse().find((s) => s.negIfFilled !== null)?.negIfFilled ?? 0;
+    else if (ch.pending) t.negOpen += [...ch.steps].reverse().find((s) => s.negIfFilled !== null)?.negIfFilled ?? 0;
     teams.set(ch.team, t);
   }
   const r2 = (x: number) => Math.round(x * 10) / 10;
