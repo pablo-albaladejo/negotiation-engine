@@ -1,6 +1,7 @@
 import { updatePosterior, type Posterior } from "../dealers/history/persona-fit.js";
 import { buildPersonaModel, type PersonaModel } from "./persona-model.js";
 import { traitsOf } from "../dealers/dealer-profile.js";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
@@ -276,6 +277,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   const otherBoards = await Promise.all(others.map(async (v) => ({ venue: v.venue!, offers: parseOffers(await settle(`board ${v.venue}`, client.board(v.venue!))) })));
   const events = parseFeed(feed);
   const dayDir = opts.newsDir ?? join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE"));
+  writeVenueBooks(dayDir, clock.tick, (venues?.venues ?? []) as unknown[], [{ venue: "rastro", offers: board !== undefined ? parseOffers(board) : [] }, ...otherBoards]);
   const rawDealers = (dealers?.dealers ?? []) as unknown[];
   const c = clock as Clock & Record<string, unknown>;
   const ours = me ? oursFrom(me) : { unlocked: [], album: { pages: [] }, holdings: { cards: 0, packs: 0, byRef: {}, spares: 0 }, values: {} };
@@ -510,4 +512,19 @@ export function formatGameState(g: GameState): string[] {
   lines.push(...formatPacks(g.packs));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
+}
+
+/**
+ * Every venue's book as read this tick (`venue-books.json` in the day folder) for the viewer's «Venues» tab: the same
+ * GETs the price sheet already makes, so the viewer adds no calls on the shared key. Best effort, atomic.
+ */
+function writeVenueBooks(dir: string, tick: number, venues: unknown[], books: { venue: string; offers: unknown[] }[]): void {
+  try {
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, "venue-books.json");
+    writeFileSync(`${path}.tmp`, JSON.stringify({ tick, updated: new Date().toISOString(), venues, books }));
+    renameSync(`${path}.tmp`, path);
+  } catch {
+    // The view is optional; a failed write never stops the tick.
+  }
 }

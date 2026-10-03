@@ -228,6 +228,8 @@ export interface Board {
   score_parts?: BoardScoreParts;
   /** Team desk: offers other teams make to us, our counters and outcomes, per team; absent on an older server. */
   team_desk?: BoardDeskTeam[];
+  /** Every open venue's book as play read it, marked against our hand (null without venue-books.json). */
+  venue_books?: BoardVenueBooks | null;
 }
 
 export const EMPTY_BOARD: Board = {
@@ -412,4 +414,48 @@ export function boardTimeline(row: BoardRow): TimelineStep[] {
 
 export function boardModel(raw: Board | null | undefined): Board {
   return raw ? { ...EMPTY_BOARD, ...raw, market: { ...EMPTY_BOARD.market, ...(raw.market ?? {}) }, rows: raw.rows ?? [], others: raw.others ?? [], holdings: raw.holdings ?? {}, agents: raw.agents ?? [] } : EMPTY_BOARD;
+}
+
+/** One offer in a venue book, marked against us (server: viewer/server/bazaar/venues/venue-books.ts). */
+export interface BoardBookRow {
+  id: number;
+  side: "ask" | "bid" | "swap";
+  maker: string | null;
+  to: string | null;
+  to_us: boolean;
+  refs: string[];
+  price: number;
+  fee: number;
+  hand: number | null;
+  value: number | null;
+  /** NEG at our values as the taker; null on a dup, several cards or no value. */
+  neg: number | null;
+  mark: "ours" | "lack" | "spare" | "last" | "dup" | "none";
+  wanted_by: string[];
+  held_by: string[];
+  expires_tick: number | null;
+  created_tick: number | null;
+}
+
+export interface BoardVenueBook {
+  venue: string;
+  name: string | null;
+  owner: string | null;
+  owner_name: string | null;
+  mechanism: string | null;
+  fee_bps: number;
+  fee_per_card: number;
+  status: string | null;
+  house: boolean;
+  ours: boolean;
+  off_limits: boolean;
+  asks: BoardBookRow[];
+  bids: BoardBookRow[];
+  swaps: BoardBookRow[];
+}
+
+export interface BoardVenueBooks {
+  tick: number | null;
+  updated: string | null;
+  venues: BoardVenueBook[];
 }

@@ -1,6 +1,7 @@
 import { mkdir, open, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
 import { TokenBucket } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import type { ApiResponse } from "../api.js";
@@ -100,6 +101,8 @@ export interface BoardOut {
   score_parts: ScorePartsOut;
   /** Team desk (`team-desk.jsonl`, today): offers other teams make to us, our counters and outcomes, per team. */
   team_desk: TeamDeskTeam[];
+  /** Every open venue's book as play read it (venue-books.json), marked against our hand; null without the file. */
+  venue_books: VenueBooksOut | null;
 }
 
 export interface BazaarBoardDeps {
@@ -372,6 +375,12 @@ export class BazaarBoard {
       schedule,
       agents,
       play_mode: await playMode(this.bazaarDir),
+      venue_books: venueBooksOf(
+        await readJsonFile(join(this.bazaarDir, this.today(), "venue-books.json")),
+        await readJsonFile(join(this.bazaarDir, "values.json")),
+        await readJsonFile(join(this.bazaarDir, "rivals.json")),
+        team,
+      ),
       team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),

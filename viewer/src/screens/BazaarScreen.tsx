@@ -4,6 +4,7 @@ import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 import { Workshop } from "./Workshop.js";
 import { TeamDesk } from "./TeamDesk.js";
+import { VenueBooks } from "./venues/VenueBooks.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
 import { componentOf } from "../model/scoreTree.js";
 import type { ModelLadderLevel } from "../model/gameModel.js";
@@ -767,12 +768,13 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "model";
+type View = "now" | "cockpit" | "model" | "venues";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "now", label: "Now" },
   { id: "cockpit", label: "Cockpit (the API)" },
   { id: "model", label: "Model (our internal view)" },
+  { id: "venues", label: "Venues (all books)" },
 ];
 
 /**
@@ -806,7 +808,13 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <PageTitle>Bazaar</PageTitle>
         <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
-        {view === "now" ? <NowView board={board} model={model} onOpen={openModel} /> : <ModelView model={model} loading={loading} board={board} onOpen={openModel} />}
+        {view === "now" ? (
+          <NowView board={board} model={model} onOpen={openModel} />
+        ) : view === "venues" ? (
+          <VenueBooks board={board} />
+        ) : (
+          <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
+        )}
         {drawer}
       </section>
     );
