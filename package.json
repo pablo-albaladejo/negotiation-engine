@@ -19,6 +19,7 @@
     "bazaar:duels": "tsx src/duels/main.ts",
     "bazaar:trades": "tsx src/trades/main.ts",
     "bazaar:broker": "tsx src/broker/main.ts",
+    "bazaar:play": "tsx src/coordinator/main.ts",
     "bazaar:scan": "node scripts/bazaar-api-scan.mjs",
     "bazaar:feed": "node scripts/bazaar-convo-feed.mjs",
     "bazaar:dump": "node scripts/bazaar-dump.mjs",
