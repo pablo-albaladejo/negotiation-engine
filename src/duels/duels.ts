@@ -337,7 +337,17 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   let offer = offerForSurplus(state, target);
   // With days, rounding to another day could ask for more than the previous offer: then we repeat.
   if (previous && prevSurplus !== undefined && surplusOf(state, offer) > prevSurplus) offer = previous;
-  const same = previous !== undefined && previous.price === offer.price && previous.days === offer.days;
+  let same = previous !== undefined && previous.price === offer.price && previous.days === offer.days;
+  // Repeating our price earns no concession from the rival ("20→20→20 is not a move"): while they keep moving, take a
+  // 1 P step on the price (days as planned) as long as it stays within the limit and keeps the minimum surplus.
+  if (previous && previous.price === offer.price && state.rivalMovedSinceOurLast) {
+    const step: StructuredOffer = { ...offer, price: previous.price - sign(state.role) };
+    const guarded = enforceGuardrails({ role: state.role, reservation: state.limit }, step.price, previous.price);
+    if (guarded === step.price && withinLimit(state, step) && surplusOf(state, step) >= params.minSurplus) {
+      offer = step;
+      same = false;
+    }
+  }
   // Repeating the same offer to a silent rival adds nothing: wait without a message.
   if (same && !state.rivalMovedSinceOurLast) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
   const kind = round === 0 ? "open" : same ? "hold" : "counter";
