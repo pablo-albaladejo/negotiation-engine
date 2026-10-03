@@ -1,4 +1,4 @@
-import { Card, ChatMessage, DataTable, Flag, Legend, OfferChart } from "@negotiation-ring/design-system";
+import { Card, ChatMessage, DataTable, Flag, Legend, OfferChart, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
@@ -33,7 +33,11 @@ import {
   teamLabel,
   withTeamNames,
   type BoardAlbumPage,
+  type OfferCurve,
 } from "../model/index.js";
+import { useBazaarModel } from "../bazaarModelLive.js";
+import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type ModelConversation } from "../model/gameModel.js";
+import { ConversationModelPanel, ModelView } from "./ModelView.js";
 
 export interface BazaarScreenProps {
   board: Board;
@@ -136,7 +140,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
 
 /** Conversación completa: mensajes literales (nunca interpretados) alineados por tick con nuestras
  * decisiones (`decisions.jsonl`), y la línea de tiempo de ofertas. */
-function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
+function ConversationDetail({ board, row, conv }: { board: Board; row: BoardRow; conv: ModelConversation | null }) {
   const steps = boardTimeline(row);
   const party = partyOf(board, row);
   const maker = (m: string) => (m === board.team ? { value: teamLabel(board, m), tone: "better" as const } : withTeamNames(board, m));
@@ -153,7 +157,8 @@ function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
             {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
           </span>
         </div>
-        <NegotiationCurve row={row} />
+        {conv ? <ConversationModelPanel conv={conv} /> : null}
+        <NegotiationCurve row={row} conv={conv} />
         {steps.length > 0 ? (
           <div className="nr-chat" aria-label="Messages and our decisions by tick">
             {steps.map((s, i) => (
@@ -196,10 +201,12 @@ function ConversationDetail({ board, row }: { board: Board; row: BoardRow }) {
   );
 }
 
-/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite por tick, nuestro valor y el final. */
-function NegotiationCurve({ row }: { row: BoardRow }) {
-  const curve = offerCurve(row);
-  if (!curve) return null;
+/** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite por tick, nuestro valor, el final y, si
+ * el modelo lo tiene, el camino previsto (discontinuo) en los ticks siguientes. */
+function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversation | null }) {
+  const base = offerCurve(row);
+  if (!base) return conv ? <ModelCurve conv={conv} /> : null;
+  const { curve, planned } = withPlannedPath(base, conv);
   const tickOf = (round: number) => (round === 0 ? "" : String(curve.firstTick + round - 1));
   return (
     <figure aria-label="Negotiation curve" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
@@ -209,9 +216,10 @@ function NegotiationCurve({ row }: { row: BoardRow }) {
         yTicks={curve.yTicks}
         xLabel="tick"
         xTickLabel={tickOf}
-        describeRound={(round) => curveRoundLines(curve, row.counterparty, round)}
+        describeRound={(round) => plannedLines(curve, planned, curveRoundLines(curve, row.counterparty, round), round)}
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
+        {...(planned.length > 0 ? { planned } : {})}
         {...(curve.limit.length > 0 ? { target: curve.limit } : {})}
         {...(curve.reference ? { ourReserve: curve.reference.value } : {})}
         {...(curve.end ? { end: curve.end } : {})}
@@ -221,6 +229,7 @@ function NegotiationCurve({ row }: { row: BoardRow }) {
           { kind: "us", label: "Team 2 (us)" },
           { kind: "them", label: row.counterparty },
           ...(curve.limit.length > 0 ? [{ kind: "target" as const, label: "our limit (reservation) by tick" }] : []),
+          ...(planned.length > 0 ? [{ kind: "planned" as const, label: "planned path (our model, next ticks)" }] : []),
           ...(curve.reference ? [{ kind: "reserve-us" as const, label: curve.reference.label }] : []),
           ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
         ]}
@@ -231,6 +240,58 @@ function NegotiationCurve({ row }: { row: BoardRow }) {
         </span>
       ) : null}
     </figure>
+  );
+}
+
+/** Caja del cursor con el paso previsto, si cae en esa ronda. */
+function plannedLines(curve: OfferCurve, planned: { round: number; value: number }[], lines: string[] | null, round: number): string[] | null {
+  const p = planned.find((x, k) => k > 0 && x.round === round) ?? (planned.length === 1 ? planned.find((x) => x.round === round) : undefined);
+  if (!p) return lines;
+  return [...(lines ?? [`tick ${curve.firstTick + round - 1}`]), `planned ${p.value}`];
+}
+
+/** Curva solo del modelo (duelo o conversación sin precios registrados en el tablero): eje X = paso. */
+function ModelCurve({ conv }: { conv: ModelConversation }) {
+  const out = modelCurve(conv);
+  if (!out) return null;
+  const { curve, planned } = out;
+  return (
+    <figure aria-label="Negotiation curve (our model)" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <OfferChart
+        rounds={curve.rounds}
+        yDomain={curve.yDomain}
+        yTicks={curve.yTicks}
+        xLabel="step"
+        ourOffers={curve.ours}
+        theirOffers={curve.theirs}
+        {...(planned.length > 0 ? { planned } : {})}
+        {...(curve.reference ? { ourReserve: curve.reference.value } : {})}
+      />
+      <Legend
+        items={[
+          { kind: "us", label: "Team 2 (us)" },
+          { kind: "them", label: conv.counterparty },
+          ...(planned.length > 0 ? [{ kind: "planned" as const, label: "planned path (our model)" }] : []),
+          ...(curve.reference ? [{ kind: "reserve-us" as const, label: `${curve.reference.label} (private, local only)` }] : []),
+        ]}
+      />
+    </figure>
+  );
+}
+
+/** Cajón de una conversación que solo está en el modelo (sin fila en el tablero). */
+function ModelOnlyDetail({ conv }: { conv: ModelConversation }) {
+  return (
+    <Card title={`Conversation · ${conv.counterparty} (${conv.kind}) · ${conv.id}`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        <ConversationModelPanel conv={conv} />
+        <ModelCurve conv={conv} />
+        <span className="nr-muted">
+          ours [{conv.history.ourPrices.join(", ")}] · theirs [{conv.history.herPrices.join(", ")}]
+          {conv.history.herCurrent ? ` · their current ${conv.history.herCurrent.price}${conv.history.herCurrent.final ? " (final)" : ""}` : ""}
+        </span>
+      </div>
+    </Card>
   );
 }
 
@@ -618,19 +679,50 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
+const VIEWS = [
+  { id: "cockpit", label: "Cockpit (the API)" },
+  { id: "model", label: "Model (our internal view)" },
+];
+
 /**
  * Cabina del Bazaar: arriba lo que hay que decidir (marcador, próximas citas, lo abierto ahora),
  * luego álbum, qué movió la cifra y si nuestros agentes están vivos; el historial y el mercado,
  * plegados. Todo sale de `/api/bazaar/board`; la UI no calcula la cifra.
  */
 export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenProps) {
-  const selected = board.rows.find((r) => r.id === filters.row) ?? null;
+  const [view, setView] = useState<"cockpit" | "model">("cockpit");
+  const { model, loading } = useBazaarModel(view === "model" || filters.row !== "");
+  const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? null;
+  const conv = filters.row ? modelConversationFor(model, selected?.id ?? filters.row) ?? modelConversationFor(model, filters.row) : null;
   const open = (id: string) => onFiltersChange({ ...filters, row: id });
+  /** Desde el modelo: la fila del tablero si existe; si no, la conversación del modelo. */
+  const openModel = (id: string) => open(board.rows.some((r) => r.id === boardRowIdFor(id)) ? boardRowIdFor(id) : id);
   const { trades, duels } = historyGroups(board.rows);
   const duelPoints = board.header?.duel_points;
+  const close = () => onFiltersChange({ ...filters, row: "" });
+  const drawer = selected ? (
+    <Drawer label={`Conversation ${selected.id}`} onClose={close}>
+      <ConversationDetail board={board} row={selected} conv={conv} />
+    </Drawer>
+  ) : conv ? (
+    <Drawer label={`Conversation ${conv.id}`} onClose={close}>
+      <ModelOnlyDetail conv={conv} />
+    </Drawer>
+  ) : null;
+  if (view === "model") {
+    return (
+      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+        <PageTitle>Bazaar</PageTitle>
+        <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={(id) => setView(id === "model" ? "model" : "cockpit")} />
+        <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
+        {drawer}
+      </section>
+    );
+  }
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <PageTitle>Bazaar</PageTitle>
+      <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={(id) => setView(id === "model" ? "model" : "cockpit")} />
       {!board.live ? <EmptyStateCard title="No live Bazaar data (BAZAAR_KEY not set on the viewer server, or the Bazaar is unreachable)" /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
         <Scoreboard board={board} />
@@ -649,11 +741,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <Fold title="Market · leaderboard, feed, El Rastro, our venue">
         <MarketPanel board={board} />
       </Fold>
-      {selected ? (
-        <Drawer label={`Conversation ${selected.id}`} onClose={() => onFiltersChange({ ...filters, row: "" })}>
-          <ConversationDetail board={board} row={selected} />
-        </Drawer>
-      ) : null}
+      {drawer}
     </section>
   );
 }
