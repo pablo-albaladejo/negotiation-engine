@@ -26,6 +26,7 @@ export const DETECTORS = [
   "repeated-price",
   "duel-unanswered",
   "duel-left-on-table",
+  "dealer-saturated",
   "dealer-spam",
   "stale-source",
 ] as const;

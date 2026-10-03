@@ -6,7 +6,7 @@ import { loadBazaarEnv } from "../shared/env.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.js";
 import { albumCopyLost, bookGaps, cashFloor, reserveBreach, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
-import { dealerSpam, duelLeftOnTable, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
+import { dealerSaturated, dealerSpam, duelLeftOnTable, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
 import { ValueHistory } from "./value-history.js";
 import { daySnapshots, DuelSendParser, latestCatalog, parseDealerEvent, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readDuelsState, readValuesFile, Tail, type DealerEvent, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
@@ -253,6 +253,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     "repeated-price": repeatedCoverage(),
     "duel-unanswered": duelCoverage(),
     "duel-left-on-table": need("stream-team"),
+    "dealer-saturated": need("stream-team"),
     "dealer-spam": need("stream-team", "decisions"),
     "stale-source": { ok: true, why: "file ticks against the clock" },
   };
@@ -293,6 +294,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     ...repeatedPrice(conduct),
     ...duelUnanswered(conduct),
     ...duelLeftOnTable(conduct),
+    ...dealerSaturated(conduct),
     ...dealerSpam(conduct, planDealerErrors()),
     ...stale,
   ].sort((a, b) => a.tick - b.tick);

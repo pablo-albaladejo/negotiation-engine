@@ -284,6 +284,55 @@ export function duelLeftOnTable(input: ConductInput): Alert[] {
   return out;
 }
 
+/** A dealer level scores its best LADDER_SLOTS deals (RULES.md:118); a further deal only scores if it beats one of them. */
+export const LADDER_SLOTS = 3;
+
+/**
+ * `dealer-saturated`: a dealer deal on a level that already holds LADDER_SLOTS of our deals today, with no album reason.
+ * Dealer deals score only through ladder_points (best 3 per level by share of the dealer's range), never neg_points, so
+ * once a level is full near the top of the range (Abuela and Chato on 2026-10-03) one more sale adds nothing. Sells always
+ * count; a buy counts only when we already received that card earlier today (a repeat, not a page card). Low severity
+ * without P: the share of the range is not in the stream, so the deal may still have replaced a weaker slot.
+ */
+export function dealerSaturated(input: ConductInput): Alert[] {
+  const deals = new Map<string, number>();
+  const received = new Set<string>();
+  const seen = new Set<number>();
+  const out: Alert[] = [];
+  for (const e of [...input.events].sort((a, b) => a.tick - b.tick || a.id - b.id)) {
+    const p = e.payload;
+    const persona = asStr(p.persona);
+    if (e.type !== "settlement" || !persona) continue;
+    const parties = Array.isArray(p.parties) ? (p.parties as unknown[]) : [];
+    if (!parties.includes(input.team)) continue;
+    const id = asNum(p.settlement);
+    if (id === undefined || seen.has(id)) continue;
+    seen.add(id);
+    const items = (Array.isArray(p.items) ? p.items : []) as { ref?: string; frm?: string; to?: string }[];
+    const sell = items.some((i) => i.frm === input.team);
+    const refs = items.map((i) => i.ref).filter((r): r is string => typeof r === "string");
+    const repeatBuy = !sell && refs.length > 0 && refs.every((r) => received.has(r));
+    const prior = deals.get(persona) ?? 0;
+    if (prior >= LADDER_SLOTS && (sell || repeatBuy)) {
+      out.push(
+        alert({
+          tick: e.tick,
+          detector: "dealer-saturated",
+          severity: "low",
+          refs,
+          assets: [],
+          summary: `${sell ? "Sold" : "Bought again"} ${refs.join(", ")} ${sell ? "to" : "from"} ${persona} at ${asNum(p.price) ?? "?"} P with ${prior} deals already on that level today: it only scores if its share beats our worst ladder slot there, and it has no album reason.`,
+          evidence: { settlement: id, persona, side: sell ? "sell" : "buy", price: p.price, priorDeals: prior },
+          key: `dealer-saturated:${id}`,
+        }),
+      );
+    }
+    deals.set(persona, prior + 1);
+    for (const i of items) if (i.to === input.team && i.ref) received.add(i.ref);
+  }
+  return out;
+}
+
 /**
  * `dealer-spam` (hint 5: flood a dealer and they stop talking to you for a while):
  * - burst: ≥ DEALER_BURST_COUNT of our opens + messages to one dealer inside DEALER_BURST_TICKS, above our designed
