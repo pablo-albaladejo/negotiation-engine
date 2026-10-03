@@ -35,6 +35,11 @@ export interface ConvObs {
   /** Se retiró (walked / no_progress) tras `ours.length` contraofertas nuestras. */
   walked?: boolean;
   tick?: number;
+  /**
+   * Primera conversación del equipo con ese dealer (*welcome_first_deal*): su apertura ES su límite y se mantiene plana,
+   * así que mide el límite de bienvenida pero NO entra en el ajuste de la curva (β, max_rounds, markup, espejo ni bandas).
+   */
+  welcome?: boolean;
 }
 
 export interface Range {
@@ -61,6 +66,12 @@ export interface PersonaEstimates {
   accept_margin: number;
   walk_after_rounds: Range;
   mirror: boolean | "unknown";
+  /** Markup de apertura cuando ELLA COMPRA, si difiere del de vender (Chato: ~0,14 frente a 0,25); si no, vale `opening_markup`. */
+  opening_markup_buy?: Range;
+  /** Dispersión del límite entre conversaciones (fracción del book); prior, no se reajusta. */
+  limit_jitter?: number;
+  /** Límite de bienvenida medido en la primera conversación (su apertura, en P y como fracción del book); `n` = 0 es el prior. */
+  welcome?: { limit: Range; frac_of_book: Range; n: number };
   bands: Record<string, BandEstimate>;
   /** Conversaciones usadas en el ajuste. */
   fittedFrom: number;
@@ -79,8 +90,28 @@ export interface Prediction {
   fittedFrom: number;
 }
 
+export interface PriorBand {
+  /** Fracciones del book (el barrio, de su lista). */
+  mean: number;
+  lo: number;
+  hi: number;
+  /** Conversaciones del ajuste offline que lo respaldan. */
+  n: number;
+}
+
 export interface PersonaPrior {
   openingMarkup: number;
+  /** Markup cuando ella compra, si difiere del de vender. */
+  openingMarkupBuy?: number;
+  /** Espejo medido offline (`mirror_concessions`); manda sobre "unknown" y sobre datos poco decisivos. */
+  mirror?: boolean;
+  /** Seudo-observaciones del ajuste offline (0 = prior débil de siempre). Cuánto pesa frente a los datos nuevos. */
+  priorWeight: number;
+  limitJitter?: number;
+  /** `welcome_first_deal`: su apertura de bienvenida como fracción del book (Abuela compra una común a 13 = 1,3 × book; `welcome_price_frac` ≈ 0,7). */
+  welcomeFracOfBook?: number;
+  /** Límite medido offline por banda (`sells:<rareza>` / `buys:<rareza>`). */
+  bands?: Record<string, PriorBand>;
   beta: number;
   maxRounds: number;
   walkAfterRounds: number;
@@ -91,13 +122,48 @@ export interface PersonaPrior {
 }
 
 /** Valores por defecto del editor (floor 0,85, ceiling 0,75, list 1) y markups medidos (site-map § 8.4). */
-export const DEFAULT_PRIOR: PersonaPrior = { openingMarkup: 0.15, beta: 1, maxRounds: 8, walkAfterRounds: 8, acceptMargin: 0.02, floorFrac: 0.85, ceilingFrac: 0.75, listFrac: 1 };
+export const DEFAULT_PRIOR: PersonaPrior = { openingMarkup: 0.15, priorWeight: 0, beta: 1, maxRounds: 8, walkAfterRounds: 8, acceptMargin: 0.02, floorFrac: 0.85, ceilingFrac: 0.75, listFrac: 1 };
+/**
+ * Priors medidos offline (3 oct, con nuestros hilos y el feed público: Abuela 29 conversaciones, Chato 13; ver
+ * docs/bazaar/dealer-fit-2026-10-03.md). El ajuste en vivo parte de aquí y se actualiza con cada dato nuevo.
+ */
 export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
-  abuela: { openingMarkup: 0.15, beta: 2, walkAfterRounds: 7 },
-  chato: { openingMarkup: 0.25, beta: 0.5, walkAfterRounds: 8 },
+  abuela: {
+    openingMarkup: 0.135,
+    beta: 3,
+    maxRounds: 6,
+    walkAfterRounds: 5.5,
+    acceptMargin: 0.02,
+    limitJitter: 0.05,
+    welcomeFracOfBook: 1.3,
+    priorWeight: 4,
+    bands: {
+      "sells:common": { mean: 0.86, lo: 0.7, hi: 1, n: 5 },
+      "sells:uncommon": { mean: 0.86, lo: 0.74, hi: 0.99, n: 4 },
+      // El sobre de barrio no tiene rareza (no entra en `bands`): 0,75 de su lista [0,70, 0,81], n = 2.
+      "buys:common": { mean: 0.58, lo: 0.5, hi: 0.69, n: 6 },
+      "buys:uncommon": { mean: 0.58, lo: 0.52, hi: 0.64, n: 2 },
+    },
+  },
+  chato: {
+    openingMarkup: 0.25,
+    openingMarkupBuy: 0.14,
+    beta: 0.35,
+    maxRounds: 6,
+    walkAfterRounds: 7,
+    mirror: true,
+    limitJitter: 0.05,
+    priorWeight: 4,
+    bands: {
+      "buys:uncommon": { mean: 0.61, lo: 0.52, hi: 0.68, n: 3 },
+      "sells:uncommon": { mean: 1.14, lo: 1.12, hi: 1.16, n: 1 },
+      "sells:rare": { mean: 1.1, lo: 0.94, hi: 1.24, n: 3 },
+      // Sobre de plata (sin rareza, no entra en `bands`): 1,13 de su lista [1,10, 1,16], n = 1. Nunca vende por debajo de la lista.
+    },
+  },
 };
 
-const BETAS = [0.25, 0.4, 0.6, 0.8, 1, 1.25, 1.6, 2, 3, 4];
+const BETAS = [0.25, 0.35, 0.4, 0.6, 0.8, 1, 1.25, 1.6, 2, 3, 4];
 const MAX_ROUNDS = Array.from({ length: 16 }, (_, k) => k + 1);
 
 export function says(open: number, limit: number, r: number, beta: number, maxRounds: number, dealerSells: boolean): number {
@@ -111,22 +177,33 @@ const round2 = (x: number) => Math.round(x * 100) / 100;
 const r2 = (r: Range): Range => ({ mean: round2(r.mean), lo: round2(r.lo), hi: round2(r.hi) });
 
 /** Espejo de la persona: mayoría de `mirrorVerdict` entre sus conversaciones con pasos grandes contestados. */
-export function personaMirror(obs: readonly ConvObs[]): boolean | "unknown" {
+export function personaMirror(obs: readonly ConvObs[], priorMirror?: boolean): boolean | "unknown" {
   const v = obs.map((o): MirrorVerdict => mirrorVerdict(stepResponses({ side: o.dealerSells ? "buy" : "sell", ourPrices: o.ours, herPrices: o.her, herCurrent: { offerId: 0, price: o.her.at(-1) ?? 0, final: o.final } })));
   const yes = v.filter((x) => x === "mirror").length;
   const no = v.filter((x) => x === "not-mirror").length;
+  // Con un prior medido offline, los datos propios solo lo cambian si son decisivos (diferencia ≥ 3 conversaciones).
+  if (priorMirror !== undefined && Math.abs(yes - no) < 3) return priorMirror;
   return yes === no ? "unknown" : yes > no;
 }
 
 /** Markup de apertura: cuando vende, apertura ÷ (book × list_frac) − 1; cuando compra y se vio su final, 1 − apertura ÷ final. */
-export function markupSamples(obs: readonly ConvObs[], prior: PersonaPrior): number[] {
-  const out: number[] = [];
+export function markupSamples(obs: readonly ConvObs[], prior: PersonaPrior): { sell: number[]; buy: number[] } {
+  const sell: number[] = [];
+  const buy: number[] = [];
   for (const o of obs) {
     if (!o.her.length) continue;
-    if (o.dealerSells) out.push(o.her[0]! / (o.book * prior.listFrac) - 1);
-    else if (o.final && o.her.at(-1)! > 0) out.push(1 - o.her[0]! / o.her.at(-1)!);
+    if (o.dealerSells) sell.push(o.her[0]! / (o.book * prior.listFrac) - 1);
+    else if (o.final && o.her.at(-1)! > 0) buy.push(1 - o.her[0]! / o.her.at(-1)!);
   }
-  return out.filter((m) => Number.isFinite(m) && m > -0.5 && m < 2);
+  const ok = (m: number) => Number.isFinite(m) && m > -0.5 && m < 2;
+  return { sell: sell.filter(ok), buy: buy.filter(ok) };
+}
+
+/** Estimación que parte del prior con `w` seudo-observaciones y se mueve con las muestras nuevas (w = 0: solo las muestras). */
+function blendRange(samples: readonly number[], priorMean: number, w: number): Range {
+  if (!samples.length) return { mean: priorMean, lo: priorMean, hi: priorMean };
+  const m = w > 0 ? (w * priorMean + samples.reduce((a, b) => a + b, 0)) / (w + samples.length) : mean(samples);
+  return { mean: m, lo: Math.min(...samples, ...(w > 0 ? [priorMean] : [])), hi: Math.max(...samples, ...(w > 0 ? [priorMean] : [])) };
 }
 
 /** Puntos (r, precio) de una conversación que informan de la curva: sin los pasos que el espejo recortó. */
@@ -166,18 +243,18 @@ interface Fit {
   limits: Map<string, number>;
 }
 
-function fitAll(obs: readonly ConvObs[], markup: number, mirror: boolean | "unknown", prior: PersonaPrior): Fit[] {
+function fitAll(obs: readonly ConvObs[], markupOf: (o: ConvObs) => number, mirror: boolean | "unknown", prior: PersonaPrior): Fit[] {
   const fits: Fit[] = [];
   for (const beta of BETAS) {
     for (const maxRounds of MAX_ROUNDS) {
       // Prior débil: β cerca del prior (en log) y max_rounds cerca del prior.
-      let cost = 0.5 * Math.log(beta / prior.beta) ** 2 + 0.5 * ((maxRounds - prior.maxRounds) / prior.maxRounds) ** 2;
+      let cost = (1 + prior.priorWeight) * (0.5 * Math.log(beta / prior.beta) ** 2 + 0.5 * ((maxRounds - prior.maxRounds) / prior.maxRounds) ** 2);
       const limits = new Map<string, number>();
       for (const o of obs) {
         if (!o.her.length) continue;
         const pts = fitPoints(o, mirror);
         let best = { l: NaN, c: Infinity };
-        for (const l of limitCandidates(o, markup, prior)) {
+        for (const l of limitCandidates(o, markupOf(o), prior)) {
           let c = 0;
           for (const p of pts) c += (says(o.her[0]!, l, p.r, beta, maxRounds, o.dealerSells) - p.price) ** 2;
           if (c < best.c - 1e-9) best = { l, c };
@@ -205,15 +282,20 @@ export interface PersonaFit {
  */
 export function fitPersona(persona: string, obs: readonly ConvObs[], tick: number, previous?: PersonaEstimates): PersonaFit {
   const prior: PersonaPrior = { ...DEFAULT_PRIOR, ...PERSONA_PRIORS[persona] };
-  const mine = obs.filter((o) => o.persona === persona && o.her.length > 0);
-  const mirror = personaMirror(mine);
+  const all = obs.filter((o) => o.persona === persona && o.her.length > 0);
+  // Las conversaciones de bienvenida miden el límite de bienvenida, no la curva: fuera del ajuste.
+  const mine = all.filter((o) => !o.welcome);
+  const welcomes = all.filter((o) => o.welcome);
+  const mirror = personaMirror(mine, prior.mirror);
   const mk = markupSamples(mine, prior);
-  const markup = mk.length ? mean(mk) : prior.openingMarkup;
-  const fits = mine.length ? fitAll(mine, markup, mirror, prior) : [];
+  const mkSell = blendRange(mk.sell, prior.openingMarkup, prior.priorWeight);
+  const mkBuy = blendRange(mk.buy, prior.openingMarkupBuy ?? prior.openingMarkup, prior.priorWeight);
+  const markupOf = (o: ConvObs) => (o.dealerSells ? mkSell.mean : mkBuy.mean);
+  const fits = mine.length ? fitAll(mine, markupOf, mirror, prior) : [];
   const near = fits.length ? nearBest(fits) : [];
   const best = fits[0];
   const walks = mine.flatMap((o) => (o.final ? [o.her.length - 1] : o.walked ? [o.ours.length] : []));
-  const walk = walks.length ? range(walks, prior.walkAfterRounds) : { mean: prior.walkAfterRounds, lo: prior.walkAfterRounds - 2, hi: prior.walkAfterRounds + 2 };
+  const walk = walks.length ? (prior.priorWeight > 0 ? blendRange(walks, prior.walkAfterRounds, prior.priorWeight) : range(walks, prior.walkAfterRounds)) : { mean: prior.walkAfterRounds, lo: prior.walkAfterRounds - 2, hi: prior.walkAfterRounds + 2 };
 
   // Límite por conversación (mejor ajuste y rango entre los casi mejores) y por banda.
   const convLimit = new Map<string, Range>();
@@ -222,26 +304,37 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
     if (best && ls.length) convLimit.set(o.id, { mean: best.limits.get(o.id)!, lo: Math.min(...ls), hi: Math.max(...ls) });
   }
   const bands: Record<string, BandEstimate> = {};
-  for (const band of new Set(mine.map((o) => o.band))) {
+  for (const band of new Set([...mine.map((o) => o.band), ...Object.keys(prior.bands ?? {})])) {
     const inBand = mine.filter((o) => o.band === band && (o.final || o.her.length > 1));
     const ls = inBand.map((o) => convLimit.get(o.id)).filter((x): x is Range => !!x);
-    if (!ls.length) continue;
     const sells = band.startsWith("sells:");
+    const pb = prior.bands?.[band];
+    const book = RARITY_BOOK[band.split(":")[1] ?? ""];
+    if (!ls.length && !(pb && book !== undefined)) continue;
     const means = ls.map((x) => x.mean);
-    bands[band] = { limit: r2({ mean: mean(means), lo: Math.min(...ls.map((x) => x.lo)), hi: Math.max(...ls.map((x) => x.hi)) }), samples: ls.length, fewSamples: ls.length < 3, best: round2(sells ? Math.min(...means) : Math.max(...means)) };
+    const w = pb && book !== undefined ? pb.n : 0;
+    const pm = pb && book !== undefined ? pb.mean * book : 0;
+    const lo = Math.min(...ls.map((x) => x.lo), ...(w ? [pb!.lo * book!] : []));
+    const hi = Math.max(...ls.map((x) => x.hi), ...(w ? [pb!.hi * book!] : []));
+    const lim = { mean: (w * pm + means.reduce((a, b) => a + b, 0)) / (w + means.length), lo, hi };
+    const bestData = means.length ? (sells ? Math.min(...means) : Math.max(...means)) : sells ? pb!.lo * book! : pb!.hi * book!;
+    bands[band] = { limit: r2(lim), samples: ls.length + w, fewSamples: ls.length + w < 3, best: round2(bestData) };
   }
 
   const betaR = near.length ? { mean: best!.beta, lo: Math.min(...near.map((f) => f.beta)), hi: Math.max(...near.map((f) => f.beta)) } : { mean: prior.beta, lo: BETAS[0]!, hi: BETAS.at(-1)! };
   const mrR = near.length ? { mean: best!.maxRounds, lo: Math.min(...near.map((f) => f.maxRounds)), hi: Math.max(...near.map((f) => f.maxRounds)) } : { mean: prior.maxRounds, lo: 1, hi: 16 };
   const est: Omit<PersonaEstimates, "history"> = {
-    opening_markup: r2(mk.length ? range(mk, markup) : { mean: markup, lo: markup, hi: markup }),
+    opening_markup: r2(mkSell),
+    ...(prior.openingMarkupBuy !== undefined || mk.buy.length ? { opening_markup_buy: r2(mkBuy) } : {}),
     beta: betaR,
     max_rounds: mrR,
     accept_margin: prior.acceptMargin,
+    ...(prior.limitJitter !== undefined ? { limit_jitter: prior.limitJitter } : {}),
+    ...welcomeEstimate(welcomes, prior),
     walk_after_rounds: r2(walk),
     mirror,
     bands,
-    fittedFrom: mine.length,
+    fittedFrom: all.length,
   };
   const history = [...(previous?.history ?? [])];
   const last = (param: string) => [...history].reverse().find((h) => h.param === param)?.value;
@@ -255,8 +348,18 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
   for (const [b, e] of Object.entries(bands)) point(`limit:${b}`, e.limit.mean);
 
   const predictions = new Map<string, Prediction>();
-  for (const o of mine) predictions.set(o.id, predict(o, est, convLimit.get(o.id), near, prior, markup));
+  for (const o of mine) predictions.set(o.id, predict(o, est, convLimit.get(o.id), near, prior, markupOf(o)));
   return { estimates: { ...est, history: history.slice(-500) }, predictions };
+}
+
+/** Límite de bienvenida: su apertura en las conversaciones de bienvenida; sin ninguna, el prior (n = 0). */
+function welcomeEstimate(welcomes: readonly ConvObs[], prior: PersonaPrior): { welcome?: NonNullable<PersonaEstimates["welcome"]> } {
+  if (welcomes.length) {
+    const lim = welcomes.map((o) => o.her[0]!);
+    const frac = welcomes.map((o) => o.her[0]! / o.book);
+    return { welcome: { limit: r2(range(lim, 0)), frac_of_book: r2(range(frac, 0)), n: welcomes.length } };
+  }
+  return prior.welcomeFracOfBook !== undefined ? { welcome: { limit: { mean: 0, lo: 0, hi: 0 }, frac_of_book: r2({ mean: prior.welcomeFracOfBook, lo: prior.welcomeFracOfBook, hi: prior.welcomeFracOfBook }), n: 0 } } : {};
 }
 
 /** Predicción de una conversación: su próximo precio, su límite y su camino hasta `max_rounds`. */
@@ -328,6 +431,8 @@ export function observationOf(c: ConversationLike, tick: number): ConvObs | unde
   };
 }
 
+const threadNo = (id: string) => Number(id.split(":")[1]) || Infinity;
+
 /**
  * Suma las conversaciones del tick al posterior (una final vista antes se conserva aunque la oferta ya no esté abierta)
  * y reajusta cada persona con observaciones. Devuelve el posterior nuevo y la predicción por conversación.
@@ -339,7 +444,16 @@ export function updatePosterior(prev: Posterior, conversations: readonly Convers
     if (!o) continue;
     const old = observations[o.id];
     const keepFinal = !!old?.final && old.her.at(-1) === o.her.at(-1);
-    observations[o.id] = { ...o, final: o.final || keepFinal, tick: old?.tick ?? tick };
+    observations[o.id] = { ...o, final: o.final || keepFinal, tick: old?.tick ?? tick, ...(old?.welcome ? { welcome: true } : {}) };
+  }
+  // La primera conversación de cada persona es de bienvenida (se marca una vez y se conserva en el fichero).
+  const firstOf = new Map<string, ConvObs>();
+  for (const o of Object.values(observations)) {
+    const cur = firstOf.get(o.persona);
+    if (!cur || threadNo(o.id) < threadNo(cur.id)) firstOf.set(o.persona, o);
+  }
+  for (const [persona, first] of firstOf) {
+    if (!Object.values(observations).some((o) => o.persona === persona && o.welcome)) observations[first.id] = { ...first, welcome: true };
   }
   const estimates = { ...prev.estimates };
   const predictions = new Map<string, Prediction>();
