@@ -7,26 +7,26 @@ import type { Side } from "./negotiator.js";
  */
 
 const BUY_OPEN = [
-  "Good evening! What a lovely stall. I would be happy to offer {p} P for it, if that suits you.",
+  "Good evening! What a lovely stall. I would be happy to offer {p} P for it, if that suits you. Thank you!",
   "Hello! I have been looking for one just like this. Would {p} P be all right? Thank you so much.",
 ];
 const BUY_COUNTER = [
   "Thank you, you are very kind. I can stretch a little: {p} P?",
-  "I really appreciate your patience. Could we meet at {p} P?",
+  "I really appreciate your patience, thank you. Could we meet at {p} P?",
   "You drive a fair bargain! Let me move a bit more: {p} P, with all my thanks.",
-  "It would make my evening. How about {p} P?",
-  "I am counting my coins carefully. {p} P is what I can do right now.",
+  "It would make my evening. How about {p} P, please?",
+  "I am counting my coins carefully. {p} P is what I can do right now, thank you for understanding.",
   "Thank you for being so generous with your time. Would {p} P work for you?",
 ];
 const SELL_OPEN = [
-  "Good evening! This one has been with me a while and I would love it to find a good home. Would you give {p} P for it?",
-  "Hello! I have a card you might like. I was hoping for {p} P, if that is all right with you.",
+  "Good evening! I would love this card to find a good home. Would you give {p} P for it, please?",
+  "Hello! I have a card you might like. I was hoping for {p} P, if that is all right with you. Thank you!",
 ];
 const SELL_COUNTER = [
   "Thank you, that is kind of you. I could come down a little: {p} P?",
-  "I appreciate it very much. Could we say {p} P?",
-  "You are a wonderful haggler! Let me meet you partway: {p} P.",
-  "It is a lovely card, and I want you to have it. {p} P?",
+  "I appreciate it very much. Could we say {p} P, please?",
+  "You are a wonderful haggler, thank you! Let me meet you partway: {p} P.",
+  "It is a lovely card, and I want you to have it. {p} P, please?",
   "Thank you for your patience. Would {p} P suit you?",
   "I am happy to move again for you: {p} P, with my thanks.",
 ];
@@ -36,9 +36,24 @@ const CLOSE = [
 ];
 const HOLD = [
   "Thank you, you are very kind. I will stay right here at {p} P, if that is all right.",
-  "I do appreciate your patience. My offer still stands at {p} P, whenever you are ready.",
+  "I do appreciate your patience, thank you. My offer still stands at {p} P, whenever you are ready.",
   "No rush at all. {p} P is still what I can do, with my thanks.",
 ];
+
+/**
+ * Palabras que ninguna plantilla ni probe puede llevar (site-map § 9.2: el juez marca injection, spam y false_claim, y
+ * la cortesía baja su límite): suenan a inyección, a presión o a afirmación que no podemos sostener.
+ */
+export const TEMPLATE_BLOCKLIST = ["ignore", "instruction", "system prompt", "prompt", "last one", "other offer", "another offer", "another buyer", "deadline", "lowest price", "final offer", "hurry", "your limit", "my limit", "guarantee"];
+
+/** El texto contiene alguna palabra de `TEMPLATE_BLOCKLIST` (sin mayúsculas). */
+export function hasBlockedPhrase(text: string): boolean {
+  const t = text.toLowerCase();
+  return TEMPLATE_BLOCKLIST.some((w) => t.includes(w));
+}
+
+/** Todas las plantillas de dealer (para el guardarraíl de cortesía y lista negra). */
+export const DEALER_TEMPLATES: readonly string[] = [...BUY_OPEN, ...BUY_COUNTER, ...SELL_OPEN, ...SELL_COUNTER, ...CLOSE, ...HOLD];
 
 function pick(list: readonly string[], round: number): string {
   return list[((round % list.length) + list.length) % list.length]!;
@@ -49,7 +64,7 @@ function pick(list: readonly string[], round: number): string {
  * solo letras, espacios, apóstrofos y guiones (NUNCA dígitos: el mensaje lleva una sola cifra, la decidida).
  */
 export function isProbePhrase(x: string): boolean {
-  return /^[\p{L}][\p{L} '’-]{1,38}[\p{L}]$/u.test(x.trim()) && !/\d/.test(x);
+  return /^[\p{L}][\p{L} '’-]{1,38}[\p{L}]$/u.test(x.trim()) && !/\d/.test(x) && !hasBlockedPhrase(x);
 }
 
 /**

@@ -216,29 +216,32 @@ export function offerForSurplus(state: DuelState, target: number): StructuredOff
 
 const OPEN_PRICE = [
   "Hello, and thank you for meeting me. I would propose {p} P for this one.",
-  "Good to meet you! To get us started, I can offer {p} P.",
+  "Good to meet you, and thank you! To get us started, I can offer {p} P.",
 ];
 const COUNTER_PRICE = [
   "Thank you for your offer. I can move to {p} P.",
-  "I appreciate it. Let us try to close quickly: {p} P.",
-  "Fair enough, I will meet you partway at {p} P.",
-  "We are getting close. {p} P works for me.",
+  "I appreciate it, thank you. Could we close at {p} P, please?",
+  "Fair enough, thank you. I will meet you partway at {p} P.",
+  "Thank you, we are getting close. {p} P works for me.",
 ];
-const HOLD_PRICE = ["Thank you. My offer stays at {p} P, and I am happy to close there.", "I think {p} P is fair for both of us. Shall we settle?"];
+const HOLD_PRICE = ["Thank you. My offer stays at {p} P, and I am happy to close there.", "Thank you. I think {p} P is fair for both of us. Shall we settle, please?"];
 const OPEN_DAYS = [
   "Hello, and thank you for meeting me. I would propose {p} P with delivery on day {d}.",
-  "Good to meet you! To get us started: {p} P, delivery on day {d}.",
+  "Good to meet you, and thank you! To get us started: {p} P, delivery on day {d}.",
 ];
 const COUNTER_DAYS = [
   "Thank you for your offer. I can do {p} P with delivery on day {d}.",
-  "I appreciate it. Let us close quickly: {p} P, delivery on day {d}.",
-  "Fair enough, I will meet you partway: {p} P with delivery on day {d}.",
-  "We are getting close. {p} P and delivery on day {d} works for me.",
+  "I appreciate it, thank you. Could we close at {p} P, delivery on day {d}, please?",
+  "Fair enough, thank you. I will meet you partway: {p} P with delivery on day {d}.",
+  "Thank you, we are getting close. {p} P and delivery on day {d} works for me.",
 ];
 const HOLD_DAYS = [
   "Thank you. My offer stays at {p} P with delivery on day {d}, and I am happy to close there.",
-  "I think {p} P with delivery on day {d} is fair for both of us. Shall we settle?",
+  "Thank you. I think {p} P with delivery on day {d} is fair for both of us. Shall we settle, please?",
 ];
+
+/** Todas las plantillas de duelo (para el guardarraíl de cortesía y lista negra). */
+export const DUEL_TEMPLATES: readonly string[] = [...OPEN_PRICE, ...COUNTER_PRICE, ...HOLD_PRICE, ...OPEN_DAYS, ...COUNTER_DAYS, ...HOLD_DAYS];
 
 /** El texto lleva exactamente las cifras de la oferta estructurada: el precio y, con días, los días. */
 export function textMatchesOffer(text: string, offer: StructuredOffer): boolean {

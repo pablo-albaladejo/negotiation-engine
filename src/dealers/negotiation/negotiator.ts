@@ -130,6 +130,8 @@ export interface ThreadView {
    * límite (no va a mejorar). Con esto, su precio se acepta si crea valor a nuestro valor privado (regla `welcome-first-deal`).
    */
   welcomeFirstDeal?: boolean;
+  /** Nuestro último mensaje en el hilo fue solo texto (un aguante, sin oferta nueva): nunca dos seguidos. */
+  lastWasTextOnly?: boolean;
 }
 
 export type Rule =
@@ -428,7 +430,8 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
     }
     const prevPrice = view.ourPrices[view.ourPrices.length - 1];
     const holdsUsed = view.holdsUsed ?? 0;
-    if (her && !her.final && prevPrice !== undefined && holdsUsed < holdsAllowed(view.ourPrices.length, p)) {
+    // Nunca dos mensajes sin oferta seguidos (el juez lo puede marcar como spam, site-map § 9.5).
+    if (her && !her.final && prevPrice !== undefined && !view.lastWasTextOnly && holdsUsed < holdsAllowed(view.ourPrices.length, p)) {
       if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes };
       return { action: { kind: "hold", price: prevPrice }, rule: "hold", effectiveReservation: effRes };
     }

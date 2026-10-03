@@ -2,7 +2,7 @@
 
 Un fichero por guardarraíl; ninguno llama a la API (clientes falsos en memoria).
 
-- **`messages.test.ts`** — la única cifra del texto es la decidida (`textMatchesPrice`), también con un probe de egg (sin dígitos).
+- **`messages.test.ts`** — la única cifra del texto es la decidida (`textMatchesPrice`), también con un probe de egg (sin dígitos); toda plantilla de dealer y de duelo es amable y sin frases de la lista negra; nunca dos mensajes sin oferta seguidos.
 - **`offer-structure.test.ts`** — forma de la oferta (`checkStructure`).
 - **`asset-locks.test.ts`** — un activo en un solo sitio.
 - **`caps.test.ts`**, **`spend.test.ts`** — topes de gasto y caja mínima.

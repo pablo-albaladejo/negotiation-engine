@@ -104,6 +104,8 @@ interface Active {
   lastRule?: string;
   /** Compra que aceptamos nosotros: su precio ya se contó en el presupuesto (no se cuenta dos veces al cerrar). */
   acceptedPrice?: number;
+  /** Nuestro último mensaje fue solo texto (aguante): nunca dos seguidos sin oferta. */
+  lastTextOnly?: boolean;
   /** Primera conversación del equipo con este dealer (`welcome_first_deal`: su apertura es su límite). */
   welcome?: boolean;
   /** Precio aceptado con `welcome-first-deal`: su límite medido para este dealer y esta banda. */
@@ -479,6 +481,7 @@ export class BazaarAgent {
       ...(target.value !== undefined ? { privateValue: target.value } : {}),
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
       ...(active.welcome ? { welcomeFirstDeal: true } : {}),
+      ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
     };
     let d: Decision = decide(view, this.negotiatorParams);
     // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.
@@ -547,6 +550,7 @@ export class BazaarAgent {
           if (d.action.price === p.ourPrices[p.ourPrices.length - 1]) throw new Error("precio repetido");
           // Se apunta antes del POST: si falla (o el servidor lo aceptó y la respuesta no valida), no se reenvía.
           active.lastSentTick = tick;
+          active.lastTextOnly = false;
           active.sent.push(d.action.price);
           active.patience.sent(tick, "counter", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
@@ -558,6 +562,7 @@ export class BazaarAgent {
           const text = holdText(p.ourPrices.length, d.action.price);
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
           active.lastSentTick = tick;
+          active.lastTextOnly = true;
           active.holdsUsed += 1;
           active.patience.sent(tick, "hold", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text);
@@ -566,7 +571,8 @@ export class BazaarAgent {
         }
         case "close": {
           if (!this.o.dryRun) {
-            if (view.canMessage) await this.api.say(thread.id, closeText(p.ourPrices.length)).catch(() => undefined);
+            // La despedida es texto sin oferta: solo si el mensaje anterior no lo fue ya.
+            if (view.canMessage && !active.lastTextOnly) await this.api.say(thread.id, closeText(p.ourPrices.length)).catch(() => undefined);
             await this.api.closeThread(thread.id);
             this.skip.set(target.key, tick + ticksPerHour);
           }
