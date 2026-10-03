@@ -94,6 +94,8 @@ export interface AgentOptions {
   ladderSellDiscount?: () => number;
   /** Today's no-deal threads with this dealer on a target key and her best price in them (`pastNoDeals` in the coordinator). */
   pastNoDeals?: (key: string) => { n: number; best: number } | undefined;
+  /** Asset ids received from another team today: the planner never offers them to this dealer. */
+  teamReceived?: () => ReadonlySet<number>;
   /**
    * One-shot egg open (Pablo, 3 Oct, `--egg-open`): with no target, open the pack she sells at our budget so the queued
    * egg probe rides on the counter or the farewell; never above our budget, and her ask far above it means no deal.
@@ -253,7 +255,7 @@ export class BazaarAgent {
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me) });
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), ...(this.o.teamReceived ? { teamReceived: this.o.teamReceived() } : {}) });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
     const menu = this.o.menu;
@@ -563,7 +565,7 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me) });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), ...(this.o.teamReceived ? { teamReceived: this.o.teamReceived() } : {}) });
       // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };

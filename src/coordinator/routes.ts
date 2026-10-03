@@ -8,6 +8,7 @@ import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from
 import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
 import { appendLesson, PendingLessons, type LessonEntry } from "../dealers/history/lessons.js";
+import { updateTeamReceived } from "../dealers/history/team-received.js";
 import { forexBuyRoute, forexRoutes, forexSellRoute, setForexRoutes } from "../dealers/planning/forex.js";
 import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
@@ -161,6 +162,8 @@ export class DealersRoute {
   private ladderNow: LadderLevel[] = [];
   /** Lesson entries read with the ladder (same file, once per propose): the agents' `pastNoDeals` reads them. */
   private lessonEntries: LessonEntry[] = [];
+  /** Assets received from another team today (`team-received.ts`), read once per propose. */
+  private teamReceived: ReadonlySet<number> = new Set();
   private allowed = new Set<string>();
   private mode: "propose" | "execute" = "propose";
   private readonly logs: string[] = [];
@@ -276,6 +279,7 @@ export class DealersRoute {
             nextProbeFor(this.state, id) !== undefined &&
             !this.state.conversations.some((c) => c.counterparty === id) &&
             !this.lessonEntries.some((e) => e.dealer === id && (e.ts ?? "").startsWith(new Date().toISOString().slice(0, 10))),
+          teamReceived: () => this.teamReceived,
           pastNoDeals: (key) => pastNoDeals(this.lessonEntries, id, key, new Date().toISOString().slice(0, 10)),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
@@ -307,6 +311,7 @@ export class DealersRoute {
     this.mode = "propose";
     this.collected = [];
     this.ladderNow = this.ladderOf(state);
+    if (me.id) this.teamReceived = updateTeamReceived(join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE")), me.id, state.events ?? []);
     // Forex: the dealer-to-dealer chains found this tick replace the seed routes (none found, none run).
     // A route whose copy we still hold stays until it is sold, even if the chain is no longer found.
     if (state.forex) {

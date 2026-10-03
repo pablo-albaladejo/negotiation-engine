@@ -151,6 +151,8 @@ export interface RankInput {
    * target is valued at its base too (no page bonus seen in neg_points yet), still with the page-completing budget.
    */
   pageBonusScored?: boolean;
+  /** Asset ids received from another team today (`team-received.ts`): never offered to a dealer. */
+  teamReceived?: ReadonlySet<number>;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -343,7 +345,9 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   const byRef = new Map<string, Me["assets"]>();
   // Pablo, 3 Oct: hidden cards are never sold (catalog `hidden`, e.g. the egg prize LAT-13), nor any keepsake (`isKeepsake`).
   const hidden = new Set(catalog.sets.flatMap((st) => st.cards.filter((c) => (c as { hidden?: unknown }).hidden === true).map((c) => c.id)));
-  for (const a of me.assets) if (a.kind === "card" && !a.locked && !hidden.has(a.ref) && !isKeepsake(a)) byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a]);
+  // Coordinator, 3 Oct: a card bought from a team today scored there (MAL-10 +50.2); a dealer sale scores 0 and loses it.
+  const fromTeams = input.teamReceived ?? new Set<number>();
+  for (const a of me.assets) if (a.kind === "card" && !a.locked && !hidden.has(a.ref) && !isKeepsake(a) && !fromTeams.has(a.id)) byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a]);
   for (const [ref, copies] of byRef) {
     const sorted = [...copies].sort((x, y) => (y.your_value ?? 0) - (x.your_value ?? 0));
     const top = sorted[0]!;
@@ -357,6 +361,8 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       sellList !== undefined
         ? { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` }
         : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements, else its book (${measured})` };
+    // Pablo, 3 Oct (every sales route): only duplicates are sold; the last free copy of a card needs his explicit OK.
+    if (sorted.length < 2) continue;
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
     const fx = forexSellRoute(dealer.id, ref);
     if (fx) {

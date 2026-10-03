@@ -14,10 +14,13 @@ const MENU = DealerInfoSchema.parse({
 });
 const CATALOG = { sets: [{ id: "AAA", released: true, cards: ["AAA-01", "AAA-02", "AAA-03", "AAA-04"].map((id) => ({ id, rarity: "common", book: 10 })) }], packs: [] };
 
-/** Abuela who buys commons from us at a fixed 13 (thread 56): never moves. `walk` = leaves after our first message. */
-function fixedAbuela(opts: { walk?: boolean } = {}) {
+/**
+ * Abuela who buys commons from us at a fixed 13 (thread 56): never moves. `walk` = leaves after our first message.
+ * We hold two copies of AAA-01..03 (the spare first), or one with `single`.
+ */
+function fixedAbuela(opts: { walk?: boolean; single?: boolean } = {}) {
   const posts: string[] = [];
-  const assets = [1, 2, 3].map((id) => ({ id, kind: "card", ref: `AAA-0${id}`, rarity: "common", set: "AAA", your_value: 5 }));
+  const assets = [1, 2, 3].flatMap((id) => [...(opts.single ? [] : [{ id: 10 + id, kind: "card", ref: `AAA-0${id}`, serial: 80, rarity: "common", set: "AAA", your_value: 5 }]), { id, kind: "card", ref: `AAA-0${id}`, serial: 5, rarity: "common", set: "AAA", your_value: 5 }]);
   const threads = new Map<number, Thread>();
   let nextThread = 50;
   let nextOffer = 300;
@@ -114,6 +117,19 @@ describe("run caps and fixed price in the loop", () => {
     expect(posts.filter((p) => p === "open")).toHaveLength(1);
     expect(a.done()).toBe(true);
     expect(records.some((r) => r.rule === "max-threads")).toBe(true);
+  });
+
+  it("only duplicates are sold: a single copy is never offered, and the last copy stays", async () => {
+    const lone = fixedAbuela({ single: true });
+    const one = agentFor(lone.api, { maxDeals: 6, maxThreads: 6 });
+    for (let tick = 1; tick < 20; tick++) await one.a.step({ tick, tick_seconds: 60 });
+    expect(lone.posts).toEqual([]);
+    const pair = fixedAbuela();
+    const two = agentFor(pair.api, { maxDeals: 6, maxThreads: 6 });
+    for (let tick = 1; tick < 60; tick++) await two.a.step({ tick, tick_seconds: 60 });
+    expect(pair.posts.filter((p) => p === "open").length).toBeLessThanOrEqual(3);
+    const left = ((await pair.api.me()) as unknown as { assets: { ref: string }[] }).assets.map((x) => x.ref).sort();
+    expect(left).toEqual(["AAA-01", "AAA-02", "AAA-03"]);
   });
 
   it("dry-run: prints the plan and never POSTs", async () => {

@@ -85,7 +85,7 @@ function dealerWith(herOffer: (asset: number) => object) {
   const threads = new Map<number, Thread>();
   let nextOffer = 500;
   const api: BazaarApi = {
-    me: async () => ({ id: "t02", cash: 400, assets: [{ ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
+    me: async () => ({ id: "t02", cash: 400, assets: [{ ...SAL07, id: 437, serial: 80, your_value: 9 }, { ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
     catalog: async () => ({ sets: [{ id: "SAL", released: true, cards: [{ id: "SAL-07", rarity: "uncommon", book: 20 }] }], packs: [] }) as never,
     value: async () => 9,
     myThreads: async () => ({ threads: [...threads.values()].filter((t) => t.status === "open").map((t) => ({ id: t.id, status: t.status, with: "chato" })) }),

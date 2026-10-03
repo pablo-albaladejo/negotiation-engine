@@ -44,7 +44,7 @@ const MENU = DealerInfoSchema.parse({ id: "chato", name: "El Chato", menu: { sel
 function api(opts: { offers?: unknown; threads?: unknown[] }) {
   const posts: string[] = [];
   const a: BazaarApi = {
-    me: async () => ({ id: "t02", cash: 400, assets: [{ ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
+    me: async () => ({ id: "t02", cash: 400, assets: [{ ...SAL07, id: 437, serial: 80, your_value: 9 }, { ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
     catalog: async () => ({ sets: [{ id: "SAL", released: true, cards: [{ id: "SAL-07", rarity: "uncommon", book: 20 }] }], packs: [] }) as never,
     value: async () => 9,
     myThreads: async () => ({ threads: (opts.threads ?? []) as never }),
@@ -96,7 +96,7 @@ describe("one asset, one place in already open threads", () => {
   function abuela(offers: () => unknown) {
     const posts: string[] = [];
     const a: BazaarApi = {
-      me: async () => ({ id: "t02", cash: 40, assets: [{ ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
+      me: async () => ({ id: "t02", cash: 40, assets: [{ ...SAL07, id: 437, serial: 80, your_value: 9 }, { ...SAL07, your_value: 9 }], score: { team: "t02" } }) as never,
       catalog: async () => ({ sets: [{ id: "SAL", released: true, cards: [{ id: "SAL-07", rarity: "uncommon", book: 20 }] }], packs: [] }) as never,
       value: async () => 9,
       myThreads: async () => ({ threads: [THREAD_260] as never }),
