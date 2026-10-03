@@ -331,13 +331,18 @@ export const EGG_PARAMS = {
 export class EggsRoute {
   constructor(private readonly client: BazaarClient, private readonly dryRun: boolean) {}
 
-  propose(state: GameState): RouteProposal {
+  /** `quiet`: personas con aviso, strike o cooloff reciente (disparadores): sin probes hasta ese tick. */
+  propose(state: GameState, quiet: Readonly<Record<string, number>> = {}): RouteProposal {
     const out = empty();
     if (state.ours.strikes && Object.keys(state.ours.strikes).length) {
       out.notes.push("strikes/warnings on the team: no probes");
       return out;
     }
     for (const p of state.personas) {
+      if ((quiet[p.id] ?? -1) >= state.tick) {
+        out.notes.push(`${p.id}: quiet until tick ${quiet[p.id]} (warning/strike/cooloff): no probes`);
+        continue;
+      }
       const eggs = state.world.eggs.byPersona[p.id];
       const priority = eggs?.foundByOthers.length ?? 0;
       if (eggs && eggs.left <= 0) continue;

@@ -7,6 +7,7 @@ import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
+import { buildTime, formatTime, type TimeState } from "./time.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 
 /**
@@ -50,6 +51,8 @@ export interface GameState {
     nextOpens?: string;
   };
   limits: TickLimits;
+  /** Hora de juego, fase del día, ronda y peso, ticks que quedan hoy, deriva y cambio de calendario. */
+  time: TimeState;
   ours: {
     team?: string;
     name?: string;
@@ -168,6 +171,8 @@ export interface BuildOptions {
   personaMemos?: ReadonlyMap<string, PersonaMemo>;
   /** Flags ya enviados (`flags.json`). */
   flags?: readonly FlagRecord[];
+  /** Tiempo del tick anterior: huella del calendario y peso de la ronda si el leaderboard no se leyó. */
+  prevTime?: TimeState;
 }
 
 /** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
@@ -235,6 +240,9 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   });
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
+  const time = buildTime(clock, schedule, leaderboard, opts.prevTime?.scheduleHash);
+  const prevWeight = opts.prevTime?.round?.weight;
+  if (time.round && time.round.weight === undefined && prevWeight !== undefined && opts.prevTime?.round?.n === time.round.n) time.round.weight = prevWeight;
   return {
     tick: clock.tick,
     builtAt: new Date().toISOString(),
@@ -250,6 +258,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       ...(str(c.next_opens) ? { nextOpens: str(c.next_opens)! } : {}),
     },
     limits: readLimits(clock),
+    time,
     ours: {
       ...ours,
       openThreads: allThreads.filter((t) => (t.status ?? "open") === "open").map((t) => ({ id: t.id, ...(t.with ? { with: t.with } : {}), status: t.status ?? "open" })),
@@ -305,6 +314,7 @@ export function formatGameState(g: GameState): string[] {
   const s = o.score;
   const pages = o.album.pages.map((p) => `${p.set} ${p.have}/${p.of}${p.complete ? "✓" : ""}`).join(" ");
   const lines = [
+    `time: ${formatTime(g.time)}`,
     `clock: tick ${c.tick}${c.tHours !== undefined ? ` · ${c.tHours.toFixed(2)} h` : ""} · ${c.tickSeconds ?? "?"} s/tick${c.paused ? " · PAUSED" : ""}${c.doors ? ` · doors ${c.doors}` : ""}${c.roundName ? ` · ${c.roundName}` : ""}${c.doors && c.doors !== "open" && c.nextOpens ? ` · opens ${c.nextOpens}` : ""}`,
     `us: ${o.name ?? o.team ?? "?"} · cash ${o.cash ?? "?"} P · level ${o.level ?? "?"} · unlocked ${o.unlocked.join(", ") || "-"}${o.frozen ? " · FROZEN" : ""}${o.venue ? ` · venue ${o.venue.id ?? "?"} (${o.venue.mechanism ?? "?"}, ${o.venue.status ?? "?"})` : ""}`,
     `album: ${pages || "-"}${o.album.filled !== undefined ? ` · ${o.album.filled}/${o.album.slots ?? "?"} slots` : ""} · ${o.holdings.cards} cards, ${o.holdings.packs} packs, ${o.holdings.spares} spares · ${Object.keys(o.values).length} private values known`,

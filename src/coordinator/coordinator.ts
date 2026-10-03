@@ -8,9 +8,12 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * los dealers y El Rastro. Si resulta que no, basta con sacar la clase "duel" del cupo en `arbitrate`.
  */
 
-export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs";
-/** `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último. */
-export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe";
+export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda";
+/**
+ * `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último.
+ * `agenda`: acción del calendario (venue, sobre, ofertas antes del cierre) que solo se imprime: nunca sale de aquí.
+ */
+export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda";
 export type AcceptClass = "duel" | "page-completing" | "dealer-ladder" | "other";
 
 /** Prioridad de las aceptaciones (menor rango, antes); a igual rango, más valor esperado primero. */
@@ -49,6 +52,10 @@ export interface Budget {
   openOffersNow: number;
   /** Límites que faltaban en `clock.limits`: se usan como 0 (conservador: no se hace nada de ese tipo). */
   missing: string[];
+  /** Agenda: motivo para no abrir conversaciones nuevas (final, congelación, fin de ronda). */
+  opensBlocked?: string;
+  /** Agenda: personas que cierran (no se abre con ellas). */
+  closedPersonas?: readonly string[];
 }
 
 export function budgetFrom(state: Pick<GameState, "limits" | "ours" | "env">): Budget {
@@ -138,6 +145,15 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
 
   let threads = b.openThreadsNow;
   for (const i of intents.filter((x) => x.kind === "open").sort((a, c) => (c.ev ?? 0) - (a.ev ?? 0))) {
+    if (b.opensBlocked) {
+      verdicts.set(i.id, { intent: i, selected: false, reason: `agenda: no new conversations (${b.opensBlocked})` });
+      continue;
+    }
+    const persona = i.route === "dealers" ? i.id.split(":")[2] : undefined;
+    if (persona && b.closedPersonas?.includes(persona)) {
+      verdicts.set(i.id, { intent: i, selected: false, reason: `agenda: ${persona} closes` });
+      continue;
+    }
     const busy = clash(i);
     if (busy) {
       verdicts.set(i.id, { intent: i, selected: false, reason: `asset lock: ${busy}` });
@@ -152,6 +168,7 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     verdicts.set(i.id, { intent: i, selected: true, reason: `open thread ${threads}/${b.maxOpenThreads}` });
   }
 
+  for (const i of intents.filter((x) => x.kind === "agenda")) verdicts.set(i.id, { intent: i, selected: false, reason: "agenda intent: printed only (live needs its own CLI with --confirm and user approval)" });
   for (const i of intents.filter((x) => x.kind === "flag")) verdicts.set(i.id, { intent: i, selected: true, reason: "flag: structural contradiction, does not use the accept quota" });
 
   const cancels = intents.filter((x) => x.kind === "cancel");

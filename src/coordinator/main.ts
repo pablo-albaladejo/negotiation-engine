@@ -8,7 +8,13 @@ import { buildGameState, formatGameState } from "../state/game-state.js";
 import { defaultConversationsFile, formatConversation, loadConversationMemos, saveConversationMemos } from "../state/conversation.js";
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
 import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
-import { defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { duelsApi } from "../duels/schemas.js";
+import { agendaEffects, agendaItems, formatAgendaItem } from "../agenda/agenda.js";
+import { defaultTriggersFile, loadTriggerMemo, personaFiles, runTriggers, saveTriggerMemo } from "../agenda/triggers.js";
+import type { TimeState } from "../state/time.js";
+import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
 /**
  * `pnpm bazaar:play [--dry-run] [--once] [--confirm]`: el coordinador. Cada tick construye el `GameState` (solo GET),
@@ -65,6 +71,10 @@ async function main() {
   const convFile = defaultConversationsFile(root);
   const personasFile = defaultPersonasFile(root);
   const flagsFile = defaultFlagsFile(root);
+  const triggersFile = defaultTriggersFile(root);
+  let prevTime: TimeState | undefined;
+  // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
+  let dryMemo = loadTriggerMemo(triggersFile);
   console.log(
     `bazaar:play · ${live ? "LIVE" : `DRY RUN (GET only, no POST)${!values["dry-run"] && !values.confirm ? " · no --confirm: running as dry-run" : ""}`} · page targets ${pageTargets.join(", ")} · cash floor ${values["cash-floor"]} P`,
   );
@@ -90,15 +100,50 @@ async function main() {
     }
     lastTick = clock.tick;
     const withLb = clock.tick - lastLeaderboard >= leaderboardEvery;
-    const state = await buildGameState(client, { leaderboard: withLb, pageTargets, memos, personaMemos, flags });
+    const state = await buildGameState(client, { leaderboard: withLb, pageTargets, memos, personaMemos, flags, ...(prevTime ? { prevTime } : {}) });
+    prevTime = state.time;
     if (withLb) lastLeaderboard = state.tick;
     const budget = budgetFrom(state);
+
+    // Agenda y disparadores ANTES de que las rutas propongan: pueden activar, desactivar o reajustar rutas.
+    const schedule = await duelsApi(client).schedule().catch(() => undefined);
+    const agenda = agendaItems(schedule, state.time.gameHour ?? 0);
+    const effects = agendaEffects(agenda, state);
+    if (effects.stopOpens) budget.opensBlocked = effects.stopOpens;
+    if (effects.disabledPersonas.length) budget.closedPersonas = effects.disabledPersonas;
+    if (effects.duelConfig?.decay !== undefined) duels.agent.params.decay = effects.duelConfig.decay;
+    const triggerMemo = live ? loadTriggerMemo(triggersFile) : dryMemo;
+    const events = parseFeed(await client.feed(200).catch(() => undefined));
+    const triggers = runTriggers(events, triggerMemo, state.ours.team, state.limits.raw, state.tick);
+    dryMemo = { ...(triggers.cursor !== undefined ? { cursor: triggers.cursor } : {}), limits: state.limits.raw, quiet: triggers.quiet };
 
     console.log(`\n== tick ${state.tick} · GameState ==`);
     for (const l of formatGameState(state)) console.log(`  ${l}`);
     if (dryRun && (state.clock.paused || (state.clock.doors && state.clock.doors !== "open"))) console.log("  (clock paused or doors closed: live mode would wait; dry-run shows what it would propose)");
     console.log("== personas ==");
     for (const p of state.personas) console.log(`  ${formatPersona(p)}`);
+    console.log("== agenda (next 5) ==");
+    for (const i of agenda.slice(0, 5)) console.log(`  ${formatAgendaItem(i)}`);
+    if (!agenda.length) console.log("  (schedule empty or unreadable)");
+    for (const n of effects.notes) console.log(`  effect: ${n}`);
+    if (effects.stopOpens) console.log(`  effect: no new conversations (${effects.stopOpens})`);
+    if (effects.duelConfig) console.log(`  effect: duel config ${effects.duelConfig.name}: decay ${effects.duelConfig.decay ?? "?"}, ${effects.duelConfig.withDays ? "price + days" : "price only"}`);
+    console.log(`== triggers (${triggers.fired.length} fired${live ? "" : "; dry-run: cursor not saved"}) ==`);
+    for (const f of triggers.fired) console.log(`  [tick ${f.tick}] ${f.type}${f.eventId !== undefined ? ` #${f.eventId}` : ""} → ${f.action}`);
+    for (const id of [...new Set([...triggers.announced, ...triggers.activated])]) {
+      const activated = triggers.activated.includes(id);
+      const info = activated ? await client.dealer(id).catch(() => undefined) : undefined;
+      const name = state.personas.find((p) => p.id === id)?.name;
+      for (const f of personaFiles(id, info, { announcedOnly: !activated, ...(name ? { name } : {}) })) {
+        const path = join(root, f.path);
+        if (!live) console.log(`  would write ${f.path} (${f.content.split("\n").length} lines)${existsSync(path) ? " [exists: kept]" : ""}`);
+        else if (!existsSync(path)) {
+          mkdirSync(dirname(path), { recursive: true });
+          writeFileSync(path, f.content);
+          console.log(`  wrote ${f.path}`);
+        }
+      }
+    }
     console.log("== budget (clock.limits) ==");
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
 
@@ -109,7 +154,8 @@ async function main() {
       ["dealers", () => dealers.propose(clock, state)],
       ["trades", () => trades.propose(state, me, pageTargets)],
       ["flags", async () => flagsRoute.propose(state)],
-      ["eggs", async () => eggs.propose(state)],
+      ["eggs", async () => eggs.propose(state, triggers.quiet)],
+      ["agenda", async () => ({ intents: effects.intents, notes: [], strategies: new Map(), decisions: new Map() })],
     ] as const) {
       try {
         proposals.push({ route, p: await run() });
@@ -161,6 +207,7 @@ async function main() {
       for (const l of await trades.execute(selected)) console.log(`  ${l}`);
       saveConversationMemos(convFile, state.conversations);
       savePersonaMemos(personasFile, state.personas);
+      saveTriggerMemo(triggersFile, dryMemo);
       if (flagged.records.length) saveFlags(flagsFile, [...flags, ...flagged.records]);
     }
     if (values.once) break;

@@ -19,6 +19,21 @@ const budget = (over: Partial<Budget> = {}): Budget => ({
 const accept = (id: string, cls: NonNullable<Intent["acceptClass"]>, ev: number, locks?: string[]): Intent => ({ id, route: "trades", kind: "accept", acceptClass: cls, ev, conversation: id, summary: id, ...(locks ? { locks } : {}) });
 
 describe("coordinator arbitration", () => {
+  it("agenda intents never go out, and the agenda can block new conversations", () => {
+    const intents: Intent[] = [
+      { id: "agenda:bench:3", route: "agenda", kind: "agenda", summary: "venue" },
+      { id: "dealers:open:abuela:sell:1", route: "dealers", kind: "open", summary: "open" },
+      { id: "dealers:open:chato:sell:2", route: "dealers", kind: "open", summary: "open" },
+      { id: "eggs:probe:abuela", route: "eggs", kind: "probe", conversation: "dealer:9", summary: "probe" },
+      { id: "dealers:counter:abuela:9", route: "dealers", kind: "message", conversation: "dealer:9", summary: "counter" },
+    ];
+    const sel = (b: Budget) => arbitrate(intents, b).filter((x) => x.selected).map((x) => x.intent.id);
+    expect(sel(budget())).not.toContain("agenda:bench:3");
+    expect(sel(budget())).not.toContain("eggs:probe:abuela");
+    expect(sel(budget({ opensBlocked: "finale" })).some((id) => id.startsWith("dealers:open"))).toBe(false);
+    expect(sel(budget({ closedPersonas: ["chato"] }))).toEqual(expect.not.arrayContaining(["dealers:open:chato:sell:2"]));
+  });
+
   it("never selects more accepts than accepts_per_team_per_tick, across all routes, duel first", () => {
     const intents = [accept("trade", "other", 90), accept("ladder", "dealer-ladder", 50), accept("duel", "duel", 5), accept("page", "page-completing", 60)];
     const v = arbitrate(intents, budget());
