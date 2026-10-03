@@ -78,7 +78,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   maxHolds: 1,
   fixedAfterConcessions: 2,
   lowballFrac: 0.7,
-  // APAGADO. Replay offline (modelo de personas.md § 3.3, con y sin espejo): en los 11 hilos guardados, igual (huecos
+  // APAGADO por defecto; el coordinador lo enciende por persona solo con espejo cierto (`MIRROR_FIRST_STEP_FRAC`). Replay offline (modelo de personas.md § 3.3, con y sin espejo): en los 11 hilos guardados, igual (huecos
   // pequeños); en hilos sintéticos de rara/épica, peor (EV medio 11,42 → 10,92 con 0,12). Se prueba con --first-step-frac.
   firstStepFrac: 0,
 };

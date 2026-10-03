@@ -103,6 +103,9 @@ export interface DealersRouteOptions {
   lessonsFile?: string;
 }
 
+/** Primera concesión grande (`firstStepFrac`) solo contra una persona con espejo (`mirror_concessions`) cierto; si no, apagada. */
+export const MIRROR_FIRST_STEP_FRAC = 0.12;
+
 const dealerKey = (i: DealerIntent) => `dealers:${i.kind}:${i.dealer}:${i.thread ?? i.target}`;
 
 const DEALER_REASON: Record<DealerIntent["kind"], string> = {
@@ -198,6 +201,7 @@ export class DealersRoute {
           gate: this.gate,
           onThreadSummary: (summary) => this.lessons.add(summary),
           probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
+          firstStepFrac: () => (this.state?.personas.find((p) => p.id === id)?.estimates?.mirror === true ? MIRROR_FIRST_STEP_FRAC : 0),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;

@@ -81,6 +81,11 @@ export interface AgentOptions {
   onProbe?: (thread: number, phrase: string) => void;
   /** Tope de nuestras ofertas por su límite previsto (ajuste por persona, `offerCap`); `undefined` sin predicción. */
   herLimitCap?: (thread: number) => number | undefined;
+  /**
+   * `firstStepFrac` de este tick para este dealer (ver `NegotiatorParams`): el coordinador lo activa solo si el espejo de
+   * su persona es cierto. Sin él, vale el de `negotiator`/por defecto (0: apagado).
+   */
+  firstStepFrac?: () => number;
 }
 
 interface Active {
@@ -487,7 +492,8 @@ export class BazaarAgent {
       ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
       ...(cap !== undefined ? { herLimitCap: cap } : {}),
     };
-    let d: Decision = decide(view, this.negotiatorParams);
+    const firstStepFrac = this.o.firstStepFrac?.();
+    let d: Decision = decide(view, firstStepFrac === undefined ? this.negotiatorParams : { ...this.negotiatorParams, firstStepFrac });
     // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.
     const mismatch = await this.structureProblem(thread, target, d, reservation);
     if (mismatch) {
