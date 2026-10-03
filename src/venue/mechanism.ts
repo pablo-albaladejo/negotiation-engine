@@ -18,13 +18,37 @@ export interface BenchSession {
   shadowSurplus: number;
   /** Surplus by quotes of what the auto engine crossed (from `recent` of the book). */
   autoSurplus: number;
-  /** shadow / auto; absent if auto gave no measurable surplus (the session does not count as measured). */
+  /**
+   * shadow / auto: by quote surplus when auto's crossings were measurable (`ratioBasis` "surplus"); otherwise, with the
+   * official `bench.finished`, our shadow pairs / auto's official matches ("pairs"). Absent ⇒ the session is not measured.
+   */
   ratio?: number;
+  ratioBasis?: "surplus" | "pairs";
+  /** Official result of the session (`bench.finished`, team event): ground truth for the auto side. */
+  official?: OfficialBench;
   pairsShadow: number;
   pairsAuto: number;
   /** Auto crossings with no known quote (they add no surplus). */
   autoUnknown: number;
   ticks: number;
+}
+
+export interface OfficialBench {
+  session: number;
+  /** Our venue's efficiency (null if it scored nothing); on an auto venue it equals `autoBaseline`. */
+  efficiency: number | null;
+  autoBaseline: number;
+  matches: number;
+  tick?: number;
+}
+
+/** One line per session for the decision text, e.g. "3 h: shadow 0 pairs (0 P) vs auto 5 official matches (eff 0.899) → 0.00". */
+export function sessionNote(s: BenchSession): string {
+  const auto = s.official
+    ? `auto ${s.official.matches} official matches (eff ${s.official.efficiency ?? "?"}, baseline ${s.official.autoBaseline})`
+    : `auto ${s.pairsAuto} pairs (${s.autoSurplus} P)`;
+  const verdict = s.ratio === undefined ? "unmeasured" : `${s.ratio.toFixed(2)}${s.ratioBasis === "pairs" ? " by pairs" : ""}${s.ratio < 1 ? ", board not better" : ""}`;
+  return `${s.benchAt} h: shadow ${s.pairsShadow} pairs (${s.shadowSurplus} P) vs ${auto} → ${verdict}`;
 }
 
 export interface Heartbeat {
@@ -171,9 +195,10 @@ export function decideMechanism(i: MechanismInputs, t: MechanismThresholds = DEF
   }
   if (current === "none") return out("insufficient-data", "we run no venue (the free stall is auto); opening one is the venue CLI's job");
 
-  if (measured.length < t.minSessions) return out("insufficient-data", `${measured.length}/${t.minSessions} bench sessions measured`);
+  const notes = i.sessions.length ? ` [${i.sessions.map(sessionNote).join("; ")}]` : "";
+  if (measured.length < t.minSessions) return out("insufficient-data", `${measured.length}/${t.minSessions} bench sessions measured${notes}`);
   if (hardPassed > 0 && hardMeasured < t.minHardSessions) return out("insufficient-data", `a hard bench has passed but ${hardMeasured}/${t.minHardSessions} hard sessions measured`);
-  if (meanRatio! < t.minMeanRatio) return out("stay-auto", `mean shadow/auto ${meanRatio!.toFixed(2)} < ${t.minMeanRatio}`);
+  if (meanRatio! < t.minMeanRatio) return out("stay-auto", `mean shadow/auto ${meanRatio!.toFixed(2)} < ${t.minMeanRatio}: board not shown better${notes}`);
   if (worst! < 1 - t.maxShortfall) return out("stay-auto", `worst session shadow/auto ${worst!.toFixed(2)} < ${(1 - t.maxShortfall).toFixed(2)} (shadow did worse than auto by more than ${Math.round(t.maxShortfall * 100)} %)`);
   const need = VENUE_SWITCH_BOND + VENUE_SWITCH_FEE + t.cashFloor;
   if (i.cash === undefined || i.cash < need) return out("stay-auto", `cash ${i.cash ?? "?"} P < ${need} P (bond ${VENUE_SWITCH_BOND} + fee ${VENUE_SWITCH_FEE} + floor ${t.cashFloor})`);
