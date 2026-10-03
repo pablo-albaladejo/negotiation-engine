@@ -64,7 +64,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:broker` | Broker de nuestro venue (en vivo con `--confirm`). |
 | `pnpm bazaar:venue` | Plan de nuestro mercado (abrir exige `--confirm`). |
 | `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`; ventas dirigidas a rivales solo con `--rival-page`). |
-| `pnpm bazaar:news` | Noticias del Bazaar (Radio Rastro, Boletín, El Tablón): `news.jsonl` y `news-summary.json` para el panel «Radio Rastro» del visor. Solo mostrar: nunca una cifra ni una decisión (`--once`, `--no-llm`). |
+| `pnpm bazaar:news` | Noticias del Bazaar (Radio Rastro, Boletín, El Tablón): `news.jsonl` y news-summary.json para el panel «Radio Rastro» del visor. Solo mostrar: nunca una cifra ni una decisión (`--once`, `--no-llm`). |
 | `pnpm bazaar:doctor` | Comprueba que todo está listo (✓/✗): `.env`, Node, git, tests, API, puerto del visor y `bazaar:play --dry-run --once` (`--fast`). |
 | `pnpm bazaar:up` | Doctor y recorder, visor, `bazaar:play` y broker en sombra, en dry-run (en vivo: `--live --confirm`); `pnpm bazaar:down` para lo de `--detach`. Ver [`DAY2.md`](DAY2.md). |
 | `pnpm bazaar:status` | Resumen de solo lectura: equipo, reloj, dealers e hilos. |
