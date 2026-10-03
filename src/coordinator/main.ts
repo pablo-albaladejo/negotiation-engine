@@ -1,3 +1,4 @@
+import { defaultPosteriorFile, loadPosterior, savePosterior } from "../dealers/history/persona-fit.js";
 import { parseArgs } from "node:util";
 import { BazaarClient, BazaarError } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
@@ -83,6 +84,7 @@ async function main() {
   let prevTime: TimeState | undefined;
   const hintsFile = defaultHintsFile(root);
   const valuesFile = defaultValuesFile(root);
+  const posteriorFile = defaultPosteriorFile(root);
   const valueCache = loadValueCache(valuesFile);
   let prevRanks = new Map<string, { rank?: number; score?: number }>();
   // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
@@ -97,6 +99,7 @@ async function main() {
     const memos = loadConversationMemos(convFile);
     const personaMemos = loadPersonaMemos(personasFile);
     const flags = loadFlags(flagsFile);
+    const posterior = loadPosterior(posteriorFile);
     const clock = await client.clock();
     if (live) {
       const gate = clockGate(clock);
@@ -118,6 +121,7 @@ async function main() {
       memos,
       personaMemos,
       flags,
+      posterior,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
       valueCache: valueCache.values,
@@ -130,6 +134,8 @@ async function main() {
     appendHints(hintsFile, state.hints.fresh);
     // Valores privados ya pedidos (GET): se guardan también en dry-run para no repetir la consulta.
     saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())));
+    // Posterior del ajuste por persona: sale solo de lecturas (GET), se guarda también en dry-run. Nunca entra en un mensaje.
+    savePosterior(posteriorFile, posterior);
     prevTime = state.time;
     prevRanks = new Map(state.markets.venues.flatMap((v) => (v.owner ? [[v.owner, { ...(v.ownerRank !== undefined ? { rank: v.ownerRank } : {}), ...(v.ownerScore !== undefined ? { score: v.ownerScore } : {}) }] as const] : [])));
     if (withLb) lastLeaderboard = state.tick;

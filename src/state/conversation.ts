@@ -5,6 +5,7 @@ import { liveTraceDir } from "../shared/trace.js";
 import { negotiatorForDealer, patienceBudgetFor, traitsOf } from "../dealers/dealer-profile.js";
 import { adaptiveStep, DEFAULT_NEGOTIATOR_PARAMS, nextPrice, plannedSchedule, type NegotiatorParams } from "../dealers/negotiation/negotiator.js";
 import { outcomeOf } from "../dealers/history/thread-log.js";
+import type { Prediction } from "../dealers/history/persona-fit.js";
 import { sideOfTopic, threadPrices } from "../dealers/negotiation/view.js";
 import { rivalOfferFrom, type Duel } from "../duels/schemas.js";
 import { DAYS_MIN, offerForSurplus, openingSurplus, targetSurplus, type DuelDecision, type DuelParams, type DuelState } from "../duels/duels.js";
@@ -82,6 +83,8 @@ export interface Conversation {
   patience?: { roundsSpent: number; budget: number; probeCostNow: number };
   /** Contradicción texto↔estructura en un mensaje del dealer (ver `src/flags/flags.ts`). */
   flagCandidate?: FlagCandidate;
+  /** Predicción de su curva (ajuste por persona, `src/dealers/history/persona-fit.ts`). Privado: nunca en un mensaje. */
+  prediction?: Prediction;
   /** Lo rellena el coordinador con el presupuesto del tick. */
   turn: { canMessage?: boolean; canAccept?: boolean };
   result?: { outcome?: string; price?: number; ladderShare?: number; negPointsDelta?: number; score?: number };
@@ -248,7 +251,7 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
     const item = (raw as { item?: unknown }).item;
     const asset = {
       ...(cardRef ? { ref: cardRef } : {}),
-      ...(topic.buy?.rarity ? { rarity: topic.buy.rarity } : soldAsset?.rarity ? { rarity: soldAsset.rarity } : {}),
+      ...(topic.buy?.rarity ? { rarity: topic.buy.rarity } : soldAsset?.rarity ? { rarity: soldAsset.rarity } : cardRef && i.catalog?.byId.get(cardRef)?.rarity ? { rarity: i.catalog.byId.get(cardRef)!.rarity! } : {}),
       ...(topic.buy?.set ? { set: topic.buy.set } : cardRef ? { set: setOfRef(cardRef) } : {}),
       ...(typeof item === "string" ? { item } : {}),
     };
@@ -426,5 +429,7 @@ export function formatConversation(c: Conversation): string {
   const next = c.strategy.next.priceIfTheyHold !== undefined ? ` · next ${c.strategy.next.priceIfTheyHold} if they hold` : "";
   const flag = c.flagCandidate ? ` · FLAG? msg ${c.flagCandidate.messageId}${c.flagCandidate.tactic ? ` (${c.flagCandidate.tactic}, needs approval)` : ""}` : "";
   const probe = c.patience && c.phase !== "done" ? ` · probe cost ${c.patience.probeCostNow}` : "";
-  return `${c.id} · ${c.kind} ${c.counterparty} · ${c.side} ${asset} · ${c.goal.why} · ${c.phase} (${c.roundsUsed}${c.patienceEstimate !== undefined ? `/${c.patienceEstimate}` : ""}) · ours [${lastN(c.history.ourPrices).join(", ")}] her [${lastN(c.history.herPrices).join(", ")}] now ${her} · ${turn}${result}${c.mood.cooloffUntil !== undefined ? ` · cooloff until ${c.mood.cooloffUntil}` : ""}${decision}${plan}${next}${probe}${flag}`;
+  const pr = c.prediction;
+  const fit = pr && c.phase !== "done" ? ` · fit${pr.herNext !== undefined ? ` next ${pr.herNext}` : ""} limit ${pr.herLimit.mean} [${pr.herLimit.lo}–${pr.herLimit.hi}]` : "";
+  return `${c.id} · ${c.kind} ${c.counterparty} · ${c.side} ${asset} · ${c.goal.why} · ${c.phase} (${c.roundsUsed}${c.patienceEstimate !== undefined ? `/${c.patienceEstimate}` : ""}) · ours [${lastN(c.history.ourPrices).join(", ")}] her [${lastN(c.history.herPrices).join(", ")}] now ${her} · ${turn}${result}${c.mood.cooloffUntil !== undefined ? ` · cooloff until ${c.mood.cooloffUntil}` : ""}${decision}${plan}${next}${fit}${probe}${flag}`;
 }

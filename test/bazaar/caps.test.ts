@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fc from "fast-check";
+import { nextPrice } from "../../src/dealers/negotiation/negotiator.js";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
 import { DealerInfoSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
 import { parseOnly } from "../../src/dealers/planning/plan.js";
@@ -123,5 +125,20 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(plan).toContain("would open 2 conversation(s)");
     expect(plan).toContain("first message (price 14)");
     expect(plan).toContain("accept her 13 (rule stuck-accept-within-limit)");
+  });
+});
+
+describe("tope por su límite previsto (ajuste por persona)", () => {
+  it("la oferta nunca pasa ni la reserva ni el tope, comprando y vendiendo", () => {
+    fc.assert(
+      fc.property(fc.constantFrom("buy" as const, "sell" as const), fc.integer({ min: 2, max: 200 }), fc.integer({ min: 1, max: 200 }), fc.integer({ min: 1, max: 200 }), fc.boolean(), (side, reservation, cap, her, first) => {
+        const tight = side === "buy" ? Math.min(reservation, cap) : Math.max(reservation, cap);
+        const prev = side === "buy" ? Math.max(1, Math.floor(tight / 2)) : tight + 5;
+        const r = nextPrice({ side, reservation, herLimitCap: cap, herOpening: her, herPrices: [her], ourPrices: first ? [] : [prev], herCurrent: { offerId: 1, price: her, final: false }, canMessage: true, canAccept: true });
+        if (!r) return;
+        if (side === "buy") expect(r.price).toBeLessThanOrEqual(tight);
+        else expect(r.price).toBeGreaterThanOrEqual(tight);
+      }),
+    );
   });
 });

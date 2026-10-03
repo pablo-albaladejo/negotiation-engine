@@ -4,6 +4,7 @@ import type { TraceRecord, TraceSink } from "../shared/trace.js";
 import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "../dealers/dealer-profile.js";
 import { TeamBudget } from "../dealers/team.js";
+import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
@@ -161,6 +162,10 @@ export class DealersRoute {
           log: (line) => this.logs.push(line),
           gate: this.gate,
           probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
+          herLimitCap: (thread) => {
+            const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
+            return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
+          },
           onProbe: (thread, phrase) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             conv?.eggsTried.push(phrase);

@@ -79,6 +79,8 @@ export interface AgentOptions {
   probe?: (thread: number) => string | undefined;
   /** Se llama tras enviar (en vivo) una contraoferta con probe, para apuntarlo en `eggsTried`. */
   onProbe?: (thread: number, phrase: string) => void;
+  /** Tope de nuestras ofertas por su límite previsto (ajuste por persona, `offerCap`); `undefined` sin predicción. */
+  herLimitCap?: (thread: number) => number | undefined;
 }
 
 interface Active {
@@ -467,6 +469,7 @@ export class BazaarAgent {
     if (lastTried !== undefined && p.ourPrices[p.ourPrices.length - 1] !== lastTried) p.ourPrices = [...p.ourPrices, lastTried];
     const reservation = target.side === "buy" ? Math.max(0, Math.min(target.reservation, me.cash, Math.floor(this.budgetLeft(me.cash)))) : target.reservation;
     const herAt = active.patience.herAtCounters();
+    const cap = this.o.herLimitCap?.(thread.id);
     const view: ThreadView = {
       side: target.side,
       reservation,
@@ -482,6 +485,7 @@ export class BazaarAgent {
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
       ...(active.welcome ? { welcomeFirstDeal: true } : {}),
       ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
+      ...(cap !== undefined ? { herLimitCap: cap } : {}),
     };
     let d: Decision = decide(view, this.negotiatorParams);
     // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.

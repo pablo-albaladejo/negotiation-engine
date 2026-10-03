@@ -132,6 +132,11 @@ export interface ThreadView {
   welcomeFirstDeal?: boolean;
   /** Nuestro último mensaje en el hilo fue solo texto (un aguante, sin oferta nueva): nunca dos seguidos. */
   lastWasTextOnly?: boolean;
+  /**
+   * Tope por su límite previsto (`offerCap` en `src/dealers/history/persona-fit.ts`): comprando, nunca ofrecer por encima;
+   * vendiendo, nunca pedir por debajo. Solo estrecha la reserva de la oferta; la aceptación sigue con la reserva privada.
+   */
+  herLimitCap?: number;
 }
 
 export type Rule =
@@ -312,7 +317,9 @@ export function plannedSchedule(view: Pick<ThreadView, "side" | "reservation" | 
 export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): { price: number; rule: Rule } | undefined {
   const effRes = effectiveReservation(view);
   const anchor = anchorPrice(view, p, effRes);
-  const mandate: Mandate = { role: view.side === "buy" ? "buyer" : "seller", reservation: effRes };
+  const cap = view.herLimitCap;
+  const offerRes = cap === undefined ? effRes : view.side === "buy" ? Math.min(effRes, cap) : Math.max(effRes, cap);
+  const mandate: Mandate = { role: view.side === "buy" ? "buyer" : "seller", reservation: offerRes };
   const prev = view.ourPrices[view.ourPrices.length - 1];
   if (prev === undefined) return { price: enforceGuardrails(mandate, anchor), rule: "anchor" };
 

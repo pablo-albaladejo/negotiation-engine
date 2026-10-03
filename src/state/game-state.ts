@@ -1,3 +1,4 @@
+import { updatePosterior, type Posterior } from "../dealers/history/persona-fit.js";
 import { z } from "zod";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Clock, Me } from "../shared/schemas.js";
@@ -191,6 +192,11 @@ export interface BuildOptions {
   valueCacheAt?: number;
   /** Máximo de `/api/me/value` por tick (por defecto 4). */
   valueFetchesPerTick?: number;
+  /**
+   * Posterior del ajuste por persona (`persona-posterior.json`). Se actualiza EN SITIO con las conversaciones del tick
+   * (observaciones y estimaciones) para que quien lo cargó lo guarde.
+   */
+  posterior?: Posterior;
   /** Puestos del leaderboard del tick anterior (si este tick no se lee). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
@@ -270,6 +276,17 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     hints: hintsByPersona(hintsAll),
     memos: opts.personaMemos ?? new Map(),
   });
+  // Ajuste de la curva por persona: predicción en cada conversación con dealer y estimaciones en cada persona.
+  const fit = updatePosterior(opts.posterior ?? { observations: {}, estimates: {} }, conversations, clock.tick);
+  if (opts.posterior) Object.assign(opts.posterior, fit.posterior);
+  for (const conv of conversations) {
+    const pr = fit.predictions.get(conv.id);
+    if (pr) conv.prediction = pr;
+  }
+  for (const p of personas) {
+    const est = fit.posterior.estimates[p.id];
+    if (est) p.estimates = est;
+  }
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
   // Caché de valores en el cliente: la mano nueva olvida lo que cambió; `/api/me` siembra lo que tenemos.

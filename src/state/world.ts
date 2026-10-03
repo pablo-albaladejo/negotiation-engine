@@ -1,3 +1,4 @@
+import type { PersonaEstimates } from "../dealers/history/persona-fit.js";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { traitsOf, type DealerTraits } from "../dealers/dealer-profile.js";
@@ -50,6 +51,8 @@ export interface Persona {
   eggProbes: EggProbe[];
   /** Trickster: el detector de flags mira desde el primer mensaje (en el resto se salta la apertura). */
   flagsFromFirstMessage: boolean;
+  /** Estrategia estimada de la persona y límite por banda (`src/dealers/history/persona-fit.ts`). Privado. */
+  estimates?: PersonaEstimates;
 }
 
 export interface EggFind {
@@ -304,7 +307,7 @@ export function saveFlags(file: string, flags: readonly FlagRecord[]): void {
 /** «chato: unlocked-for-us · abuela deals 3/3». */
 export function formatPersona(p: Persona): string {
   const progress = p.progress ? ` · ${p.progress.dealer} deals ${p.progress.deals}/${p.progress.needed}` : p.unlock.always ? " · always open" : "";
-  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined].filter(Boolean);
+  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined, p.estimates ? `fit ${p.estimates.fittedFrom} conv (markup ${p.estimates.opening_markup.mean}, β ${p.estimates.beta.mean}, max_rounds ${p.estimates.max_rounds.mean}, mirror ${p.estimates.mirror}; ${Object.entries(p.estimates.bands).map(([b, e]) => `${b} ${e.limit.mean} [${e.limit.lo}–${e.limit.hi}] n${e.samples}${e.fewSamples ? "?" : ""}`).join(", ")})` : undefined].filter(Boolean);
   return `${p.id}: ${p.status}${progress} · ${extra.join(" · ")}`;
 }
 
