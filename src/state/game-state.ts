@@ -7,6 +7,7 @@ import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
+import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";
 import { buildPriceSheet, formatPriceSheet, valuesWanted, type PriceEntry } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
@@ -76,6 +77,8 @@ export interface GameState {
   } & OursWorld;
   /** Hoja de precios por carta (sets publicados): escasez, dealers, mejores ask/bid, último trato, valor y huecos. */
   markets: { prices: PriceEntry[] };
+  /** Sobres cerrados nuestros y tipos de sobre (valor esperado con el suministro, dealers, El Rastro). */
+  packs: PacksState;
   /** Corpus de pistas completo (lo ya guardado + lo nuevo de este tick) y lo nuevo para añadir a `hints.jsonl`. */
   hints: { all: HintLine[]; fresh: HintLine[] };
   /** Personas (dealers y las que aparezcan por `/api/levels` o el feed), con estado y progreso de desbloqueo. */
@@ -310,6 +313,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       ...world.ours,
     },
     markets: { prices },
+    packs: buildPacks({ ...(me ? { me } : {}), ...(catalog ? { catalog } : {}), dealers: rawDealers, rastro: offers, ...(me?.id ? { team: me.id } : {}), events, values: Object.fromEntries(valueCache) }),
     hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
@@ -376,6 +380,7 @@ export function formatGameState(g: GameState): string[] {
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
   lines.push(...formatHints(g.hints.all));
   lines.push(...formatPriceSheet(g.markets.prices));
+  lines.push(...formatPacks(g.packs));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
 }

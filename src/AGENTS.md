@@ -17,6 +17,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | `venue/` | Plan para abrir nuestro mercado | `pnpm bazaar:venue` |
 | `status/` | Resumen de solo lectura | `pnpm bazaar:status` |
 | `state/` | `GameState` por tick (solo GET), la entidad `Conversation`, personas, eggs, regalos y flags | — |
+| `packs/` | Sobres: cerrados nuestros, valor esperado con el suministro, comprar, abrir o vender cerrado | (`pnpm bazaar:play`) |
 | `hints/` | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
 | `agenda/` | Calendario como playbook (antelación y efecto por acción) y disparadores del feed | (`pnpm bazaar:play`) |
 | `flags/` | Detector de flags: texto del dealer frente a la estructura de su oferta | (`pnpm bazaar:play`) |
@@ -72,6 +73,10 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 
 - **`state/prices.ts`** — `buildPriceSheet`, la hoja de precios (`GameState.markets.prices`): una entrada por carta de los sets publicados (un set nuevo entra al pasar a `released`) con book, rareza, tirada, acuñadas y escasez, oculta, dealers que la venden o compran (por el menú), mejor ask y bid en El Rastro y en los otros venues abiertos (venue y oferta, sin las nuestras), último trato de una sola carta en el feed (settlement; si no hay, desconocido), nuestro valor privado (de `/api/me` y de la caché `results/bazaar-live/values.json`, con como mucho 4 GET de valor por tick con `valuesWanted`), cuántas tenemos y los huecos: buyEdge = valor − ask, sellEdge = bid − valor, dealerCap = min(valor, book) (**ASSUMPTION** de la anomalía de neg_points) y si completa página. `formatPriceSheet` imprime los 5 mejores huecos de compra y de venta.
 - **`state/time.ts`** — `buildTime`: tick, hora de juego, hora de pared, fase del día (abierto o cerrado), ronda y su peso (`leaderboard.rounds`; si no se leyó, el del tick anterior), segundos por tick, ticks que quedan hoy, deriva frente al plan (una hora de pared con puertas abiertas es una hora de juego; el plan sale de `clock.days` y de los `day_opens` del calendario) y `scheduleChanged` si la huella del calendario cambió desde el tick anterior («re-read»). `formatTime`: «h 2.65 · R1 ×0.5 · closed until Sat 09:00 · …».
+
+## packs/ — Sobres
+
+- **`packs/packs.ts`** — `buildPacks` (`GameState.packs`): sobres cerrados nuestros (id, tipo, `your_value`) y, por tipo, huecos del catálogo ajustados al suministro con `adjustSlots` (si una rareza llega a su tirada, `PRINT_RUNS`, el hueco cae a la inferior), book esperado, nuestro valor estimado, dealers que lo venden (lista y apertura), mejor ask y bid en El Rastro y último trato del feed. `proposePacks`: COMPRAR a un dealer solo si nuestro valor supera el trato esperado y este queda por debajo de la apertura (cuenta para la escalera), respetando el suelo de caja, con el camino del negociador por `enforceGuardrails` (de momento solo propuesta: el agente de dealers aún no negocia sobres; el planificador de cartas sigue saltándose los sobres); ABRIR cada sobre cerrado salvo que venderlo cerrado gane; VENDER cerrado en El Rastro cuando la mejor puja supera nuestro valor (nunca por debajo). Los sobres del grant_all de la agenda y del premio de desbloqueo se anuncian para abrirse al llegar. `executePacks` (solo en vivo con --confirm): abrir con `POST /api/packs/{id}/open` y listar. **ASSUMPTIONS** (`PACK_ASSUMPTIONS`): `/api/me/value` no acepta sobres (comprobado: unknown_card), así que el valor de un sobre ajeno es una media por rareza; abrir no gasta el cupo de aceptaciones (sin verificar).
 
 ## hints/ — Corpus de pistas
 

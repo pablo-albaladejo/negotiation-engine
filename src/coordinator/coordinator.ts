@@ -8,12 +8,13 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * los dealers y El Rastro. Si resulta que no, basta con sacar la clase "duel" del cupo en `arbitrate`.
  */
 
-export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda";
+export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs";
 /**
  * `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último.
+ * `unpack`: abrir un sobre cerrado; ASSUMPTION (sin verificar): no gasta el cupo de aceptaciones.
  * `agenda`: acción del calendario (venue, sobre, ofertas antes del cierre) que solo se imprime: nunca sale de aquí.
  */
-export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda";
+export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda" | "unpack";
 export type AcceptClass = "duel" | "page-completing" | "dealer-ladder" | "other";
 
 /** Prioridad de las aceptaciones (menor rango, antes); a igual rango, más valor esperado primero. */
@@ -38,6 +39,8 @@ export interface Intent {
   ev?: number;
   /** Línea legible: qué y con qué cifra (decidida por código). */
   summary: string;
+  /** Cifra decidida por código (ya pasada por `enforceGuardrails`), si la intención lleva una. */
+  price?: number;
   /** Activos que compromete (`asset:29`): un activo, un sitio, también entre rutas en el mismo tick. */
   locks?: string[];
 }
@@ -168,6 +171,15 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     verdicts.set(i.id, { intent: i, selected: true, reason: `open thread ${threads}/${b.maxOpenThreads}` });
   }
 
+  for (const i of intents.filter((x) => x.kind === "unpack")) {
+    const busy = clash(i);
+    if (busy) {
+      verdicts.set(i.id, { intent: i, selected: false, reason: `asset lock: ${busy}` });
+      continue;
+    }
+    take(i);
+    verdicts.set(i.id, { intent: i, selected: true, reason: "open pack: ASSUMPTION it does not use the accept quota (unverified)" });
+  }
   for (const i of intents.filter((x) => x.kind === "agenda")) verdicts.set(i.id, { intent: i, selected: false, reason: "agenda intent: printed only (live needs its own CLI with --confirm and user approval)" });
   for (const i of intents.filter((x) => x.kind === "flag")) verdicts.set(i.id, { intent: i, selected: true, reason: "flag: structural contradiction, does not use the accept quota" });
 

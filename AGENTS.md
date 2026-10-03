@@ -27,6 +27,7 @@ src/
 ├─ status/    resumen de solo lectura            (pnpm bazaar:status)
 ├─ state/     GameState por tick, Conversation, personas, eggs y flags (solo GET)
 ├─ flags/     detector de mala fe: texto del dealer frente a la estructura de su oferta
+├─ packs/     sobres: estado, comprar, abrir o vender cerrado (ruta de pnpm bazaar:play)
 ├─ hints/     corpus de líneas de dealers (pistas de eggs; nunca una cifra)
 ├─ agenda/    calendario como playbook y disparadores del feed (los usa pnpm bazaar:play)
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)

@@ -15,6 +15,7 @@ import { agendaEffects, agendaItems, formatAgendaItem } from "../agenda/agenda.j
 import { defaultTriggersFile, loadTriggerMemo, personaFiles, runTriggers, saveTriggerMemo } from "../agenda/triggers.js";
 import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
+import { executePacks, proposePacks } from "../packs/packs.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
@@ -175,6 +176,17 @@ async function main() {
       ["trades", () => trades.propose(state, me, pageTargets)],
       ["flags", async () => flagsRoute.propose(state)],
       ["eggs", async () => eggs.propose(state, triggers.quiet)],
+      [
+        "packs",
+        async () => {
+          const incoming = [
+            ...agenda.filter((x) => x.action === "grant_all" && x.status !== "later" && Array.isArray(x.params.packs)).flatMap((x) => (x.params.packs as unknown[]).map(String)),
+            ...state.personas.filter((p) => p.status !== "unlocked-for-us" && p.unlockPrize).map((p) => `${p.unlockPrize} (unlock ${p.id})`),
+          ];
+          const p = proposePacks({ packs: state.packs, ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}), cashFloor: num(values["cash-floor"], "--cash-floor"), unlocked: state.ours.unlocked, dealers: (await client.dealers().catch(() => ({ dealers: [] }))).dealers, incoming });
+          return { ...p, strategies: new Map(), decisions: new Map() };
+        },
+      ],
       ["agenda", async () => ({ intents: effects.intents, notes: [], strategies: new Map(), decisions: new Map() })],
     ] as const) {
       try {
@@ -220,6 +232,7 @@ async function main() {
     console.log(`== ${live ? "execution" : "dry-run (nothing sent)"} ==`);
     const lines = await duels.execute(selected);
     for (const l of lines) console.log(`  ${l}`);
+    for (const l of await executePacks(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     const flagged = await flagsRoute.execute(state, selected);
     for (const l of [...flagged.lines, ...(await eggs.execute(state, selected))]) console.log(`  ${l}`);
     if (live) {
