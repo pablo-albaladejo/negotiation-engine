@@ -37,7 +37,7 @@ import {
   type ScoreLine,
   type VerdictCache,
 } from "./bazaar-board-core.js";
-import { agentStatuses, type AgentStatus } from "./bazaar-agents.js";
+import { agentStatuses, playMode, type AgentStatus } from "./bazaar-agents.js";
 import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, type AlbumOut, type ScheduleOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
@@ -90,6 +90,8 @@ export interface BoardOut {
   holdings: Record<string, number>;
   schedule: ScheduleOut | null;
   agents: AgentStatus[];
+  /** Mode of the running `bazaar:play` (up-status.json): "live" sends, "dry-run" does not; null if not running. */
+  play_mode: "live" | "dry-run" | null;
 }
 
 export interface BazaarBoardDeps {
@@ -358,6 +360,7 @@ export class BazaarBoard {
       holdings,
       schedule,
       agents,
+      play_mode: await playMode(this.bazaarDir),
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;

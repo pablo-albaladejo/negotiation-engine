@@ -36,7 +36,13 @@ function Header({ board, model, boardAt }: { board: Board; model: GameModel | nu
   return (
     <div style={col}>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-        <Pill kind="rejected">DRY-RUN · nothing is sent</Pill>
+        {board.play_mode === "live" ? (
+          <Pill kind="champion">LIVE · bazaar:play sends real offers</Pill>
+        ) : board.play_mode === "dry-run" ? (
+          <Pill kind="rejected">DRY-RUN · nothing is sent</Pill>
+        ) : (
+          <Pill kind="sample">bazaar:play not running</Pill>
+        )}
         {h.rebuilding ? (
           <span role="status" className="nr-muted">
             model rebuilding… (showing the last build)

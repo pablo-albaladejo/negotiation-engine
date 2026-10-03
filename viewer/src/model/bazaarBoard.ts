@@ -164,6 +164,8 @@ export interface Board {
   holdings: Record<string, number>;
   schedule: BoardSchedule | null;
   agents: BoardAgent[];
+  /** Mode of the running `bazaar:play`: "live" sends real offers, "dry-run" sends nothing; null if not running (optional on older servers). */
+  play_mode?: "live" | "dry-run" | null;
 }
 
 export const EMPTY_BOARD: Board = {

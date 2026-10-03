@@ -247,7 +247,7 @@ function Coordinator({ model }: { model: GameModel }) {
   const intents = model.routes.flatMap((r) => r.intents.map((i) => ({ ...i, label: r.label })));
   return (
     <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 1fr)")}>
-      <Card title={`Coordinator · tick ${model.tick ?? "?"} (dry-run: nothing is sent)`}>
+      <Card title={`Coordinator · tick ${model.tick ?? "?"} (viewer replica in dry-run: it sends nothing, whatever mode bazaar:play runs in)`}>
         <div style={col}>
           {intents.length > 0 ? (
             <DataTable

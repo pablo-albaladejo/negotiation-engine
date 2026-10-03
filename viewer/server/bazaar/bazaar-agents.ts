@@ -1,4 +1,5 @@
-import { open, readdir, stat } from "node:fs/promises";
+import { open, readdir, readFile, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { isSafeId, resolveInside } from "../paths.js";
 
 /**
@@ -103,6 +104,20 @@ async function brokerHeartbeat(bazaarDir: string): Promise<AgentStatus | null> {
     const at = typeof hb.ts === "string" && !Number.isNaN(Date.parse(hb.ts)) ? hb.ts : (await stat(path)).mtime.toISOString();
     const detail = [typeof hb.mode === "string" ? hb.mode : null, typeof hb.mechanism === "string" ? `venue ${hb.mechanism}` : null].filter(Boolean).join(" · ");
     return { agent: "broker", last_at: at, last_tick: typeof hb.tick === "number" ? hb.tick : null, detail: detail || null };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Mode of the `bazaar:play` child under `bazaar:up` (`results/logs/up-status.json`, next to `results/bazaar-live/`):
+ * "live" sends real POSTs, "dry-run" sends nothing; null when up is not running or play is not up.
+ */
+export async function playMode(bazaarDir: string): Promise<"live" | "dry-run" | null> {
+  try {
+    const raw = JSON.parse(await readFile(join(dirname(bazaarDir), "logs", "up-status.json"), "utf8")) as { mode?: unknown; running?: unknown; children?: { play?: { status?: unknown } } };
+    if (raw.running !== true || raw.children?.play?.status !== "running") return null;
+    return raw.mode === "live" ? "live" : raw.mode === "dry-run" ? "dry-run" : null;
   } catch {
     return null;
   }
