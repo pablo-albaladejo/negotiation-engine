@@ -13,6 +13,10 @@ import { setMultipliers } from "./rival-page.js";
  * value of a spare copy to them (median set multiplier × book × second-copy marginal); we bid their floor plus a share
  * of the gap, never above the cap. Never for a card El Rastro already bids on (no double fill), and only within the
  * `--max-spend` budget that El Rastro leaves.
+ *
+ * Two lanes. Normal: a page card of our album, bid capped at `maxBid` (30 P). High value (Pablo, 3 Oct, after MAL-10 at
+ * 30 P scored +50.2): any card we lack, a single copy included, whose `/api/me/value` (the value the server scores with, not our model) leaves
+ * at least `hiMinEdge` over the bid, capped at `hiMaxBid` (60 P), at most `hiPerWindow` new bids per `hiWindowTicks`.
  */
 
 export const RIVAL_BUY_PARAMS = {
@@ -26,6 +30,16 @@ export const RIVAL_BUY_PARAMS = {
   backoffTicks: 40,
   /** A spare seen (or confirmed) longer ago than this is not bid for. */
   maxStaleTicks: 60,
+  /** Normal lane: ceiling of one directed bid (P). */
+  maxBid: 30,
+  /** High-value lane: ceiling (P), minimum `/api/me/value` − bid, and new bids allowed per rolling window. */
+  hiMaxBid: 60,
+  hiMinEdge: 20,
+  hiPerWindow: 2,
+  /** One game hour at 30 s a tick. A restart forgets the window (at most one extra window's worth). */
+  hiWindowTicks: 120,
+  /** `/api/me/value` lookups per tick for candidate cards (cached for an hour by the client). */
+  valueLookups: 8,
 };
 export type RivalBuyParams = typeof RIVAL_BUY_PARAMS;
 
@@ -48,6 +62,8 @@ export interface RivalBuyInput {
   pageBonusScored?: boolean;
   /** Cash kept for the page targets (`pageReserveOf`): every directed bid is a page card, so it stays above it. */
   pageReserve?: number;
+  /** `/api/me/value` of candidate cards we lack (`rivalBuyValues`): enables the high-value lane. */
+  apiValues?: ReadonlyMap<string, number>;
 }
 
 export interface RivalBuyPricing {
@@ -62,6 +78,10 @@ export interface RivalBuyPricing {
   theirFloor: number;
   bid: number;
   fee: number;
+  /** `/api/me/value` of the card, when known. */
+  apiValue?: number;
+  /** The bid needs the high-value lane (above `maxBid`, or not a page card). */
+  hi: boolean;
 }
 
 export type BuyAssessment = { ok: true; p: RivalBuyPricing } | { ok: false; reason: string; p?: Partial<RivalBuyPricing> };
@@ -72,6 +92,9 @@ export interface RivalBuyMemoEntry {
 }
 export type RivalBuyMemo = Map<string, RivalBuyMemoEntry>;
 const defaultMemo: RivalBuyMemo = new Map();
+/** Ticks at which high-value bids were posted (new ones, not reprices). */
+export type HiBuyLedger = number[];
+const defaultHiLedger: HiBuyLedger = [];
 
 export interface RivalBuyPost {
   intentId: string;
@@ -80,6 +103,7 @@ export interface RivalBuyPost {
   price: number;
   replaces?: number;
   reprice: number;
+  hi?: boolean;
   body: { venue: "rastro"; to: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
 }
 
@@ -126,25 +150,34 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   const counts = countHoldings(trade.held);
   if ((counts.get(ref) ?? 0) > 0) return { ok: false, reason: `we hold ${ref}` };
   const set = model.meta.get(ref)?.set ?? setOf(ref);
-  if (!trade.pageSets.includes(set) || !(model.pages.get(set) ?? []).includes(ref)) return { ok: false, reason: `${ref} is not a page card of our album` };
+  const pageCard = trade.pageSets.includes(set) && (model.pages.get(set) ?? []).includes(ref);
+  const apiValue = input.apiValues?.get(ref);
+  if (!pageCard && apiValue === undefined) return { ok: false, reason: `${ref} is not a page card of our album` };
   const mine = team.seen.filter((s) => s.ref === ref);
-  if (mine.length < 2) return { ok: false, reason: `${team.team} has no spare ${ref} seen` };
+  if (!mine.length || (mine.length < 2 && apiValue === undefined)) return { ok: false, reason: `${team.team} has no spare ${ref} seen` };
+  // A single copy is bid for only in the high-value lane (approved by Pablo, 3 Oct); the other team decides whether to sell.
+  const spare = mine.length >= 2;
   const freshAt = Math.max(...mine.map((s) => s.confirmedTick ?? s.tick));
   if (input.tick - freshAt > params.maxStaleTicks) return { ok: false, reason: `spare seen at tick ${freshAt} (stale)` };
-  const gain = buyGain(counts, ref, model, new Set(input.pageBonusScored ? (input.pageTargets ?? []).map(setOf) : []));
-  const cap = maxBid(gain, MIN_MARGIN, MAKER_FEES);
+  const modelGain = pageCard ? buyGain(counts, ref, model, new Set(input.pageBonusScored ? (input.pageTargets ?? []).map(setOf) : [])) : 0;
+  const normalCap = pageCard && spare ? Math.min(params.maxBid, maxBid(modelGain, MIN_MARGIN, MAKER_FEES)) : 0;
+  const hiCap = apiValue !== undefined ? Math.min(params.hiMaxBid, Math.floor(apiValue - params.hiMinEdge)) : 0;
+  const cap = Math.max(normalCap, hiCap);
+  const gain = apiValue ?? modelGain;
   const book = model.meta.get(ref)?.book ?? 0;
   const mHat = median([...setMultipliers(model).values()]) ?? 1;
-  const second = model.rules.marginals[1] ?? model.rules.marginals.at(-1) ?? 0.5;
+  const second = spare ? (model.rules.marginals[1] ?? model.rules.marginals.at(-1) ?? 0.5) : (model.rules.marginals[0] ?? 1);
   const theirFloor = Math.max(1, Math.ceil(mHat * book * second) + 1);
-  const base: Partial<RivalBuyPricing> = { team: team.team, ref, copies: mine.length, freshAt, gain, cap, theirFloor };
+  const base: Partial<RivalBuyPricing> = { team: team.team, ref, copies: mine.length, freshAt, gain, cap, theirFloor, ...(apiValue !== undefined ? { apiValue } : {}) };
   if (cap < 1) return { ok: false, reason: `no bid fits our value (gain ${r1(gain)})`, p: base };
   if (cap - theirFloor < params.minGap) return { ok: false, reason: `cap ${cap} − their floor ${theirFloor} < ${params.minGap}`, p: base };
   const raw = theirFloor + Math.round(params.shareOfGap * (cap - theirFloor));
   const bid = enforceGuardrails({ role: "buyer", reservation: cap }, raw);
   const fee = tradeFee(bid, 1, MAKER_FEES);
   if (!fairPrice("buy", bid, book || undefined)) return { ok: false, reason: `bid ${bid} above fair play (twice the book)`, p: base };
-  return { ok: true, p: { ...(base as RivalBuyPricing), bid, fee } };
+  const hi = bid > normalCap;
+  if (hi && (apiValue === undefined || apiValue - bid < params.hiMinEdge)) return { ok: false, reason: `bid ${bid} above the normal cap ${normalCap} without /api/me/value − bid ≥ ${params.hiMinEdge}`, p: base };
+  return { ok: true, p: { ...(base as RivalBuyPricing), bid, fee, hi } };
 }
 
 /** Our directed cash-for-one-card bids on El Rastro (open, not expired). */
@@ -159,13 +192,13 @@ export function directedBids(trade: TradeState): { offer: TradeOffer; team: stri
 }
 
 const describe = (p: RivalBuyPricing) =>
-  `${p.ref} ← ${p.team} (${p.copies} copies seen, fresh at tick ${p.freshAt}) · gain ${r1(p.gain)} · cap ${p.cap} · their floor ~${p.theirFloor} · fee ${p.fee} · bid ${p.bid}`;
+  `${p.ref} ← ${p.team} (${p.copies} copies seen, fresh at tick ${p.freshAt}) · gain ${r1(p.gain)}${p.apiValue !== undefined ? " (/api/me/value)" : ""} · cap ${p.cap} · their floor ~${p.theirFloor} · fee ${p.fee} · bid ${p.bid}${p.hi ? " · high-value lane" : ""}`;
 
 /**
  * Proposes directed bids (new, reprices) and cancels. Pure except for reading `memo`. Safe by default: missing data,
  * agenda freeze or no budget → no new bids and a note.
  */
-export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo): { intents: Intent[]; notes: string[]; plan: RivalBuyPlan } {
+export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo, hiLedger: HiBuyLedger = defaultHiLedger): { intents: Intent[]; notes: string[]; plan: RivalBuyPlan } {
   const intents: Intent[] = [];
   const notes: string[] = [];
   const plan: RivalBuyPlan = { posts: [], cancels: [] };
@@ -245,7 +278,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     for (const t of who.holders) {
       const team = byTeam.get(t);
       const key = `${t}:${ref}`;
-      if (!team || handled.has(key) || team.seen.filter((s) => s.ref === ref).length < 2) continue;
+      if (!team || handled.has(key) || team.seen.filter((s) => s.ref === ref).length < (input.apiValues?.has(ref) ? 1 : 2)) continue;
       const until = memo.get(key)?.backoffUntil;
       if (until !== undefined && until > trade.tick) {
         notes.push(`${TAG} skip ${ref} ← ${t}: backoff until tick ${until}`);
@@ -253,7 +286,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       }
       const asm = assessRivalBuy(team, ref, input, params);
       if (!asm.ok) {
-        if (!/^we hold|is not a page card/.test(asm.reason)) notes.push(`${TAG} skip ${ref} ← ${t}: ${asm.reason}`);
+        if (!/^we hold|is not a page card|^no bid fits/.test(asm.reason)) notes.push(`${TAG} skip ${ref} ← ${t}: ${asm.reason}`);
         continue;
       }
       if (rastro.has(ref)) {
@@ -266,18 +299,24 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   // Most value created first; one bid per card.
   fresh.sort((a, b) => b.gain - b.bid - (a.gain - a.bid) || a.ref.localeCompare(b.ref) || a.team.localeCompare(b.team));
   const refs = new Set(existing.map((e) => e.ref));
+  let hiUsed = hiLedger.filter((t) => t > trade.tick - params.hiWindowTicks).length;
   for (const p of fresh) {
     if (refs.has(p.ref)) continue;
     if (open >= params.maxOpen) {
       notes.push(`${TAG} skip ${p.ref} ← ${p.team}: ${open}/${params.maxOpen} directed bids open`);
       continue;
     }
+    if (p.hi && hiUsed >= params.hiPerWindow) {
+      notes.push(`${TAG} skip ${p.ref} ← ${p.team}: bid ${p.bid} needs the high-value lane, ${hiUsed}/${params.hiPerWindow} used in the last ${params.hiWindowTicks} ticks`);
+      continue;
+    }
     if (p.bid + p.fee > budget) {
       notes.push(`${TAG} skip ${p.ref} ← ${p.team}: bid ${p.bid} + fee ${p.fee} > budget left ${Math.max(0, Math.floor(budget))} (--max-spend shared with El Rastro)`);
       continue;
     }
-    const post = makePost(p.team, p.ref, p.bid, params, 0, undefined);
+    const post = { ...makePost(p.team, p.ref, p.bid, params, 0, undefined), ...(p.hi ? { hi: true } : {}) };
     plan.posts.push(post);
+    if (p.hi) hiUsed += 1;
     intents.push(postIntent(post, `${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`, p.gain - p.bid - p.fee));
     notes.push(`${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`);
     budget -= p.bid + p.fee;
@@ -308,7 +347,7 @@ function postIntent(p: RivalBuyPost, summary: string, ev: number): Intent {
  * Sends the selected cancels and directed bids. `dryRun` (also when `--rival-buy` is off) only prints "would" lines.
  * A reprice is posted only if its cancel went through.
  */
-export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "cancelOffer">, selected: readonly Intent[], plan: RivalBuyPlan, dryRun: boolean, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo, tick = 0): Promise<string[]> {
+export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "cancelOffer">, selected: readonly Intent[], plan: RivalBuyPlan, dryRun: boolean, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo, tick = 0, hiLedger: HiBuyLedger = defaultHiLedger): Promise<string[]> {
   const lines: string[] = [];
   const ids = new Set(selected.map((i) => i.id));
   const cancelled = new Set<number>();
@@ -339,10 +378,32 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
     try {
       await client.postOffer(p.body);
       memo.set(`${p.team}:${p.ref}`, { reprices: p.reprice });
-      lines.push(`${TAG} sent ${what}`);
+      if (p.hi && p.reprice === 0) hiLedger.push(tick);
+      lines.push(`${TAG} sent ${what}${p.hi ? " (high-value lane)" : ""}`);
     } catch (e) {
       lines.push(`${TAG} ${what} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
     }
   }
   return lines;
+}
+
+/**
+ * `/api/me/value` of the cards a rival is seen holding (a spare or a single copy) and we lack, highest book first, at most `valueLookups` per
+ * call (the client caches each value for an hour, so later ticks reuse them). A failed lookup is left out.
+ */
+export async function rivalBuyValues(client: Pick<BazaarClient, "value">, trade: TradeState | undefined, rivals: RivalsState | undefined, params: RivalBuyParams = RIVAL_BUY_PARAMS): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!trade || !rivals) return out;
+  const counts = countHoldings(trade.held);
+  const held = new Set(rivals.teams.flatMap((t) => t.seen.map((s) => s.ref)));
+  const refs = [...held].filter((r) => (counts.get(r) ?? 0) === 0);
+  refs.sort((a, b) => (trade.model.meta.get(b)?.book ?? 0) - (trade.model.meta.get(a)?.book ?? 0) || a.localeCompare(b));
+  for (const ref of refs.slice(0, params.valueLookups)) {
+    try {
+      out.set(ref, await client.value(ref));
+    } catch {
+      // Left out: the card stays in the normal lane.
+    }
+  }
+  return out;
 }
