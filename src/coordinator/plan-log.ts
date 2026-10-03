@@ -92,16 +92,25 @@ export function planIntent(i: Intent): PlanIntent {
 }
 
 /**
- * Execution lines are text (`markets: #4230 failed: offer_not_open`): `failed: <code>` marks a failure, and the line is
- * tied to the selected intent of that route whose last id segment (offer, asset, message, duel) it mentions.
+ * Execution lines are text, so failures are read from their shape (the same ones the auditor reads in play.log):
+ * `markets: #4230 failed: offer_not_open`, `El Rastro error: post list SAL-03 @8: asset_locked` (or `…: skipped, …`),
+ * `dealer abuela: [tick 406] · error · buy:RET-02 · error persona_quota`. A line is tied to the selected intent of its
+ * route whose last id segment (offer, asset, message, duel, thread) it mentions; El Rastro posts by ref and price.
  */
 export function planExecution(route: string, line: string, selected: readonly Intent[]): PlanExecution {
-  const failed = /\bfailed: ([^\s,;)]+)/.exec(line);
+  const error =
+    /\bfailed: ([^\s,;)]+)/.exec(line)?.[1] ??
+    /^El Rastro error: .*: ([\w-]+)$/.exec(line)?.[1] ??
+    (/^El Rastro error: .*: skipped\b/.test(line) ? "skipped" : undefined) ??
+    /^dealer \w+: \[tick \d+\] · error · .*error ([\w-]+)/.exec(line)?.[1];
+  const post = /\bpost (?:list|bid) ([A-Z]+-\d+) @ ?(\d+(?:\.\d+)?)/.exec(line);
   const match = selected.find((i) => {
+    if (i.route !== route) return false;
+    if (post && i.id.startsWith("trades:post:")) return i.ref === post[1] && i.price === Number(post[2]);
     const tail = i.id.split(":").at(-1);
-    return i.route === route && !!tail && new RegExp(`(^|[^\\w])#?${escape(tail)}(?![\\w])`).test(line);
+    return !!tail && new RegExp(`(^|[^\\w])#?${escape(tail)}(?![\\w])`).test(line);
   });
-  return { id: match?.id ?? route, route, ok: !failed, ...(failed ? { error: failed[1] } : {}), detail: line };
+  return { id: match?.id ?? route, route, ok: !error, ...(error ? { error } : {}), detail: line };
 }
 
 function escape(s: string): string {
