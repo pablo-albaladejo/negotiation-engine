@@ -8,6 +8,7 @@ import { defaultDuelsStateFile } from "../duels/agent.js";
 import { buildGameState, formatGameState } from "../state/game-state.js";
 import { defaultConversationsFile, formatConversation, loadConversationMemos, saveConversationMemos } from "../state/conversation.js";
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
+import { arbitrageLines, personaArbitrage } from "./arbitrage.js";
 import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -231,6 +232,10 @@ async function main() {
     console.log("== arbitration ==");
     for (const v of verdicts) console.log(`  ${v.selected ? "SELECTED" : "DROPPED "} ${v.intent.id} · ${v.reason}`);
     if (!verdicts.length) console.log("  (nothing to arbitrate)");
+    // Arbitraje entre personas: solo propuesta, con el cupo de hilos que deja lo seleccionado.
+    const arbitrage = arbitrageLines(personaArbitrage(state.personas), budget, verdicts);
+    console.log(`  [arbitrage] ${arbitrage.length ? "" : "no persona sells a rarity below another's measured ceiling"}`);
+    for (const l of arbitrage) console.log(`    ${l}`);
 
     // Conversaciones: turno concedido por el presupuesto, estrategia y última decisión de cada ruta.
     const acceptedConv = new Set(verdicts.filter((v) => v.selected && v.intent.kind === "accept").map((v) => v.intent.conversation));
