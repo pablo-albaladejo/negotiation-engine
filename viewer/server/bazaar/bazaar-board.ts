@@ -4,6 +4,7 @@ import { z } from "zod";
 import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
 import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer-origins.js";
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
+import { eggsOf, type EggsOut } from "./profile/eggs.js";
 import { TokenBucket } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import type { ApiResponse } from "../api.js";
@@ -109,6 +110,8 @@ export interface BoardOut {
   offer_origins: Record<string, OfferOrigin>;
   /** Directed offers between other teams, last ~60 ticks (public stream; structure only). */
   directed: DirectedOffer[];
+  /** Easter eggs: ours (probe, prize) and every find per persona (public stream + personas.json). */
+  eggs: EggsOut;
 }
 
 export interface BazaarBoardDeps {
@@ -397,6 +400,7 @@ export class BazaarBoard {
       ),
       offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
+      eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
       team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),

@@ -250,6 +250,8 @@ export interface Board {
   offer_origins?: Record<string, BoardOfferOrigin>;
   /** Directed offers between other teams, last ~60 ticks (structure only). */
   directed?: BoardDirectedOffer[];
+  /** Easter eggs: ours (probe and prize) and every find per persona. */
+  eggs?: BoardEggs;
 }
 
 export const EMPTY_BOARD: Board = {
@@ -502,4 +504,33 @@ export interface BoardDirectedOffer {
   expires_tick: number | null;
   hand: number | null;
   spare: boolean;
+}
+
+export interface BoardEggCard {
+  ref: string;
+  name: string | null;
+  rarity: string | null;
+  hidden: boolean;
+  print_run: number | null;
+}
+
+export interface BoardOurEgg {
+  tick: number;
+  persona: string;
+  persona_name: string | null;
+  probe: { phrase: string; tick: number } | null;
+  prize: { cards: BoardEggCard[]; cash: number; packs: string[]; badges: string[]; reason: string | null };
+  order: number;
+}
+
+export interface BoardPersonaEggs {
+  persona: string;
+  persona_name: string | null;
+  found: { team: string; name: string | null; tick: number }[];
+  probes: { sent: number; hit: number; miss: number; last: { phrase: string; tick: number; result: string } | null };
+}
+
+export interface BoardEggs {
+  ours: BoardOurEgg[];
+  personas: BoardPersonaEggs[];
 }

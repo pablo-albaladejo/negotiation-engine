@@ -6,6 +6,7 @@ import { Workshop } from "./Workshop.js";
 import { TeamDesk } from "./TeamDesk.js";
 import { VenueBooks } from "./venues/VenueBooks.js";
 import { AlbumCards } from "./album/AlbumCards.js";
+import { Eggs } from "./profile/Eggs.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
 import { componentOf } from "../model/scoreTree.js";
 import type { ModelLadderLevel } from "../model/gameModel.js";
@@ -787,6 +788,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <Scoreboard board={board} />
         <Upcoming board={board} />
       </div>
+      <Eggs board={board} />
       <RightNow board={board} onOpen={open} />
       <TeamDesk board={board} />
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>

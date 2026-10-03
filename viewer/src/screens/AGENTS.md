@@ -2,6 +2,7 @@
 
 - **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now / la API / nuestro modelo); cajón de cada conversación con la curva y el camino previsto.
 - **[`now/`](now/AGENTS.md)** — la pestaña «Now»: qué está pasando ahora mismo (tick, plan del tick, conversaciones vivas, nuestras ofertas, qué cambió).
+- **[`profile/`](profile/AGENTS.md)** — nuestro perfil bajo el marcador: los easter eggs que hemos encontrado (sondeo y premio) y los de cada persona.
 - **[`venues/`](venues/AGENTS.md)** — la pestaña «Venues»: el libro de todos los venues abiertos, cada oferta marcada frente a nuestra mano y nuestros valores (NEG como quien acepta, dup, última copia), con filtros.
 - **[`album/`](album/AGENTS.md)** — la tarjeta «Album» como cromos, igual que /cards del juego: una banda por set y un cromo por carta (las que tenemos y las que faltan), con el valor, la tirada y las shinies.
 - **`DealerEstimates.tsx`** — panel «Dealer estimates» de la vista Model: por persona, parámetros (valor, intervalo, n y su convergencia), límites por banda (marca *fewSamples*); solo el lado del dealer.
@@ -20,5 +21,6 @@ Solo texto plano: nada de HTML inyectado.
 - ↑ [`viewer/src/`](../AGENTS.md)
 - ↓ [`now/`](now/AGENTS.md)
 - ↓ [`venues/`](venues/AGENTS.md)
+- ↓ [`profile/`](profile/AGENTS.md)
 - ↓ [`album/`](album/AGENTS.md)
 - → Lógica: [`model/`](../model/AGENTS.md) · Piezas: [`ui/`](../ui/AGENTS.md)
