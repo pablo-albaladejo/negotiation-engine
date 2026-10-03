@@ -667,11 +667,25 @@ export const EGG_PARAMS = {
    * Pilar and banco carry the LAT-12 question (approved by Pablo; only on threads opened for a deal, never one of its own).
    */
   greetings: { abuela: GREETINGS[0]!, pilar: GREETINGS[1]!, banco: GREETINGS[1]! } as Readonly<Record<string, string>>,
+  /**
+   * One-shot line per persona that only rides from our 2nd counteroffer of a thread opened for a real deal (Chato's egg
+   * needs to arrive mid-deal). Once a day; unlike `greetings` it never opens a thread nor relaxes a filter.
+   */
+  midDeal: { chato: GREETINGS[2]! } as Readonly<Record<string, string>>,
 };
 
 /** Probe text as it goes in the message: the greeting itself, or the egg question. */
 export function probeText(x: string): string {
   return GREETINGS.includes(x) ? x : EGG_PARAMS.template.replace("{hint}", x);
+}
+
+/** The persona's mid-deal line if this thread already carries a price of ours and the line has not gone out today. */
+function midDealFor(state: GameState, conv: GameState["conversations"][number]): string | undefined {
+  const g = EGG_PARAMS.midDeal[conv.counterparty];
+  const persona = state.personas.find((p) => p.id === conv.counterparty);
+  if (!g || !persona || conv.history.ourPrices.length < 1) return undefined;
+  const sent = [...state.conversations.filter((c) => c.counterparty === conv.counterparty).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)];
+  return sent.includes(g) ? undefined : g;
 }
 
 /** The persona's greeting if it has not gone out yet today (any of its conversations or its `eggProbes`). */
@@ -726,9 +740,14 @@ export function isSpanishPhrase(x: string | undefined): boolean {
  */
 export function eggProbeFor(state: GameState, conversationId: string): string | undefined {
   const conv = state.conversations.find((c) => c.id === conversationId);
-  if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 1) return undefined;
+  if (!conv || conv.kind !== "dealer") return undefined;
   if (conv.mood.warnings > 0 || conv.mood.strikes > 0 || conv.mood.cooloffUntil !== undefined) return undefined;
   if (state.ours.strikes && Object.keys(state.ours.strikes).length) return undefined;
+  const midDeal = midDealFor(state, conv);
+  if (midDeal) return midDeal;
+  // Before our 2nd counteroffer, nothing else spends the mid-deal persona's thread.
+  if (EGG_PARAMS.midDeal[conv.counterparty] && conv.history.ourPrices.length < 1) return undefined;
+  if (conv.eggsTried.length > 1) return undefined;
   const greeting = greetingFor(state, conv.counterparty);
   if (greeting) return greeting;
   const x = nextProbeFor(state, conv.counterparty);
