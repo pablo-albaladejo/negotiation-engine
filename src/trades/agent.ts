@@ -133,10 +133,24 @@ export class TradesAgent {
     this.openBids = now;
   }
 
-  async step(): Promise<StepResult> {
+  /** Propuesta del tick sin enviar nada (solo GET): estado y plan de `planTick`. */
+  async propose(): Promise<{ state: TradeState; plan: TickPlan }> {
     const state = await this.state();
-    const plan = planTick(state, this.params);
+    return { state, plan: planTick(state, this.params) };
+  }
+
+  async step(): Promise<StepResult> {
+    const { state, plan } = await this.propose();
     for (const line of formatTickPlan(plan, { top: this.opts.top ?? 10, dryRun: this.opts.dryRun })) this.log(line);
+    if (this.opts.dryRun) return { plan, sent: [], errors: [] };
+    return this.execute(state, plan);
+  }
+
+  /**
+   * Ejecuta un plan (quizá recortado por el coordinador: sin aceptación, menos altas): como mucho una aceptación,
+   * luego cancelaciones y altas. En dry-run no envía nada.
+   */
+  async execute(state: TradeState, plan: TickPlan): Promise<StepResult> {
     const sent: string[] = [];
     const errors: string[] = [];
     if (this.opts.dryRun) return { plan, sent, errors };

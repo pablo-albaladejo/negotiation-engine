@@ -20,6 +20,24 @@ import { busyAssets, sellBlocked } from "../shared/asset-locks.js";
 
 export type BazaarApi = Pick<BazaarClient, "me" | "catalog" | "value" | "myThreads" | "myOffers" | "thread" | "openThread" | "say" | "closeThread" | "accept">;
 
+/** Lo que el agente va a enviar (un POST), para que el coordinador lo arbitre antes. Solo para uso local: lleva nuestro valor privado. */
+export interface DealerIntent {
+  dealer: string;
+  kind: "open" | "accept" | "counter" | "hold" | "close";
+  thread?: number;
+  /** Clave del objetivo (`buy:SAL-09`, `sell:438`...). */
+  target: string;
+  side: "buy" | "sell";
+  /** Precio de la oferta suya que aceptamos o de nuestra contraoferta. */
+  price?: number;
+  /** Nuestro valor privado de lo que se compra o vende (nunca sale en un mensaje). */
+  value?: number;
+  /** Cartas implicadas (la pedida, la revelada en rareza+set o la del activo que vendemos). */
+  cards: string[];
+  text?: string;
+  rule?: string;
+}
+
 export interface AgentOptions {
   dealer: DealerRef;
   dryRun: boolean;
@@ -49,6 +67,11 @@ export interface AgentOptions {
   trace: TraceSink;
   now?: () => number;
   log?: (line: string) => void;
+  /**
+   * Coordinador (`pnpm bazaar:play`): cada POST (abrir, aceptar, contraoferta, aguante, cierre) pasa antes por aquí;
+   * si devuelve false no se envía nada ni cambia el estado del hilo. Sin `gate`, el agente actúa solo (como siempre).
+   */
+  gate?: (intent: DealerIntent) => boolean;
 }
 
 interface Active {
@@ -114,6 +137,10 @@ export class BazaarAgent {
     this.maxLookups = o.maxLookups ?? 12;
     this.negotiatorParams = { ...DEFAULT_NEGOTIATOR_PARAMS, ...o.negotiator };
     this.team = o.team ?? new TeamBudget({ maxSpendPerHour: o.maxSpendPerHour, ...(o.maxSpendTotal !== undefined ? { maxSpendTotal: o.maxSpendTotal } : {}), now: this.now });
+  }
+
+  private allow(intent: Omit<DealerIntent, "dealer">): boolean {
+    return this.o.gate ? this.o.gate({ dealer: this.o.dealer.id, ...intent }) : true;
   }
 
   /** Ficha releída de `/api/dealers/{id}` (el menú puede cambiar a mitad de partida). */
@@ -216,6 +243,7 @@ export class BazaarAgent {
         emit({ action: "idle", rule: "no-target" });
         return out;
       }
+      if (!this.allow({ kind: "open", target: target.key, side: target.side, ...(target.value !== undefined ? { value: target.value } : {}), cards: cardsOfTarget(target, me) })) return out;
       if (this.o.dryRun) {
         emit({ action: "open", target: target.key, side: target.side, reservation: target.reservation, rule: "dry-run" });
         return out;
@@ -259,7 +287,7 @@ export class BazaarAgent {
     const busyWhy = target?.side === "sell" ? sellBlocked(target.topic, (await busyAssets(this.api, me.id, thread.id)) ?? new Map()) : undefined;
     if (busyWhy) {
       this.log(`  thread ${thread.id}: not resumed, ${busyWhy}: ${this.o.dryRun ? "would close it politely" : "closing it politely"}`);
-      if (!this.o.dryRun) {
+      if (!this.o.dryRun && this.allow({ kind: "close", thread: thread.id, target: target!.key, side: target!.side, cards: cardsOfTarget(target!, me), rule: "asset-busy" })) {
         await this.api.say(thread.id, closeText(0)).catch(() => undefined);
         await this.api.closeThread(thread.id);
       }
@@ -268,7 +296,7 @@ export class BazaarAgent {
     if (target) {
       this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
       this.threadsOpened += 1;
-    } else if (!this.o.dryRun) await this.api.closeThread(thread.id);
+    } else if (!this.o.dryRun && this.allow({ kind: "close", thread: thread.id, target: "unknown-topic", side: sideOfTopic(thread.topic) ?? "buy", cards: [], rule: "unknown-topic" })) await this.api.closeThread(thread.id);
   }
 
   private async targetFromTopic(thread: Thread, me: Me): Promise<Target | undefined> {
@@ -453,6 +481,23 @@ export class BazaarAgent {
       ...(p.herCurrent ? { herPrice: p.herCurrent.price, herFinal: p.herCurrent.final } : {}),
       ...(p.herOpening !== undefined ? { herOpening: p.herOpening } : {}),
     };
+    if (d.action.kind !== "wait") {
+      const a = d.action;
+      const n = p.ourPrices.length;
+      const text = a.kind === "counter" ? counterText(target.side, n, a.price) : a.kind === "hold" ? holdText(n, a.price) : undefined;
+      const intent: Omit<DealerIntent, "dealer"> = {
+        kind: a.kind,
+        thread: thread.id,
+        target: target.key,
+        side: target.side,
+        ...("price" in a ? { price: a.price } : {}),
+        ...(target.value !== undefined ? { value: target.value } : {}),
+        cards: active.revealed ? [active.revealed] : active.cards,
+        ...(text ? { text } : {}),
+        rule: d.rule,
+      };
+      if (!this.allow(intent)) return;
+    }
     try {
       switch (d.action.kind) {
         case "accept":
