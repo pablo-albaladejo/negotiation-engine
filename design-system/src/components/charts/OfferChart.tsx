@@ -11,6 +11,14 @@ export interface OfferChartEnd {
   label: string;
 }
 
+/** Punto de un camino previsto con su intervalo (lo–hi). */
+export interface OfferBandPoint {
+  round: number;
+  value: number;
+  lo: number;
+  hi: number;
+}
+
 export interface OfferChartProps {
   rounds: number;
   yDomain: [number, number];
@@ -20,6 +28,12 @@ export interface OfferChartProps {
   estimate?: OfferPoint[];
   /** Camino previsto de nuestras ofertas (plan del código), en discontinua. */
   planned?: OfferPoint[];
+  /** Camino previsto del rival (estimación del modelo): discontinua con su banda lo–hi sombreada. */
+  predicted?: OfferBandPoint[];
+  /** Límite estimado del rival: línea horizontal con su banda lo–hi. */
+  theirLimit?: { value: number; lo: number; hi: number };
+  /** Marca vertical en la ronda en que se prevé que el rival se retire. */
+  walkMarker?: { round: number; label: string };
   ourReserve?: number;
   theirReserve?: number;
   zopa?: boolean;
@@ -103,7 +117,7 @@ function initialOfferChartIndex(points: OfferChartInteractivePoint[], selectedRo
 }
 
 export interface LegendItem {
-  kind: "us" | "them" | "target" | "estimate" | "planned" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate" | "injection" | "end";
+  kind: "us" | "them" | "target" | "estimate" | "planned" | "predicted" | "their-limit" | "walk-marker" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate" | "injection" | "end";
   label: string;
 }
 
@@ -140,6 +154,9 @@ export function OfferChart({
   target,
   estimate,
   planned,
+  predicted,
+  theirLimit,
+  walkMarker,
   ourReserve,
   theirReserve,
   zopa,
@@ -289,6 +306,37 @@ export function OfferChart({
         />
       ) : null}
 
+      {theirLimit ? (
+        <g className="their-limit-group">
+          <rect
+            className="their-limit-band"
+            x={MARGIN.left}
+            y={offerChartYScale(Math.max(theirLimit.lo, theirLimit.hi), yDomain)}
+            width={INNER_WIDTH}
+            height={Math.max(1, Math.abs(offerChartYScale(theirLimit.lo, yDomain) - offerChartYScale(theirLimit.hi, yDomain)))}
+          />
+          <line className="their-limit" x1={MARGIN.left} x2={WIDTH - MARGIN.right} y1={offerChartYScale(theirLimit.value, yDomain)} y2={offerChartYScale(theirLimit.value, yDomain)} />
+        </g>
+      ) : null}
+      {predicted && predicted.length > 0 ? (
+        <g className="predicted-path">
+          <polygon
+            className="predicted-band"
+            points={[...predicted.map((p) => ({ round: p.round, value: p.hi })), ...[...predicted].reverse().map((p) => ({ round: p.round, value: p.lo }))]
+              .map((p) => `${offerChartXScale(p.round, rounds)},${offerChartYScale(p.value, yDomain)}`)
+              .join(" ")}
+          />
+          <polyline className="predicted" points={toPolylinePoints(predicted, rounds, yDomain)} />
+        </g>
+      ) : null}
+      {walkMarker ? (
+        <g className="walk-marker-group">
+          <line className="walk-marker" x1={offerChartXScale(walkMarker.round, rounds)} x2={offerChartXScale(walkMarker.round, rounds)} y1={MARGIN.top} y2={HEIGHT - MARGIN.bottom} />
+          <text className="walk-marker-label" x={offerChartXScale(walkMarker.round, rounds) - 4} y={MARGIN.top + 10} textAnchor="end">
+            {walkMarker.label}
+          </text>
+        </g>
+      ) : null}
       {target ? <polyline className="target" points={toPolylinePoints(target, rounds, yDomain)} /> : null}
       {estimate ? <polyline className="estimate" points={toPolylinePoints(estimate, rounds, yDomain)} /> : null}
       {planned && planned.length > 0 ? (

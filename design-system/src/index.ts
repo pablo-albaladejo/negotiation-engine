@@ -30,7 +30,7 @@ export type { HeatmapProps, HeatmapRow, HeatmapCell } from "./components/charts/
 
 export { OfferChart, Legend, offerChartXScale, offerChartYScale, offerChartRoundAt, endLabelPlacement } from "./components/charts/OfferChart";
 export type { LegendItem, LegendProps } from "./components/charts/OfferChart";
-export type { OfferChartProps, OfferPoint, OfferChartEnd } from "./components/charts/OfferChart";
+export type { OfferChartProps, OfferPoint, OfferBandPoint, OfferChartEnd } from "./components/charts/OfferChart";
 
 export { Filters } from "./components/controls/Filters";
 export type { FiltersProps, FilterOption, FilterCheckbox } from "./components/controls/Filters";

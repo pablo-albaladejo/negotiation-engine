@@ -4,7 +4,7 @@ Componentes de presentación: muestran valores, no calculan métricas. Exportado
 
 ## Archivos
 
-- **`OfferChart.tsx`** — `OfferChart` y `Legend`: curva de ofertas por ronda (las nuestras, las del rival, reservas, final).
+- **`OfferChart.tsx`** — `OfferChart` y `Legend`: curva de ofertas por ronda (las nuestras, las del rival, reservas, final); opcionales: `planned`, el camino previsto del rival con banda (`predicted`), su límite con banda (`theirLimit`) y la ronda de retirada (`walkMarker`).
 - **`Scatter2D.tsx`** — `Scatter2D`: ofertas en dos ejes con isolíneas, mandato y trato.
 - **`Heatmap.tsx`** — `Heatmap` y `heatmapBand`: mapa de calor por filas y columnas.
 
