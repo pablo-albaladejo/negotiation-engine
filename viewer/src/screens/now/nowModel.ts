@@ -3,10 +3,10 @@ import { partyOf } from "../../model/cockpit.js";
 import { assetLabel, boardRowIdFor, nowHours, roundAt, wallLabel, type GameModel, type ModelConversation, type ModelIntent, type NowOffer } from "../../model/gameModel.js";
 
 /**
- * Lógica pura de la pestaña «Now»: cabecera del tick, plan del tick (intenciones SELECTED en orden de arbitraje),
- * conversaciones vivas con su estado, nuestras ofertas publicadas y qué cambió desde el tick anterior.
- * Mezcla el tablero (`/api/bazaar/board`, fresco cada tick) con la última construcción del modelo; ninguna cifra
- * se calcula aquí: la cifra de cada fila es la que decidió el código. Sin valores privados ni límites.
+ * Pure logic of the «Now» tab: tick header, tick plan (SELECTED intents in arbitration order),
+ * live conversations with their state, our published offers and what changed since the previous tick.
+ * Mixes the board (`/api/bazaar/board`, fresh every tick) with the latest model build; no figure
+ * is computed here: each row's figure is the one the code decided. No private values or limits.
  */
 
 // ---------------------------------------------------------------- cabecera
@@ -16,13 +16,13 @@ export interface TickHeader {
   gameHour: number | null;
   round: string;
   weight: number | null;
-  /** Segundos hasta el siguiente tick (cuenta atrás local desde la última lectura del reloj). */
+  /** Seconds until the next tick (local countdown from the last clock reading). */
   nextTickIn: number | null;
   doors: string | null;
   opens: string | null;
   modelAgeS: number | null;
   modelTick: number | null;
-  /** Ticks que la construcción del modelo va por detrás del reloj. */
+  /** Ticks the model build lags behind the clock. */
   modelBehind: number | null;
   apiAgeS: number | null;
   rebuilding: boolean;
@@ -60,7 +60,7 @@ export function ageLabel(s: number | null): string {
   return `${Math.round(s / 3600)} h`;
 }
 
-// ---------------------------------------------------------------- plan del tick
+// ---------------------------------------------------------------- tick plan
 
 export interface PlanRow {
   id: string;
@@ -68,11 +68,11 @@ export interface PlanRow {
   reason: string;
   order: number;
   route: string;
-  /** Verbo de la intención (accept, counter, open, post, cancel…). */
+  /** Verb of the intent (accept, counter, open, post, cancel…). */
   action: string;
-  /** Conversación u oferta que toca. */
+  /** Conversation or offer it concerns. */
   target: string;
-  /** Id para abrir el cajón (conversación del modelo o fila del tablero), si hay. */
+  /** Id to open the drawer (model conversation or board row), if any. */
   open: string | null;
   figure: number | null;
   goal: string;
@@ -97,7 +97,7 @@ function targetOf(model: GameModel, i: ModelIntent): string {
   const c = convOf(model, i.conversation);
   if (c) return `${c.id} · ${convLabel(c)}`;
   if (i.conversation?.startsWith("rastro-offer:")) return `El Rastro offer #${i.conversation.split(":")[1]}`;
-  // Resumen escrito por nuestro código hasta el primer paréntesis o comilla (nunca texto del rival).
+  // Summary written by our code up to the first parenthesis or quote (never rival text).
   return i.summary.split(/ \(| "/)[0] ?? i.summary;
 }
 
@@ -133,7 +133,7 @@ export interface Quota {
   of: number;
 }
 
-/** Cupos de `clock.limits` frente a lo que el plan del tick usaría. */
+/** Quotas from `clock.limits` versus what the tick plan would use. */
 export function quotas(model: GameModel | null): Quota[] {
   const b = model?.budget;
   if (!model || !b) return [];
@@ -157,7 +157,7 @@ export type LiveStatus = "our move" | "waiting for them" | "accept pending" | "c
 
 export interface LiveConv {
   key: string;
-  /** Id para el cajón (fila del tablero si existe, si no la conversación del modelo). */
+  /** Id for the drawer (board row if it exists, otherwise the model conversation). */
   open: string;
   kind: string;
   counterparty: string;
@@ -171,7 +171,7 @@ export interface LiveConv {
   lastTheirs: number | null;
   turn: "us" | "them" | "—";
   next: number | null;
-  /** Su próximo precio previsto por el ajuste por persona (solo dealers; su lado, nunca nuestra reserva). */
+  /** Its next predicted price from the per-persona fit (dealers only; its side, never our reserve). */
   herNext: number | null;
   deadlineIn: number | null;
   status: LiveStatus;
@@ -238,7 +238,7 @@ export function liveConversations(board: Board, model: GameModel | null): { acti
       outcome: c.result?.outcome ? `${c.result.outcome}${c.result.price !== undefined ? ` @ ${c.result.price}` : ""}` : row && !isOpen(row) ? `${row.status}${row.price !== null ? ` @ ${row.price}` : ""}` : null,
     });
   }
-  // Lo abierto en el tablero que el modelo no tiene (tratos entre equipos, ofertas de otros venues, modelo aún sin construir).
+  // What is open on the board that the model lacks (deals between teams, offers on other venues, model not yet built).
   for (const r of board.rows) {
     if (seen.has(r.id) || !isOpen(r)) continue;
     const duel = r.kind.startsWith("duel");
@@ -271,15 +271,15 @@ export function liveConversations(board: Board, model: GameModel | null): { acti
   return { active: out.filter((c) => c.status !== "done"), done: out.filter((c) => c.status === "done") };
 }
 
-// ---------------------------------------------------------------- nuestras ofertas
+// ---------------------------------------------------------------- our offers
 
 export interface OfferLine extends NowOffer {
-  /** Edad corregida al tick actual (el modelo pudo construirse un tick antes). */
+  /** Age corrected to the current tick (the model may have been built one tick earlier). */
   age: number | null;
   expiresIn: number | null;
 }
 
-/** Ofertas del modelo; si aún no hay `now`, las ofertas abiertas del tablero (sin venue ni comisión). */
+/** Model offers; if there is no `now` yet, the board's open offers (without venue or commission). */
 export function offerLines(board: Board, model: GameModel | null): { lines: OfferLine[]; source: "model" | "board" } {
   const tick = board.clock?.tick ?? model?.tick ?? null;
   const fromModel = model?.now?.offers;
@@ -314,7 +314,7 @@ export function offerLines(board: Board, model: GameModel | null): { lines: Offe
   return { source: "board", lines };
 }
 
-// ---------------------------------------------------------------- qué cambió
+// ---------------------------------------------------------------- what changed
 
 export interface Snapshot {
   tick: number | null;
@@ -341,7 +341,7 @@ export function snapshotOf(board: Board, model: GameModel | null): Snapshot {
 export interface Change {
   kind: "message" | "price" | "opened" | "closed" | "posted" | "gone";
   text: string;
-  /** Id para el cajón, si la línea es de una conversación. */
+  /** Id for the drawer, if the line belongs to a conversation. */
   open: string | null;
 }
 
@@ -368,8 +368,8 @@ export function diffSnapshots(prev: Snapshot, next: Snapshot, board: Board): Cha
 }
 
 /**
- * Memoria del cliente (sobrevive al cambio de pestaña, no a recargar): la foto del último tick distinto y la
- * del tick actual. El diff es siempre «tick anterior → este tick».
+ * Client memory (survives tab switches, not reloads): the snapshot of the last distinct tick and the
+ * one of the current tick. The diff is always «previous tick → this tick».
  */
 const memory: { prev: Snapshot | null; last: Snapshot | null } = { prev: null, last: null };
 

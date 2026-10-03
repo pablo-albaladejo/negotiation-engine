@@ -10,10 +10,10 @@ import { useNow } from "../../ui/use-now.js";
 import { ageLabel, diffSnapshots, liveConversations, offerLines, planRows, quotas, rememberSnapshot, snapshotOf, tickHeader, type Change, type LiveConv, type LiveStatus, type PlanRow } from "./nowModel.js";
 
 /**
- * Pestaña «Now»: qué está pasando ahora mismo. Cabecera del tick, plan del tick (lo SELECTED por el coordinador
- * en orden de arbitraje, con su cifra y su objetivo), conversaciones vivas, nuestras ofertas publicadas y qué
- * cambió desde el tick anterior. El tablero se lee cada tick; el modelo es la última construcción (sin esperar a
- * la siguiente). Todo es texto plano; ningún valor privado ni límite.
+ * «Now» tab: what is happening right now. Tick header, tick plan (what the coordinator SELECTED
+ * in arbitration order, with its figure and its target), live conversations, our published offers and what
+ * changed since the previous tick. The board is read every tick; the model is the latest build (without waiting for
+ * the next one). Everything is plain text; no private value or limit.
  */
 
 const col = { display: "flex", flexDirection: "column", gap: "var(--space-3)" } as const;

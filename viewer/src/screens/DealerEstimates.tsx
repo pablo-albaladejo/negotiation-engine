@@ -4,9 +4,9 @@ import type { GameModel } from "../model/gameModel.js";
 import { Sparkline } from "../ui/sparkline.js";
 
 /**
- * «Dealer estimates»: el ajuste de la curva por persona (solo el lado del dealer). Tabla de parámetros con valor,
- * intervalo y n; límites por banda marcando las de pocas muestras; y una línea por parámetro con su historia para
- * ver cómo converge.
+ * «Dealer estimates»: the per-persona curve fit (dealer side only). Parameter table with value,
+ * interval and n; limits per band flagging the low-sample ones; and one line per parameter with its history to
+ * see how it converges.
  */
 export function DealerEstimates({ model }: { model: GameModel }) {
   const views = dealerEstimates(model);

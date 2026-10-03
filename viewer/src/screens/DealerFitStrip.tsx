@@ -4,9 +4,9 @@ import type { GameModel, ModelConversation } from "../model/gameModel.js";
 import { bandView, isWelcome, strategyLines } from "../model/personaModel.js";
 
 /**
- * Tira compacta «Dealer fit» del cajón: estimaciones de esa persona (β, max_rounds, markup, espejo, ronda de retirada,
- * con intervalo y n) y el límite medido de esa banda. Con `welcome` (primera conversación con ese dealer), aviso de que
- * solo mide el límite. Solo el lado del dealer.
+ * Compact «Dealer fit» strip of the drawer: that persona's estimates (β, max_rounds, markup, mirror, walk-away round,
+ * with interval and n) and the measured limit of that band. With `welcome` (first conversation with that dealer), a notice that
+ * it only measures the limit. Dealer side only.
  */
 export function DealerFitStrip({ model, conv }: { model: GameModel | null; conv: ModelConversation | null }) {
   const s = dealerFitStrip(model, conv);
@@ -42,10 +42,10 @@ export function DealerFitStrip({ model, conv }: { model: GameModel | null; conv:
 }
 
 /**
- * Estrategia de la persona según el modelo de HOY (también en conversaciones viejas o cerradas), plegable: el resumen
- * lleva las cifras clave (límite de la banda, β, rondas, retirada); dentro, una tabla parámetro · valor · rango · n ·
- * fuente, con el límite de la banda de esta conversación arriba y los parámetros sin medida juntos en una línea.
- * La marca `welcome` dice que solo cuenta para su límite. Solo el lado del dealer.
+ * The persona's strategy per TODAY's model (also in old or closed conversations), collapsible: the summary
+ * carries the key figures (band limit, β, rounds, walk-away); inside, a table parameter · value · range · n ·
+ * source, with this conversation's band limit on top and the unmeasured parameters together on one line.
+ * The `welcome` mark says it only counts toward its limit. Dealer side only.
  */
 export function PersonaStrategy({ model, conv }: { model: GameModel | null; conv: ModelConversation }) {
   if (conv.kind !== "dealer") return null;
