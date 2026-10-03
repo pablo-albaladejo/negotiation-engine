@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// News from the Bazaar (Radio Rastro, the Bulletin, the notice board). DISPLAY ONLY: nothing here produces a
-// figure or a decision, and no trading route may import this folder.
+// News from the Bazaar (Radio Rastro, the Bulletin, the notice board). For display and, through `signals.ts`, as a
+// hint in GameState.news: nothing here produces a figure or a decision, and no trading route may import this folder.
 
 const num = z.coerce.number();
 

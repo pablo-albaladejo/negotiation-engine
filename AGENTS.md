@@ -7,7 +7,7 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 ## Reglas no negociables
 
 - **La cifra sale siempre del código** (`src/engine/` + planificadores de `src/dealers/`, `src/duels/`…). Los mensajes son plantillas cuya única cifra es la decidida (`textMatchesPrice`, `textMatchesOffer`).
-- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Dos excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista) y, para un flag (`src/flags/flags.ts`): comparar texto con estructura, y frases de presión de una lista cerrada en contraofertas; **nunca para una cifra**. Las frases de presión solo se envían con aprobación (`--approve-flags`).
+- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Tres excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista); las noticias (`/api/news`, news.posted), que se leen como pista (de qué dealer, set o carta se habla) en `GameState.news`, nunca para una cifra y pueden ser rumor; y, para un flag (`src/flags/flags.ts`): comparar texto con estructura, y frases de presión de una lista cerrada en contraofertas; **nunca para una cifra**. Las frases de presión solo se envían con aprobación (`--approve-flags`).
 - **Nunca se revela la valoración privada** ni el límite (`your_limit`).
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
 - **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/shared/asset-locks.ts`).
@@ -40,7 +40,7 @@ src/
 ├─ markets/   mercados entre El Rastro y otros venues: hueco neto = hueco − comisión − penalización por rival (ruta de pnpm bazaar:play)
 ├─ hints/     corpus de líneas de dealers (pistas de eggs; nunca una cifra)
 ├─ agenda/    calendario como playbook y disparadores del feed (los usa pnpm bazaar:play)
-├─ news/      noticias de Radio Rastro para el visor (solo mostrar; pnpm bazaar:news)
+├─ news/      noticias de Radio Rastro: visor y pista en GameState.news (nunca una cifra; pnpm bazaar:news)
 ├─ audit/     auditor de ineficiencias de solo lectura (pnpm bazaar:audit)
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
 test/        solo tests de guardarraíles (fast-check)
