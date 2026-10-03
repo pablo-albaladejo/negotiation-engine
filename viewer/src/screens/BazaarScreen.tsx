@@ -156,8 +156,8 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         price: show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
-        // Dealer deals score 0 neg_points (score-audit.jsonl, 3 Oct): say so instead of leaving a blank.
-        score: r.kind.startsWith("dealer") && outcomeOf(r) === "deal" && !r.d_score ? "0 · dealers don't score" : r.d_score === null ? "—" : toned(r.d_score),
+        // A dealer deal scores through the ladder (share of her range, best three per level), never neg_points.
+        score: r.kind.startsWith("dealer") && outcomeOf(r) === "deal" ? (r.d_ladder_points !== null ? `ladder ${r.d_ladder_points > 0 ? "+" : ""}${r.d_ladder_points}` : "ladder only · not logged") : r.d_score === null ? "—" : toned(r.d_score),
         ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
       }))}
       onRowClick={(i) => {
