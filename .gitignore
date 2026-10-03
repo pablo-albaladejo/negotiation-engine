@@ -5,9 +5,11 @@ coverage/
 results/
 # Traspaso del día 1: solo HANDOFF.md en git
 handoff/*
+!handoff/AGENTS.md
 !handoff/2026-10-02/
 handoff/2026-10-02/*
 !handoff/2026-10-02/HANDOFF.md
+!handoff/2026-10-02/AGENTS.md
 .env
 .env.*
 !.env.example
