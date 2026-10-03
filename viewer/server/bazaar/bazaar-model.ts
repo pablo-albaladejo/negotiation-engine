@@ -9,6 +9,7 @@ import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../..
 import type { ApiResponse } from "../api.js";
 import { FeedEventSchema, feedLine, parseList, type FeedLine } from "./bazaar-board-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
+import { arbitrationOrder, duelDeadlines, intentGoals, ourOffers, ourVenue, type NowOut } from "./bazaar-now.js";
 
 /**
  * `GET /api/bazaar/model`: NUESTRO modelo interno, no un espejo de la API. Una vez por tick construye el
@@ -74,6 +75,8 @@ export class ReadOnlyBazaarClient extends BazaarClient {
 export interface ModelIntentOut extends Intent {
   selected: boolean;
   reason: string;
+  /** Posición en el orden de arbitraje (aceptaciones por `ACCEPT_PRIORITY`, mensajes, hilos, altas…). */
+  order: number;
 }
 
 export interface ModelRouteOut {
@@ -100,6 +103,8 @@ export interface ModelOut {
   tick: number | null;
   built_at: string | null;
   next_refresh_ms: number;
+  /** `true` si esta respuesta es la última construcción y otra se está haciendo ya (no se espera por ella). */
+  rebuilding: boolean;
   safety: { mode: "dry-run"; blocked: number; note: string };
   inputs: { ok: string[]; missing: string[] };
   /** El `GameState` del tick (con las conversaciones completadas con turno y estrategia). Solo local. */
@@ -129,6 +134,8 @@ export interface ModelOut {
   packs: { state: unknown; catalog: unknown[]; held: unknown[] };
   /** Venues: `state.markets.venues` si existe; si no, `/api/venues`. */
   venues: { state: unknown; api: unknown[] };
+  /** Pestaña «Now»: objetivo de cada intención, plazos, nuestras ofertas publicadas y nuestro venue. */
+  now: NowOut | null;
 }
 
 /**
@@ -229,6 +236,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     tick: null,
     built_at: null,
     next_refresh_ms: nextMs,
+    rebuilding: false,
     safety: { mode: "dry-run", blocked: 0, note: "GET only; the model never calls execute" },
     inputs: { ok: [], missing: [] },
     state: null,
@@ -244,6 +252,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     prices: { source: "none", rows: [] },
     packs: { state: null, catalog: [], held: [] },
     venues: { state: null, api: [] },
+    now: null,
   };
 }
 
@@ -313,10 +322,15 @@ export class BazaarModel {
 
   async get(): Promise<ApiResponse> {
     const now = this.deps.now ?? Date.now;
-    if (this.cache && now() < this.cache.refreshAt) return ok({ ...this.cache.data, next_refresh_ms: Math.max(1_000, this.cache.refreshAt - now()) });
+    if (this.cache && now() < this.cache.refreshAt) return ok({ ...this.cache.data, rebuilding: this.inflight !== null, next_refresh_ms: Math.max(1_000, this.cache.refreshAt - now()) });
     this.inflight ??= this.cycle().finally(() => {
       this.inflight = null;
     });
+    // Con una construcción anterior se sirve esa sin esperar (14–47 s) y se avisa de que hay otra en marcha.
+    if (this.cache) {
+      this.inflight.catch(() => {});
+      return ok({ ...this.cache.data, rebuilding: true, next_refresh_ms: 10_000 });
+    }
     return ok(await this.inflight);
   }
 
@@ -382,6 +396,7 @@ export class BazaarModel {
     const intents: Intent[] = proposals.flatMap((x) => x.p?.intents ?? []);
     const verdicts = arbitrate(intents, budget);
     const byId = new Map(verdicts.map((v) => [v.intent.id, v]));
+    const orderOf = arbitrationOrder(intents);
 
     // Igual que `bazaar:play`: turno del tick, estrategia y última decisión de cada ruta en su conversación.
     const acceptedConv = new Set(verdicts.filter((v) => v.selected && v.intent.kind === "accept").map((v) => v.intent.conversation));
@@ -406,7 +421,7 @@ export class BazaarModel {
       status: error ? "failed" : "ok",
       ...(error ? { error } : {}),
       notes: p?.notes ?? [],
-      intents: (p?.intents ?? []).map((i) => ({ ...i, selected: byId.get(i.id)?.selected ?? false, reason: byId.get(i.id)?.reason ?? "-" })),
+      intents: (p?.intents ?? []).map((i) => ({ ...i, selected: byId.get(i.id)?.selected ?? false, reason: byId.get(i.id)?.reason ?? "-", order: orderOf.get(i.id) ?? 999 })),
     }));
     // Rutas del modelo que el coordinador aún no tiene: se enseñan para que se vea el hueco.
     const venue = state.ours.venue;
@@ -425,6 +440,7 @@ export class BazaarModel {
     const market = this.deps.market?.();
     const stateAny = state as GameState & Record<string, unknown>;
     const venuesRaw = record(stateAny.markets).venues ? null : await client.raw("GET", "/api/venues").catch(() => null);
+    const nowOut = await this.nowOf(client, state, me, market?.rastro ?? null, Array.isArray(record(stateAny.markets).venues) ? (record(stateAny.markets).venues as unknown[]) : Array.isArray(record(venuesRaw).venues) ? (record(venuesRaw).venues as unknown[]) : [], intents);
     const sched = scheduleEvents(await client.raw("GET", "/api/schedule").catch(() => null));
     const feed = parseList(FeedEventSchema, record(this.deps.feed?.() ?? null).events ?? this.deps.feed?.());
     const triggers = feed.filter((e) => TRIGGER.test(e.type ?? "")).slice(-15).reverse().map(feedLine);
@@ -448,6 +464,7 @@ export class BazaarModel {
       tick: state.tick,
       built_at: state.builtAt,
       next_refresh_ms: refreshIn,
+      rebuilding: false,
       safety: { mode: "dry-run", blocked: client.blocked, note: "GET only through a read-only client; routes propose in dry-run and nothing is executed" },
       inputs: { ok: INPUTS.filter((n) => !missingNames.includes(n) && (n !== "leaderboard" || leaderboardRead)), missing: state.missing },
       state,
@@ -467,9 +484,32 @@ export class BazaarModel {
         held: (Array.isArray(record(market?.me).assets) ? (record(market?.me).assets as unknown[]) : []).filter((a) => record(a).kind === "pack"),
       },
       venues: { state: record(stateAny.markets).venues ?? null, api: Array.isArray(record(venuesRaw).venues) ? (record(venuesRaw).venues as unknown[]) : [] },
+      now: nowOut,
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;
+  }
+
+  /**
+   * Datos de la pestaña «Now» (solo GET): `/api/me/offers`, `/api/duels` (plazos) y el libro de cada venue donde
+   * tenemos ofertas (El Rastro ya lo trae el tablero; como mucho 3 venues más). Si un GET falla, ese dato falta.
+   */
+  private async nowOf(client: ReadOnlyBazaarClient, state: GameState, me: unknown, rastro: unknown, venues: unknown[], intents: Intent[]): Promise<NowOut> {
+    const team = typeof record(me).id === "string" ? (record(me).id as string) : (state.ours.team ?? "");
+    const myOffers = await client.raw("GET", "/api/me/offers").catch(() => null);
+    const duels = await client.raw("GET", "/api/duels").catch(() => null);
+    const books = new Map<string, unknown>();
+    const rastroBook = rastro ?? (await client.raw("GET", "/api/venues/rastro/offers").catch(() => null));
+    if (rastroBook) books.set("rastro", rastroBook);
+    const others = [...new Set(parseOffers(record(myOffers).offers ?? myOffers).map((o) => o.venue).filter((v): v is string => !!v && v !== "rastro" && isSafeId(v)))].slice(0, 3);
+    for (const v of others) {
+      const raw = await client.raw("GET", `/api/venues/${encodeURIComponent(v)}/offers`).catch(() => null);
+      if (raw) books.set(v, raw);
+    }
+    const deadlines = duelDeadlines(duels);
+    const offers = myOffers ? ourOffers({ myOffers, team, tick: state.tick, books, venues, state }) : [];
+    for (const o of offers) if (o.expires_tick !== null) deadlines[`rastro:${o.id}`] = o.expires_tick;
+    return { goals: intentGoals(intents, state, PLAY_DEFAULTS.pageTargets), deadlines, offers, venue: ourVenue(me, state.tick) };
   }
 
   /** Últimas entradas de `hints.jsonl` (raíz de las trazas o la fecha más reciente), leyendo solo la cola. */
