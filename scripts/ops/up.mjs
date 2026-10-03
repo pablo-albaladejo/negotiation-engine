@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// `pnpm bazaar:up`: a single command for the day. Runs the doctor and starts four processes with prefixed, colored output,
+// `pnpm bazaar:up`: a single command for the day. Runs the doctor and starts six processes with prefixed, colored output,
 // each also logged to results/logs/<date>/<name>.log:
 //   recorder → pnpm bazaar:record (records the stream; the only thing that keeps the feed's full history)
 //   viewer   → pnpm viewer (if the port already serves the viewer, it is reused and no other is started)
 //   play     → pnpm bazaar:play in a loop, in DRY RUN by default
 //   broker   → pnpm bazaar:broker --shadow in a loop (Market Test shadow; always dry-run; not started without .env.broker)
 //   news     → pnpm bazaar:news (Radio Rastro watcher for the viewer; display only, read-only GETs)
+//   audit    → pnpm bazaar:audit --watch (read-only inefficiency monitor: audit.jsonl + audit-status.json; --no-audit skips it)
 // Live only with `--live --confirm` and typing LIVE in the terminal. Ctrl-C stops all. A child that dies is
 // restarted with growing backoff (at most 5 times in 10 min). Heartbeat in results/logs/up-status.json.
 // In dry-run, play waits while doors are closed or the clock is paused (--no-gate to run it anyway).
@@ -27,6 +28,7 @@ const { values } = parseArgs({
     "skip-doctor": { type: "boolean", default: false },
     "no-gate": { type: "boolean", default: false },
     "no-broker": { type: "boolean", default: false },
+    "no-audit": { type: "boolean", default: false },
     "viewer-port": { type: "string" },
     "play-args": { type: "string", default: "" },
   },
@@ -137,6 +139,8 @@ const specs = [
   ...(noBroker ? [] : [{ name: "broker", color: 34, cmd: "pnpm", args: ["bazaar:broker", "--shadow", "--poll-ms", "5000"] }]),
   // News watcher (display only): up already logs it to news.log, so it does not write its own copy.
   { name: "news", color: 92, cmd: "pnpm", args: ["bazaar:news", "--no-file-log"] },
+  // Auditor: read-only (local traces, GET /api/me at most every 5 min), same in dry-run and live.
+  ...(values["no-audit"] ? [] : [{ name: "audit", color: 32, cmd: "pnpm", args: ["bazaar:audit", "--watch"] }]),
 ];
 const children = new Map(
   specs.map((s) => [s.name, { spec: s, proc: undefined, status: "starting", pid: undefined, startedAt: undefined, restarts: [], restartsTotal: 0, lastExit: undefined, timer: undefined, log: join(logDir, `${s.name}.log`) }]),
