@@ -359,3 +359,18 @@ export function curveRoundLines(curve: OfferCurve, them: string, round: number):
   ].filter((l): l is string => l !== null);
   return lines.length > 1 ? lines : null;
 }
+
+/**
+ * Where one of our open offers comes from (board.offer_origins, from plan.jsonl): route, its postings in this chain
+ * («posted 6 P (t1079) → reprice 8 P (t1093)»), the NEG if it fills and the ticks left. Null for anything else.
+ */
+export function originOf(board: Board, rowId: string): { route: string; history: string; tail: string } | null {
+  const m = /^offer:(\d+)$/.exec(rowId);
+  const o = m ? board.offer_origins?.[m[1]!] : undefined;
+  if (!o) return null;
+  const history = o.steps
+    .map((s, i) => `${i === 0 ? "posted" : (s.tag ?? "reprice")} ${s.price ?? "?"} P (t${s.tick})${s.reposts ? ` · reposted ×${s.reposts}` : ""}`)
+    .join(" → ");
+  const tail = [o.neg !== null ? `neg ${o.neg > 0 ? "+" : ""}${o.neg} if filled` : null, o.ticks_left !== null ? `${o.ticks_left} ticks left` : null].filter(Boolean).join(" · ");
+  return { route: o.route, history, tail };
+}

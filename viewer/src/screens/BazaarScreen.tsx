@@ -38,6 +38,7 @@ import {
   offerCurve,
   PARTY_LABEL,
   ourOfferIds,
+  originOf,
   partyOf,
   scheduleLines,
   scoreMovers,
@@ -577,9 +578,21 @@ function RightNow({ board, onOpen }: { board: Board; onOpen: (id: string) => voi
             { key: "kind", label: "What" },
             { key: "title", label: "Deal" },
             { key: "who", label: "With" },
+            { key: "origin", label: "Posted by" },
             { key: "state", label: "State" },
           ]}
           rows={items.map((it) => ({
+            origin: (() => {
+              const o = originOf(board, it.id);
+              if (!o) return it.kind === "offer" ? <span className="nr-muted">—</span> : "";
+              return (
+                <span style={{ display: "flex", flexDirection: "column", gap: 2 }} title={o.history}>
+                  <strong style={{ fontSize: 12 }}>{o.route}</strong>
+                  <span className="nr-muted" style={{ fontSize: 12 }}>{o.history}</span>
+                  {o.tail ? <span style={{ fontSize: 12 }}>{o.tail}</span> : null}
+                </span>
+              );
+            })(),
             kind: it.kind,
             title: (
               <TableLink aria-label={`Open ${it.id}`} onClick={() => onOpen(it.id)}>

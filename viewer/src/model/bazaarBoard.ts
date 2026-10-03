@@ -246,6 +246,10 @@ export interface Board {
   team_desk?: BoardDeskTeam[];
   /** Every open venue's book as play read it, marked against our hand (null without venue-books.json). */
   venue_books?: BoardVenueBooks | null;
+  /** Where each of our open offers comes from (plan.jsonl), by offer id. */
+  offer_origins?: Record<string, BoardOfferOrigin>;
+  /** Directed offers between other teams, last ~60 ticks (structure only). */
+  directed?: BoardDirectedOffer[];
 }
 
 export const EMPTY_BOARD: Board = {
@@ -474,4 +478,28 @@ export interface BoardVenueBooks {
   tick: number | null;
   updated: string | null;
   venues: BoardVenueBook[];
+}
+
+export interface BoardOfferOrigin {
+  /** trades | rival-page | rival-buy | rival-swap | team-desk. */
+  route: string;
+  steps: { tick: number; price: number | null; tag: string | null; reposts?: number }[];
+  neg: number | null;
+  ticks_left: number | null;
+  summary: string | null;
+}
+
+export interface BoardDirectedOffer {
+  id: number;
+  tick: number | null;
+  maker: string;
+  to: string;
+  venue: string | null;
+  side: "sells" | "buys" | "swap";
+  refs: string[];
+  price: number;
+  status: "open" | "filled" | "cancelled" | "expired";
+  expires_tick: number | null;
+  hand: number | null;
+  spare: boolean;
 }

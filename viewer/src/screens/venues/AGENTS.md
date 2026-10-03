@@ -12,6 +12,7 @@ Cada oferta va marcada frente a nosotros con NEG a nuestros valores como quien a
 Filtros: solo cartas que nos faltan, solo bids por nuestras cartas, solo NEG > 0, ocultar off-limits y buscar una carta.
 
 - **`VenueBooks.tsx`** — la pantalla.
+- **`DirectedOffers.tsx`** — la sección «Between other teams», arriba de los libros: ofertas dirigidas entre otros equipos (quién → a quién, lado, cartas, precio, estado), los pares más activos y en verde las cartas que tenemos repetidas, con el filtro «only cards we hold as spares». Solo estructura.
 - **`venuesModel.ts`** — funciones puras (`filterVenues`, `keepRow`, `markLabel`, `summaryOf`).
 
 Datos: `board.venue_books` de `/api/bazaar/board` (lo arma el servidor, ver [`viewer/server/bazaar/venues/`](../../../server/bazaar/venues/AGENTS.md)). Solo lectura: nada se envía.

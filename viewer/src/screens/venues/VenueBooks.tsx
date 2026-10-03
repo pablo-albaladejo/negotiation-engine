@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DirectedOffers } from "./DirectedOffers.js";
 import { Card, DataTable } from "@negotiation-ring/design-system";
 import {
   teamLabel,
@@ -207,12 +208,15 @@ export function VenueBooks({ board }: { board: Board }) {
   const books = board.venue_books;
   if (!books) {
     return (
-      <Card title="All venues">
-        <span className="nr-muted">
-          No venue-books.json for today yet: bazaar:play writes it every tick
-          (needs a play restart on the commit that adds it).
-        </span>
-      </Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+        <Card title="All venues">
+          <span className="nr-muted">
+            No venue-books.json for today yet: bazaar:play writes it every tick
+            (needs a play restart on the commit that adds it).
+          </span>
+        </Card>
+        <DirectedOffers board={board} />
+      </div>
     );
   }
   const venues = filterVenues(books, f);
@@ -293,6 +297,7 @@ export function VenueBooks({ board }: { board: Board }) {
           </span>
         </div>
       </Card>
+      <DirectedOffers board={board} />
       {venues.length === 0 ? (
         <span className="nr-muted">No offer matches these filters.</span>
       ) : (

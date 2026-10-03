@@ -2,6 +2,8 @@ import { mkdir, open, readdir, readFile, rename, writeFile } from "node:fs/promi
 import { join } from "node:path";
 import { z } from "zod";
 import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
+import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer-origins.js";
+import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
 import { TokenBucket } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import type { ApiResponse } from "../api.js";
@@ -103,6 +105,10 @@ export interface BoardOut {
   team_desk: TeamDeskTeam[];
   /** Every open venue's book as play read it (venue-books.json), marked against our hand; null without the file. */
   venue_books: VenueBooksOut | null;
+  /** Where each of our open offers comes from (plan.jsonl), by offer id. */
+  offer_origins: Record<string, OfferOrigin>;
+  /** Directed offers between other teams, last ~60 ticks (public stream; structure only). */
+  directed: DirectedOffer[];
 }
 
 export interface BazaarBoardDeps {
@@ -150,6 +156,12 @@ async function readAllJsonl<S extends z.ZodType>(dir: string, name: (f: string) 
     }
   }
   return out;
+}
+
+/** Our counts per card from play's values.json (`hand`). */
+function handOf(valuesRaw: unknown): Record<string, number> {
+  const hand = (valuesRaw as { hand?: unknown } | null)?.hand;
+  return hand && typeof hand === "object" ? (hand as Record<string, number>) : {};
 }
 
 async function readJsonFile(path: string | null | undefined): Promise<unknown> {
@@ -346,6 +358,7 @@ export class BazaarBoard {
     const album = albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues);
     const schedule = scheduleOf(await get("/api/schedule"));
     const myOffers = parseOffers(field(offersRaw, "offers")).filter((o) => o.maker === team);
+    const valuesRaw = await readJsonFile(join(this.bazaarDir, "values.json"));
     const ourIds = new Set(myOffers.map((o) => o.id));
     const tradesTick = myOffers.reduce<number | null>((m, o) => (o.created_tick != null && (m === null || o.created_tick > m) ? o.created_tick : m), null);
     const agents: AgentStatus[] = [
@@ -377,11 +390,13 @@ export class BazaarBoard {
       play_mode: await playMode(this.bazaarDir),
       venue_books: venueBooksOf(
         await readJsonFile(join(this.bazaarDir, this.today(), "venue-books.json")),
-        await readJsonFile(join(this.bazaarDir, "values.json")),
+        valuesRaw,
         await readJsonFile(join(this.bazaarDir, "rivals.json")),
         team,
         this.catalog?.raw ?? null,
       ),
+      offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
+      directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),
