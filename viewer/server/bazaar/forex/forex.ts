@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ForexStepThreads } from "./forex-threads.js";
 
 /**
  * «Forex»: the A → B → C chains `bazaar:play` finds every tick (`<day>/forex.json`, written by `writeForex` in
@@ -84,6 +85,8 @@ export interface ForexChainOut {
   current: number;
   status: string;
   done_today: number;
+  /** Conversations and assets behind each step, index-aligned with steps (filled by the board; `forexThreadsOf`). */
+  step_threads: ForexStepThreads[];
 }
 
 export interface ForexOut {
@@ -149,6 +152,7 @@ export function forexOf(raw: unknown): ForexOut | null {
         current: Number.isInteger(cur) && cur >= 0 && cur < steps.length ? cur : -1,
         status: x.status ?? "",
         done_today: x.doneToday ?? 0,
+        step_threads: [],
       },
     ];
   });

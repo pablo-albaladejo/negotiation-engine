@@ -526,6 +526,33 @@ export interface BoardForexChain {
   current: number;
   status: string;
   done_today: number;
+  /** Conversations and assets behind each step, index-aligned with steps (absent on an older server). */
+  step_threads?: BoardForexStepThreads[];
+}
+
+/** One of our dealer threads behind a forex step (server: viewer/server/bazaar/forex/forex-threads.ts). */
+export interface BoardForexThread {
+  id: number;
+  dealer: string;
+  side: "buy" | "sell";
+  card: string | null;
+  status: "open" | "deal" | "closed";
+  outcome: string | null;
+  rule: string | null;
+  opened_tick: number | null;
+  closed_tick: number | null;
+  her_prices: number[];
+  our_prices: number[];
+  her_last: number | null;
+  our_last: number | null;
+  price: number | null;
+  flags: { message_id: number | null; reason: string; tick: number | null }[];
+}
+
+export interface BoardForexStepThreads {
+  threads: BoardForexThread[];
+  /** Hold step: asset ids of the card we hold beyond the first. */
+  assets: number[];
 }
 
 export interface BoardForex {

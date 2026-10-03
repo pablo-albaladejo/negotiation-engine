@@ -31,6 +31,8 @@ export {
   type BoardForexChain,
   type BoardForexLeg,
   type BoardForexStep,
+  type BoardForexStepThreads,
+  type BoardForexThread,
   type BoardDeskChain,
   type BoardAlbum,
   type BoardAlbumPage,

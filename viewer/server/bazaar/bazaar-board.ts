@@ -6,6 +6,7 @@ import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
 import { eggsOf, type EggsOut } from "./profile/eggs.js";
 import { forexOf, type ForexOut } from "./forex/forex.js";
+import { forexThreadsOf } from "./forex/forex-threads.js";
 import { TokenBucket } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import type { ApiResponse } from "../api.js";
@@ -401,7 +402,7 @@ export class BazaarBoard {
         team,
         this.catalog?.raw ?? null,
       ),
-      forex: forexOf(await readJsonFile(join(this.bazaarDir, this.today(), "forex.json"))),
+      forex: await this.forex(decisions, lessons, meRaw),
       offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
@@ -415,6 +416,16 @@ export class BazaarBoard {
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;
+  }
+
+  /** forex.json with the conversations behind each step (trace, lessons, today's flags.json and our assets). */
+  private async forex(decisions: readonly unknown[], lessons: readonly unknown[], meRaw: unknown): Promise<ForexOut | null> {
+    const fx = forexOf(await readJsonFile(join(this.bazaarDir, this.today(), "forex.json")));
+    if (!fx) return null;
+    const flagsRaw = await readJsonFile(join(this.bazaarDir, this.today(), "flags.json"));
+    const steps = forexThreadsOf(fx.chains, decisions, lessons, flagsRaw, meRaw, this.today());
+    for (const c of fx.chains) c.step_threads = steps[c.id] ?? [];
+    return fx;
   }
 
   private today(): string {

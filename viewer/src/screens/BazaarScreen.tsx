@@ -775,7 +775,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         ) : view === "venues" ? (
           <VenueBooks board={board} />
         ) : view === "forex" ? (
-          <Forex board={board} />
+          <Forex board={board} onOpen={openModel} />
         ) : (
           <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
         )}
