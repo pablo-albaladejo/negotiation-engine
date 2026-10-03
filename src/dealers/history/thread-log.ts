@@ -22,6 +22,8 @@ export interface ThreadSummary {
   copiesBefore: Record<string, number>;
   copiesAfter: Record<string, number>;
   dealsWithDealerLastHour: number;
+  /** `welcome-first-deal`: precio aceptado, medido como su límite para este dealer y esta banda (`target`). */
+  measuredLimit?: number;
   openTick?: number;
   openTs?: string;
   tick: number;
@@ -87,8 +89,9 @@ export function formatThreadSummary(s: ThreadSummary): string {
   const value = s.ourValue !== undefined ? ` · our value ${round1(s.ourValue)}${s.ourLimit !== undefined ? ` limit ${s.ourLimit}` : ""}` : "";
   const created = s.valueCreated !== undefined && s.outcome === "deal" ? ` · value created ${s.valueCreated >= 0 ? "+" : ""}${s.valueCreated}` : "";
   const recv = s.received?.length ? ` · received ${s.received.join(",")}` : "";
+  const limit = s.measuredLimit !== undefined ? ` · measured limit ${s.measuredLimit} (welcome-first-deal)` : "";
   return [
-    `SUMMARY thread ${s.thread} · ${s.dealer} · ${s.kind} ${s.cards.join(",") || s.target} · ${what} · ${her} · ${ours}${value}${created}${recv}`,
+    `SUMMARY thread ${s.thread} · ${s.dealer} · ${s.kind} ${s.cards.join(",") || s.target} · ${what} · ${her} · ${ours}${value}${created}${recv}${limit}`,
     `  copies ${copies(s.copiesBefore)} → ${copies(s.copiesAfter)} · deals with ${s.dealer} last hour ${s.dealsWithDealerLastHour} · ticks ${s.openTick ?? "?"}→${s.tick} (${s.ts}) · patience ${s.patience.msgs} msgs / ${s.patience.ticks} ticks until ${s.patience.untilFinal ? "final" : "close"}`,
   ].join("\n");
 }

@@ -54,6 +54,12 @@ export const DEALER_OVERRIDES: Record<string, Partial<NegotiatorParams>> = {
   chato: { patienceBudget: 8, maxStep: 1, maxHolds: 0, sellAnchorMult: 1.7 },
 };
 
+/**
+ * Dealers con los que el equipo ya pasó su primera conversación: `welcome_first_deal` (su apertura = su límite en la
+ * primera conversación de cada equipo, site-map § 8.2) ya no aplica con ellos.
+ */
+export const WELCOME_FIRST_DEAL_PAST: ReadonlySet<string> = new Set(["abuela", "chato"]);
+
 export function negotiatorForDealer(traits: DealerTraits, dealerId?: string): Partial<NegotiatorParams> {
   const budget = patienceBudgetFor(traits);
   const out: Partial<NegotiatorParams> = budget !== undefined ? { patienceBudget: budget } : {};

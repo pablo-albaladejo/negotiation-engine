@@ -116,6 +116,11 @@ export interface ThreadView {
    * `herCurrent` se mide su respuesta a cada paso nuestro; sin él se supone `herPrices[j]` = su precio antes de nuestro mensaje j.
    */
   herAtOurMessages?: readonly number[];
+  /**
+   * `welcome_first_deal` (site-map § 8.2): primera conversación del equipo con este dealer, en la que su apertura es su
+   * límite (no va a mejorar). Con esto, su precio se acepta si crea valor a nuestro valor privado (regla `welcome-first-deal`).
+   */
+  welcomeFirstDeal?: boolean;
 }
 
 export type Rule =
@@ -125,6 +130,7 @@ export type Rule =
   | "adaptive"
   | "adaptive-fallback"
   | "ac-next"
+  | "welcome-first-deal"
   | "final-above-reservation"
   | "final-below-reservation"
   | "fixed-price"
@@ -333,8 +339,21 @@ export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOp
   return first < floor && view.herCurrent.price < floor;
 }
 
+/**
+ * Regla `welcome-first-deal`: en la primera conversación con un dealer nuevo su apertura es su límite, así que su precio
+ * se acepta si cabe en la reserva privada y crea valor a nuestro valor privado (EV > 0). Sustituye, solo en esa
+ * conversación, el «no cerrar a su apertura» de `effectiveReservation`. Sin valor privado conocido, no aplica.
+ */
+export function welcomeTake(view: Pick<ThreadView, "side" | "reservation" | "privateValue" | "herCurrent" | "welcomeFirstDeal">): boolean {
+  return !!view.welcomeFirstDeal && !!view.herCurrent && view.privateValue !== undefined && valuePositive(view, view.herCurrent.price);
+}
+
 export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): Decision {
   const effRes = effectiveReservation(view);
+  if (view.herCurrent && welcomeTake(view)) {
+    if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
+    return { action: { kind: "accept", offerId: view.herCurrent.offerId, price: view.herCurrent.price }, rule: "welcome-first-deal", effectiveReservation: effRes };
+  }
   if (effRes < 1) return { action: { kind: "close" }, rule: "no-zone", effectiveReservation: effRes };
   const next = nextPrice(view, p);
   const her = view.herCurrent;

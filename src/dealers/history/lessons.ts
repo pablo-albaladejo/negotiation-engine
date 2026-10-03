@@ -18,6 +18,8 @@ export interface LessonEntry {
   our_limit: number | null;
   her_opening: number | null;
   her_final: number | null;
+  /** `welcome_first_deal`: su apertura aceptada, medida como su límite para este dealer y esta banda (`item`). */
+  measured_limit?: number;
   final_flag: boolean;
   our_prices: number[];
   her_prices: number[];
@@ -46,6 +48,7 @@ const round1 = (x: number) => Math.round(x * 10) / 10;
 export function deriveLessons(s: ThreadSummary, lowballFrac = 0.7): string[] {
   const L: string[] = [];
   const her = s.herPrices;
+  if (s.measuredLimit !== undefined) L.push(`welcome_first_deal: first conversation with ${s.dealer}, her opening ${s.measuredLimit} is her limit for ${s.target}.`);
   if (her.length >= 2 && her.every((p) => p === her[0])) L.push(`She did not move: ${her.length} prices at ${her[0]}.`);
   else if (her.length >= 2) {
     const moved = Math.abs(her[her.length - 1]! - her[0]!);
@@ -82,6 +85,7 @@ export function lessonFromSummary(s: ThreadSummary, settle?: { negDelta?: number
     our_limit: s.ourLimit ?? null,
     her_opening: s.herOpening ?? null,
     her_final: s.finalFlag ? (s.herFinal ?? null) : null,
+    ...(s.measuredLimit !== undefined ? { measured_limit: s.measuredLimit } : {}),
     final_flag: s.finalFlag,
     our_prices: s.ourPrices,
     her_prices: s.herPrices,

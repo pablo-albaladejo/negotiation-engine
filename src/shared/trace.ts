@@ -25,6 +25,13 @@ export interface TraceRecord {
   status?: string;
   closedReason?: string;
   settledPrice?: number;
+  /** `welcome-first-deal`: su apertura, medida como su límite para este dealer y esta banda (`target`). */
+  measuredLimit?: number;
+  /**
+   * Aceptamos su apertura sin haber hecho oferta: el servidor lo cuenta como took_opening, no como trato negociado
+   * (no entra en el share medio; personas.md § 9).
+   */
+  tookOpening?: boolean;
   error?: string;
   /** Al cerrar/aceptar/terminar: mensajes nuestros, respuestas suyas, tics hasta su final y respuesta a cada paso. */
   patience?: PatienceSummary;

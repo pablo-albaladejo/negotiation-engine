@@ -6,7 +6,7 @@ import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets,
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
 import { formatPatience, PatienceLog } from "./negotiation/patience.js";
 import type { TraceRecord, TraceSink } from "../shared/trace.js";
-import { gameHours } from "./dealer-profile.js";
+import { gameHours, WELCOME_FIRST_DEAL_PAST } from "./dealer-profile.js";
 import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./history/thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./negotiation/view.js";
@@ -97,6 +97,10 @@ interface Active {
   lastRule?: string;
   /** Compra que aceptamos nosotros: su precio ya se contó en el presupuesto (no se cuenta dos veces al cerrar). */
   acceptedPrice?: number;
+  /** Primera conversación del equipo con este dealer (`welcome_first_deal`: su apertura es su límite). */
+  welcome?: boolean;
+  /** Precio aceptado con `welcome-first-deal`: su límite medido para este dealer y esta banda. */
+  measuredLimit?: number;
 }
 
 const HOUR_MS = 3_600_000;
@@ -249,8 +253,9 @@ export class BazaarAgent {
         return out;
       }
       try {
+        const welcome = await this.isFirstConversation();
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
-        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
+        this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...this.openSnapshot(me, target, tick) };
         this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
@@ -294,9 +299,20 @@ export class BazaarAgent {
       return;
     }
     if (target) {
-      this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), ...this.openSnapshot(me, target, tick) };
+      const welcome = await this.isFirstConversation(thread.id);
+      this.active = { id: thread.id, target, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...this.openSnapshot(me, target, tick) };
       this.threadsOpened += 1;
     } else if (!this.o.dryRun && this.allow({ kind: "close", thread: thread.id, target: "unknown-topic", side: sideOfTopic(thread.topic) ?? "buy", cards: [], rule: "unknown-topic" })) await this.api.closeThread(thread.id);
+  }
+
+  /**
+   * `welcome_first_deal`: es la primera conversación del equipo con este dealer si no es uno de los ya pasados
+   * (`WELCOME_FIRST_DEAL_PAST`), este agente no abrió otra antes y el servidor no lista otro hilo nuestro con él.
+   */
+  private async isFirstConversation(threadId?: number): Promise<boolean> {
+    if (WELCOME_FIRST_DEAL_PAST.has(this.o.dealer.id) || this.threadsOpened > 0) return false;
+    const list = await this.api.myThreads().catch(() => undefined);
+    return !!list && !list.threads.some((t) => isDealer(this.o.dealer, t.with) && t.id !== threadId);
   }
 
   private async targetFromTopic(thread: Thread, me: Me): Promise<Target | undefined> {
@@ -362,6 +378,7 @@ export class BazaarAgent {
       copiesBefore: Object.fromEntries(cards.map((c) => [c, copiesBefore[c] ?? 0])),
       copiesAfter: me ? copiesOf(me, cards) : {},
       dealsWithDealerLastHour: this.dealsLastHour(),
+      ...(a.measuredLimit !== undefined ? { measuredLimit: a.measuredLimit } : {}),
       ...(a.openTick !== undefined ? { openTick: a.openTick } : {}),
       ...(a.openTs ? { openTs: a.openTs } : {}),
       tick,
@@ -454,6 +471,7 @@ export class BazaarAgent {
       holdsUsed: active.holdsUsed,
       ...(target.value !== undefined ? { privateValue: target.value } : {}),
       ...(herAt && herAt.length === p.ourPrices.length ? { herAtOurMessages: herAt } : {}),
+      ...(active.welcome ? { welcomeFirstDeal: true } : {}),
     };
     let d: Decision = decide(view, this.negotiatorParams);
     // Antes de cualquier aceptación (y en cada oferta suya): la forma de su oferta debe ser la del hilo; si no, se cierra.
@@ -509,7 +527,9 @@ export class BazaarAgent {
             this.spentRun += d.action.price;
             active.acceptedPrice = d.action.price;
           }
-          emit({ ...base, action: "accept", ourPrice: d.action.price, patience: active.patience.summary(tick) });
+          // welcome_first_deal: su apertura es su límite; se guarda como límite medido de este dealer y esta banda.
+          if (d.rule === "welcome-first-deal") active.measuredLimit = d.action.price;
+          emit({ ...base, action: "accept", ourPrice: d.action.price, ...(d.rule === "welcome-first-deal" ? { measuredLimit: d.action.price } : {}), ...(p.ourPrices.length === 0 ? { tookOpening: true } : {}), patience: active.patience.summary(tick) });
           return;
         case "counter": {
           const text = counterText(target.side, p.ourPrices.length, d.action.price);
