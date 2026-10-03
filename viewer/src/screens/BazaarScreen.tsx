@@ -2,6 +2,7 @@ import { Card, ChatMessage, DataTable, Flag, Legend, OfferChart, Tabs } from "@n
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
+import { Workshop } from "./Workshop.js";
 import { SecondaryButton, TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Fold } from "../ui/fold.js";
@@ -800,6 +801,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <ScoreMovers board={board} onOpen={open} />
           <Agents board={board} />
+          <Workshop board={board} />
         </div>
       </div>
       <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} />

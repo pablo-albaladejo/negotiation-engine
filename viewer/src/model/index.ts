@@ -13,6 +13,7 @@ export {
   statusLabel,
   type Board,
   type BoardAgent,
+  type BoardWorkshop,
   type BoardAlbum,
   type BoardAlbumPage,
   type BoardMissingCard,

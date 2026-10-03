@@ -141,6 +141,18 @@ export interface BoardSchedule {
   upcoming: { at_hours: number; action: string; note: string; wall: string | null }[];
 }
 
+/** The Workshop (El Taller): spares we could hand in (sale guardrails applied on the server) and public crafts. */
+export interface BoardWorkshop {
+  open: boolean;
+  opened_tick: number | null;
+  teaser: string | null;
+  how: string | null;
+  needed: number;
+  rarities: { rarity: string; next: string | null; spares: { ref: string; name: string | null; free: number; spare: number; your_value: number | null }[]; count: number; ready: boolean }[];
+  locked: { id: number; ref: string; where: string }[];
+  crafts: { id: number; tick: number | null; team: string; name: string | null; from: string | null; to: string | null; card: string | null; us: boolean }[];
+}
+
 export interface BoardAgent {
   agent: "dealers" | "duels" | "broker" | "trades";
   last_at: string | null;
@@ -166,6 +178,8 @@ export interface Board {
   agents: BoardAgent[];
   /** Mode of the running `bazaar:play`: "live" sends real offers, "dry-run" sends nothing; null if not running (optional on older servers). */
   play_mode?: "live" | "dry-run" | null;
+  /** The Workshop (El Taller); absent on an older server. */
+  workshop?: BoardWorkshop;
 }
 
 export const EMPTY_BOARD: Board = {

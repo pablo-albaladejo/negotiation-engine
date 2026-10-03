@@ -41,6 +41,7 @@ import { agentStatuses, playMode, type AgentStatus } from "./bazaar-agents.js";
 import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, type AlbumOut, type ScheduleOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
+import { workshopOf, type WorkshopOut } from "./bazaar-workshop.js";
 
 /**
  * `GET /api/bazaar/board`: the unified Bazaar view. One cycle per game tick (scheduled
@@ -92,6 +93,8 @@ export interface BoardOut {
   agents: AgentStatus[];
   /** Mode of the running `bazaar:play` (up-status.json): "live" sends, "dry-run" does not; null if not running. */
   play_mode: "live" | "dry-run" | null;
+  /** The Workshop (El Taller): spares by rarity under the sale guardrails and public crafts. Read-only. */
+  workshop: WorkshopOut;
 }
 
 export interface BazaarBoardDeps {
@@ -273,7 +276,8 @@ export class BazaarBoard {
     const cache = await this.readCache();
     let dirty = false;
     // Every settlement (ours and other teams'): the feed only covers recent ones, the recorder the day.
-    const streamed = streamSettlements(await readAllJsonl(this.bazaarDir, (f) => f === "stream-public.jsonl", StreamLineSchema));
+    const streamLines = await readAllJsonl(this.bazaarDir, (f) => f === "stream-public.jsonl", StreamLineSchema);
+    const streamed = streamSettlements(streamLines);
     for (const s of [...streamed, ...feedSettlements(events)]) {
       if (!cache.settlements[String(s.settlement)]) {
         cache.settlements[String(s.settlement)] = s;
@@ -361,6 +365,7 @@ export class BazaarBoard {
       schedule,
       agents,
       play_mode: await playMode(this.bazaarDir),
+      workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;
