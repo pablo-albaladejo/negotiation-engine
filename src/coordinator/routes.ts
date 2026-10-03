@@ -532,7 +532,12 @@ export function eggProbeFor(state: GameState, conversationId: string): string | 
   if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 0) return undefined;
   if (conv.mood.warnings > 0 || conv.mood.strikes > 0 || conv.mood.cooloffUntil !== undefined) return undefined;
   if (state.ours.strikes && Object.keys(state.ours.strikes).length) return undefined;
-  const persona = state.personas.find((p) => p.id === conv.counterparty);
+  return nextProbeFor(state, conv.counterparty);
+}
+
+/** Next probe phrase for `personaId` not yet tried with it (any of its conversations or its `eggProbes`); none if its eggs ran out. */
+function nextProbeFor(state: GameState, personaId: string): string | undefined {
+  const persona = state.personas.find((p) => p.id === personaId);
   if (!persona) return undefined;
   const eggs = state.world.eggs.byPersona[persona.id];
   if (eggs && eggs.left <= 0) return undefined;
@@ -555,6 +560,13 @@ export class EggsRoute {
       }
       const x = eggProbeFor(state, c.id);
       if (x) out.notes.push(`${c.id}: next counter carries "${EGG_PARAMS.template.replace("{hint}", x)}"`);
+    }
+    // Queued for a dealer with no open thread (e.g. a hint routed to chato): it waits for the next counter there, never a message of its own.
+    const open = new Set(state.conversations.filter((c) => c.kind === "dealer" && c.phase !== "done").map((c) => c.counterparty));
+    for (const p of state.personas) {
+      if (p.status === "announced" || p.status === "closed" || open.has(p.id) || (quiet[p.id] ?? -1) >= state.tick) continue;
+      const x = nextProbeFor(state, p.id);
+      if (x) out.notes.push(`${p.id}: queued "${EGG_PARAMS.template.replace("{hint}", x)}" (no open thread: rides on the next counter there)`);
     }
     if (!out.notes.length) out.notes.push(`no probe (hints ${state.personas.reduce((a, p) => a + p.hints.length, 0)}; a probe needs a hint keyword and rides only on a counter)`);
     return out;

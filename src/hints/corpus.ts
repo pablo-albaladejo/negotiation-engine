@@ -73,6 +73,22 @@ export function namedPersonas(persona: string, text: string, ctx: CandidateConte
 }
 
 /**
+ * Unnamed masculine pointer per speaker (game text, over normalized text): Abuela's egg reply says "Ask him about the
+ * Moscow gold. He will know." / "Pregúntale por el oro de Moscú, él sabrá." without a name; the only male stall next
+ * to her is El Chato, whom she names in the same story ("El Chato next door knows more"). Narrow on purpose: one
+ * speaker, one target; it only routes a probe phrase, never a figure.
+ */
+const POINTER_TARGETS: Readonly<Record<string, { re: RegExp; target: string }>> = {
+  abuela: { re: /\b(ask him|he will know|he['’]ll know|preguntale|el sabra)\b/, target: "chato" },
+};
+
+/** Persona an unnamed pointer in `text` sends the probe to (`POINTER_TARGETS`), if that persona is known. */
+export function pointerTarget(persona: string, text: string, ctx: CandidateContext): string | undefined {
+  const p = POINTER_TARGETS[persona];
+  return p && p.target !== persona && ctx.personas.some((x) => x.id === p.target) && p.re.test(normalize(text)) ? p.target : undefined;
+}
+
+/**
  * Probe keyword: the X of "… about X" or the Spanish "pregúntele … por X" (game text). Only a pointer for the
  * egg probe, never a figure.
  */
@@ -87,8 +103,10 @@ export function candidateReasons(persona: string, text: string, ctx: CandidateCo
   const reasons: string[] = [];
   const norm = normalize(text);
   const others = namedPersonas(persona, text, ctx).map((id) => ({ id }));
+  const pointer = pointerTarget(persona, text, ctx);
   if (others.length) reasons.push(`names ${others.map((p) => p.id).join(", ")}`);
   else if (/\bstalls?\b/.test(norm)) reasons.push("mentions a stall");
+  if (pointer) reasons.push(`points to ${pointer} (unnamed him)`);
   if (TIME_RE.test(text)) reasons.push("time or opens");
   const secret = SECRET_RE.exec(text);
   if (secret) reasons.push(`word "${secret[0].toLowerCase()}"`);
@@ -132,7 +150,9 @@ export function enrichLine(l: HintLine, ctx: CandidateContext): HintLine {
   const { keyword: _k, targets: _t, ...rest } = l;
   const reasons = candidateReasons(l.persona, l.text, ctx);
   const kw = probeKeyword(l.text);
-  const targets = namedPersonas(l.persona, l.text, ctx);
+  // An unnamed pointer ("ask him … he will know") decides where the line's keyword goes, over other names in passing.
+  const pointer = pointerTarget(l.persona, l.text, ctx);
+  const targets = pointer ? [pointer] : namedPersonas(l.persona, l.text, ctx);
   return { ...rest, candidate: reasons.length > 0, reasons, ...(kw ? { keyword: kw } : {}), ...(targets.length ? { targets } : {}) };
 }
 
