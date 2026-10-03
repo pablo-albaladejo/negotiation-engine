@@ -75,17 +75,20 @@ export function namedPersonas(persona: string, text: string, ctx: CandidateConte
 /**
  * Unnamed masculine pointer per speaker (game text, over normalized text): Abuela's egg reply says "Ask him about the
  * Moscow gold. He will know." / "Pregúntale por el oro de Moscú, él sabrá." without a name; the only male stall next
- * to her is El Chato, whom she names in the same story ("El Chato next door knows more"). Narrow on purpose: one
- * speaker, one target; it only routes a probe phrase, never a figure.
+ * to her is El Chato, whom she names in the same story ("El Chato next door knows more"). Chato missed the Moscow gold
+ * in both languages (threads 900 and 906), so the banker Don Ernesto (`banco`, level 5; the Moscow gold was the Bank of
+ * Spain's reserve) goes first once he is a known persona. Narrow on purpose: one speaker, an ordered list of targets
+ * (the first known one wins); it only routes a probe phrase, never a figure.
  */
-const POINTER_TARGETS: Readonly<Record<string, { re: RegExp; target: string }>> = {
-  abuela: { re: /\b(ask him|he will know|he['’]ll know|preguntale|el sabra)\b/, target: "chato" },
+const POINTER_TARGETS: Readonly<Record<string, { re: RegExp; targets: readonly string[] }>> = {
+  abuela: { re: /\b(ask him|he will know|he['’]ll know|preguntale|el sabra)\b/, targets: ["banco", "chato"] },
 };
 
-/** Persona an unnamed pointer in `text` sends the probe to (`POINTER_TARGETS`), if that persona is known. */
+/** Persona an unnamed pointer in `text` sends the probe to (first known of `POINTER_TARGETS`), if any. */
 export function pointerTarget(persona: string, text: string, ctx: CandidateContext): string | undefined {
   const p = POINTER_TARGETS[persona];
-  return p && p.target !== persona && ctx.personas.some((x) => x.id === p.target) && p.re.test(normalize(text)) ? p.target : undefined;
+  if (!p || !p.re.test(normalize(text))) return undefined;
+  return p.targets.find((t) => t !== persona && ctx.personas.some((x) => x.id === t));
 }
 
 /**
