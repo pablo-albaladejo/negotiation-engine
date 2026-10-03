@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog, Clock, DealerInfo, Me } from "../shared/schemas.js";
 import type { TraceRecord, TraceSink } from "../shared/trace.js";
@@ -5,7 +7,8 @@ import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "../dealers/dealer-profile.js";
 import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
-import { appendLesson, PendingLessons } from "../dealers/history/lessons.js";
+import { appendLesson, PendingLessons, type LessonEntry } from "../dealers/history/lessons.js";
+import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
@@ -191,6 +194,22 @@ export class DealersRoute {
     this.scoreAudit = new ScoreAudit({ mode: o.dryRun ? "dry-run" : "live", ...(o.scoreAuditFile ? { file: o.scoreAuditFile } : {}) });
   }
 
+  /** Today's ladder per level from docs/bazaar/lessons.json (read only) and the persona model (level, band limits). */
+  private ladderOf(state: GameState): LadderLevel[] {
+    let entries: LessonEntry[] = [];
+    try {
+      entries = (JSON.parse(readFileSync(this.o.lessonsFile ?? join(process.cwd(), "docs", "bazaar", "lessons.json"), "utf8")) as { conversations?: LessonEntry[] }).conversations ?? [];
+    } catch {
+      // No lessons yet: every slot is empty.
+    }
+    const rarity = new Map(state.markets.prices.map((p) => [p.ref, p.rarity]));
+    return ladderLevels(entries, new Date().toISOString().slice(0, 10), (dealer) => {
+      const model = state.personas.find((p) => p.id === dealer)?.model;
+      const level = model?.public.level;
+      return { ...(level !== undefined ? { level } : {}), limit: (band) => model?.bands[band]?.limit.value ?? undefined };
+    }, (card) => rarity.get(card));
+  }
+
   private gate = (i: DealerIntent): boolean => {
     if (this.mode === "propose") {
       this.collected.push(i);
@@ -270,6 +289,14 @@ export class DealersRoute {
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }
     out.notes.push(...this.lessonLines.splice(0));
+    // Ladder-aware opens: empty slots at higher levels first, then deals that would beat the weakest of a level's top 3.
+    const ladder = this.ladderOf(state);
+    const levelOf = (dealer: string) => state.personas.find((p) => p.id === dealer)?.model?.public.level;
+    const emptyLevels = [...this.agents.keys()].flatMap((d) => {
+      const lvl = levelOf(d);
+      return lvl !== undefined && !ladder.some((l) => l.level === lvl) ? [`L${lvl} ${d} 0/${LADDER_SLOTS}`] : [];
+    });
+    out.notes.push(`${formatLadder(ladder)}${emptyLevels.length ? ` · empty: ${emptyLevels.join(" · ")}` : ""}`);
     for (const i of this.collected) {
       const conv = i.thread !== undefined ? `dealer:${i.thread}` : undefined;
       const ev = i.value !== undefined && i.price !== undefined ? (i.side === "buy" ? i.value - i.price : i.price - i.value) : i.value;
@@ -284,7 +311,11 @@ export class DealersRoute {
         out.intents.push({ ...base, kind: "accept", acceptClass: page ? "page-completing" : "dealer-ladder" });
       } else if (i.kind === "open") {
         const w = i.side === "buy" ? demandWeight(state.time.gameHour) : 1;
-        out.intents.push({ ...base, kind: "open", ...(ev !== undefined && w !== 1 ? { ev: Math.round(ev * w * 100) / 100, summary: `${what} · demand ×${w.toFixed(2)}` } : {}) });
+        const lvl = levelOf(i.dealer);
+        const share = expectedShare(ladder, i.dealer);
+        const bonus = ev !== undefined && lvl !== undefined ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
+        const notes = [...(w !== 1 ? [`demand ×${w.toFixed(2)}`] : []), ...(bonus > 0 ? [`ladder +${bonus.toFixed(1)} P (L${lvl}, expected share ${share.toFixed(2)})`] : [])];
+        out.intents.push({ ...base, kind: "open", ...(ev !== undefined && notes.length ? { ev: Math.round((ev * w + bonus) * 100) / 100, summary: `${what} · ${notes.join(" · ")}` } : {}) });
       } else {
         out.intents.push({ ...base, kind: "message" });
       }
