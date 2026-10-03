@@ -10,10 +10,10 @@ import { TeamBudget } from "./team.js";
 import type { TraceRecord, TraceSink } from "../shared/trace.js";
 
 /**
- * Bucle continuo del modo serio: todos los tratos con los dealers desbloqueados que crean valor (sin `--only`),
- * topes compartidos (`TeamBudget`: gasto por hora y total, suelo de caja = mercado + reserva), espera con el
- * reloj en pausa o fuera de horario, reintenta los errores pasajeros con espera creciente y para ante uno
- * desconocido. Una línea de estado por tick; un resumen por conversación (y su entrada en lessons.json).
+ * Continuous loop of serious mode: all value-creating deals with the unlocked dealers (no `--only`),
+ * shared limits (`TeamBudget`: hourly and total spending, cash floor = market + reserve), waits while the
+ * clock is paused or outside hours, retries transient errors with growing backoff and stops on an
+ * unknown one. One status line per tick; one summary per conversation (and its entry in lessons.json).
  */
 
 export type SeriousApi = BazaarApi & Pick<BazaarClient, "clock" | "dealers" | "dealer">;
@@ -25,13 +25,13 @@ export interface SeriousOptions {
   maxSpendTotal: number;
   cashFloor: number;
   safety: number;
-  /** Parámetros base del negociador (flags); el perfil de cada dealer los ajusta (paciencia, anclas, aguantes). */
+  /** Base negotiator parameters (flags); each dealer's profile adjusts them (patience, anchors, holds). */
   negotiator: Partial<NegotiatorParams>;
   trace: TraceSink;
   scoreTracker?: ScoreTracker;
-  /** Fichero de lecciones (`docs/bazaar/lessons.json`); solo se escribe en vivo. */
+  /** Lessons file (`docs/bazaar/lessons.json`); only written live. */
   lessonsFile?: string;
-  /** Releer qué dealers están desbloqueados cada N ticks (El Chato se abre a mitad de partida). */
+  /** Re-read which dealers are unlocked every N ticks (El Chato opens mid-game). */
   refreshDealersEvery?: number;
   log: (line: string) => void;
   sleep: (ms: number) => Promise<void>;
@@ -81,7 +81,7 @@ export async function runSerious(api: SeriousApi, o: SeriousOptions): Promise<Se
     for (const id of open) {
       const existing = slots.get(id);
       if (existing) {
-        // El menú manda (qué compra y qué vende): se relee en cada refresco.
+        // The menu rules (what it buys and sells): re-read on every refresh.
         const fresh = await api.dealer(id).catch(() => undefined);
         if (fresh) existing.agent.setMenu(fresh);
         continue;

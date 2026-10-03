@@ -2,9 +2,9 @@ import type { NegotiatorParams } from "./negotiation/negotiator.js";
 import type { DealerInfo, Me } from "../shared/schemas.js";
 
 /**
- * Perfil de negociación por dealer a partir de sus rasgos públicos (`/api/dealers`): paciencia en mensajes
- * nuestros, anclas y aguantes. Abuela (paciencia 0,85) queda en 6 mensajes, lo medido en los hilos 56 y 125;
- * El Chato (0,35, estricto y con memoria) en 3, con ancla moderada y sin aguantes largos.
+ * Per-dealer negotiation profile from its public traits (`/api/dealers`): patience in our messages,
+ * anchors and holds. Abuela (patience 0.85) gets 6 messages, as measured in threads 56 and 125;
+ * El Chato (0.35, strict and with memory) gets 3, with a moderate anchor and no long holds.
  */
 
 export interface DealerTraits {
@@ -33,8 +33,8 @@ export function traitsOf(info: unknown): DealerTraits {
 }
 
 /**
- * Niveles 3–5: el rasgo `patience` es solo una frase del prompt; su retirada la decide walk_after_rounds ± jitter
- * (site-map § 8.5, personas.md § 10). Su paciencia es desconocida y se mide (`PatienceLog`), no se deriva del rasgo.
+ * Niveles 3–5: the `patience` trait is just a prompt phrase; its walk-away is decided by walk_after_rounds ± jitter
+ * (site-map § 8.5, personas.md § 10). Its patience is unknown and is measured (`PatienceLog`), not derived from the trait.
  */
 export const PATIENCE_FROM_TRAIT_MAX_LEVEL = 2;
 
@@ -44,29 +44,29 @@ export function patienceBudgetFor(traits: DealerTraits): number | undefined {
   return Math.min(8, Math.max(2, Math.round(1 + 6 * traits.patience)));
 }
 
-/** Dealer impaciente o estricto: ancla moderada (cerca de su precio), sin aguantes largos ni trucos. */
+/** Impatient or strict dealer: moderate anchor (close to its price), no long holds or tricks. */
 export function isShortFuse(traits: DealerTraits): boolean {
   return (patienceBudgetFor(traits) !== undefined && traits.patience! < 0.5) || (traits.strictness ?? 0) >= 0.7;
 }
 
 /**
- * Ajustes por dealer que no salen de sus rasgos (MEASURED, feed público: 16 tratos, 44 hilos, 9 equipos).
- * El Chato, vendiéndonos: abre a 13 (0,5× lista 26) y se queda 3–5 mensajes, luego cede ~1 P por mensaje
- * (13→14→15→16, mejor puja vista 16); marca final entre los mensajes 5 y 9 (media ≈ 8), nunca visto en 17.
- * De ahí: `patienceBudget` 8 (no 3: los rasgos solos infravaloran su paciencia real), `maxStep` 1 (pasos de
- * 1 P, nunca una caída de 3 P como la del hilo 257) y `maxHolds` 0 (repetir precio lo impacienta más, visto
- * en el simulador). `sellAnchorMult` 1,7 ≈ ancla 22 sobre su apertura de 13, la cabecera de la escalera
- * medida ("empieza sobre 22, baja 1 por mensaje"). `buyAnchorFrac`/`sellFloorAnchorMult` quedan como en el
- * perfil genérico de dealer estricto: no hay dato mejor para comprarle o para cuando su puja queda por
- * debajo de nuestro mínimo.
+ * Per-dealer adjustments that do not come from its traits (MEASURED, public feed: 16 deals, 44 threads, 9 teams).
+ * El Chato, selling to us: opens at 13 (0.5× list 26) and stays 3–5 messages, then yields ~1 P per message
+ * (13→14→15→16, best bid seen 16); final mark between messages 5 and 9 (mean ≈ 8), never seen at 17.
+ * Hence: `patienceBudget` 8 (not 3: the traits alone underestimate its real patience), `maxStep` 1 (steps of
+ * 1 P, never a 3 P drop like thread 257) and `maxHolds` 0 (repeating a price makes it more impatient, seen
+ * in the simulator). `sellAnchorMult` 1.7 ≈ anchor 22 over its opening of 13, the top of the measured
+ * ladder ("starts around 22, drops 1 per message"). `buyAnchorFrac`/`sellFloorAnchorMult` stay as in the
+ * generic strict-dealer profile: there is no better data for buying from it or for when its bid falls
+ * below our minimum.
  */
 export const DEALER_OVERRIDES: Record<string, Partial<NegotiatorParams>> = {
   chato: { patienceBudget: 8, maxStep: 1, maxHolds: 0, sellAnchorMult: 1.7 },
 };
 
 /**
- * Dealers con los que el equipo ya pasó su primera conversación: `welcome_first_deal` (su apertura = su límite en la
- * primera conversación de cada equipo, site-map § 8.2) ya no aplica con ellos.
+ * Dealers with which the team has already had its first conversation: `welcome_first_deal` (its opening = its limit in
+ * each team's first conversation, site-map § 8.2) no longer applies to them.
  */
 export const WELCOME_FIRST_DEAL_PAST: ReadonlySet<string> = new Set(["abuela", "chato"]);
 
@@ -78,12 +78,12 @@ export function negotiatorForDealer(traits: DealerTraits, dealerId?: string): Pa
   return out;
 }
 
-/** Tratos por equipo y hora que admite el dealer (`menu.deals_per_team_per_hour`). */
+/** Deals per team per hour the dealer allows (`menu.deals_per_team_per_hour`). */
 export function dealsPerHourOf(info: DealerInfo | undefined): number | undefined {
   return num(info?.menu.deals_per_team_per_hour ?? undefined);
 }
 
-/** Dealers con los que podemos tratar: `me.unlocked` (o `unlocked_dealers`); si no viene, los abiertos a todos. */
+/** Dealers we can deal with: `me.unlocked` (or `unlocked_dealers`); if absent, those open to everyone. */
 export function unlockedDealerIds(me: Me, dealers: readonly { id: string; open_to_all?: unknown; enabled?: unknown }[]): string[] {
   const listed = [...(me.unlocked ?? []), ...(me.unlocked_dealers ?? [])];
   const known = new Set(dealers.map((d) => d.id));
@@ -91,7 +91,7 @@ export function unlockedDealerIds(me: Me, dealers: readonly { id: string; open_t
   return dealers.filter((d) => d.open_to_all === true && d.enabled !== false).map((d) => d.id);
 }
 
-/** Horas de juego del reloj (`t_hours`; si no viene, tick ÷ ticks por hora). */
+/** Game hours on the clock (`t_hours`; if absent, tick ÷ ticks per hour). */
 export function gameHours(clock: { tick: number; tick_seconds?: number | undefined; t_hours?: unknown }): number {
   const t = num(clock.t_hours);
   if (t !== undefined) return t;

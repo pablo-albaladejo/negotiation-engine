@@ -1,14 +1,14 @@
 /**
- * Topes compartidos por todos los dealers de una ejecución: gasto por hora y total en compras, suelo de caja
- * (lo que nunca se toca, p. ej. 270 P para abrir el mercado) y una aceptación por tick para todo el equipo.
+ * Limits shared by all dealers in a run: hourly and total purchase spending, cash floor
+ * (what is never touched, e.g. 270 P to open the market) and one acceptance per tick for the whole team.
  */
 
 export interface TeamBudgetOptions {
-  /** Gasto máximo por hora de reloj en compras (P). */
+  /** Maximum purchase spending per clock hour (P). */
   maxSpendPerHour: number;
-  /** Gasto máximo de la ejecución (P). */
+  /** Maximum spending of the run (P). */
   maxSpendTotal?: number;
-  /** La caja nunca baja de aquí por una compra (P). */
+  /** Cash never drops below this because of a purchase (P). */
   cashFloor?: number;
   now?: () => number;
 }
@@ -39,7 +39,7 @@ export class TeamBudget {
     return this.spentRun;
   }
 
-  /** Lo que aún se puede gastar: lo que queda de la hora, de la ejecución y de la caja por encima del suelo. */
+  /** What can still be spent: what is left of the hour, of the run and of the cash above the floor. */
   left(cash?: number): number {
     const byCash = cash === undefined ? Infinity : cash - this.cashFloor;
     return Math.min(this.maxSpendPerHour - this.spentThisHour(), this.maxSpendTotal - this.spentRun, byCash);
@@ -51,7 +51,7 @@ export class TeamBudget {
     this.spentRun += amount;
   }
 
-  /** Una aceptación por tick para todo el equipo (`accepts_per_team_per_tick`). */
+  /** One acceptance per tick for the whole team (`accepts_per_team_per_tick`). */
   canAccept(tick: number): boolean {
     return this.lastAcceptTick !== tick;
   }

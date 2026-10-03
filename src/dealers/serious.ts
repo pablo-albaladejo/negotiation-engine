@@ -3,14 +3,14 @@ import type { Clock } from "../shared/schemas.js";
 import type { TraceRecord } from "../shared/trace.js";
 
 /**
- * Piezas puras del modo continuo (`pnpm bazaar --serious`): cuándo esperar (reloj en pausa o puertas cerradas),
- * qué errores son pasajeros (reintento con espera creciente), cuáles ya gestiona el agente y cuáles paran la
- * ejecución, y la línea de estado por tick.
+ * Pure pieces of continuous mode (`pnpm bazaar --serious`): when to wait (clock paused or doors closed),
+ * which errors are transient (retry with growing backoff), which the agent already handles and which stop the
+ * run, and the per-tick status line.
  */
 
 export const SERIOUS_DEFAULTS = { maxSpendPerHour: 60, maxSpendTotal: 150, safety: 1.0, venueReserve: 270, cashReserve: 10 } as const;
 
-/** Suelo de caja: por defecto mercado (270) + reserva (10); con `--cash-floor N`, N es el suelo (+ `--cash-reserve` solo si se da). */
+/** Cash floor: by default market (270) + reserve (10); with `--cash-floor N`, N is the floor (+ `--cash-reserve` only if given). */
 export function cashFloorOf(floorRaw: string | undefined, reserveRaw: string | undefined): { floor: number; venue: number; reserve: number } {
   const venue = floorRaw === undefined ? SERIOUS_DEFAULTS.venueReserve : Number(floorRaw);
   const reserve = reserveRaw !== undefined ? Number(reserveRaw) : floorRaw === undefined ? SERIOUS_DEFAULTS.cashReserve : 0;
@@ -38,7 +38,7 @@ export function clockGate(clock: Clock, nowMs: number = Date.now()): ClockGate {
 export type ErrorClass = "transient" | "handled" | "unknown";
 
 const TRANSIENT = new Set(["network", "rate_limited", "too_many_failures", "wait_for_tick", "timeout", "http_500", "http_502", "http_503", "http_504"]);
-/** Los gestiona el agente (salta el objetivo, espera la hora o el cooloff, o cambia de topic). */
+/** Handled by the agent (skips the target, waits for the hour or the cooloff, or changes topic). */
 const HANDLED = new Set(["persona_quota", "cooloff", "sold_out", "locked", "asset_locked", "insufficient_cash", "invalid", "not_found", "http_404", "closed", "http_409"]);
 
 export function classifyError(code: string | undefined, rule?: string): ErrorClass {
@@ -48,13 +48,13 @@ export function classifyError(code: string | undefined, rule?: string): ErrorCla
   return "unknown";
 }
 
-/** Clase de error de un error lanzado fuera del agente (reloj, /api/me): códigos de `BazaarError` o fallos de red de fetch. */
+/** Error class of an error thrown outside the agent (clock, /api/me): `BazaarError` codes or fetch network failures. */
 export function classifyThrown(e: unknown): { cls: ErrorClass; code: string } {
   const code = typeof (e as { code?: unknown })?.code === "string" ? (e as { code: string }).code : e instanceof Error && /fetch failed|ECONN|ETIMEDOUT|EAI_AGAIN|socket|timeout/i.test(e.message) ? "network" : "exception";
   return { cls: classifyError(code), code };
 }
 
-/** Errores del tick en las trazas del agente: el peor manda (unknown > transient > handled). */
+/** Tick errors in the agent traces: the worst wins (unknown > transient > handled). */
 export function worstError(records: readonly TraceRecord[]): { cls: ErrorClass; code: string } | undefined {
   let worst: { cls: ErrorClass; code: string } | undefined;
   const rank = { handled: 0, transient: 1, unknown: 2 } as const;
@@ -66,7 +66,7 @@ export function worstError(records: readonly TraceRecord[]): { cls: ErrorClass; 
   return worst;
 }
 
-/** Espera creciente ante errores pasajeros: 2 s, 4 s, 8 s… hasta 60 s; se reinicia con un tick sano. */
+/** Growing backoff on transient errors: 2 s, 4 s, 8 s… up to 60 s; resets on a healthy tick. */
 export class Backoff {
   private n = 0;
   constructor(
@@ -120,7 +120,7 @@ export function statusLine(s: StatusInput): string {
   return `${head} ${parts.join(" · ")}`;
 }
 
-/** Estado corto de un dealer a partir de sus trazas del tick. */
+/** Short status of a dealer from its tick traces. */
 export function dealerState(records: readonly TraceRecord[]): string {
   const r = [...records].reverse().find((x) => x.action !== "outcome") ?? records[records.length - 1];
   if (!r) return "-";
