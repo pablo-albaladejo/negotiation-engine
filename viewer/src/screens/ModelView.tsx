@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
+import { Meter } from "../ui/meter.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 import {
   arr,
@@ -48,23 +49,6 @@ const yesNo = (v: boolean | undefined) => (v === undefined ? "—" : v ? "yes" :
 
 function Muted({ children }: { children: ReactNode }) {
   return <span className="nr-muted">{children}</span>;
-}
-
-function Meter({ label, used, of }: { label: string; used: number; of: number }) {
-  const pct = of > 0 ? Math.min(100, Math.round((100 * used) / of)) : 100;
-  return (
-    <div style={col}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)" }}>
-        <span>{label}</span>
-        <strong>
-          {used}/{of}
-        </strong>
-      </div>
-      <div role="meter" aria-label={`${label} ${used} of ${of}`} aria-valuemin={0} aria-valuemax={of} aria-valuenow={used} style={{ height: 6, borderRadius: "var(--radius-pill)", background: "var(--line)", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "var(--warn)" : "var(--us)" }} />
-      </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------- 1. entorno → estado → decisión

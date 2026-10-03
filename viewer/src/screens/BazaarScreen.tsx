@@ -4,6 +4,8 @@ import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 import { SecondaryButton, TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
+import { Fold } from "../ui/fold.js";
+import { useNow } from "../ui/use-now.js";
 import {
   ALL,
   boardFilterOptions,
@@ -38,6 +40,7 @@ import {
 import { useBazaarModel } from "../bazaarModelLive.js";
 import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type ModelConversation } from "../model/gameModel.js";
 import { ConversationModelPanel, ModelView } from "./ModelView.js";
+import { NowView } from "./now/NowView.js";
 
 export interface BazaarScreenProps {
   board: Board;
@@ -407,16 +410,6 @@ function MarketPanel({ board }: { board: Board }) {
 
 const fmt = (v: number | null | undefined, digits = 2): string => (v === null || v === undefined ? "—" : String(Math.round(v * 10 ** digits) / 10 ** digits));
 
-/** Sección plegable: el historial y el mercado no compiten con lo que hay que decidir ahora. */
-function Fold({ title, open = false, children }: { title: string; open?: boolean; children: ReactNode }) {
-  return (
-    <details className="nr-card" open={open} style={{ padding: "var(--space-3) var(--space-4)" }}>
-      <summary style={{ cursor: "pointer", fontWeight: 700 }}>{title}</summary>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>{children}</div>
-    </details>
-  );
-}
-
 function Bar({ have, of, complete }: { have: number; of: number; complete: boolean }) {
   const pct = Math.round((100 * have) / Math.max(1, of));
   return (
@@ -594,15 +587,6 @@ function ScoreMovers({ board, onOpen }: { board: Board; onOpen: (id: string) => 
   );
 }
 
-function useNow(periodMs = 5_000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), periodMs);
-    return () => clearInterval(id);
-  }, [periodMs]);
-  return now;
-}
-
 function Agents({ board }: { board: Board }) {
   const lines = agentLines(board, useNow());
   return (
@@ -679,7 +663,10 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-const VIEWS = [
+type View = "now" | "cockpit" | "model";
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: "now", label: "Now" },
   { id: "cockpit", label: "Cockpit (the API)" },
   { id: "model", label: "Model (our internal view)" },
 ];
@@ -690,8 +677,9 @@ const VIEWS = [
  * plegados. Todo sale de `/api/bazaar/board`; la UI no calcula la cifra.
  */
 export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenProps) {
-  const [view, setView] = useState<"cockpit" | "model">("cockpit");
-  const { model, loading } = useBazaarModel(view === "model" || filters.row !== "");
+  const [view, setView] = useState<View>("now");
+  const pick = (id: string) => setView(VIEWS.find((v) => v.id === id)?.id ?? "now");
+  const { model, loading } = useBazaarModel(view !== "cockpit" || filters.row !== "");
   const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? null;
   const conv = filters.row ? modelConversationFor(model, selected?.id ?? filters.row) ?? modelConversationFor(model, filters.row) : null;
   const open = (id: string) => onFiltersChange({ ...filters, row: id });
@@ -709,12 +697,12 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <ModelOnlyDetail conv={conv} />
     </Drawer>
   ) : null;
-  if (view === "model") {
+  if (view !== "cockpit") {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <PageTitle>Bazaar</PageTitle>
-        <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={(id) => setView(id === "model" ? "model" : "cockpit")} />
-        <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
+        <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
+        {view === "now" ? <NowView board={board} model={model} onOpen={openModel} /> : <ModelView model={model} loading={loading} board={board} onOpen={openModel} />}
         {drawer}
       </section>
     );
@@ -722,7 +710,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <PageTitle>Bazaar</PageTitle>
-      <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={(id) => setView(id === "model" ? "model" : "cockpit")} />
+      <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
       {!board.live ? <EmptyStateCard title="No live Bazaar data (BAZAAR_KEY not set on the viewer server, or the Bazaar is unreachable)" /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
         <Scoreboard board={board} />

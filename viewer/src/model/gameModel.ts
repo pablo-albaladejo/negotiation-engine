@@ -55,8 +55,11 @@ export interface ModelIntent {
   ev?: number;
   summary: string;
   locks?: string[];
+  price?: number;
   selected: boolean;
   reason: string;
+  /** Orden de arbitraje (opcional: un servidor anterior no lo trae). */
+  order?: number;
 }
 
 export interface ModelRoute {
@@ -124,8 +127,50 @@ export interface ModelState {
   triggers?: unknown[];
 }
 
+/** Datos de la pestaña «Now» (`now` en `/api/bazaar/model`). */
+export interface NowOffer {
+  id: number;
+  venue: string;
+  venue_name: string | null;
+  side: "sell" | "buy" | "swap";
+  give: string;
+  want: string;
+  refs: string[];
+  price: number | null;
+  created_tick: number | null;
+  expires_tick: number | null;
+  age_ticks: number | null;
+  fee: { bps: number; per_card: number; est: number | null } | null;
+  crosses: { offer: number; price: number } | null | "unknown";
+  goal: string | null;
+}
+
+export interface NowVenue {
+  id: string;
+  name: string | null;
+  status: string | null;
+  mechanism: string | null;
+  opened_tick: number | null;
+  trades: number | null;
+  volume: number | null;
+  fees: number | null;
+  fee_bps: number | null;
+  fee_per_card: number | null;
+  pending_fee: { fee_bps: number | null; fee_per_card: number | null; effective_tick: number | null; in_ticks: number | null } | null;
+  suspension_reason: string | null;
+}
+
+export interface NowData {
+  goals: Record<string, { goal: string; global: string; figure: number | null }>;
+  deadlines: Record<string, number>;
+  offers: NowOffer[];
+  venue: NowVenue | null;
+}
+
 export interface GameModel {
   available: boolean;
+  /** La respuesta es la última construcción y otra está en marcha (opcional en servidores anteriores). */
+  rebuilding?: boolean;
   reason: string | null;
   tick: number | null;
   built_at: string | null;
@@ -156,6 +201,7 @@ export interface GameModel {
   prices?: { source: string; rows: Record<string, unknown>[] };
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
   venues?: { state: unknown; api: unknown[] };
+  now?: NowData | null;
 }
 
 // ---------------------------------------------------------------- lectura tolerante
