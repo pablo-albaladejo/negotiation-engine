@@ -1,24 +1,24 @@
 import type { GameState, TickLimits } from "../state/game-state.js";
 
 /**
- * Coordinador por tick, puro: cada ruta (duelos, dealers, El Rastro) propone sus intenciones sin enviarlas; aquí
- * se reparte el presupuesto del tick leído de `clock.limits` (nunca fijado en código) y se decide qué sale.
+ * Per-tick coordinator, pure: each route (duels, dealers, El Rastro) proposes its intents without sending them; here
+ * the tick budget read from `clock.limits` (never hardcoded) is split and what goes out is decided.
  *
- * ASSUMPTION (por verificar en vivo): la aceptación de un duelo comparte el cupo `accepts_per_team_per_tick` con
- * los dealers y El Rastro. Si resulta que no, basta con sacar la clase "duel" del cupo en `arbitrate`.
+ * ASSUMPTION (to verify live): accepting a duel shares the `accepts_per_team_per_tick` quota with
+ * the dealers and El Rastro. If it turns out not to, it is enough to take the "duel" class out of the quota in `arbitrate`.
  */
 
 export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs" | "markets" | "venue";
 /**
- * `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último.
- * `unpack`: abrir un sobre cerrado; ASSUMPTION (sin verificar): no gasta el cupo de aceptaciones.
- * `agenda`: acción del calendario (venue, sobre, ofertas antes del cierre) que solo se imprime: nunca sale de aquí.
- * `venue`: cambio de mecanismo de nuestro venue (`src/venue/route.ts`); como mucho uno por tick, en vivo con su propia puerta.
+ * `flag`: `POST /api/flags`, does not use the accept quota. `probe`: egg message, counts as a message and goes last.
+ * `unpack`: open a sealed pack; ASSUMPTION (unverified): does not spend the accept quota.
+ * `agenda`: calendar action (venue, pack, offers before the close) that is only printed: it never goes out from here.
+ * `venue`: mechanism change of our venue (`src/venue/route.ts`); at most one per tick, live behind its own gate.
  */
 export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda" | "unpack" | "venue";
 export type AcceptClass = "duel" | "page-completing" | "dealer-ladder" | "other";
 
-/** Prioridad de las aceptaciones (menor rango, antes); a igual rango, más valor esperado primero. */
+/** Accept priority (lower rank, earlier); at equal rank, higher expected value first. */
 export const ACCEPT_PRIORITY: Record<AcceptClass, { rank: number; why: string }> = {
   duel: { rank: 1, why: "duel: its value decays every round" },
   "page-completing": { rank: 2, why: "SAL-09 or a page-completing buy (+25 % page bonus)" },
@@ -29,20 +29,20 @@ export const ACCEPT_PRIORITY: Record<AcceptClass, { rank: number; why: string }>
 export const DUEL_ACCEPT_QUOTA_ASSUMPTION = "ASSUMPTION: a duel accept shares the team accept quota (accepts_per_team_per_tick) with dealers and El Rastro";
 
 export interface Intent {
-  /** Único en el tick: `duels:accept:177`, `dealers:counter:abuela:56`, `trades:post:3`... */
+  /** Unique within the tick: `duels:accept:177`, `dealers:counter:abuela:56`, `trades:post:3`... */
   id: string;
   route: Route;
   kind: IntentKind;
-  /** Conversación a la que cuenta el mensaje (`duel:177`, `dealer:56`). */
+  /** Conversation the message counts against (`duel:177`, `dealer:56`). */
   conversation?: string;
   acceptClass?: AcceptClass;
-  /** Valor esperado (P, a nuestros valores) si sale; solo para ordenar. */
+  /** Expected value (P, at our values) if it goes out; only for ordering. */
   ev?: number;
-  /** Línea legible: qué y con qué cifra (decidida por código). */
+  /** Readable line: what and with which figure (decided by code). */
   summary: string;
-  /** Cifra decidida por código (ya pasada por `enforceGuardrails`), si la intención lleva una. */
+  /** Figure decided by code (already through `enforceGuardrails`), if the intent carries one. */
   price?: number;
-  /** Activos que compromete (`asset:29`): un activo, un sitio, también entre rutas en el mismo tick. */
+  /** Assets it commits (`asset:29`): one asset, one place, also across routes in the same tick. */
   locks?: string[];
 }
 
@@ -54,11 +54,11 @@ export interface Budget {
   offersPerTick: number;
   maxOpenOffers: number;
   openOffersNow: number;
-  /** Límites que faltaban en `clock.limits`: se usan como 0 (conservador: no se hace nada de ese tipo). */
+  /** Limits missing from `clock.limits`: used as 0 (conservative: nothing of that kind is done). */
   missing: string[];
-  /** Agenda: motivo para no abrir conversaciones nuevas (final, congelación, fin de ronda). */
+  /** Agenda: reason not to open new conversations (final, freeze, end of round). */
   opensBlocked?: string;
-  /** Agenda: personas que cierran (no se abre con ellas). */
+  /** Agenda: personas that close (no opens with them). */
   closedPersonas?: readonly string[];
 }
 
@@ -98,13 +98,13 @@ export interface Verdict {
 const priority = (i: Intent) => ACCEPT_PRIORITY[i.acceptClass ?? "other"];
 
 /**
- * Reparte el tick: como mucho `accepts` aceptaciones entre todas las rutas (por clase y valor esperado), mensajes
- * por conversación según `messagesPerConversation` (ninguno en la conversación cuya aceptación sale), hilos nuevos
- * hasta `maxOpenThreads` y altas hasta `offersPerTick` sin pasar de `maxOpenOffers`. Las cancelaciones siempre salen.
+ * Splits the tick: at most `accepts` accepts across all routes (by class and expected value), messages
+ * per conversation per `messagesPerConversation` (none in the conversation whose accept goes out), new threads
+ * up to `maxOpenThreads` and listings up to `offersPerTick` without exceeding `maxOpenOffers`. Cancels always go out.
  */
 export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
   const verdicts = new Map<string, Verdict>();
-  // Un activo, un sitio: la primera intención seleccionada (en orden de arbitraje) se queda el activo.
+  // One asset, one place: the first selected intent (in arbitrage order) keeps the asset.
   const taken = new Map<string, string>();
   const clash = (i: Intent) => i.locks?.map((l) => (taken.has(l) ? `${l} already in ${taken.get(l)}` : undefined)).find(Boolean);
   const take = (i: Intent) => i.locks?.forEach((l) => taken.set(l, i.id));
@@ -131,7 +131,7 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
   });
 
   const perConversation = new Map<string, number>();
-  // Los probes de eggs son de baja prioridad: solo usan el hueco que dejen los mensajes de negociación.
+  // Egg probes are low priority: they only use the room left by the negotiation messages.
   for (const i of [...intents.filter((x) => x.kind === "message"), ...intents.filter((x) => x.kind === "probe")]) {
     const conv = i.conversation ?? i.id;
     if (acceptedConversations.has(conv)) {

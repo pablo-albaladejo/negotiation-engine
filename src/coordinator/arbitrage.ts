@@ -3,27 +3,27 @@ import type { PersonaModel } from "../state/persona-model.js";
 import type { Budget, Verdict } from "./coordinator.js";
 
 /**
- * Arbitraje entre personas: cuando el suelo medido de una persona que VENDE una rareza queda por debajo del techo
- * medido de otra que la COMPRA, comprar aquí y vender allí. Solo propuesta: nunca se ejecuta ni gasta cupo; se
- * comprueba contra el cupo de hilos que deja lo ya seleccionado y contra las agendas que cierran personas. Las
- * cifras son las estimaciones del ajuste por persona (pesimistas: lo más que pediría al vender, lo menos que daría al
- * comprar), nunca un texto. Privado: nunca en un mensaje.
+ * Arbitrage between personas: when the measured floor of a persona that SELLS a rarity is below the measured ceiling
+ * of another that BUYS it, buy here and sell there. Proposal only: never executed and never spends quota; it is
+ * checked against the thread quota left by what is already selected and against the agendas that close personas. The
+ * figures are the per-persona fit estimates (pessimistic: the most it would ask when selling, the least it would give when
+ * buying), never a text. Private: never in a message.
  */
 
 export interface ArbitrageIdea {
   rarity: string;
   buyFrom: string;
   sellTo: string;
-  /** Lo más que pediría quien vende en su límite (hi de su banda `sells:`). */
+  /** The most the seller would ask at its limit (hi of its `sells:` band). */
   buyAt: number;
-  /** Lo menos que daría quien compra en su límite (lo de su banda `buys:`). */
+  /** The least the buyer would give at its limit (that of its `buys:` band). */
   sellAt: number;
   spread: number;
-  /** Muestras de la banda con menos datos: con pocas, el límite aún puede estar en otro escalón del jitter. */
+  /** Samples of the band with the least data: with few, the limit may still sit on another jitter step. */
   samples: number;
 }
 
-/** Ideas por rareza ordenadas por margen; margen mínimo max(1 P, 5 % del book). */
+/** Ideas per rarity ordered by margin; minimum margin max(1 P, 5 % of the book). */
 export function personaArbitrage(personas: readonly { id: string; model?: PersonaModel }[]): ArbitrageIdea[] {
   const ideas: ArbitrageIdea[] = [];
   for (const a of personas) {
@@ -43,7 +43,7 @@ export function personaArbitrage(personas: readonly { id: string; model?: Person
   return ideas.sort((x, y) => y.spread - x.spread);
 }
 
-/** Una línea por idea: propuesta, o por qué no cabe este tick (cupo de hilos tras lo seleccionado, agenda). */
+/** One line per idea: proposal, or why it does not fit this tick (thread quota after what is selected, agenda). */
 export function arbitrageLines(ideas: readonly ArbitrageIdea[], budget: Budget, verdicts: readonly Verdict[]): string[] {
   let threadsLeft = budget.maxOpenThreads - budget.openThreadsNow - verdicts.filter((v) => v.selected && v.intent.kind === "open").length;
   return ideas.map((i) => {

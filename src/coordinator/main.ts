@@ -27,18 +27,18 @@ import { defaultHeartbeatFile, defaultSessionsFile, loadBenchSessions, loadHeart
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
 /**
- * `pnpm bazaar:play [--dry-run] [--once] [--confirm]`: el coordinador. Cada tick construye el `GameState` (solo GET),
- * lee el presupuesto de `clock.limits`, pide a cada ruta (duelos, dealers, El Rastro) sus intenciones sin enviarlas,
- * arbitra (una aceptación por tick según `ACCEPT_PRIORITY`, mensajes por conversación, hilos y listados) e imprime
- * qué sale y qué no, y por qué. Por defecto es seguro: en vivo solo sin `--dry-run` Y con `--confirm`
- * (solo con aprobación del usuario); sin `--confirm` corre como dry-run. Nunca imprime la clave.
+ * `pnpm bazaar:play [--dry-run] [--once] [--confirm]`: the coordinator. Each tick it builds the `GameState` (GET only),
+ * reads the budget from `clock.limits`, asks each route (duels, dealers, El Rastro) for its intents without sending them,
+ * arbitrates (one accept per tick per `ACCEPT_PRIORITY`, messages per conversation, threads and listings) and prints
+ * what goes out and what does not, and why. Safe by default: live only without `--dry-run` AND with `--confirm`
+ * (only with user approval); without `--confirm` it runs as a dry-run. Never prints the key.
  */
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function num(raw: string, name: string): number {
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) throw new Error(`${name} debe ser un número ≥ 0`);
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${name} must be a number ≥ 0`);
   return n;
 }
 
@@ -62,7 +62,7 @@ async function main() {
   const dryRun = !live;
   const env = loadBazaarEnv();
   if (!env.key) {
-    console.error("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
+    console.error("Missing BAZAAR_KEY (set it in .env or in the environment).");
     process.exit(2);
   }
   const pageTargets = values["page-targets"].split(",").map((s) => s.trim()).filter(Boolean);
@@ -79,7 +79,7 @@ async function main() {
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
   });
   const trades = new TradesRoute(client, dryRun);
-  // Frases de presión: solo con aprobación (ids uno a uno o en bloque); las candidatas se listan en dry-run.
+  // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
   const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });
   const eggs = new EggsRoute();
@@ -95,7 +95,7 @@ async function main() {
   const personaModels = loadPersonaModels(personaModelFile);
   const valueCache = loadValueCache(valuesFile);
   let prevRanks = new Map<string, { rank?: number; score?: number }>();
-  // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
+  // In dry-run the cursor lives only in memory (a loop without --once does not repeat triggers); live, on disk.
   let dryMemo = loadTriggerMemo(triggersFile);
   console.log(
     `bazaar:play · ${live ? "LIVE" : `DRY RUN (GET only, no POST)${!values["dry-run"] && !values.confirm ? " · no --confirm: running as dry-run" : ""}`} · page targets ${pageTargets.join(", ")} · cash floor ${values["cash-floor"]} P`,
@@ -136,14 +136,14 @@ async function main() {
       valueCache: valueCache.values,
       valueCacheAt: valueCache.at,
       prevRanks,
-      // Primera vez sin corpus: semilla con lo ya guardado en results/ (volcados, escaneos, streams).
+      // First time without a corpus: seed it with what is already saved in results/ (dumps, scans, streams).
       ...(existsSync(hintsFile) ? {} : { hintSeed: seedRaw(join(root, "results")) }),
     });
-    // El corpus de pistas es solo lectura del juego (GET): se añade también en dry-run. Nunca entra en una cifra.
+    // The hint corpus is read-only game data (GET): it is also added in dry-run. It never enters a figure.
     appendHints(hintsFile, state.hints.fresh);
-    // Valores privados ya pedidos (GET): se guardan también en dry-run para no repetir la consulta.
+    // Private values already requested (GET): also saved in dry-run so the query is not repeated.
     saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())));
-    // Posterior del ajuste por persona: sale solo de lecturas (GET), se guarda también en dry-run. Nunca entra en un mensaje.
+    // Per-persona fit posterior: comes only from reads (GET), also saved in dry-run. It never enters a message.
     savePosterior(posteriorFile, posterior);
     savePersonaModels(personaModelFile, personaModels);
     prevTime = state.time;
@@ -151,7 +151,7 @@ async function main() {
     if (withLb) lastLeaderboard = state.tick;
     const budget = budgetFrom(state);
 
-    // Agenda y disparadores ANTES de que las rutas propongan: pueden activar, desactivar o reajustar rutas.
+    // Agenda and triggers BEFORE the routes propose: they can enable, disable or readjust routes.
     const schedule = await duelsApi(client).schedule().catch(() => undefined);
     const agenda = agendaItems(schedule, state.time.gameHour ?? 0);
     const effects = agendaEffects(agenda, state);
@@ -193,7 +193,7 @@ async function main() {
         }
       }
     }
-    // ¿auto o board? Sesiones medidas por el broker en sombra y su latido (disco), calendario y caja: regla pura.
+    // Auto or board? Sessions measured by the shadow broker and its heartbeat (disk), calendar and cash: pure rule.
     const nowHours = state.time.gameHour ?? state.clock.tHours;
     state.venue = {
       mechanismDecision: decideMechanism(
@@ -267,12 +267,12 @@ async function main() {
     console.log("== arbitration ==");
     for (const v of verdicts) console.log(`  ${v.selected ? "SELECTED" : "DROPPED "} ${v.intent.id} · ${v.reason}`);
     if (!verdicts.length) console.log("  (nothing to arbitrate)");
-    // Arbitraje entre personas: solo propuesta, con el cupo de hilos que deja lo seleccionado.
+    // Arbitrage between personas: proposal only, with the thread quota left by what is selected.
     const arbitrage = arbitrageLines(personaArbitrage(state.personas), budget, verdicts);
     console.log(`  [arbitrage] ${arbitrage.length ? "" : "no persona sells a rarity below another's measured ceiling"}`);
     for (const l of arbitrage) console.log(`    ${l}`);
 
-    // Conversaciones: turno concedido por el presupuesto, estrategia y última decisión de cada ruta.
+    // Conversations: turn granted by the budget, strategy and last decision of each route.
     const acceptedConv = new Set(verdicts.filter((v) => v.selected && v.intent.kind === "accept").map((v) => v.intent.conversation));
     const acceptsLeft = budget.accepts - acceptedConv.size;
     for (const c of state.conversations) {

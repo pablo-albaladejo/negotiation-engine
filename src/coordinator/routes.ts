@@ -18,24 +18,24 @@ import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
 
 /**
- * Rutas del coordinador. Cada una propone sus intenciones del tick SIN enviarlas (solo GET) y, en vivo, ejecuta
- * solo las que el coordinador seleccionó. Reutilizan los agentes de siempre: `DuelsAgent.propose/execute`,
- * `TradesAgent.propose/execute` y `BazaarAgent` con `gate` (cada POST pasa antes por el coordinador).
+ * Coordinator routes. Each proposes its tick intents WITHOUT sending them (GET only) and, live, executes
+ * only those the coordinator selected. They reuse the existing agents: `DuelsAgent.propose/execute`,
+ * `TradesAgent.propose/execute` and `BazaarAgent` with `gate` (each POST goes through the coordinator first).
  */
 
 export interface RouteProposal {
   intents: Intent[];
-  /** Líneas informativas (duelos en espera, dealers sin objetivo...). */
+  /** Informational lines (duels waiting, dealers without a target...). */
   notes: string[];
-  /** Estrategia por conversación (`duel:177`...), calculada por código. */
+  /** Strategy per conversation (`duel:177`...), computed by code. */
   strategies: Map<string, Strategy>;
-  /** Última decisión por conversación (dealers), para la entidad Conversation. */
+  /** Last decision per conversation (dealers), for the Conversation entity. */
   decisions: Map<string, StrategyDecision>;
 }
 
 const empty = (): RouteProposal => ({ intents: [], notes: [], strategies: new Map(), decisions: new Map() });
 
-// ---------------------------------------------------------------- duelos
+// ---------------------------------------------------------------- duels
 
 export class DuelsRoute {
   readonly agent: DuelsAgent;
@@ -69,8 +69,8 @@ export class DuelsRoute {
   }
 
   /**
-   * Ejecuta lo seleccionado. En dry-run el agente no envía nada: solo marca cada entrada (dry-run, deferred, skipped),
-   * así que sirve también para imprimir qué haría con cada duelo.
+   * Executes what was selected. In dry-run the agent sends nothing: it only marks each entry (dry-run, deferred, skipped),
+   * so it also serves to print what it would do with each duel.
    */
   async execute(selected: ReadonlySet<string>): Promise<string[]> {
     if (!this.proposal) return [];
@@ -83,7 +83,7 @@ export class DuelsRoute {
 
 // ---------------------------------------------------------------- dealers
 
-/** Traza que el coordinador silencia en la pasada de propuestas (para no duplicar registros). */
+/** Trace the coordinator silences in the proposals pass (to avoid duplicate records). */
 class SwitchableTrace implements TraceSink {
   muted = true;
   constructor(private readonly inner: TraceSink | undefined) {}
@@ -99,11 +99,11 @@ export interface DealersRouteOptions {
   cashFloor: number;
   pageTargets: readonly string[];
   trace?: TraceSink;
-  /** `docs/bazaar/lessons.json`: solo se escribe en vivo; en dry-run se imprime lo que se añadiría (nunca se toca `docs/`). */
+  /** `docs/bazaar/lessons.json`: only written live; in dry-run what would be added is printed (`docs/` is never touched). */
   lessonsFile?: string;
 }
 
-/** Primera concesión grande (`firstStepFrac`) solo contra una persona con espejo (`mirror_concessions`) cierto; si no, apagada. */
+/** First big concession (`firstStepFrac`) only against a persona with a true mirror (`mirror_concessions`); otherwise off. */
 export const MIRROR_FIRST_STEP_FRAC = 0.12;
 
 const dealerKey = (i: DealerIntent) => `dealers:${i.kind}:${i.dealer}:${i.thread ?? i.target}`;
@@ -117,8 +117,8 @@ const DEALER_REASON: Record<DealerIntent["kind"], string> = {
 };
 
 /**
- * *demand_markup* (personas.md § 3.2): su límite de venta sube según se agota el stock de la hora, así que comprarle
- * pronto en la hora de juego sale más barato. Peso de las aperturas de compra: ×1,25 al empezar la hora, ×0,75 al acabar.
+ * *demand_markup* (personas.md § 3.2): its sell limit rises as the hour's stock runs out, so buying from it
+ * early in the game hour is cheaper. Weight of buy openings: ×1.25 at the start of the hour, ×0.75 at the end.
  */
 export function demandWeight(gameHour: number | undefined): number {
   if (gameHour === undefined) return 1;
@@ -133,9 +133,9 @@ export class DealersRoute {
   private allowed = new Set<string>();
   private mode: "propose" | "execute" = "propose";
   private readonly logs: string[] = [];
-  /** Estado del tick (conversaciones y personas) para elegir el probe de egg que va con una contraoferta. */
+  /** Tick state (conversations and personas) to pick the egg probe that goes with a counteroffer. */
   private state: GameState | undefined;
-  /** Líneas de lecciones del tick (se vuelcan en notas o en la ejecución). */
+  /** Lesson lines of the tick (dumped into notes or into the execution). */
   private readonly lessonLines: string[] = [];
   private readonly lessonsSeen = new Set<string>();
   private readonly lessons = new PendingLessons((entry) => {
@@ -153,7 +153,7 @@ export class DealersRoute {
     }
   });
 
-  /** Al parar: escribe las lecciones que aún esperan a que neg_points se asiente. */
+  /** On stop: writes the lessons still waiting for neg_points to settle. */
   flushLessons(): string[] {
     this.lessons.flush();
     return this.lessonLines.splice(0);
@@ -175,7 +175,7 @@ export class DealersRoute {
     return this.allowed.has(dealerKey(i));
   };
 
-  /** Un `BazaarAgent` por dealer desbloqueado, como el modo serio (ficha obligatoria, perfil por dealer). */
+  /** One `BazaarAgent` per unlocked dealer, like serious mode (mandatory card, profile per dealer). */
   private async ensureAgents(me: Me): Promise<void> {
     const list = await this.client.dealers();
     const all = list.dealers as (typeof list.dealers[number] & { open_to_all?: unknown; enabled?: unknown })[];
@@ -256,7 +256,7 @@ export class DealersRoute {
     return out;
   }
 
-  /** En vivo: segunda pasada con la puerta abierta solo para lo seleccionado (sus GET se repiten; si algo cambió, no sale). */
+  /** Live: second pass with the gate open only for what was selected (its GETs are repeated; if something changed, it does not go out). */
   async execute(clock: Clock, selected: ReadonlySet<string>): Promise<string[]> {
     this.mode = "execute";
     this.allowed = new Set([...selected].filter((k) => k.startsWith("dealers:")));
@@ -326,16 +326,16 @@ export class TradesRoute {
 // ---------------------------------------------------------------- flags
 
 /**
- * Flags de mala fe (`POST /api/flags`). Se propone un flag cuando el texto del dealer contradice la ESTRUCTURA de la
- * oferta de ese mismo mensaje (`flagCandidate.verifiable`), o cuando una contraoferta suya trae una frase de presión de
- * la lista cerrada (`flagCandidate.tactic`, `src/flags/flags.ts`). Estas últimas no las prueba la estructura: solo se
- * proponen si Pablo las aprobó (`--approve-flags <ids>` o, en bloque, `--flag-pressure`); sin aprobación se listan
- * como candidatas. Nunca dos veces el mismo mensaje; no usa el cupo de aceptaciones. En vivo solo sin --dry-run Y con --confirm.
+ * Bad-faith flags (`POST /api/flags`). A flag is proposed when the dealer's text contradicts the STRUCTURE of the
+ * offer in that same message (`flagCandidate.verifiable`), or when a counteroffer of theirs carries a pressure phrase from
+ * the closed list (`flagCandidate.tactic`, `src/flags/flags.ts`). The latter are not proven by structure: they are only
+ * proposed if Pablo approved them (`--approve-flags <ids>` or, in bulk, `--flag-pressure`); without approval they are listed
+ * as candidates. Never the same message twice; does not use the accept quota. Live only without --dry-run AND with --confirm.
  */
 export interface FlagApproval {
-  /** Ids de mensaje con frase de presión aprobados uno a uno. */
+  /** Message ids with a pressure phrase approved one by one. */
   messages: ReadonlySet<string>;
-  /** Todas las frases de presión de la lista cerrada aprobadas en bloque. */
+  /** All pressure phrases of the closed list approved in bulk. */
   allPressure: boolean;
 }
 
@@ -371,7 +371,7 @@ export class FlagsRoute {
     return out;
   }
 
-  /** Envía los flags seleccionados (solo en vivo) y devuelve los registros para `flags.json`. */
+  /** Sends the selected flags (live only) and returns the records for `flags.json`. */
   async execute(state: GameState, selected: ReadonlySet<string>): Promise<{ lines: string[]; records: FlagRecord[] }> {
     const lines: string[] = [];
     const records: FlagRecord[] = [];
@@ -397,17 +397,17 @@ export class FlagsRoute {
 
 // ---------------------------------------------------------------- eggs
 
-/** Parámetros de los probes de eggs (baja prioridad). */
+/** Egg probe parameters (low priority). */
 export const EGG_PARAMS = {
-  /** Plantilla fija del Playground (site-map § 9.3), añadida a una contraoferta nuestra. Nunca lleva cifras. */
+  /** Fixed Playground template (site-map § 9.3), appended to a counteroffer of ours. Never carries figures. */
   template: "Do you know about {hint}?",
 };
 
 /**
- * Frase X del probe que puede ir a caballo de la próxima contraoferta en `conversationId` (nunca en un mensaje aparte):
- * como mucho uno por conversación (`eggsTried` vacío), nunca la misma X con la misma persona (`eggsTried` de todas sus
- * conversaciones y sus `eggProbes`), nunca con avisos, strikes o cooloff, y solo con una pista candidata con palabra
- * clave válida (`isProbePhrase`: sin dígitos).
+ * X phrase of the probe that can ride on the next counteroffer in `conversationId` (never in a separate message):
+ * at most one per conversation (`eggsTried` empty), never the same X with the same persona (`eggsTried` of all its
+ * conversations and its `eggProbes`), never with warnings, strikes or cooloff, and only with a candidate hint with a valid
+ * keyword (`isProbePhrase`: no digits).
  */
 export function eggProbeFor(state: GameState, conversationId: string): string | undefined {
   const conv = state.conversations.find((c) => c.id === conversationId);
@@ -423,8 +423,8 @@ export function eggProbeFor(state: GameState, conversationId: string): string | 
 }
 
 /**
- * Probes de easter eggs: ya NO se envían como mensaje aparte (eso es un mensaje sin oferta, riesgo de spam). Solo se
- * informa de qué probe iría con la próxima contraoferta de cada conversación (`eggProbeFor`, `DealersRoute`).
+ * Egg probes: they are NO LONGER sent as a separate message (that is a message without an offer, spam risk). It only
+ * reports which probe would go with the next counteroffer of each conversation (`eggProbeFor`, `DealersRoute`).
  */
 export class EggsRoute {
   propose(state: GameState, quiet: Readonly<Record<string, number>> = {}): RouteProposal {
