@@ -557,12 +557,10 @@ export function probePhrasesFor(hints: readonly HintLine[], persona: string): st
   return hints
     .flatMap((l) => {
       const r = rank(l);
-      return r === undefined ? [] : [{ l, r }];
+      return r === undefined ? [] : [l.phrase, l.keyword].map((x) => ({ k: x?.trim(), r, tick: l.tick ?? 0 }));
     })
-    .sort((a, b) => a.r - b.r || (b.l.tick ?? 0) - (a.l.tick ?? 0))
-    .flatMap(({ l }) => [l.phrase, l.keyword])
-    .flatMap((x) => {
-      const k = x?.trim();
+    .sort((a, b) => a.r - b.r || Number(isSpanishPhrase(b.k)) - Number(isSpanishPhrase(a.k)) || b.tick - a.tick)
+    .flatMap(({ k }) => {
       if (!k || !isProbePhrase(k) || seen.has(normalize(k))) return [];
       seen.add(normalize(k));
       return [k];
@@ -570,16 +568,27 @@ export function probePhrasesFor(hints: readonly HintLine[], persona: string): st
 }
 
 /**
+ * Spanish phrase (an accented letter or a Spanish article first). Within a rank it goes first: our only egg fired on
+ * the Spanish phrase although the hint was in English, and the English Moscow gold probe missed at chato (thread 900).
+ */
+export function isSpanishPhrase(x: string | undefined): boolean {
+  return !!x && (/[áéíóúñ¿¡]/i.test(x) || /^(el|la|los|las|del|un|una)\s/i.test(x)); // game text
+}
+
+/**
  * X phrase of the probe that can ride on the next counteroffer in `conversationId` (never in a separate message):
- * at most one per conversation (`eggsTried` empty), never the same X with the same persona (`eggsTried` of all its
+ * at most one per conversation (`eggsTried` empty), plus one Spanish retry after an English miss, never the same X with the same persona (`eggsTried` of all its
  * conversations and its `eggProbes`), never with warnings, strikes or cooloff, and only from `probePhrasesFor`.
  */
 export function eggProbeFor(state: GameState, conversationId: string): string | undefined {
   const conv = state.conversations.find((c) => c.id === conversationId);
-  if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 0) return undefined;
+  if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 1) return undefined;
   if (conv.mood.warnings > 0 || conv.mood.strikes > 0 || conv.mood.cooloffUntil !== undefined) return undefined;
   if (state.ours.strikes && Object.keys(state.ours.strikes).length) return undefined;
-  return nextProbeFor(state, conv.counterparty);
+  const x = nextProbeFor(state, conv.counterparty);
+  // A second probe in the same conversation only as the Spanish retry after an English miss.
+  if (conv.eggsTried.length === 1 && (!x || !isSpanishPhrase(x) || isSpanishPhrase(conv.eggsTried[0]))) return undefined;
+  return x;
 }
 
 /** Next probe phrase for `personaId` not yet tried with it (any of its conversations or its `eggProbes`); none if its eggs ran out. */
