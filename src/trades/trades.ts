@@ -368,6 +368,8 @@ export interface TradeParams {
   cashFloor: number;
   /** After this many postings of the same listing with no fill and no visible bid, reposts back off exponentially. */
   relistBackoffAfter: number;
+  /** Extra ask premium on a card another team asked for or that brings a team within 2 of a page (`TradeState.rivals`). */
+  demandPremium: number;
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -386,7 +388,20 @@ export const DEFAULT_TRADE_PARAMS: TradeParams = {
   maxNewPerTick: 12,
   cashFloor: 0,
   relistBackoffAfter: 3,
+  demandPremium: 0.15,
 };
+
+/**
+ * What we know of other teams, from public structure only (`GameState.rivals`, see `tradeSignals` in
+ * `src/state/rivals.ts`): who would pay more for a card, and which cards a rival recently held. It never sets a figure
+ * by itself: it only adds a premium above our floor and ranks bids within the same page distance.
+ */
+export interface RivalSignals {
+  /** Card → teams that asked for it or that it leaves at most 2 from a page. */
+  demand: Map<string, string[]>;
+  /** Cards a rival was seen (or confirmed) holding recently: a bid on them can fill. */
+  supply: Set<string>;
+}
 
 export interface TradeState {
   tick: number;
@@ -409,6 +424,8 @@ export interface TradeState {
   reserved: Set<number>;
   /** Listings backing off (asset id → tick until which it is neither reposted nor repriced). */
   listBackoff?: Map<number, number>;
+  /** Other teams' demand and supply (only when the coordinator has `GameState.rivals`). */
+  rivals?: RivalSignals;
 }
 
 export interface Evaluation {
@@ -636,10 +653,13 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       c = applyCards(c, [ref], []);
     }
   }
+  // Demand from other teams lifts the ask (never the floor): base = reference (or floor) × (1 + premium).
+  const demanded = (ref: string) => (state.rivals?.demand.get(ref)?.length ?? 0) > 0;
   const listTarget = (ref: string, loss: number) => {
     const floor = minAsk(loss, params.minMargin, fees);
     const reference = priceReference(ref, state.model, state.settlements, asks);
-    const target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + params.askPremium)) : floor);
+    const extra = demanded(ref) ? params.demandPremium : 0;
+    const target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + params.askPremium + extra)) : Math.ceil(floor * (1 + extra)));
     return { floor, reference, target };
   };
 
@@ -722,15 +742,16 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   let committed = 0;
   let bidCount = 0;
   const bidBudget = Math.min(budget - acceptSpend, spendable - acceptCash);
-  // Bids closest to completing a page first, then by value created.
-  const bidRank = (ref: string): [number, number] => {
+  // Bids closest to completing a page first, then cards a rival recently held (a bid can fill), then by value created.
+  const unsupplied = (ref: string) => (state.rivals && !state.rivals.supply.has(ref) ? 1 : 0);
+  const bidRank = (ref: string): [number, number, number] => {
     const t = bidTargets.get(ref);
-    return t ? [t.missing, -t.value] : [1e9, 0];
+    return t ? [t.missing, unsupplied(ref), -t.value] : [1e9, 1, 0];
   };
   const byRank = (ra: string, rb: string): number => {
-    const [ma, va] = bidRank(ra);
-    const [mb, vb] = bidRank(rb);
-    return ma - mb || va - vb;
+    const [ma, sa, va] = bidRank(ra);
+    const [mb, sb, vb] = bidRank(rb);
+    return ma - mb || sa - sb || va - vb;
   };
   const existingBids = existing.filter((x) => x.kind === "bid").sort((a, b) => byRank(a.ref, b.ref) || a.offer.id - b.offer.id);
   const bidRefs = new Set<string>();
@@ -815,6 +836,11 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   }
 
   if (overBudget.length) notes.push(`${overBudget.length} bids skipped by --max-spend budget: ${overBudget.join(" ")}`);
+  if (state.rivals) {
+    const lifted = posts.filter((p) => p.kind === "list" && demanded(p.ref)).map((p) => `${p.ref}@${p.price} (${state.rivals!.demand.get(p.ref)!.join(",")})`);
+    const supplied = posts.filter((p) => p.kind === "bid" && state.rivals!.supply.has(p.ref)).map((p) => p.ref);
+    notes.push(`rivals: ${state.rivals.demand.size} cards in demand, ${state.rivals.supply.size} held by a rival${lifted.length ? ` · listings +${Math.round(params.demandPremium * 100)}%: ${lifted.join(" ")}` : ""}${supplied.length ? ` · bids with a known holder: ${supplied.join(" ")}` : ""}`);
+  }
   const plan: TickPlan = { tick: state.tick, evaluated: evals.length, opportunities, cancels, posts, notes, openAfter: open, committedAfter: committed, settledByRarity: settledByRarity(state.settlements, state.model) };
   if (accept) plan.accept = accept;
   return plan;

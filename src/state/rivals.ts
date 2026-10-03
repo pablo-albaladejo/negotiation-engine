@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Catalog } from "../shared/schemas.js";
+import type { RivalSignals } from "../trades/trades.js";
 import { parseFeed, type FeedEvent } from "./world.js";
 
 /**
@@ -325,6 +326,26 @@ export function rivalsView(ledger: RivalLedger, us: string | undefined, catalog:
     });
   }
   return { teams: out, byRef, seenAssets: out.reduce((n, t) => n + t.seen.length, 0), lastEventId: ledger.lastEventId };
+}
+
+/**
+ * El Rastro signals (`TradeState.rivals`): demand = cards a team asked for in the last `maxAge` ticks or that leave it
+ * at most 2 from a page; supply = cards a rival was seen with (or confirmed holding) in the last `maxAge` ticks.
+ */
+export function tradeSignals(r: RivalsState, tick: number, maxAge = 60): RivalSignals {
+  const demand = new Map<string, string[]>();
+  const add = (ref: string, team: string) => {
+    const arr = demand.get(ref) ?? [];
+    if (!arr.includes(team)) arr.push(team);
+    demand.set(ref, arr);
+  };
+  const supply = new Set<string>();
+  for (const t of r.teams) {
+    for (const w of t.wants) if (tick - w.tick <= maxAge) add(w.ref, t.team);
+    for (const p of t.pages) if (p.of - p.have <= 2) for (const ref of p.missing) add(ref, t.team);
+    for (const s of t.seen) if (tick - (s.confirmedTick ?? s.tick) <= maxAge) supply.add(s.ref);
+  }
+  return { demand, supply };
 }
 
 /** Console summary: the teams closest to a page (what they still lack is what they would pay for). */

@@ -12,6 +12,7 @@ import { TradesAgent } from "../trades/agent.js";
 import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeParams, type TradeState } from "../trades/trades.js";
 import { completesPage, duelStrategy, type Strategy, type StrategyDecision } from "../state/conversation.js";
 import type { GameState } from "../state/game-state.js";
+import { tradeSignals } from "../state/rivals.js";
 import type { FlagRecord } from "../state/world.js";
 import type { FlagCandidate } from "../flags/flags.js";
 import { isProbePhrase } from "../dealers/negotiation/messages.js";
@@ -318,7 +319,8 @@ export class TradesRoute {
   async propose(state: GameState, me: Me | undefined, pageTargets: readonly string[]): Promise<RouteProposal> {
     const out = empty();
     this.last = undefined;
-    this.last = await this.agent.propose();
+    // Other teams' demand and supply lift asks and rank bids (absent rivals: the plan is unchanged).
+    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined);
     const { plan } = this.last;
     if (plan.accept) {
       const a = plan.accept;

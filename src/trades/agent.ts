@@ -12,6 +12,7 @@ import {
   planTick,
   readSide,
   setOf,
+  type RivalSignals,
   type TickPlan,
   type TradeParams,
   type TradeState,
@@ -143,9 +144,9 @@ export class TradesAgent {
     this.openBids = now;
   }
 
-  /** Tick proposal without sending anything (GET only): state and `planTick` plan. */
-  async propose(): Promise<{ state: TradeState; plan: TickPlan }> {
-    const state = await this.state();
+  /** Tick proposal without sending anything (GET only): state and `planTick` plan. `rivals`: other teams' signals, if known. */
+  async propose(rivals?: RivalSignals): Promise<{ state: TradeState; plan: TickPlan }> {
+    const state = { ...(await this.state()), ...(rivals ? { rivals } : {}) };
     return { state, plan: planTick(state, this.params) };
   }
 
