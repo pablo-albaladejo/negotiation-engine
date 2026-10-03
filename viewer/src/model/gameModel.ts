@@ -1,11 +1,11 @@
 import { niceScale, type OfferCurve } from "./cockpit.js";
 
 /**
- * Nuestro modelo interno tal como lo sirve `/api/bazaar/model`: el `GameState` del tick, el presupuesto de
- * `clock.limits`, las intenciones de cada ruta del coordinador (en dry-run) con su veredicto y las
- * conversaciones con estado y estrategia. Los campos que otro agente está añadiendo a `src/state/` (tiempo,
- * agenda, disparadores, personas, eggs, flags, pistas) son opcionales: se pintan si están.
- * Solo tipos y funciones puras; nada aquí calcula una cifra.
+ * Our internal model as served by `/api/bazaar/model`: the tick's `GameState`, the budget from
+ * `clock.limits`, the intents of each coordinator route (in dry-run) with their verdict and the
+ * conversations with state and strategy. The fields another agent is adding to `src/state/` (time,
+ * agenda, triggers, personas, eggs, flags, hints) are optional: they are rendered if present.
+ * Types and pure functions only; nothing here computes a figure.
  */
 
 export interface ModelDecision {
@@ -23,25 +23,25 @@ export interface ModelStrategy {
   next: { priceIfTheyHold?: number; walkWhen: string };
 }
 
-/** Intervalo de una estimación (media y extremos). */
+/** Interval of an estimate (mean and extremes). */
 export interface FitRange {
   mean: number;
   lo: number;
   hi: number;
 }
 
-/** Predicción del ajuste por persona para una conversación con dealer (solo su lado: nunca nuestros valores). */
+/** Per-persona fit prediction for a dealer conversation (its side only: never our values). */
 export interface ModelPrediction {
   herNext?: number;
   herLimit: FitRange;
-  /** Su camino previsto por ronda (0 = apertura). */
+  /** Its predicted path per round (0 = opening). */
   curve: { round: number; price: number; lo: number; hi: number }[];
   walkRound: FitRange;
   mirror: boolean | "unknown";
   fittedFrom: number;
 }
 
-/** Estimaciones del ajuste por persona (`Persona.estimates`). */
+/** Per-persona fit estimates (`Persona.estimates`). */
 export interface ModelPersonaEstimates {
   opening_markup: FitRange;
   beta: FitRange;
@@ -75,7 +75,7 @@ export interface ModelConversation {
   result?: { outcome?: string; price?: number; score?: number };
   strategy: ModelStrategy;
   flagCandidate?: unknown;
-  /** Solo en conversaciones con dealer y si el servidor la trae. */
+  /** Only in dealer conversations and if the server provides it. */
   prediction?: ModelPrediction;
 }
 
@@ -91,7 +91,7 @@ export interface ModelIntent {
   price?: number;
   selected: boolean;
   reason: string;
-  /** Orden de arbitraje (opcional: un servidor anterior no lo trae). */
+  /** Arbitration order (optional: an older server does not provide it). */
   order?: number;
 }
 
@@ -168,7 +168,7 @@ export interface ModelState {
   };
   conversations: ModelConversation[];
   missing: string[];
-  /** Decisión auto o board del Market Test (`src/venue/mechanism.ts`), calculada con las sesiones medidas en sombra. */
+  /** Market Test auto-or-board decision (`src/venue/mechanism.ts`), computed with the sessions measured in shadow. */
   venue?: { mechanismDecision: MechanismDecisionView };
   personas?: unknown[];
   world?: { eggs?: { byPersona?: Record<string, { foundByOthers?: unknown[]; left?: number; leftAssumed?: boolean }> } } & Record<string, unknown>;
@@ -177,7 +177,7 @@ export interface ModelState {
   triggers?: unknown[];
 }
 
-/** Datos de la pestaña «Now» (`now` en `/api/bazaar/model`). */
+/** Data for the «Now» tab (`now` in `/api/bazaar/model`). */
 export interface NowOffer {
   id: number;
   venue: string;
@@ -219,7 +219,7 @@ export interface NowData {
 
 export interface GameModel {
   available: boolean;
-  /** La respuesta es la última construcción y otra está en marcha (opcional en servidores anteriores). */
+  /** The response is the latest build and another is in progress (optional on older servers). */
   rebuilding?: boolean;
   reason: string | null;
   tick: number | null;
@@ -247,12 +247,12 @@ export interface GameModel {
   eggs_feed: ModelFeedLine[];
   persisted: { date: string | null; conversations: boolean; personas: unknown; flags: unknown };
   hints: Record<string, unknown>[];
-  /** Opcional: un servidor anterior no lo trae. */
+  /** Optional: an older server does not provide it. */
   prices?: { source: string; rows: Record<string, unknown>[] };
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
   venues?: { state: unknown; api: unknown[] };
   now?: NowData | null;
-  /** Ajuste por persona (opcional: un servidor anterior no lo trae). */
+  /** Per-persona fit (optional: an older server does not provide it). */
   fit?: { source: string; estimates: Record<string, ModelPersonaEstimates>; welcome?: string[]; bands?: Record<string, string> } | null;
 }
 
@@ -264,7 +264,7 @@ const numOf = (x: unknown): number | undefined => (typeof x === "number" && Numb
 const strOf = (x: unknown): string | undefined => (typeof x === "string" && x !== "" ? x : undefined);
 const pick = (o: Record<string, unknown>, ...keys: string[]): unknown => keys.map((k) => o[k]).find((v) => v !== undefined && v !== null);
 
-/** Texto legible de un valor cualquiera (pista, egg, regalo…): siempre texto plano. */
+/** Readable text of any value (hint, egg, gift…): always plain text. */
 export function textOf(x: unknown): string {
   if (x === null || x === undefined) return "—";
   if (typeof x === "string" || typeof x === "number" || typeof x === "boolean") return String(x);
@@ -276,16 +276,16 @@ export function textOf(x: unknown): string {
   return [main, ...rest].filter(Boolean).join(" · ") || JSON.stringify(x);
 }
 
-/** El modelo en bruto de la API, o un modelo vacío si no llega. */
+/** The raw model from the API, or an empty model if it does not arrive. */
 export function gameModelOf(raw: unknown): GameModel | null {
   const o = rec(raw);
   if (typeof o.available !== "boolean") return null;
   return raw as GameModel;
 }
 
-// ---------------------------------------------------------------- conversaciones ↔ filas del tablero
+// ---------------------------------------------------------------- conversations ↔ board rows
 
-/** Fila del tablero de una conversación del modelo (`dealer:56` → `thread:56`, `rastro:7` → `offer:7`). */
+/** Board row of a model conversation (`dealer:56` → `thread:56`, `rastro:7` → `offer:7`). */
 export function boardRowIdFor(convId: string): string {
   const [kind, id] = convId.split(":");
   if (kind === "dealer") return `thread:${id}`;
@@ -300,7 +300,7 @@ export function modelConversationFor(model: GameModel | null, rowId: string): Mo
 
 const PHASE_ORDER: Record<string, number> = { closing: 0, haggling: 1, opening: 2, done: 3 };
 
-/** Activas primero (cierre, regateo, apertura), luego las terminadas. */
+/** Active first (close, haggling, opening), then the finished ones. */
 export function sortedConversations(model: GameModel | null): ModelConversation[] {
   return [...(model?.state?.conversations ?? [])].sort((a, b) => (PHASE_ORDER[a.phase] ?? 9) - (PHASE_ORDER[b.phase] ?? 9) || a.id.localeCompare(b.id));
 }
@@ -309,7 +309,7 @@ export function assetLabel(c: ModelConversation): string {
   return c.asset.ref ?? c.asset.item ?? (c.asset.rarity ? `${c.asset.rarity} ${c.asset.set ?? ""}`.trim() : "?");
 }
 
-/** Ronda x de la paciencia (dealer) o de las rondas del duelo. */
+/** Round x of the patience (dealer) or of the duel rounds. */
 export function roundOf(c: ModelConversation): string {
   const used = c.patience?.roundsSpent ?? c.roundsUsed;
   const budget = c.patience?.budget ?? c.patienceEstimate ?? c.strategy.plan.patienceBudget;
@@ -321,11 +321,11 @@ export function decisionLabel(d: ModelDecision | undefined): string {
   return `${d.action}${d.price !== undefined ? ` ${d.price}${d.days !== undefined ? ` day ${d.days}` : ""}` : ""} · ${d.rule}`;
 }
 
-// ---------------------------------------------------------------- curva con el camino previsto
+// ---------------------------------------------------------------- curve with the predicted path
 
 /**
- * Camino previsto (`strategy.plan.plannedPath`) sobre la curva del tablero: los pasos que aún no hemos dado
- * se colocan en los ticks siguientes al último, unidos a nuestra última oferta. Devuelve la curva ampliada.
+ * Predicted path (`strategy.plan.plannedPath`) over the board curve: the steps we have not taken yet
+ * are placed at the ticks following the last one, joined to our last offer. Returns the extended curve.
  */
 export function withPlannedPath(curve: OfferCurve, conv: ModelConversation | null): { curve: OfferCurve; planned: { round: number; value: number }[] } {
   const path = conv?.phase !== "done" ? (conv?.strategy.plan.plannedPath ?? []) : [];
@@ -343,8 +343,8 @@ export function withPlannedPath(curve: OfferCurve, conv: ModelConversation | nul
 }
 
 /**
- * Curva solo con el modelo (sin fila del tablero o con menos de dos precios registrados): eje X = paso de la
- * conversación; nuestras ofertas, las suyas, el camino previsto, el límite (privado, solo local) y el umbral.
+ * Model-only curve (no board row or fewer than two recorded prices): X axis = conversation step;
+ * our offers, theirs, the predicted path, the limit (private, local only) and the threshold.
  */
 export function modelCurve(conv: ModelConversation): { curve: OfferCurve; planned: { round: number; value: number }[] } | null {
   const ours = conv.history.ourPrices.map((value, k) => ({ round: k + 1, value }));
@@ -373,11 +373,11 @@ export function modelCurve(conv: ModelConversation): { curve: OfferCurve; planne
   return { curve: { ...base, yDomain: scale.domain, yTicks: scale.ticks }, planned: [] };
 }
 
-// ---------------------------------------------------------------- tiempo y agenda
+// ---------------------------------------------------------------- time and agenda
 
 const fmtH = (h: number) => (Math.round(h * 100) / 100).toFixed(2);
 
-/** "Sat 09:00" en hora de Madrid. */
+/** "Sat 09:00" in Madrid time. */
 export function wallLabel(iso: string | undefined | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -385,19 +385,19 @@ export function wallLabel(iso: string | undefined | null): string | null {
   return d.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }).replace(",", "");
 }
 
-/** Ronda en vigor a la hora `h` (R1 ×0,5 desde h 0; R2 y R3 según `/api/schedule`). */
+/** Round in force at hour `h` (R1 ×0.5 from h 0; R2 and R3 per `/api/schedule`). */
 export function roundAt(model: GameModel, h: number): { round: number; name: string; weight: number } | null {
   const rounds = [...model.goals.round_weights].sort((a, b) => a.at_hours - b.at_hours);
   return [...rounds].reverse().find((r) => r.at_hours <= h + 1e-9) ?? rounds[0] ?? null;
 }
 
-/** Hora de juego actual: `state.time` si existe, si no `clock.t_hours` o `schedule.now_hours`. */
+/** Current game hour: `state.time` if present, otherwise `clock.t_hours` or `schedule.now_hours`. */
 export function nowHours(model: GameModel): number | null {
   const t = rec(model.state?.time);
   return numOf(pick(t, "gameHour", "game_hour", "hours", "tHours")) ?? model.state?.clock.tHours ?? model.schedule.now_hours ?? null;
 }
 
-/** Resumen de una línea: "h 2.65 · R1 ×0.5 · closed until Sat 09:00". */
+/** One-line summary: "h 2.65 · R1 ×0.5 · closed until Sat 09:00". */
 export function timeSummary(model: GameModel): string {
   const t = rec(model.state?.time);
   const h = nowHours(model);
@@ -426,7 +426,7 @@ export function timeSummary(model: GameModel): string {
   return parts.join(" · ") || "time unknown";
 }
 
-/** Qué hace nuestro código ante cada tipo de evento (si `state.agenda` no trae su propio plan). */
+/** What our code does for each event kind (if `state.agenda` does not bring its own plan). */
 const PLANNED_ACTION: Record<string, string> = {
   bench: "broker matches the Market Test bench on our venue (board earns full, auto half)",
   duels: "duels route on: v2 policy, early accept with decay",
@@ -439,7 +439,7 @@ const PLANNED_ACTION: Record<string, string> = {
   freeze: "freeze: nothing after it counts",
 };
 
-/** Antelación (horas de juego) con la que hay que estar listos para cada tipo de evento. */
+/** Lead time (game hours) by which we must be ready for each event kind. */
 const LEAD_HOURS: Record<string, number> = { bench: 0.1, duels: 0.25, round: 0.1, set_release: 0.1, grant_all: 0, day_closes: 0.1, day_opens: 0, finale: 0.5, freeze: 0.5 };
 
 export interface TimelineEvent {
@@ -465,7 +465,7 @@ function eventLabel(action: string, params: Record<string, unknown>): string {
   return action.replace(/_/g, " ");
 }
 
-/** Eventos conocidos del día: `state.agenda` si existe; si no, `/api/schedule` con nuestro plan por tipo. */
+/** Known events of the day: `state.agenda` if present; otherwise `/api/schedule` with our plan per kind. */
 export function timelineEvents(model: GameModel): TimelineEvent[] {
   const now = nowHours(model);
   const countdown = (at: number) => (now === null ? null : at <= now ? "now / past" : `in ${fmtH(at - now)} h`);
@@ -503,7 +503,7 @@ export function timelineEvents(model: GameModel): TimelineEvent[] {
   }));
 }
 
-/** Disparadores recientes: `state.triggers` si existe; si no, los eventos del feed que el servidor marcó. */
+/** Recent triggers: `state.triggers` if present; otherwise the feed events the server flagged. */
 export function triggerLines(model: GameModel): { tick: number | null; type: string; text: string }[] {
   const own = arr(model.state?.triggers);
   if (own.length > 0) {
@@ -544,7 +544,7 @@ function unlockText(o: Record<string, unknown>): string {
   return parts.join(" · ") || "—";
 }
 
-/** Personas: `state.personas`, si no `personas.json`, si no los dealers de `/api/dealers`. */
+/** Personas: `state.personas`, otherwise `personas.json`, otherwise the dealers from `/api/dealers`. */
 export function personasOf(model: GameModel): PersonaView[] {
   const eggs = model.state?.world?.eggs?.byPersona ?? {};
   const fromState = arr(model.state?.personas);
@@ -575,7 +575,7 @@ export function personasOf(model: GameModel): PersonaView[] {
   });
 }
 
-// ---------------------------------------------------------------- corpus de pistas
+// ---------------------------------------------------------------- hints corpus
 
 export interface HintView {
   key: string;
@@ -591,7 +591,7 @@ export interface HintView {
   classification: string | null;
 }
 
-/** Corpus (`hints.jsonl`) + pistas de `state.personas[].hints`, sin duplicados, lo más reciente primero. */
+/** Corpus (`hints.jsonl`) + hints from `state.personas[].hints`, deduplicated, most recent first. */
 export function hintsOf(model: GameModel): HintView[] {
   const out = new Map<string, HintView>();
   const add = (x: unknown, persona?: string) => {
@@ -641,7 +641,7 @@ export function filterHints(hints: readonly HintView[], f: HintFilters): HintVie
 
 // ---------------------------------------------------------------- flags
 
-/** Flags enviados (estado o `flags.json`) y su balance; candidatos de las conversaciones. */
+/** Flags sent (state or `flags.json`) and their balance; candidates from the conversations. */
 export function flagsOf(model: GameModel): { sent: unknown[]; balance: number | null; candidates: { conversation: string; candidate: unknown }[] } {
   const ours = model.state?.ours.flags;
   const own = rec(ours);
@@ -652,7 +652,7 @@ export function flagsOf(model: GameModel): { sent: unknown[]; balance: number | 
   return { sent, balance, candidates };
 }
 
-// ---------------------------------------------------------------- precios por carta
+// ---------------------------------------------------------------- prices per card
 
 export interface PriceRow {
   ref: string;
@@ -679,7 +679,7 @@ export interface PriceRow {
 
 const n = (o: Record<string, unknown>, ...keys: string[]): number | null => numOf(pick(o, ...keys)) ?? null;
 
-/** Mejor precio de un campo: número, cotización `{ price, venue }` u objeto por venue (`{ rastro: 8, v04: 9 }`). */
+/** Best price of a field: number, `{ price, venue }` quote or per-venue object (`{ rastro: 8, v04: 9 }`). */
 function bestOf(x: unknown, best: (a: number, b: number) => number): number | null {
   if (typeof x === "number") return x;
   const q = numOf(rec(x).price);
@@ -688,7 +688,7 @@ function bestOf(x: unknown, best: (a: number, b: number) => number): number | nu
   return vals.length ? vals.reduce(best) : null;
 }
 
-/** Filas de precios (`state.markets.prices` o la reconstrucción del visor), con nombres en camelCase o snake_case. */
+/** Price rows (`state.markets.prices` or the viewer's reconstruction), with camelCase or snake_case names. */
 export function priceRows(model: GameModel): PriceRow[] {
   return (model.prices?.rows ?? []).flatMap((x): PriceRow[] => {
     const o = rec(x);
@@ -767,7 +767,7 @@ export interface VenueView {
   ours: boolean;
 }
 
-/** Venues: `state.markets.venues` si existe; si no, `/api/venues` tal cual (sin El Rastro, que es de la casa). */
+/** Venues: `state.markets.venues` if present; otherwise `/api/venues` as is (without El Rastro, which is the house's). */
 export function venuesOf(model: GameModel, ourTeam: string): VenueView[] {
   const own = arr(model.venues?.state);
   const list = own.length > 0 ? own : (model.venues?.api ?? []);
@@ -805,7 +805,7 @@ export interface PackTypeView {
   id: string;
   name: string;
   color: string | null;
-  /** Probabilidad de cada rareza por hueco. */
+  /** Probability of each rarity per slot. */
   slots: Record<string, number>[];
   expectedBook: number | null;
   ev: number | null;
@@ -823,7 +823,7 @@ export interface HeldPackView {
   why: string | null;
 }
 
-/** Sobres: estado de la ruta PACKS si existe; si no, el catálogo y nuestros sobres cerrados de `/api/me`. */
+/** Packs: state of the PACKS route if present; otherwise the catalog and our closed packs from `/api/me`. */
 export function packsOf(model: GameModel): { types: PackTypeView[]; held: HeldPackView[]; intents: string[]; source: "state" | "catalog" } {
   const st = model.packs?.state;
   const so = rec(st);

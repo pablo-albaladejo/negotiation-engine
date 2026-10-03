@@ -2,13 +2,13 @@ import { arr, rec, type FitRange, type GameModel, type ModelConversation, type M
 import { predictionOf } from "./dealerFit.js";
 
 /**
- * Lo que el modelo de HOY sabe de la persona de una conversación, aunque la conversación sea vieja o esté cerrada:
- * `personas[].model` (campos `{ value, lo, hi, n, source, lastTick }`) si el servidor lo trae; si no, las estimaciones
- * del ajuste (`personas[].estimates` o `fit.estimates`). Solo el lado del dealer; nunca un valor nuestro.
- * Solo funciones puras; nada aquí decide una cifra.
+ * What TODAY's model knows about the persona of a conversation, even if the conversation is old or closed:
+ * `personas[].model` (fields `{ value, lo, hi, n, source, lastTick }`) if the server provides it; otherwise the fit's
+ * estimates (`personas[].estimates` or `fit.estimates`). Dealer side only; never a value of ours.
+ * Pure functions only; nothing here decides a figure.
  */
 
-/** Book por rareza (el mismo que usa el ajuste por persona). */
+/** Book by rarity (the same one the per-persona fit uses). */
 export const RARITY_BOOK: Readonly<Record<string, number>> = { common: 10, uncommon: 25, rare: 70, epic: 180, legendary: 450 };
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -20,10 +20,10 @@ function rangeOf(x: unknown): FitRange | null {
   return mean === undefined ? null : { mean, lo: num(o.lo) ?? mean, hi: num(o.hi) ?? mean };
 }
 
-/** Lado de ELLA: comprando nosotros, ella vende. */
+/** HER side: when we buy, she sells. */
 export const herSide = (c: ModelConversation): "sells" | "buys" => (c.side === "buy" ? "sells" : "buys");
 
-/** «we buy · she sells» / «we sell · she buys» (dealers); «we buy» / «we sell» en lo demás. */
+/** «we buy · she sells» / «we sell · she buys» (dealers); «we buy» / «we sell» otherwise. */
 export function sideLabel(c: ModelConversation): string {
   return c.kind === "dealer" ? `we ${c.side} · she ${herSide(c) === "sells" ? "sells" : "buys"}` : `we ${c.side}`;
 }
@@ -36,7 +36,7 @@ function estimatesOf(model: GameModel | null, id: string): Record<string, unknow
   return rec(personaRec(model, id)?.estimates ?? model?.fit?.estimates?.[id]);
 }
 
-/** Banda de la conversación (`sells|buys:<rareza>`): la rareza del estado o, si falta, la que guardó el ajuste. */
+/** Band of the conversation (`sells|buys:<rarity>`): the state's rarity or, if missing, the one the fit stored. */
 export function convBand(model: GameModel | null, c: ModelConversation): string | null {
   if (c.asset.rarity) return `${herSide(c)}:${c.asset.rarity}`;
   return model?.fit?.bands?.[c.id] ?? null;
@@ -47,9 +47,9 @@ export const isWelcome = (model: GameModel | null, c: ModelConversation): boolea
 export interface ParamLine {
   key: string;
   label: string;
-  /** «value [lo–hi] · n · source» o «unknown». */
+  /** «value [lo–hi] · n · source» or «unknown». */
   text: string;
-  /** Las mismas piezas por separado, para pintarlas en tabla; `value` es `null` si no se sabe. */
+  /** The same pieces separately, to render them in a table; `value` is `null` if unknown. */
   value: string | null;
   range: string;
   n: number | null;
@@ -88,14 +88,14 @@ function cellsOf(v: Val | null): Pick<ParamLine, "value" | "range" | "n" | "sour
 const fromRange = (r: FitRange | null, n: number, source: string): Val | null => (r ? { value: r.mean, lo: r.lo, hi: r.hi, n, source } : null);
 const fromScalar = (x: unknown, n: number, source: string): Val | null => (typeof x === "number" || typeof x === "boolean" ? { value: x, lo: null, hi: null, n, source } : null);
 
-/** Un valor del modelo de la persona: `personas[].model.strategy[key]` o, si falta, el respaldo de las estimaciones. */
+/** One value of the persona model: `personas[].model.strategy[key]` or, if missing, the estimates fallback. */
 function strategyVal(model: GameModel | null, persona: string, key: string, fallback: () => Val | null): Val | null {
   const pm = rec(rec(personaRec(model, persona)?.model).strategy);
   const f = fieldVal(pm[key]);
   return f ?? fallback();
 }
 
-/** Parámetros de la estrategia de la persona, del modelo de hoy (los del lado que toca), «unknown» si no se sabe. */
+/** The persona's strategy parameters, from today's model (those of the relevant side), «unknown» if not known. */
 export function strategyLines(model: GameModel | null, c: ModelConversation): ParamLine[] {
   const id = c.counterparty;
   const e = estimatesOf(model, id);
@@ -137,7 +137,7 @@ export function strategyLines(model: GameModel | null, c: ModelConversation): Pa
   return out;
 }
 
-/** Su ronda de retirada estimada, para comparar con nuestro presupuesto de paciencia: «4.8 ± 1» o `null`. */
+/** Its estimated walk-away round, to compare with our patience budget: «4.8 ± 1» or `null`. */
 export function herWalkText(model: GameModel | null, c: ModelConversation): string | null {
   if (c.kind !== "dealer") return null;
   const e = estimatesOf(model, c.counterparty);
@@ -149,17 +149,17 @@ export function herWalkText(model: GameModel | null, c: ModelConversation): stri
 
 export interface BandView {
   band: string;
-  /** floor (vende ella) o ceiling (compra ella). */
+  /** floor (she sells) or ceiling (she buys). */
   kind: "floor" | "ceiling";
   limit: string;
-  /** Las piezas del límite por separado (tabla); `value` `null` si no hay medida. */
+  /** The limit's pieces separately (table); `value` `null` if there is no measurement. */
   cells: Pick<ParamLine, "value" | "range" | "n" | "source">;
   samples: number;
   fewSamples: boolean;
   book: number | null;
 }
 
-/** Límite medido de la banda de la conversación (modelo de hoy), o `null` si no hay banda o medida. */
+/** Measured limit of the conversation's band (today's model), or `null` if there is no band or measurement. */
 export function bandView(model: GameModel | null, c: ModelConversation): BandView | null {
   const band = convBand(model, c);
   if (!band) return null;
@@ -176,16 +176,16 @@ export function bandView(model: GameModel | null, c: ModelConversation): BandVie
   return { band, kind, limit: textOf(v), cells: cellsOf(v), samples, fewSamples: b.fewSamples === true || samples < 3, book };
 }
 
-/** La misma fórmula que el ajuste (`says` de persona-fit): su precio en la ronda r de `open` hacia `limit`. */
+/** The same formula as the fit (persona-fit's `says`): its price at round r from `open` toward `limit`. */
 function says(open: number, limit: number, r: number, beta: number, maxRounds: number, dealerSells: boolean): number {
   const t = open + (limit - open) * Math.min(1, r / Math.max(1, maxRounds)) ** (1 / Math.max(0.05, beta));
   return dealerSells ? Math.max(Math.ceil(t - 1e-9), Math.ceil(limit - 1e-9)) : Math.min(Math.floor(t + 1e-9), Math.floor(limit + 1e-9));
 }
 
 /**
- * Su curva según el modelo de HOY. Si el servidor ya trae `prediction` (ajuste de este tick) se usa; si no (conversación
- * vieja o cerrada, o sin rareza en el estado), se calcula aquí: de su apertura a su límite de la banda (el de bienvenida
- * si es `welcome`), con β y `max_rounds` actuales; la banda lo–hi recorre los extremos de límite y β.
+ * Its curve per TODAY's model. If the server already provides `prediction` (this tick's fit) it is used; otherwise (old
+ * or closed conversation, or no rarity in the state), it is computed here: from its opening to its band limit (the welcome one
+ * if `welcome`), with current β and `max_rounds`; the lo–hi band spans the limit and β extremes.
  */
 export function currentPrediction(model: GameModel | null, c: ModelConversation | null): ModelPrediction | null {
   if (!c || c.kind !== "dealer") return null;

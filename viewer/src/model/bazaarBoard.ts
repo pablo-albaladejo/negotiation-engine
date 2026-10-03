@@ -1,8 +1,8 @@
 /**
- * Vista unificada del Bazaar tal como la sirve `/api/bazaar/board`: el servidor ya calculó valor,
- * excedente, veredicto y deltas; aquí solo se tipa, se filtra/ordena (presentación) y se alinea la
- * conversación por tick. El texto de los mensajes es literal (puede traer inyección): nunca se
- * interpreta, solo se muestra como texto.
+ * Unified Bazaar view as served by `/api/bazaar/board`: the server already computed value,
+ * surplus, verdict and deltas; here we only type, filter/sort (presentation) and align the
+ * conversation by tick. Message text is verbatim (it may carry an injection): it is never
+ * interpreted, only shown as text.
  */
 export type BoardRowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer";
 export type BoardVerdict = "good" | "bad" | "neutral" | "open" | "no deal" | "not logged";
@@ -99,7 +99,7 @@ export interface BoardTeam {
   level?: number | null;
   album_filled?: number | null;
   album_slots?: number | null;
-  /** Páginas completas del álbum: las ★ del leaderboard oficial. */
+  /** Full album pages: the ★ of the official leaderboard. */
   pages_complete?: number | null;
   deals?: number | null;
 }
@@ -202,7 +202,7 @@ export interface BoardFilters {
 export const ALL = "all";
 const DEFAULT_FILTERS: BoardFilters = { kind: ALL, counterparty: ALL, status: ALL, verdict: ALL, sort: "tick", row: "" };
 
-/** Filtros desde la query del hash (`#/bazaar?kind=duel-buyer&verdict=bad&sort=surplus&row=thread:178`). */
+/** Filters from the hash query (`#/bazaar?kind=duel-buyer&verdict=bad&sort=surplus&row=thread:178`). */
 export function parseBoardQuery(query: string): BoardFilters {
   const p = new URLSearchParams(query);
   const sort = p.get("sort") === "surplus" ? "surplus" : "tick";
@@ -253,7 +253,7 @@ export interface TimelineStep {
   decisions: BoardDecision[];
 }
 
-/** Mensajes y nuestras decisiones agrupados por tick (en orden), para mostrarlos lado a lado. */
+/** Messages and our decisions grouped by tick (in order), to show them side by side. */
 export function boardTimeline(row: BoardRow): TimelineStep[] {
   const steps = new Map<string, TimelineStep>();
   const at = (tick: number | null) => {

@@ -1,8 +1,8 @@
 import type { Board, BoardAgent, BoardRow } from "./bazaarBoard.js";
 
 /**
- * Modelo de la cabina del Bazaar: solo reordena y etiqueta lo que ya trae `/api/bazaar/board`.
- * Ninguna cifra se inventa aquí; la puntuación sale tal cual del juego.
+ * Bazaar cockpit model: it only reorders and labels what `/api/bazaar/board` already brings.
+ * No figure is invented here; the score comes straight from the game.
  */
 
 export interface Standing {
@@ -10,7 +10,7 @@ export interface Standing {
   teams: number;
   score: number | null;
   leader: { name: string; score: number | null } | null;
-  /** Equipo justo por delante (el que hay que pasar). */
+  /** Team just ahead (the one to overtake). */
   ahead: { name: string; score: number | null } | null;
   gapToLeader: number | null;
   gapToAhead: number | null;
@@ -30,7 +30,7 @@ export function standingOf(board: Board): Standing {
   return { rank: board.header?.rank ?? us?.rank ?? null, teams: lb.length, score, leader, ahead, gapToLeader: gap(leader), gapToAhead: gap(ahead) };
 }
 
-/** Componentes de la cifra que el juego publica, en el orden en que suman. */
+/** Components of the figure the game publishes, in the order they add up. */
 export function scoreParts(board: Board): { label: string; value: number | null }[] {
   const h = board.header;
   return [
@@ -48,9 +48,9 @@ export interface LiveItem {
   title: string;
   counterparty: string;
   party: PartyKind;
-  /** Qué está en juego, en una línea (p. ej. "limit 116 · we bid 90 · they ask 119"). */
+  /** What is at stake, in one line (e.g. "limit 116 · we bid 90 · they ask 119"). */
   state: string;
-  /** Aviso que merece atención, o `null`. */
+  /** Warning that deserves attention, or `null`. */
   warning: string | null;
 }
 
@@ -62,10 +62,10 @@ const lastPrice = (row: BoardRow, us: boolean): number | null => {
   return null;
 };
 
-/** Ref de carta dentro de un texto de oferta ("SAL-07", "LAT-04"…). */
+/** Card ref inside an offer text ("SAL-07", "LAT-04"…). */
 const cardRef = (text: string): string | null => /\b[A-Z]{3}-\d{2}\b/.exec(text)?.[0] ?? null;
 
-/** Lo que está abierto ahora mismo: duelos vivos, hilos con dealers y nuestras ofertas en El Rastro. */
+/** What is open right now: live duels, dealer threads and our offers in El Rastro. */
 export function liveItems(board: Board): LiveItem[] {
   const out: LiveItem[] = [];
   for (const r of board.rows) {
@@ -97,7 +97,7 @@ export function liveItems(board: Board): LiveItem[] {
   return out.sort((a, b) => order[a.kind] - order[b.kind]);
 }
 
-/** Tratos que movieron la cifra (Δ real del juego), el más reciente primero. */
+/** Deals that moved the figure (the game's real Δ), most recent first. */
 export function scoreMovers(board: Board): BoardRow[] {
   return board.rows.filter((r) => r.d_score !== null && r.d_score !== 0).sort((a, b) => (b.tick_settled ?? 0) - (a.tick_settled ?? 0));
 }
@@ -112,8 +112,8 @@ export interface AgentLine {
 }
 
 /**
- * Un agente está vivo si escribió su traza hace menos de 3 ticks (o, sin hora, si su último tick
- * está a ≤ 3 del reloj). Con la partida en pausa todos parecen parados: es lo esperado.
+ * An agent is alive if it wrote its trace less than 3 ticks ago (or, with no time, if its last tick
+ * is within 3 of the clock). With the game paused they all look stopped: that is expected.
  */
 export function agentLines(board: Board, nowMs: number): AgentLine[] {
   const tickMs = (board.clock?.tick_seconds ?? 60) * 1000;
@@ -130,7 +130,7 @@ export function agentLines(board: Board, nowMs: number): AgentLine[] {
 
 export interface ScheduleLine {
   at_hours: number;
-  /** "in 0.4 h" (horas de juego) */
+  /** "in 0.4 h" (game hours) */
   when: string;
   action: string;
   note: string;
@@ -146,7 +146,7 @@ const ACTION_LABEL: Record<string, string> = {
   duels: "Duels",
 };
 
-/** Próximas citas; las que caen a la misma hora se mantienen juntas y en orden. */
+/** Upcoming appointments; those falling at the same time stay together and in order. */
 export function scheduleLines(board: Board, max = 8): ScheduleLine[] {
   const s = board.schedule;
   if (!s) return [];
@@ -157,7 +157,7 @@ export function scheduleLines(board: Board, max = 8): ScheduleLine[] {
   });
 }
 
-/** Partes del historial: lo que puntúa por negociación y los duelos, por separado. */
+/** Parts of the history: what scores per negotiation and the duels, separately. */
 export function historyGroups(rows: readonly BoardRow[]): { trades: BoardRow[]; duels: BoardRow[] } {
   const closed = rows.filter((r) => r.status !== "open" && r.status !== "live");
   return { trades: closed.filter((r) => !r.kind.startsWith("duel")), duels: closed.filter((r) => r.kind.startsWith("duel")) };
@@ -165,7 +165,7 @@ export function historyGroups(rows: readonly BoardRow[]): { trades: BoardRow[]; 
 
 export type PartyKind = "us" | "team" | "dealer" | "duel rival" | "public";
 
-/** Cómo se lee cada tipo de parte en la UI. Los duelos enfrentan equipos, pero las reglas ocultan cuál bajo un alias. */
+/** How each kind of part reads in the UI. Duels pit teams against each other, but the rules hide which one behind an alias. */
 export const PARTY_LABEL: Record<PartyKind, string> = {
   us: "us",
   team: "team",
@@ -174,7 +174,7 @@ export const PARTY_LABEL: Record<PartyKind, string> = {
   public: "public offer",
 };
 
-/** Colores oficiales de rareza (`/api/catalog`). */
+/** Official rarity colors (`/api/catalog`). */
 export const RARITY_COLOR: Record<string, string> = {
   common: "#9AA4B8",
   uncommon: "#3DDC97",
@@ -191,23 +191,23 @@ export interface Party {
 
 const TEAM_ID = /\bt\d{2}\b/g;
 
-/** Nombre de un equipo por su id (`t02`), con "(us)" si somos nosotros; el id tal cual si no lo conocemos. */
+/** Name of a team by its id (`t02`), with "(us)" if it is us; the bare id if we do not know it. */
 export function teamLabel(board: Board, id: string): string {
   const t = board.market.leaderboard.find((x) => x.team === id);
   if (id === board.team || t?.us) return `${t?.name ?? "Team"} (us)`;
   if (!t || t.name === id) return id;
-  // "Team 13" ya dice quién es "t13"; otros nombres llevan el id al lado.
+  // "Team 13" already says who "t13" is; other names carry the id alongside.
   return t.name === `Team ${Number(id.slice(1))}` ? t.name : `${t.name} (${id})`;
 }
 
-/** Ids de nuestras ofertas (de `/api/me/offers`), para reconocerlas en libros anónimos. */
+/** Ids of our offers (from `/api/me/offers`), to recognize them in anonymous books. */
 export function ourOfferIds(board: Board): Set<number> {
   return new Set(board.rows.filter((r) => r.kind === "team-offer" || r.kind === "team-trade").flatMap((r) => r.offers.flatMap((o) => (o.maker === board.team && o.id !== null ? [o.id] : []))));
 }
 
 /**
- * Quién puso una oferta de un libro (El Rastro, nuestro venue). El Bazaar anonimiza al autor
- * (`m3950d43b`), así que las nuestras se reconocen por id; el resto es "otro equipo (anónimo)".
+ * Who placed an offer in a book (El Rastro, our venue). The Bazaar anonymizes the author
+ * (`m3950d43b`), so ours are recognized by id; the rest is "another team (anonymous)".
  */
 export function bookMakerLabel(board: Board, line: { id: number; maker: string }, ours: ReadonlySet<number>): { label: string; us: boolean } {
   if (ours.has(line.id) || line.maker === board.team) return { label: teamLabel(board, board.team), us: true };
@@ -215,17 +215,17 @@ export function bookMakerLabel(board: Board, line: { id: number; maker: string }
   return { label: `another team (anonymous ${line.maker.slice(0, 5)})`, us: false };
 }
 
-/** Sustituye los ids de equipo (`t18`) de un texto por su nombre; el texto se sigue mostrando como texto. */
+/** Replaces team ids (`t18`) in a text with their name; the text is still displayed as text. */
 export function withTeamNames(board: Board, text: string): string {
   return text.replace(TEAM_ID, (id) => (id === board.team || board.market.leaderboard.some((t) => t.team === id) ? teamLabel(board, id) : id));
 }
 
-/** ¿Este texto u oferta nos menciona? */
+/** Does this text or offer mention us? */
 export function mentionsUs(board: Board, text: string): boolean {
   return board.team !== "" && (text.match(TEAM_ID) ?? ([] as string[])).includes(board.team);
 }
 
-/** Con quién es cada conversación y qué tipo de parte es. */
+/** Who each conversation is with and what kind of part it is. */
 export function partyOf(board: Board, row: BoardRow): Party {
   if (row.kind.startsWith("dealer")) return { label: row.counterparty, kind: "dealer" };
   if (row.kind.startsWith("duel")) return { label: row.counterparty, kind: "duel rival" };
@@ -239,27 +239,27 @@ export interface CurvePoint {
 }
 
 export interface OfferCurve {
-  /** Primer tick de la conversación; la ronda 1 del gráfico es este tick. */
+  /** First tick of the conversation; round 1 of the chart is this tick. */
   firstTick: number;
   rounds: number;
   yDomain: [number, number];
-  /** Marcas del eje Y en números redondos. */
+  /** Y-axis ticks at round numbers. */
   yTicks: number[];
   ours: CurvePoint[];
   theirs: CurvePoint[];
-  /** Nuestro límite por tick (reserva de `decisions.jsonl`). */
+  /** Our limit per tick (reserve from `decisions.jsonl`). */
   limit: CurvePoint[];
   /**
-   * Si el límite de los turnos quedó por debajo del de apertura (compras): el agente lo recorta por
-   * caja o presupuesto, o lo revalúa al revelar la carta; la traza no dice cuál. `{ from, to }`, o `null`.
+   * If the limit of the turns ended up below the opening one (purchases): the agent trims it for
+   * cash or budget, or revalues it when the card is revealed; the trace does not say which. `{ from, to }`, or `null`.
    */
   capped: { from: number; to: number } | null;
-  /** Línea horizontal de referencia: nuestro valor (dealers) o el límite del duelo. */
+  /** Horizontal reference line: our value (dealers) or the duel's limit. */
   reference: { value: number; label: string } | null;
   end: { round: number; kind: "deal" | "walk"; label: string } | null;
 }
 
-/** Escala "bonita": paso 1, 2 o 5 × 10^k, unas 4–6 marcas que cubren [lo, hi]. */
+/** "Nice" scale: step 1, 2 or 5 × 10^k, about 4–6 ticks covering [lo, hi]. */
 export function niceScale(lo: number, hi: number): { domain: [number, number]; ticks: number[] } {
   const span = Math.max(hi - lo, 1);
   const raw = span / 4;
@@ -273,8 +273,8 @@ export function niceScale(lo: number, hi: number): { domain: [number, number]; t
 }
 
 /**
- * Curva de la negociación a partir de los precios ya extraídos de cada mensaje y de nuestras
- * decisiones. Solo dibuja lo registrado; si hay menos de dos precios, no hay curva.
+ * Negotiation curve from the prices already extracted from each message and from our
+ * decisions. Only draws what was recorded; with fewer than two prices, there is no curve.
  */
 export function offerCurve(row: BoardRow): OfferCurve | null {
   const priced = row.messages.filter((m): m is typeof m & { tick: number; price: number } => m.tick !== null && m.price !== null);
@@ -302,7 +302,7 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
   if (row.price !== null && ["deal", "bought", "sold"].includes(row.status)) end = { round: settledRound, kind: "deal", label: `deal ${row.price}` };
   else if (row.status === "walked" || row.status === "closed") end = { round: settledRound, kind: "walk", label: row.closed_reason ?? row.status };
   if (end) lastRound = Math.max(lastRound, end.round);
-  // Un trato cierra las dos curvas en el precio pactado: quien aceptó llega a la cifra del otro.
+  // A deal closes both curves at the agreed price: whoever accepted reaches the other's figure.
   if (end?.kind === "deal" && row.price !== null) {
     const price = row.price;
     for (const side of [ours, theirs]) {
@@ -320,8 +320,8 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
 }
 
 /**
- * Texto de la caja al pasar el cursor por una ronda de la curva: tick, nuestra cifra, la suya,
- * nuestro límite (el último registrado hasta ese tick), nuestro valor y el cierre si cae ahí.
+ * Text of the box when hovering a round of the curve: tick, our figure, theirs,
+ * our limit (the last one recorded up to that tick), our value and the close if it falls there.
  */
 export function curveRoundLines(curve: OfferCurve, them: string, round: number): string[] | null {
   if (round < 1) return null;

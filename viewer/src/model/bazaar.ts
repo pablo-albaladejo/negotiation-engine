@@ -1,7 +1,7 @@
 /**
- * Bazaar (cifra que maximizamos): el visor nunca calcula, solo muestra lo que el agente ya trazó
- * en `score.jsonl` (snapshot por tick, con delta y causa) y lo que `/api/bazaar/live` sirve en
- * vivo. `rarest`/`luck`/`luck_private` nunca llegan aquí: el servidor ya los filtra.
+ * Bazaar (the figure we maximize): the viewer never computes, it only shows what the agent already traced
+ * in `score.jsonl` (per-tick snapshot, with delta and cause) and what `/api/bazaar/live` serves
+ * live. `rarest`/`luck`/`luck_private` never reach here: the server already filters them out.
  */
 export interface ScoreCause {
   thread?: number;

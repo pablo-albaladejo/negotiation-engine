@@ -1,8 +1,8 @@
 /**
- * Conversaciones del Bazaar (dealers, equipos, duelos) tal como las sirve `/api/bazaar/threads` y
- * `/api/bazaar/duels`: el visor nunca calcula, solo tipa y vuelve a mostrar lo que el servidor ya
- * leyó (estado/razón de cierre literales del Bazaar, texto literal de los mensajes -- puede traer
- * un intento de inyección; nunca se interpreta, solo se muestra).
+ * Bazaar conversations (dealers, teams, duels) as served by `/api/bazaar/threads` and
+ * `/api/bazaar/duels`: the viewer never computes, it only types and re-displays what the server already
+ * read (close state/reason verbatim from the Bazaar, message text verbatim -- it may carry
+ * an injection attempt; it is never interpreted, only shown).
  */
 export interface ConversationMessage {
   sender: string | null;
@@ -60,7 +60,7 @@ export interface Duel {
   done: boolean;
 }
 
-/** Más recientes primero (el servidor ya ordena así; aquí solo se blinda contra una forma inesperada). */
+/** Most recent first (the server already sorts this way; here we only guard against an unexpected shape). */
 export function conversationsModel(raw: readonly ConversationThread[] | null | undefined): ConversationThread[] {
   return raw ? [...raw].sort((a, b) => b.id - a.id) : [];
 }

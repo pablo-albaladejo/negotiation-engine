@@ -2,9 +2,9 @@ import { niceScale, type OfferCurve } from "./cockpit.js";
 import { arr, rec, type FitRange, type GameModel, type ModelConversation, type ModelPersonaEstimates, type ModelPrediction } from "./gameModel.js";
 
 /**
- * Ajuste de la curva por persona tal como lo sirve `/api/bazaar/model`: la predicción de cada conversación con dealer
- * (`prediction`) y las estimaciones de cada persona (`estimates`). Solo el lado del dealer: nada de aquí lleva un
- * valor privado nuestro ni una reserva. Solo funciones puras; nada aquí calcula una cifra.
+ * Per-persona curve fit as served by `/api/bazaar/model`: the prediction for each dealer conversation
+ * (`prediction`) and each persona's estimates (`estimates`). Dealer side only: nothing here carries a
+ * private value of ours or a reserve. Pure functions only; nothing here computes a figure.
  */
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -18,7 +18,7 @@ function rangeOf(x: unknown): FitRange | null {
 
 const mirrorOf = (x: unknown): boolean | "unknown" => (x === true || x === false ? x : "unknown");
 
-/** Predicción de una conversación (tolerante: `null` si falta o no tiene forma). */
+/** Prediction for a conversation (tolerant: `null` if missing or malformed). */
 export function predictionOf(conv: ModelConversation | null): ModelPrediction | null {
   const o = rec(conv?.prediction);
   const herLimit = rangeOf(o.herLimit);
@@ -50,20 +50,20 @@ export interface PredictionOverlay {
 }
 
 /**
- * Coloca la predicción sobre la curva. La ronda r de ella (0 = apertura) cae en la x de su r-ésimo precio observado
- * (`herXs`); las rondas futuras, una por paso tras lo último pintado. Amplía el eje X y el Y para que quepan el camino,
- * su banda y su límite. `extra`: otros valores ya pintados (p. ej. el camino previsto nuestro).
+ * Places the prediction on the curve. Its round r (0 = opening) lands on the x of its r-th observed price
+ * (`herXs`); future rounds, one per step after the last painted one. Extends the X and Y axes to fit the path,
+ * its band and its limit. `extra`: other already-painted values (e.g. our own predicted path).
  */
 export function withPrediction(
   curve: OfferCurve,
   pred: ModelPrediction,
   herXs: readonly number[],
   extra: readonly number[] = [],
-  /** Cómo se llama en el eje X la posición x (p. ej. «step 6» o «tick 105»); la etiqueta de la retirada la nombra. */
+  /** How position x is named on the X axis (e.g. «step 6» or «tick 105»); the walk-away label names it. */
   xText: (x: number) => string = (x) => `x ${x}`,
 ): { curve: OfferCurve; overlay: PredictionOverlay } {
-  // Una sola regla para la curva y la marca: su ronda r (0 = apertura) cae en la x de su r-ésimo precio (en pasos,
-  // x = r + 1); las rondas futuras, una x por ronda tras lo último pintado.
+  // A single rule for the curve and the marker: its round r (0 = opening) lands on the x of its r-th price (in steps,
+  // x = r + 1); future rounds, one x per round after the last painted one.
   const lastX = Math.max(0, curve.rounds - 1, ...curve.ours.map((p) => p.round), ...curve.theirs.map((p) => p.round));
   const xFor = (r: number) => (r < herXs.length ? herXs[r]! : lastX + (r - herXs.length + 1));
   const predicted = pred.curve.map((p) => ({ round: xFor(p.round), value: p.price, lo: Math.min(p.lo, p.hi), hi: Math.max(p.lo, p.hi) }));
@@ -81,7 +81,7 @@ export function withPrediction(
   return { curve: { ...curve, rounds: maxX + 1, yDomain: scale.domain, yTicks: scale.ticks }, overlay: { predicted, theirLimit, walkMarker } };
 }
 
-/** Líneas de la caja del cursor con lo previsto en esa x (su precio, su límite, la retirada). */
+/** Lines of the cursor box with what is predicted at that x (its price, its limit, the walk-away). */
 export function predictionLines(o: PredictionOverlay, x: number): string[] {
   const p = o.predicted.find((q) => q.round === x);
   const out: string[] = [];
@@ -91,7 +91,7 @@ export function predictionLines(o: PredictionOverlay, x: number): string[] {
   return out;
 }
 
-// ---------------------------------------------------------------- estimaciones por persona
+// ---------------------------------------------------------------- per-persona estimates
 
 export interface EstimateRow {
   key: string;
@@ -99,7 +99,7 @@ export interface EstimateRow {
   value: string;
   interval: string;
   n: number;
-  /** Cómo converge: un punto cada vez que cambió la media. */
+  /** How it converges: one point each time the mean changed. */
   series: { tick: number; value: number }[];
 }
 
@@ -153,7 +153,7 @@ function viewOf(id: string, name: string, e: ModelPersonaEstimates): DealerEstim
   return { id, name, fittedFrom: fitted, mirror: mirrorText(mirrorOf(e.mirror)), params, bands };
 }
 
-/** Estimaciones por persona: `state.personas[].estimates` y, para las que falten, `fit.estimates` del servidor. */
+/** Per-persona estimates: `state.personas[].estimates` and, for those missing, the server's `fit.estimates`. */
 export function dealerEstimates(model: GameModel): DealerEstimatesView[] {
   const out = new Map<string, DealerEstimatesView>();
   for (const x of arr(model.state?.personas)) {
@@ -166,22 +166,22 @@ export function dealerEstimates(model: GameModel): DealerEstimatesView[] {
   return [...out.values()].sort((a, b) => b.fittedFrom - a.fittedFrom || a.id.localeCompare(b.id));
 }
 
-// ---------------------------------------------------------------- tira «Dealer fit» del cajón
+// ---------------------------------------------------------------- «Dealer fit» strip of the drawer
 
 export interface DealerFitStrip {
   persona: string;
   band: string;
-  /** β, max_rounds, markup, mirror y ronda de retirada, cada uno con su intervalo y n. */
+  /** β, max_rounds, markup, mirror and walk-away round, each with its interval and n. */
   items: { label: string; value: string; interval: string; n: string }[];
-  /** Límite medido de esa banda (su lado), o `null` si aún no hay. */
+  /** Measured limit of that band (its side), or `null` if there is none yet. */
   limit: { value: string; interval: string; samples: number; fewSamples: boolean } | null;
-  /** Primera conversación del equipo con ese dealer: solo mide el límite, no la curva. */
+  /** The team's first conversation with that dealer: it only measures the limit, not the curve. */
   welcome: boolean;
-  /** Límite medido en las conversaciones `welcome` de esa persona (`estimates.welcome`), si el ajuste lo trae. */
+  /** Limit measured in that persona's `welcome` conversations (`estimates.welcome`), if the fit carries it. */
   welcomeLimit: { value: string; interval: string; n: number } | null;
 }
 
-/** Estimaciones de la persona y la banda de una conversación con dealer (`null` si no es dealer o no hay ajuste). */
+/** Estimates for the persona and band of a dealer conversation (`null` if not a dealer or no fit). */
 export function dealerFitStrip(model: GameModel | null, conv: ModelConversation | null): DealerFitStrip | null {
   if (!model || !conv || conv.kind !== "dealer") return null;
   const persona = conv.counterparty;
