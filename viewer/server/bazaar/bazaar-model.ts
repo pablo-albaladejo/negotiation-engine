@@ -472,7 +472,7 @@ export class BazaarModel {
           sessions: loadBenchSessions(join(this.bazaarDir, DEFAULT_SESSIONS_FILE)).map(publicSession),
           ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}),
           ...(nowHours !== undefined ? { nowHours } : {}),
-          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours),
+          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours, state.clock.tickSeconds),
           ...(schedParsed.success ? { schedule: schedParsed.data } : {}),
           ...(heartbeat ? { heartbeat } : {}),
           now: new Date(),

@@ -114,8 +114,12 @@ export function benchSlots(schedule: Pick<Schedule, "upcoming"> | undefined): { 
     .sort((a, b) => a.atHours - b.atHours);
 }
 
-/** Game ticks per hour: tick / t_hours if both are present (today 60), otherwise 60. */
-export function ticksPerHourOf(tick: number | undefined, tHours: number | undefined): number {
+/**
+ * Game ticks per hour now: 3600 / `clock.tick_seconds` (each tick advances the game clock by tick_seconds; 30 s → 120).
+ * Without it, cumulative tick / t_hours (skewed when tick_seconds changed during the day), otherwise 60.
+ */
+export function ticksPerHourOf(tick: number | undefined, tHours: number | undefined, tickSeconds?: number): number {
+  if (tickSeconds !== undefined && Number.isFinite(tickSeconds) && tickSeconds > 0) return 3600 / tickSeconds;
   return tick && tHours && tHours > 0 ? tick / tHours : 60;
 }
 

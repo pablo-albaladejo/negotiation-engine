@@ -27,7 +27,7 @@ export type BrokerApi = Pick<BrokerClient, "clock" | "book" | "venues" | "match"
 export interface BrokerRecord {
   ts: string;
   tick: number;
-  kind: "match" | "bench";
+  kind: "match" | "bench" | "bench-raw";
   dryRun: boolean;
   source?: BrokerMatch["source"];
   sell?: string | number;
@@ -40,19 +40,23 @@ export interface BrokerRecord {
   status?: "dry-run" | "sent" | "refused";
   error?: string;
   bench?: { id: string; side: "ask" | "bid"; quote: number; temper: string }[];
+  /** `bench-raw`: the bench slot in progress (if any) and the raw `/api/broker/book` JSON, to diagnose `recent`. */
+  slot?: { atHours: number; hard: boolean };
+  raw?: unknown;
 }
 
 export interface BrokerSink {
   write(record: BrokerRecord): void;
 }
 
-/** `results/bazaar-live/<date>/broker.jsonl` (matches) and `bench.jsonl` (bank snapshots for calibration). */
+/** `results/bazaar-live/<date>/broker.jsonl` (matches), `bench.jsonl` (bank snapshots) and `bench-raw.jsonl` (raw book during a bench). */
 export class FileBrokerSink implements BrokerSink {
   constructor(private readonly dir: string) {
     mkdirSync(dir, { recursive: true });
   }
   write(record: BrokerRecord): void {
-    appendFileSync(join(this.dir, record.kind === "bench" ? "bench.jsonl" : "broker.jsonl"), JSON.stringify(record) + "\n");
+    const file = record.kind === "bench" ? "bench.jsonl" : record.kind === "bench-raw" ? "bench-raw.jsonl" : "broker.jsonl";
+    appendFileSync(join(this.dir, file), JSON.stringify(record) + "\n");
   }
 }
 
@@ -92,6 +96,7 @@ const errText = (e: unknown) => (e instanceof BazaarError ? e.code : e instanceo
 export class BrokerAgent {
   readonly tracks = new Map<string, QuoteTrack>();
   private lastKey: string | undefined;
+  private lastRaw: string | undefined;
   private readonly used = new Set<string>();
   private readonly seenErrors = new Set<string>();
   private announced = false;
@@ -113,11 +118,13 @@ export class BrokerAgent {
     const empty = { matches: [], sent: 0, refused: 0 };
     let tick: number;
     let hours: number | undefined;
+    let tickSeconds: number | undefined;
     let raw: unknown;
     try {
       const clock = await this.api.clock();
       tick = clock.tick;
       hours = clock.t_hours;
+      tickSeconds = clock.tick_seconds;
       raw = await this.api.book();
     } catch (e) {
       this.log(`broker: cannot read clock/book (${errText(e)}), trying again`);
@@ -135,9 +142,11 @@ export class BrokerAgent {
     observeBench(this.tracks, book.bench, tick);
     const hbNow = (this.opts.now ?? (() => new Date()))();
     this.opts.heartbeat?.({ ts: hbNow.toISOString(), tick, mode: this.opts.dryRun ? "shadow" : "live", ...(book.venue ? { venue: book.venue } : {}), ...(this.mechanism ? { mechanism: this.mechanism } : {}) });
-    if (this.opts.shadow && this.opts.dryRun) {
-      const slot = await this.benchSlot(tick, hours, book.bench.length > 0);
-      const line = this.opts.shadow.step(tick, slot, book, raw);
+    const shadowOn = !!this.opts.shadow && this.opts.dryRun;
+    const slot = shadowOn ? await this.benchSlot(tick, hours, tickSeconds, book.bench.length > 0) : undefined;
+    if (slot || book.bench.length) this.writeBenchRaw(hbNow, tick, slot, raw);
+    if (shadowOn) {
+      const line = this.opts.shadow!.step(tick, slot, book, raw);
       if (line) this.log(line);
     }
     const present = new Set([...book.bench.map((b) => b.id), ...book.sells.map((s) => String(s.id)), ...book.buys.map((b) => String(b.id))]);
@@ -202,17 +211,30 @@ export class BrokerAgent {
    * Bench in progress per `/api/schedule` (re-read every 30 ticks). Without a readable calendar but with a bank in the book,
    * the whole hour in progress (benches fall on whole hours).
    */
-  private async benchSlot(tick: number, hours: number | undefined, benchVisible: boolean): Promise<{ atHours: number; hard: boolean } | undefined> {
+  private async benchSlot(tick: number, hours: number | undefined, tickSeconds: number | undefined, benchVisible: boolean): Promise<{ atHours: number; hard: boolean } | undefined> {
     if (this.api.schedule && (!this.schedule || tick - this.schedule.tick >= 30)) {
       const parsed = ScheduleSchema.safeParse(await this.api.schedule().catch(() => undefined));
       this.schedule = { tick, value: parsed.success ? parsed.data : undefined };
     }
     const sched = this.schedule?.value;
     if (hours !== undefined && sched) {
-      const slot = activeBench(sched, hours, ticksPerHourOf(tick, hours));
+      const slot = activeBench(sched, hours, ticksPerHourOf(tick, hours, tickSeconds));
       if (slot) return slot;
     }
     return benchVisible && hours !== undefined ? { atHours: Math.floor(hours), hard: false } : undefined;
+  }
+
+  /** Raw book during a bench, only when it changed (diagnoses the shape of `recent`). Never throws. */
+  private writeBenchRaw(now: Date, tick: number, slot: { atHours: number; hard: boolean } | undefined, raw: unknown): void {
+    if (!this.opts.sink) return;
+    try {
+      const key = JSON.stringify(raw);
+      if (key === this.lastRaw) return;
+      this.lastRaw = key;
+      this.opts.sink.write({ ts: now.toISOString(), tick, kind: "bench-raw", dryRun: this.opts.dryRun, ...(slot ? { slot } : {}), raw });
+    } catch (e) {
+      this.log(`broker: cannot write bench-raw (${errText(e)})`);
+    }
   }
 
   private async checkVenue(venue: string | undefined): Promise<void> {
