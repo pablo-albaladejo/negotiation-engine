@@ -13,30 +13,40 @@ export interface DealerTraits {
   shrewdness?: number;
   memory?: number;
   strictness?: number;
+  /** Nivel de la persona (1 Friendly … 5 Banker), de `/api/dealers`. */
+  level?: number;
 }
 
 const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
 
 export function traitsOf(info: unknown): DealerTraits {
-  const t = (info as { traits?: Record<string, unknown> } | undefined)?.traits;
-  if (!t || typeof t !== "object") return {};
+  const t = (info as { traits?: Record<string, unknown> } | undefined)?.traits ?? {};
+  if (typeof t !== "object") return {};
   const out: DealerTraits = {};
   for (const k of ["patience", "generosity", "shrewdness", "memory", "strictness"] as const) {
     const v = num(t[k]);
     if (v !== undefined) out[k] = v;
   }
+  const level = num((info as { level?: unknown } | undefined)?.level);
+  if (level !== undefined) out.level = level;
   return out;
 }
 
-/** Paciencia en mensajes nuestros: ⌊1 + 6 × patience⌉ entre 2 y 8 (0,85 → 6; 0,35 → 3). */
+/**
+ * Niveles 3–5: el rasgo `patience` es solo una frase del prompt; su retirada la decide walk_after_rounds ± jitter
+ * (site-map § 8.5, personas.md § 10). Su paciencia es desconocida y se mide (`PatienceLog`), no se deriva del rasgo.
+ */
+export const PATIENCE_FROM_TRAIT_MAX_LEVEL = 2;
+
+/** Paciencia en mensajes nuestros: ⌊1 + 6 × patience⌉ entre 2 y 8 (0,85 → 6; 0,35 → 3). Desconocida (undefined) en niveles 3–5. */
 export function patienceBudgetFor(traits: DealerTraits): number | undefined {
-  if (traits.patience === undefined) return undefined;
+  if (traits.patience === undefined || (traits.level ?? 0) > PATIENCE_FROM_TRAIT_MAX_LEVEL) return undefined;
   return Math.min(8, Math.max(2, Math.round(1 + 6 * traits.patience)));
 }
 
 /** Dealer impaciente o estricto: ancla moderada (cerca de su precio), sin aguantes largos ni trucos. */
 export function isShortFuse(traits: DealerTraits): boolean {
-  return (traits.patience !== undefined && traits.patience < 0.5) || (traits.strictness ?? 0) >= 0.7;
+  return (patienceBudgetFor(traits) !== undefined && traits.patience! < 0.5) || (traits.strictness ?? 0) >= 0.7;
 }
 
 /**

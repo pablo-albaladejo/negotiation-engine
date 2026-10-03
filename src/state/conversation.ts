@@ -254,7 +254,9 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
     };
     const privateValue = cardRef ? i.me?.assets.find((a) => a.ref === cardRef && typeof a.your_value === "number")?.your_value ?? undefined : undefined;
     const why: Goal = side === "sell" ? (cardRef && copies(i.me, cardRef) > 1 ? "duplicate" : "other") : cardRef && completesPage(cardRef, i.me, i.pages, i.pageTargets) ? "page" : "ladder";
-    const patience = patienceBudgetFor(traitsOf(dealerInfo)) ?? 6;
+    // Niveles 3–5 (o sin rasgo): paciencia desconocida, se mide; para la fase se supone la de por defecto (6).
+    const known = patienceBudgetFor(traitsOf(dealerInfo));
+    const patience = known ?? 6;
     const done = t.status !== "open";
     const rounds = p.ourPrices.length;
     const phase: Phase = done ? "done" : p.herCurrent?.final || rounds >= patience - 1 ? "closing" : rounds === 0 ? "opening" : "haggling";
@@ -278,7 +280,7 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
           phase,
           herConcession,
           roundsUsed: rounds,
-          patienceEstimate: patience,
+          ...(known !== undefined ? { patienceEstimate: known } : {}),
           patience: { roundsSpent: rounds, budget: patience, probeCostNow: phase === "opening" || t.status === "deal" ? 0 : 1 },
           ...(flag ? { flagCandidate: flag } : {}),
           turn: {},
