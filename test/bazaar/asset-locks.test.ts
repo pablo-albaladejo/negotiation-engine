@@ -1,8 +1,10 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
 import { assetsInOffers, assetsInThreads, busyAssets, sellBlocked } from "../../src/shared/asset-locks.js";
 import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
+import { DEFAULT_TRADE_PARAMS, buildValueModel, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
 
 const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncommon", set: "SAL", print_run: 90 };
 /** `/api/me/offers` real from 2 Oct (tick 132): 438 listed in El Rastro at 37 and in thread 260 with Abuela. */
@@ -146,5 +148,50 @@ describe("one asset, one place in already open threads", () => {
     const { a, posts } = abuela(() => ({ offers: [] }));
     await agentFor(a).step({ tick: 149, tick_seconds: 60 });
     expect(posts).toEqual(["accept 2186"]);
+  });
+});
+
+describe("El Rastro never lists a busy asset nor the album copy", () => {
+  const REFS = ["SAL-01", "SAL-02", "SAL-03"];
+  const CATALOG = { sets: [{ id: "SAL", released: true, cards: REFS.map((id) => ({ id, rarity: "common", book: 10 })) }], packs: [] } as never;
+  const copyArb = fc.record({ ref: fc.constantFrom(...REFS), locked: fc.boolean(), reserved: fc.boolean(), listed: fc.boolean(), value: fc.integer({ min: 1, max: 30 }) });
+
+  it("every listing (new, repriced or kept) is a free surplus copy: at least one free copy of that card stays unlisted", () => {
+    fc.assert(
+      fc.property(fc.array(copyArb, { minLength: 1, maxLength: 8 }), fc.integer({ min: 0, max: 400 }), (copies, cash) => {
+        const held: HeldAsset[] = copies.map((c, i) => ({ id: 100 + i, ref: c.ref, value: c.value, locked: c.locked }));
+        const reserved = new Set(held.filter((_, i) => copies[i]!.reserved).map((a) => a.id));
+        const mine: TradeOffer[] = held
+          .filter((_, i) => copies[i]!.listed)
+          .map((a, k) => ({ id: 9000 + k, maker: "t02", venue: "rastro", thread: null, status: "open", give: { assets: [{ id: a.id, ref: a.ref }] }, want: { cash: 5 }, created_tick: 0 }));
+        const state: TradeState = {
+          tick: 50,
+          myId: "t02",
+          cash,
+          held,
+          pageSets: ["SAL"],
+          board: [],
+          mine,
+          toMe: [],
+          settlements: [],
+          model: buildValueModel(CATALOG, held, new Map()),
+          limits: { offersPerTick: 12, maxOpenOffers: 30, acceptsPerTick: 1 },
+          spent: 0,
+          reserved,
+        };
+        const plan = planTick(state, DEFAULT_TRADE_PARAMS);
+        const cancelled = new Set(plan.cancels.map((c) => c.id));
+        const listedAfter = new Set([
+          ...mine.filter((o) => !cancelled.has(o.id)).map((o) => (o.give!.assets![0] as { id: number }).id),
+          ...plan.posts.flatMap((p) => ("assets" in p.body.give ? p.body.give.assets : [])),
+        ]);
+        for (const id of listedAfter) {
+          expect(reserved.has(id)).toBe(false);
+          const ref = held.find((a) => a.id === id)!.ref;
+          const freeUnlisted = held.filter((a) => a.ref === ref && !reserved.has(a.id) && !listedAfter.has(a.id) && (!a.locked || mine.some((o) => (o.give!.assets![0] as { id: number }).id === a.id)));
+          expect(freeUnlisted.length).toBeGreaterThanOrEqual(1);
+        }
+      }),
+    );
   });
 });

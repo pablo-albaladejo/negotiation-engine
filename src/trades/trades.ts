@@ -364,6 +364,10 @@ export interface TradeParams {
   maxSpend: number;
   maxBids: number;
   maxNewPerTick: number;
+  /** Cash never spent below this (acceptances and open bids). */
+  cashFloor: number;
+  /** After this many postings of the same listing with no fill and no visible bid, reposts back off exponentially. */
+  relistBackoffAfter: number;
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -376,10 +380,12 @@ export const DEFAULT_TRADE_PARAMS: TradeParams = {
   expiresInTicks: 40,
   repriceAfterTicks: 10,
   repriceFrac: 0.05,
-  maxOffers: 10,
+  maxOffers: 16,
   maxSpend: 60,
-  maxBids: 6,
+  maxBids: 12,
   maxNewPerTick: 12,
+  cashFloor: 0,
+  relistBackoffAfter: 3,
 };
 
 export interface TradeState {
@@ -401,6 +407,8 @@ export interface TradeState {
   spent: number;
   /** Committed assets (acceptance pending settlement). */
   reserved: Set<number>;
+  /** Listings backing off (asset id → tick until which it is neither reposted nor repriced). */
+  listBackoff?: Map<number, number>;
 }
 
 export interface Evaluation {
@@ -581,10 +589,11 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     .sort((a, b) => b.valueCreated - a.valueCreated || a.offer.id - b.offer.id);
 
   const budget = params.maxSpend - state.spent;
+  const spendable = state.cash - params.cashFloor;
   let accept: Evaluation | undefined;
   if (state.limits.acceptsPerTick >= 1) {
-    accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= state.cash);
-    const blocked = opportunities.find((e) => e.ok && e !== accept && (e.spend > budget || e.spend > state.cash));
+    accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= spendable);
+    const blocked = opportunities.find((e) => e.ok && e !== accept && (e.spend > budget || e.spend > spendable));
     if (blocked && (!accept || blocked.valueCreated > accept.valueCreated)) notes.push(`offer #${blocked.offer.id} has value ${blocked.valueCreated.toFixed(1)} but needs ${blocked.spend} P > budget ${budget.toFixed(0)}`);
   }
   const reserved = new Set(state.reserved);
@@ -608,13 +617,17 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const listedAssets = new Set(existing.filter((e) => e.assetId !== undefined).map((e) => e.assetId as number));
   const heldIds = new Set(state.held.map((a) => a.id));
 
-  // Duplicates: surplus copies (the one with the highest id), and their sequential loss at our values.
+  // Duplicates: surplus copies and their sequential loss at our values. Copies locked or busy elsewhere (dealer
+  // threads, pending acceptances) count as already gone, so one free copy always stays for the album; copies we
+  // already list come first (no churn), then the highest id.
   const spares: { assetId: number; ref: string; loss: number }[] = [];
   for (const [ref, n] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
     if (n < 2) continue;
-    const copies = state.held.filter((a) => a.ref === ref && !a.locked && !reserved.has(a.id)).sort((x, y) => y.id - x.id);
-    let c = counts;
-    for (const a of copies.slice(0, n - 1)) {
+    const copies = state.held
+      .filter((a) => a.ref === ref && (!a.locked || listedAssets.has(a.id)) && !reserved.has(a.id))
+      .sort((x, y) => Number(listedAssets.has(y.id)) - Number(listedAssets.has(x.id)) || y.id - x.id);
+    let c = applyCards(counts, Array<string>(Math.max(0, n - copies.length)).fill(ref), []);
+    for (const a of copies.slice(0, copies.length - 1)) {
       const loss = -valueDelta(c, [ref], [], state.model);
       spares.push({ assetId: a.id, ref, loss });
       c = applyCards(c, [ref], []);
@@ -627,10 +640,12 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     return { floor, reference, target };
   };
 
-  // Bids: page cards we don't hold from the album's sets.
-  const bidTargets = new Map<string, { cap: number; target: number; value: number; reference: PriceRef | undefined; gain: number }>();
+  // Bids: page cards we don't hold from the album's sets; `missing` = page cards still missing (fewer first).
+  const bidTargets = new Map<string, { cap: number; target: number; value: number; reference: PriceRef | undefined; gain: number; missing: number }>();
   for (const set of state.pageSets) {
-    for (const ref of state.model.pages.get(set) ?? []) {
+    const page = state.model.pages.get(set) ?? [];
+    const missing = page.filter((r) => (counts.get(r) ?? 0) === 0).length;
+    for (const ref of page) {
       if ((counts.get(ref) ?? 0) > 0) continue;
       const gain = valueDelta(counts, [], [ref], state.model);
       const cap = maxBid(gain, params.minMargin, fees);
@@ -645,7 +660,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
         reference = priceReference(ref, state.model, state.settlements, asks);
         target = Math.min(cap, reference ? Math.max(1, Math.floor(reference.price * params.bidDiscount)) : cap);
       }
-      bidTargets.set(ref, { cap, target, value: gain - target - tradeFee(target, 1, fees), reference, gain });
+      bidTargets.set(ref, { cap, target, value: gain - target - tradeFee(target, 1, fees), reference, gain, missing });
     }
   }
 
@@ -668,15 +683,21 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       continue;
     }
     const spare = spares.find((s) => s.assetId === id);
-    const loss = spare?.loss ?? -valueDelta(counts, [e.ref], [], state.model) + pageRisk(counts, [e.ref], state.model, params.protectPageHave);
-    const { floor, target, reference } = listTarget(e.ref, loss);
+    if (!spare) {
+      // Selling it would leave no free copy of the card (another copy is busy elsewhere or gone): keep it for the album.
+      cancels.push({ id: e.offer.id, reason: `asset ${id} is our last free ${e.ref} (album copy)` });
+      continue;
+    }
+    const { floor, target, reference } = listTarget(e.ref, spare.loss);
+    const loss = spare.loss;
     const age = state.tick - (e.offer.created_tick ?? state.tick);
+    const backingOff = (state.listBackoff?.get(id) ?? -Infinity) > state.tick && !bids.some((q) => q.ref === e.ref);
     let price = e.price;
     let why: PlannedPost["why"] | undefined;
     if (e.price < floor) {
       price = floor;
       why = "safety";
-    } else if (age >= params.repriceAfterTicks && target !== e.price) {
+    } else if (!backingOff && age >= params.repriceAfterTicks && target !== e.price) {
       price = Math.max(floor, slowReprice(e.price, target, params.repriceFrac));
       if (price !== e.price) why = "reprice";
     }
@@ -697,10 +718,18 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   // Existing bids: invalid out; above the ceiling, to the ceiling now; budget by value.
   let committed = 0;
   let bidCount = 0;
-  const bidBudget = Math.min(budget - acceptSpend, state.cash - acceptCash);
-  const existingBids = existing
-    .filter((x) => x.kind === "bid")
-    .sort((a, b) => (bidTargets.get(b.ref)?.value ?? -Infinity) - (bidTargets.get(a.ref)?.value ?? -Infinity) || a.offer.id - b.offer.id);
+  const bidBudget = Math.min(budget - acceptSpend, spendable - acceptCash);
+  // Bids closest to completing a page first, then by value created.
+  const bidRank = (ref: string): [number, number] => {
+    const t = bidTargets.get(ref);
+    return t ? [t.missing, -t.value] : [1e9, 0];
+  };
+  const byRank = (ra: string, rb: string): number => {
+    const [ma, va] = bidRank(ra);
+    const [mb, vb] = bidRank(rb);
+    return ma - mb || va - vb;
+  };
+  const existingBids = existing.filter((x) => x.kind === "bid").sort((a, b) => byRank(a.ref, b.ref) || a.offer.id - b.offer.id);
   const bidRefs = new Set<string>();
   for (const e of existingBids) {
     const t = bidTargets.get(e.ref);
@@ -748,7 +777,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
 
   // New listings of duplicates (by value created), then new bids (by value created).
   const newLists = spares
-    .filter((s) => !listedAssets.has(s.assetId))
+    .filter((s) => !listedAssets.has(s.assetId) && !((state.listBackoff?.get(s.assetId) ?? -Infinity) > state.tick && !bids.some((q) => q.ref === s.ref)))
     .map((s) => {
       const { floor, target, reference } = listTarget(s.ref, s.loss);
       return { s, floor, target, reference, value: target - tradeFee(target, 1, fees) - s.loss };
@@ -767,7 +796,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   }
   const newBids = [...bidTargets]
     .filter(([ref, t]) => !bidRefs.has(ref) && t.value >= params.minMargin)
-    .sort(([ra, a], [rb, b]) => b.value - a.value || ra.localeCompare(rb));
+    .sort(([ra], [rb]) => byRank(ra, rb) || ra.localeCompare(rb));
   const overBudget: string[] = [];
   for (const [ref, t] of newBids) {
     if (bidCount >= params.maxBids || open >= openCap || newSlots <= 0) break;

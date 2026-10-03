@@ -51,6 +51,9 @@ export class TradesAgent {
   private readonly reservedUntil = new Map<number, number>();
   private readonly cancelled = new Set<number>();
   private openBids = new Map<number, { cash: number; expires: number }>();
+  /** Listings posted per asset in this run, and the tick until which reposting it backs off. */
+  private readonly listPosts = new Map<number, number>();
+  private readonly listBackoff = new Map<number, number>();
   spent = 0;
   private readonly log: (line: string) => void;
 
@@ -95,6 +98,12 @@ export class TradesAgent {
     const model = buildValueModel(this.catalog, held, this.zeroValues);
     this.trackFilledBids(mine, clock.tick);
     for (const [id, until] of this.reservedUntil) if (until < clock.tick) this.reservedUntil.delete(id);
+    const heldIds = new Set(held.map((a) => a.id));
+    for (const id of this.listPosts.keys()) {
+      if (heldIds.has(id)) continue;
+      this.listPosts.delete(id);
+      this.listBackoff.delete(id);
+    }
     const limits = clock.limits ?? {};
     return {
       tick: clock.tick,
@@ -114,6 +123,7 @@ export class TradesAgent {
       },
       spent: this.spent,
       reserved: new Set([...this.reservedUntil.keys(), ...inThreads.map(([id]) => id)]),
+      listBackoff: new Map(this.listBackoff),
     };
   }
 
@@ -178,8 +188,21 @@ export class TradesAgent {
       if (await attempt(`cancel #${c.id}`, () => this.api.cancelOffer(c.id))) this.cancelled.add(c.id);
     }
     for (const p of plan.posts) {
+      if (p.replaces !== undefined && !this.cancelled.has(p.replaces)) {
+        errors.push(`post ${p.kind} ${p.ref} @${p.price}: skipped, cancel of #${p.replaces} did not go through`);
+        continue;
+      }
+      const assetId = "assets" in p.body.give ? p.body.give.assets[0] : undefined;
       const ok = await attempt(`post ${p.kind} ${p.ref} @${p.price}`, () => this.api.postOffer(p.body));
       if (!ok && errors.at(-1)?.match(/wait_for_tick|rate_limited|too_many/)) break;
+      // The server says the asset is busy elsewhere: it is neither listed nor used to pay for a few ticks.
+      if (!ok && assetId !== undefined && errors.at(-1)?.includes("asset_locked")) this.reservedUntil.set(assetId, state.tick + (this.opts.reserveTicks ?? 2));
+      if (ok && assetId !== undefined) {
+        const n = (this.listPosts.get(assetId) ?? 0) + 1;
+        this.listPosts.set(assetId, n);
+        const k = n - this.params.relistBackoffAfter;
+        if (k >= 0) this.listBackoff.set(assetId, state.tick + this.params.repriceAfterTicks * 2 ** (k + 1));
+      }
       // A bid may fill before the next read: it is recorded now with the id returned by the POST.
       const id = (lastResponse as { id?: unknown; offer?: { id?: unknown } } | undefined)?.id ?? (lastResponse as { offer?: { id?: unknown } } | undefined)?.offer?.id;
       if (ok && p.kind === "bid" && typeof id === "number") this.openBids.set(id, { cash: p.price, expires: state.tick + this.params.expiresInTicks });
