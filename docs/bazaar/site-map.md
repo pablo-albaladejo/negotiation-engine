@@ -90,6 +90,7 @@ Reconocimiento de **solo lectura** de la web y la API del Bazaar: bundles del fr
 | POST | `/api/venues/{vid}/close` | — |
 | POST | `/api/flags` | `{message_id, reason}` (acierto puntúa, fallo resta) |
 | GET | `/api/duels` | `?done=` |
+| GET | `/api/news` | Noticias: `{news:[{id, at_hours, tick, source, source_name, headline, body}]}`, **de la más nueva a la más vieja y todo el historial en una llamada** (ids 1..n; no hace caso de parámetros). Fuentes: `boletin` (Boletín del Bazar), `radio` (Radio Rastro) y El Tablón (clave aún sin ver). Unas son ciertas y el mercado se mueve como dicen, otras son rumores que no pasan y otras son solo ambiente de Madrid; nada dice cuál es cuál. Lo lee `pnpm bazaar:news` (solo para mostrar). |
 | POST | `/api/duels/{did}/messages` | `PostMessage` |
 | POST | `/api/duels/{did}/accept` | — |
 
@@ -119,6 +120,7 @@ Sacados de `EventLine-*.js` (el que convierte cada evento en frase):
 - **Venues:** `venue.opened`, `venue.closing`, `venue.closed`, `venue.reopened`, `venue.suspended`, `venue.fee_announced`, `venue.fee_changed`, `venue.announcement`.
 - **Bench:** `bench.started`, `bench.finished`.
 - **Reloj, rondas y sets:** `clock.changed`, `calendar.changed`, `calendar.switched`, `day.opened`, `day.closed`, `round.started`, `round.ended`, `round.voided`, `round.weight`, `set.released`, `schedule.fired`, `schedule.failed`.
+- **Noticias:** `news.posted` (público; `actor` = la fuente, `payload` = `{id, source, source_name, headline, body, text}` con el mismo `id` que `/api/news`). El recorder lo guarda en `stream-public.jsonl`.
 - **Equipos y admin:** `team.joined`, `team.granted`, `admin.grant`, `admin.adjustment`, `admin.freeze`, `admin.key_rotated`, `flag.raised` (en admin añade *"a real trick"* / *"a false alarm"*), `announcement`, `engine.error`.
 
 ## 5. El juego en datos

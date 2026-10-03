@@ -22,7 +22,9 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | [`hints/`](hints/AGENTS.md) | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
 | [`agenda/`](agenda/AGENTS.md) | Calendario como playbook (antelación y efecto por acción) y disparadores del feed | (`pnpm bazaar:play`) |
 | [`flags/`](flags/AGENTS.md) | Detector de flags: texto del dealer frente a la estructura de su oferta, y frases de presión de una lista cerrada en sus contraofertas | (`pnpm bazaar:play`) |
+| [`news/`](news/AGENTS.md) | Noticias de Radio Rastro (stream del recorder y `GET /api/news`) con un resumen para el visor. **Solo mostrar**: ninguna ruta la importa y nunca da una cifra | `pnpm bazaar:news` |
 | [`coordinator/`](coordinator/AGENTS.md) | Coordinador por tick: presupuesto de `clock.limits`, intenciones de cada ruta, arbitraje | `pnpm bazaar:play` |
+| [`audit/`](audit/AGENTS.md) | Monitor de ineficiencias de solo lectura: repetidas compradas, ida y vuelta con pérdida, ventas bajo la mejor puja, última copia de página, dobles actos, fallos repetidos; escribe audit.jsonl y audit-status.json | `pnpm bazaar:audit` |
 
 ## Invariantes
 
@@ -43,5 +45,5 @@ pnpm bazaar:venue --dry-run        # qué mercado abriría al llegar a nivel 2; 
 
 - ↑ [root `AGENTS.md`](../AGENTS.md)
 - → [`engine/`](engine/AGENTS.md) · [`shared/`](shared/AGENTS.md) · [`dealers/`](dealers/AGENTS.md) · [`duels/`](duels/AGENTS.md) · [`trades/`](trades/AGENTS.md) · [`broker/`](broker/AGENTS.md) · [`venue/`](venue/AGENTS.md) · [`status/`](status/AGENTS.md)
-- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md)
+- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`audit/`](audit/AGENTS.md)
 - → [`test/`](../test/AGENTS.md) — solo tests de guardarraíles
