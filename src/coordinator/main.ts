@@ -11,6 +11,7 @@ import { defaultRivalsFile, loadRivalLedger, saveRivalLedger } from "../state/ri
 import { defaultConversationsFile, formatConversation, loadConversationMemos, saveConversationMemos } from "../state/conversation.js";
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
 import { arbitrageLines, personaArbitrage } from "./arbitrage.js";
+import { defaultPlanLogFile, holdingsOf, planExecution, planIntent, writePlanLine, type PlanExecution } from "./plan-log.js";
 import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -57,6 +58,7 @@ async function main() {
       "approve-flags": { type: "string", default: "" },
       "flag-pressure": { type: "boolean", default: false },
       "allow-venue-switch": { type: "boolean", default: false },
+      "plan-log": { type: "string", default: "" },
     },
   });
   const live = !values["dry-run"] && values.confirm;
@@ -84,6 +86,8 @@ async function main() {
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
   const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });
   const eggs = new EggsRoute();
+  // plan.jsonl: by default only live (like decisions.jsonl, same date); --plan-log forces a path, also in dry-run.
+  const planFile = values["plan-log"] || (live ? defaultPlanLogFile(root) : undefined);
   const convFile = defaultConversationsFile(root);
   const personasFile = defaultPersonasFile(root);
   const flagsFile = defaultFlagsFile(root);
@@ -230,6 +234,7 @@ async function main() {
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
 
     const proposals: { route: string; p: RouteProposal }[] = [];
+    const routeErrors: string[] = [];
     const me = await client.me().catch(() => undefined);
     for (const [route, run] of [
       ["duels", () => duels.propose()],
@@ -262,7 +267,9 @@ async function main() {
       try {
         proposals.push({ route, p: await run() });
       } catch (e) {
-        console.log(`  route ${route} failed: ${e instanceof BazaarError ? e.code : e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
+        const msg = e instanceof BazaarError ? e.code : e instanceof Error ? e.message.slice(0, 200) : String(e);
+        routeErrors.push(`${route}: ${msg}`);
+        console.log(`  route ${route} failed: ${msg}`);
       }
     }
     const intents: Intent[] = proposals.flatMap((x) => x.p.intents);
@@ -304,20 +311,43 @@ async function main() {
     for (const c of active) console.log(`  ${formatConversation(c)}`);
 
     console.log(`== ${live ? "execution" : "dry-run (nothing sent)"} ==`);
-    const lines = await duels.execute(selected);
-    for (const l of lines) console.log(`  ${l}`);
-    for (const l of await executeMarkets(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
-    for (const l of await executePacks(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
-    for (const l of executeVenueMechanism(verdicts.filter((v) => v.selected).map((v) => v.intent), state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] })) console.log(`  ${l}`);
+    const selectedIntents = verdicts.filter((v) => v.selected).map((v) => v.intent);
+    const execution: PlanExecution[] = [];
+    const report = (route: string, lines: readonly string[]) => {
+      for (const l of lines) {
+        console.log(`  ${l}`);
+        execution.push(planExecution(route, l, selectedIntents));
+      }
+    };
+    report("duels", await duels.execute(selected));
+    report("markets", await executeMarkets(client, selectedIntents, dryRun));
+    report("packs", await executePacks(client, selectedIntents, dryRun));
+    report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);
-    for (const l of flagged.lines) console.log(`  ${l}`);
+    report("flags", flagged.lines);
     if (live) {
-      for (const l of await dealers.execute(clock, selected)) console.log(`  ${l}`);
-      for (const l of await trades.execute(selected)) console.log(`  ${l}`);
+      report("dealers", await dealers.execute(clock, selected));
+      report("trades", await trades.execute(selected));
       saveConversationMemos(convFile, state.conversations);
       savePersonaMemos(personasFile, state.personas);
       saveTriggerMemo(triggersFile, dryMemo);
       if (flagged.records.length) saveFlags(flagsFile, [...flags, ...flagged.records]);
+    }
+    if (planFile) {
+      writePlanLine(planFile, {
+        v: 1,
+        tick: state.tick,
+        ts: new Date().toISOString(),
+        mode: live ? "live" : "dry-run",
+        ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}),
+        cashFloor: num(values["cash-floor"], "--cash-floor"),
+        maxSpend: num(values["max-spend"], "--max-spend"),
+        holdings: holdingsOf(me),
+        intents: intents.map(planIntent),
+        arbitration: verdicts.map((v) => ({ id: v.intent.id, verdict: v.selected ? "selected" : "dropped", ...(v.reason ? { reason: v.reason } : {}) })),
+        execution,
+        ...(routeErrors.length ? { routeErrors } : {}),
+      });
     }
     if (values.once) {
       for (const l of dealers.flushLessons()) console.log(`  ${l}`);

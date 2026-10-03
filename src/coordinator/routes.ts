@@ -326,7 +326,7 @@ export class TradesRoute {
         return;
       }
       const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [`sell:${p.ref}`] : [])];
-      out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, locks, summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` });
+      out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, price: p.price, ref: p.ref, locks, summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` });
     });
     out.notes.push(`El Rastro: ${plan.evaluated} offers read, ${plan.opportunities.length} opportunities${plan.notes.length ? ` · ${plan.notes.slice(0, 2).join(" · ")}` : ""}`);
     return out;

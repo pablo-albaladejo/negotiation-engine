@@ -42,6 +42,8 @@ export interface Intent {
   summary: string;
   /** Figure decided by code (already through `enforceGuardrails`), if the intent carries one. */
   price?: number;
+  /** Card ref it buys or sells, when known (only for the plan log; arbitration uses `locks`). */
+  ref?: string;
   /** Assets it commits (`asset:29`): one asset, one place, also across routes in the same tick. */
   locks?: string[];
 }
