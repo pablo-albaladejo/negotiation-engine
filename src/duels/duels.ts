@@ -293,8 +293,13 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   let target = targetSurplus(state, params, round);
   let rule: DuelDecision["rule"] = round === 0 ? "opening" : state.rivalMovedSinceOurLast ? "concede" : "silent-concede";
   const rivalSurplus = rival && withinLimit(state, rival) ? surplusOf(state, rival) : undefined;
+  // At the end the floor gives way to the minimum surplus: split the difference with a rival inside our limit, and
+  // with one outside it (2313: limit 65, rival 67, we held 55 until no deal) offer our best price within the limit.
   if (endgameWithRival && round > 0 && rivalSurplus !== undefined && rivalSurplus < target) {
-    target = Math.max(floorSurplus(state, params), (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
+    target = Math.max(params.minSurplus, (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
+    rule = "endgame";
+  } else if (endgameWithRival && round > 0 && rival && rivalSurplus === undefined) {
+    target = params.minSurplus;
     rule = "endgame";
   }
   // Engine guardrail on surplus: never rises above the previous offer nor drops below the minimum.
