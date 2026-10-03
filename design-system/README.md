@@ -63,7 +63,7 @@ del sistema operativo (`prefers-color-scheme`).
 
 Cada componente exporta su interfaz de props (`<Nombre>Props`) desde
 `src/index.ts`. Los ejemplos de uso realista, en inglés (idioma de la
-interfaz del visor), están en `examples/`, uno por componente más
+interfaz del visor), están en `examples/`, uno por componente agrupados por familia (`layout/`, `controls/`, `charts/`, `data/`, como `src/components/`), más
 `examples/ViewerScreen.tsx`, que compone la pantalla completa del visor:
 pestañas, selector de partida, tira de KPIs y, debajo, la tarjeta del
 gráfico junto a la del chat.

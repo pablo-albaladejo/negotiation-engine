@@ -8,11 +8,11 @@ Biblioteca de componentes compartida entre visor y posibles otros clientes. Buil
 
 ## Estructura
 
-- **`src/`** — Código fuente (TypeScript, componentes React).
-- **`test/`** — solo `no-dangerous-html` (nada de HTML inyectado).
+- **[`src/`](src/AGENTS.md)** — código fuente; entrada pública `src/index.ts` (el visor la usa por alias, sin build).
+- **[`test/`](test/AGENTS.md)** — solo `no-dangerous-html` (nada de HTML inyectado).
 - **[`.design-sync/`](.design-sync/AGENTS.md)** — Sincronización con Claude Design (previews, config, convenciones).
-- **`examples/`** — Ejemplos de uso.
-- **`scripts/`** — Build scripts.
+- **[`examples/`](examples/AGENTS.md)** — ejemplos de uso por familia.
+- **[`scripts/`](scripts/AGENTS.md)** — build.
 - **`package.json`** — Paquete independiente (`@negotiation-ring/design-system`).
 - **`pnpm-lock.yaml`** — Lockfile específico.
 
@@ -55,4 +55,5 @@ pnpm --dir design-system typecheck
 - ↑ [`AGENTS.md`](../AGENTS.md)
 - → Usado por: [`viewer/`](../viewer/AGENTS.md)
 - → [`src/`](src/AGENTS.md) — componentes
-- → [`test/`](test/) — tests
+- → [`test/`](test/AGENTS.md) — tests
+- → [`examples/`](examples/AGENTS.md) · [`scripts/`](scripts/AGENTS.md) · [`.design-sync/`](.design-sync/AGENTS.md)

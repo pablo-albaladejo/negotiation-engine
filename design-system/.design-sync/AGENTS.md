@@ -9,7 +9,7 @@ La carpeta `.design-sync/` contiene la configuración de sync con Claude Design:
 - **`config.json`** — metadatos y contrato de sincronización.
 - **`conventions.md`** — README en inglés que lee el agente Claude Design (cómo construir pantallas con la librería).
 - **`NOTES.md`** — gotchas de sincronización, bugs reportados (no parchados), riesgos de re-sync.
-- **`previews/*.tsx`** — celdas de vista previa autorizadas, un archivo por componente exportado (S2): `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`, `StatFigure`, `PrimaryButton`, `SecondaryButton`, `BackLink`, `TableLink` — estos cuatro comparten fuente (`design-system/src/components/Button.tsx`) pero cada uno tiene su propio `previews/<Name>.tsx`, un archivo por componente exportado, nunca uno compartido.
+- **`previews/*.tsx`** — celdas de vista previa autorizadas, un archivo por componente exportado (S2): `Root`, `Card`, `Tabs`, `MatchSelector`, `KpiStrip`, `ChatMessage`, `Flag`, `Pill`, `DataTable`, `Heatmap`, `OfferChart`, `Legend`, `Filters`, `ModeBadge`, `Scatter2D`, `Scoreboard`, `WarningBanner`, `StatFigure`, `PrimaryButton`, `SecondaryButton`, `BackLink`, `TableLink` — estos cuatro comparten fuente (`design-system/src/components/controls/Button.tsx`) pero cada uno tiene su propio `previews/<Name>.tsx`, un archivo por componente exportado, nunca uno compartido.
 
 ## Archivos clave
 

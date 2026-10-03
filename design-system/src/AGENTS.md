@@ -6,10 +6,12 @@ Componentes reutilizables: botones, tablas, temas, utilidades.
 
 Biblioteca base de UI. Componentes genéricos tipados, sin dependencias de negocio (sin conocimiento del motor, ring, etc.).
 
-## Subdirectorios (si aplica)
+## Archivos
 
-- **`components/`** — Componentes React básicos.
-- Otros módulos según estructura del proyecto.
+- **`index.ts`** — entrada pública: exporta cada componente (el visor la importa por alias).
+- **`styles.css`** / **`tokens.css`** — estilos y tokens CSS (`--us`, `--them`, `--ok`, `--warn`…).
+- **`format.ts`** — `formatNumber` y formato de cifras.
+- **[`components/`](components/AGENTS.md)** — componentes React por familia.
 
 ## Cómo trabajar
 
@@ -21,3 +23,4 @@ pnpm --dir design-system test
 ## Links
 
 - ↑ [`design-system/`](../AGENTS.md)
+- → [`components/`](components/AGENTS.md)

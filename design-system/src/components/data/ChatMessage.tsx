@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { formatNumber } from "../format";
+import { formatNumber } from "../../format";
 
 export interface ChatMessageFlag {
   kind: "neutral" | "injection" | "decision" | "walk" | "fallback";

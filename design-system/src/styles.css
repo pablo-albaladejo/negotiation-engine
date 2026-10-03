@@ -137,7 +137,7 @@ html{scroll-padding-top:calc(var(--header-height,64px) + var(--space-2))}
 
 .nr-tab:focus-visible,.nr-match:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 
-/* Button variants, styled through tokens only (components/Button.tsx) */
+/* Button variants, styled through tokens only (components/controls/Button.tsx) */
 .nr-link-back,.nr-btn-back{background:transparent;border:none;font:500 13px var(--font-body);color:var(--muted);padding:0;align-self:flex-start;cursor:pointer}
 .nr-btn-secondary,.nr-btn{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:5px 12px;font:600 13px var(--font-body);color:var(--ink);cursor:pointer}
 .nr-btn-primary{background:var(--ink);color:var(--bg);border:1px solid var(--ink);border-radius:var(--radius-md);padding:7px 14px;font:600 13px var(--font-body);cursor:pointer}
