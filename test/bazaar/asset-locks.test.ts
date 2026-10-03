@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
-import { assetsInOffers, assetsInThreads, busyAssets, isKeepsake, sellBlocked } from "../../src/shared/asset-locks.js";
+import { assetsInOffers, assetsInThreads, busyAssets, isKeepsake, rememberHiddenCards, sellBlocked } from "../../src/shared/asset-locks.js";
 import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 import { DEFAULT_TRADE_PARAMS, buildValueModel, heldAssets, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
@@ -204,7 +204,7 @@ describe("keepsakes never leave on their own", () => {
         fc.option(fc.integer({ min: 1, max: 500 }), { nil: null }),
         fc.option(fc.double({ min: -5, max: 300, noNaN: true }), { nil: null }),
         (rarity, printRun, value) => {
-          const asset = { id: 1056, kind: "card", ref: "LAT-13", rarity, print_run: printRun, your_value: value };
+          const asset = { id: 2001, kind: "card", ref: "SAL-02", rarity, print_run: printRun, your_value: value };
           const keep = printRun === 1 || ((rarity === "epic" || rarity === "legendary") && !((value ?? 0) > 0));
           expect(isKeepsake(asset)).toBe(keep);
           expect(heldAssets([asset])[0]!.locked).toBe(keep);
@@ -216,5 +216,30 @@ describe("keepsakes never leave on their own", () => {
   it("the egg gift LAT-13 (legendary, print_run 1, your_value 0) is locked", () => {
     const [held] = heldAssets([{ id: 1056, kind: "card", ref: "LAT-13", rarity: "legendary", print_run: 1, serial: 1, your_value: 0 }]);
     expect(held!.locked).toBe(true);
+  });
+});
+
+describe("hidden cards are never sold (Pablo, 3 Oct)", () => {
+  it("a hidden card is locked whatever its value, rarity or print run", () => {
+    rememberHiddenCards({ sets: [{ id: "ZZZ", cards: [{ id: "ZZZ-99", hidden: true }, { id: "ZZZ-01" }] }] });
+    fc.assert(
+      fc.property(
+        fc.constantFrom("common", "uncommon", "rare", "epic", "legendary"),
+        fc.integer({ min: 2, max: 500 }),
+        fc.double({ min: 0.01, max: 1000, noNaN: true }),
+        (rarity, printRun, value) => {
+          const hidden = { id: 3001, kind: "card", ref: "ZZZ-99", rarity, print_run: printRun, your_value: value };
+          expect(isKeepsake(hidden)).toBe(true);
+          expect(heldAssets([hidden])[0]!.locked).toBe(true);
+          // Same card, not hidden: only the other keepsake rules apply.
+          const visible = { ...hidden, ref: "ZZZ-01" };
+          expect(isKeepsake(visible)).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("LAT-13 is locked even before the catalog is read, with a positive value", () => {
+    expect(isKeepsake({ kind: "card", ref: "LAT-13", rarity: "legendary", print_run: 5, your_value: 450 })).toBe(true);
   });
 });

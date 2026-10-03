@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { rememberHiddenCards } from "./asset-locks.js";
 import {
   CatalogSchema,
   ClockSchema,
@@ -194,7 +195,11 @@ export class BazaarClient {
     return this.request("GET", "/api/clock", ClockSchema);
   }
   catalog(): Promise<Catalog> {
-    return this.request("GET", "/api/catalog", CatalogSchema);
+    // Hidden cards are locked on every route (`isKeepsake`): each catalog read records them.
+    return this.request("GET", "/api/catalog", CatalogSchema).then((c) => {
+      rememberHiddenCards(c);
+      return c;
+    });
   }
   dealers() {
     return this.request("GET", "/api/dealers", DealersSchema);

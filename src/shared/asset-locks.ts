@@ -63,12 +63,34 @@ export async function busyAssets(api: LocksApi, selfId?: string | null, excludeT
 }
 
 /**
- * Keepsake: a card no route sells on its own. A one-print card (`print_run` 1), or an epic/legendary without a positive
- * private value: the game prices it at 0 for us, so every sell rule would let it go for anything (3 Oct: the egg gift
- * LAT-13 «La Chulapa Dorada», legendary, print_run 1, your_value 0, was offered to banco the next tick).
+ * Hidden cards (catalog `hidden: true`) we know of: seeded with the ones seen live and filled by `rememberHiddenCards`
+ * each time the client reads `/api/catalog`, so the lock holds even before the catalog is read in this process.
  */
-export function isKeepsake(a: { kind?: string | null | undefined; rarity?: string | null | undefined; print_run?: number | null | undefined; your_value?: number | null | undefined }): boolean {
+const HIDDEN_REFS = new Set<string>(["LAT-13"]);
+
+/** Records the catalog's hidden cards (`hidden: true`); `BazaarClient.catalog` calls it on every read. */
+export function rememberHiddenCards(catalog: unknown): void {
+  const sets = (catalog as { sets?: unknown } | undefined)?.sets;
+  if (!Array.isArray(sets)) return;
+  for (const set of sets) {
+    const cards = (set as { cards?: unknown } | undefined)?.cards;
+    if (!Array.isArray(cards)) continue;
+    for (const c of cards) {
+      const card = c as { id?: unknown; hidden?: unknown };
+      if (card.hidden === true && typeof card.id === "string") HIDDEN_REFS.add(card.id);
+    }
+  }
+}
+
+/**
+ * Keepsake: a card no route sells, lists, swaps or offers on its own. Pablo, 3 Oct: hidden cards are never sold, so
+ * any hidden card (catalog `hidden: true`) whatever its value; also a one-print card (`print_run` 1), or an epic/legendary
+ * without a positive private value: the game prices it at 0 for us, so every sell rule would let it go for anything
+ * (the egg gift LAT-13 «La Chulapa Dorada», hidden, legendary, print_run 1, your_value 0, was offered to banco the next tick).
+ */
+export function isKeepsake(a: { kind?: string | null | undefined; ref?: string | null | undefined; rarity?: string | null | undefined; print_run?: number | null | undefined; your_value?: number | null | undefined }): boolean {
   if ((a.kind ?? "card") !== "card") return false;
+  if (a.ref && HIDDEN_REFS.has(a.ref)) return true;
   if (a.print_run === 1) return true;
   return (a.rarity === "epic" || a.rarity === "legendary") && !((a.your_value ?? 0) > 0);
 }
