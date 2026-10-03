@@ -88,6 +88,11 @@ export interface AgentOptions {
    */
   herBand?: (band: string) => { lo: number; hi: number; n: number } | undefined;
   /**
+   * Ladder gain (P) a deal with this dealer would add now (`ladderGain` × `LADDER_P_PER_POINT`); 0 or absent: none.
+   * A DUPLICATE sale's minimum drops by it (`ladderReservation`), never below her measured lowest ceiling.
+   */
+  ladderSellDiscount?: () => number;
+  /**
    * `firstStepFrac` of this tick for this dealer (see `NegotiatorParams`): the coordinator enables it only if the mirror of
    * her persona holds. Without it, the one from `negotiator`/defaults applies (0: off).
    */
@@ -515,6 +520,20 @@ export class BazaarAgent {
    * range includes her jitter), a sale whose minimum is above her highest ceiling, or a buy whose maximum is below her
    * lowest floor, only spends a thread, messages and an asset lock (3 Oct: Abuela common ceiling 5–6.9 vs our 7).
    */
+  /**
+   * Lower minimum for a DUPLICATE sale when the ladder gain covers the value given up (Pablo, 3 Oct: thread 1163, Pilar's
+   * final 17 vs our 18 on LAT-07 at value 17.5, with +3.6 P of ladder): max(value − gain, her lowest measured ceiling),
+   * so we only take a price near her limit, where the ladder share is high. Only copies and page cards keep price ≥ value.
+   */
+  private ladderReservation(c: Candidate): number | undefined {
+    if (c.side !== "sell" || c.copy !== "duplicate" || !c.rarity) return undefined;
+    const gain = this.o.ladderSellDiscount?.() ?? 0;
+    const b = this.o.herBand?.(`buys:${c.rarity}`);
+    if (gain <= 0 || !b || b.n < HOPELESS_MIN_SAMPLES) return undefined;
+    const r = Math.max(1, Math.ceil(c.value - gain), Math.ceil(b.lo));
+    return r < c.reservation ? r : undefined;
+  }
+
   private hopeless(c: Candidate): string | undefined {
     if (c.kind === "buy-pack" || !c.rarity) return undefined;
     const band = `${c.side === "sell" ? "buys" : "sells"}:${c.rarity}`;
@@ -536,6 +555,13 @@ export class BazaarAgent {
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
       const elsewhere = (c: Target) => { const card = buyCardOf(c); return card !== undefined && this.team.buyingElsewhere(this.o.dealer.id, card); };
       const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c) && !elsewhere(c));
+      for (const c of cands) {
+        const r = this.ladderReservation(c);
+        if (r !== undefined) {
+          this.log(`ladder-floor ${c.label}: min ${c.reservation} → ${r} (duplicate, ladder gain covers the value given up)`);
+          c.reservation = r;
+        }
+      }
       const hopeless = cands.filter((c) => this.hopeless(c));
       for (const c of hopeless.filter((h) => h.room)) this.log(`skip ${c.label}: hopeless (${this.hopeless(c)})`);
       const viable = cands.filter((c) => !hopeless.includes(c));

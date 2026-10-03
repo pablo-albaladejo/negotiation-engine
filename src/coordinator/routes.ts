@@ -154,6 +154,8 @@ export class DealersRoute {
   venueReserve = 0;
   private readonly trace: SwitchableTrace;
   private collected: DealerIntent[] = [];
+  /** Ladder levels read once per propose (the agents' `ladderSellDiscount` and the open bonus share it). */
+  private ladderNow: LadderLevel[] = [];
   private allowed = new Set<string>();
   private mode: "propose" | "execute" = "propose";
   private readonly logs: string[] = [];
@@ -257,6 +259,11 @@ export class DealersRoute {
             const l = this.state?.personas.find((p) => p.id === id)?.model?.bands[band]?.limit;
             return l && l.source === "measured" && l.lo !== null && l.hi !== null ? { lo: l.lo, hi: l.hi, n: l.n } : undefined;
           },
+          // Pablo, 3 Oct: a duplicate may go below its value when the ladder gain (P) covers the value given up.
+          ladderSellDiscount: () => {
+            const lvl = this.state?.personas.find((p) => p.id === id)?.model?.public.level;
+            return lvl === undefined ? 0 : ladderGain(this.ladderNow, lvl, expectedShare(this.ladderNow, id)) * LADDER_P_PER_POINT;
+          },
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -286,17 +293,18 @@ export class DealersRoute {
     if (audit.line) out.notes.push(audit.line);
     this.mode = "propose";
     this.collected = [];
+    this.ladderNow = this.ladderOf(state);
     this.trace.muted = true;
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;
       await agent.step(clock);
-      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue") || l.includes(": hopeless (")).map((l) => `dealer ${id}: ${l}`));
+      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue") || l.includes(": hopeless (") || l.startsWith("ladder-floor ")).map((l) => `dealer ${id}: ${l}`));
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }
     out.notes.push(...this.lessonLines.splice(0));
     // Ladder-aware opens: empty slots at higher levels first, then deals that would beat the weakest of a level's top 3.
-    const ladder = this.ladderOf(state);
+    const ladder = this.ladderNow;
     const levelOf = (dealer: string) => state.personas.find((p) => p.id === dealer)?.model?.public.level;
     const emptyLevels = [...this.agents.keys()].flatMap((d) => {
       const lvl = levelOf(d);
