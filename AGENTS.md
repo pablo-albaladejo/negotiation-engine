@@ -9,6 +9,7 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 - **La cifra sale siempre del código** (`src/engine/` + planificadores de `src/dealers/`, `src/duels/`…). Los mensajes son plantillas cuya única cifra es la decidida (`textMatchesPrice`, `textMatchesOffer`).
 - **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Tres excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista); las noticias (`/api/news`, news.posted), que se leen como pista (de qué dealer, set o carta se habla) en `GameState.news`, nunca para una cifra y pueden ser rumor; y, para un flag (`src/flags/flags.ts`): comparar texto con estructura, y frases de presión de una lista cerrada en contraofertas; **nunca para una cifra**. Las frases de presión solo se envían con aprobación (`--approve-flags`).
 - **Nunca se revela la valoración privada** ni el límite (`your_limit`).
+- **Las cartas ocultas NO se venden** (decisión de Pablo, 3 oct): ni a dealers (banco incluido), ni en El Rastro, ni a otros equipos, ni en el venue, tenga el `your_value` que tenga. Caso de origen: LAT-13 «La Chulapa Dorada», premio del egg del banco.
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
 - **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/shared/asset-locks.ts`).
 - **Nada en vivo sin aprobación**: los POST reales exigen quitar `--dry-run` y, donde aplica, `--confirm`.
