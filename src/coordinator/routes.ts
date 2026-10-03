@@ -225,6 +225,7 @@ export class DealersRoute {
           herBeta: () => this.state?.personas.find((p) => p.id === id)?.model?.strategy.beta.value ?? undefined,
           unlockChase: () => (this.state ? unlockChaseFor(this.state, id) : undefined),
           packValueOf: (pack) => this.state?.packs.types.find((t) => t.id === pack)?.ourValue,
+          pageTargets: this.o.pageTargets,
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -333,8 +334,8 @@ export class TradesRoute {
   /** Scanner settings shared with the markets route (ledger, cash floor, hourly cap) so the hold-back matches its decision. */
   scannerContext: Pick<MarketsContext, "ledger" | "cashFloor" | "spendPerHour"> = {};
 
-  /** `params`: the coordinator's `--max-spend` and `--cash-floor` (otherwise the El Rastro defaults). */
-  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}, backoffFile?: string) {
+  /** `params`: the coordinator's `--max-spend`, `--cash-floor` and `--page-targets` (otherwise the El Rastro defaults). */
+  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets">> = {}, backoffFile?: string) {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });
   }
 

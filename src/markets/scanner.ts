@@ -1,4 +1,4 @@
-import { pageRisk, valueDelta, type ValueModel } from "../trades/trades.js";
+import { buyGain, pageRisk, valueDelta, type ValueModel } from "../trades/trades.js";
 
 /**
  * Dispersion scanner (markets route): buy asks below our MARGINAL private value and sell into bids above it.
@@ -23,11 +23,12 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 export const scannerMargin = (price: number, p: ScannerParams = SCANNER_PARAMS): number => r1(Math.max(p.minEdge, p.minEdgeFrac * price));
 
 /**
- * Marginal value of one copy of `ref` given our holdings: buy → what one more copy adds (`valueDelta`);
- * sell → what losing one costs, plus the page risk of breaking a near-complete page.
+ * Marginal value of one copy of `ref` given our holdings: buy → what one more copy adds (`valueDelta`; with `scoredSets`,
+ * the page bonus of any other set is left out: `buyGain`); sell → what losing one costs, plus the page risk of breaking
+ * a near-complete page.
  */
-export function marginalValue(counts: Map<string, number>, ref: string, side: "buy" | "sell", model: ValueModel, protectHave = SCANNER_PARAMS.protectPageHave): number {
-  if (side === "buy") return valueDelta(counts, [], [ref], model);
+export function marginalValue(counts: Map<string, number>, ref: string, side: "buy" | "sell", model: ValueModel, protectHave = SCANNER_PARAMS.protectPageHave, scoredSets?: ReadonlySet<string>): number {
+  if (side === "buy") return scoredSets ? buyGain(counts, ref, model, scoredSets) : valueDelta(counts, [], [ref], model);
   return -valueDelta(counts, [ref], [], model) + pageRisk(counts, [ref], model, protectHave);
 }
 

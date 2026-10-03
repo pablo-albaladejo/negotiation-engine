@@ -230,6 +230,34 @@ export function applyCards(counts: Map<string, number>, give: string[], get: str
   return c;
 }
 
+/** Page (and set) bonus a collection collects for `set` at our values: 0 while its page is incomplete. */
+function setBonus(counts: Map<string, number>, set: string, model: ValueModel): number {
+  const page = model.pages.get(set) ?? [];
+  const has = (r: string) => (counts.get(r) ?? 0) > 0;
+  if (page.length === 0 || !page.every(has)) return 0;
+  const sum = (refs: string[]) => refs.reduce((s, r) => s + (model.base.get(r) ?? 0), 0);
+  const all = model.sets.get(set) ?? [];
+  return model.rules.pageBonus * sum(page) + (all.every(has) ? model.rules.masterBonus * sum(all) : 0);
+}
+
+/**
+ * Page bonus a deal would ADD on sets outside `scoredSets`: the album scores nothing by itself (score = negotiating +
+ * market), so completing a page that is not a target is worth only its cards' standalone value (base × marginal).
+ */
+export function unscoredPageBonus(before: Map<string, number>, after: Map<string, number>, model: ValueModel, scoredSets: ReadonlySet<string>): number {
+  let out = 0;
+  for (const set of model.pages.keys()) if (!scoredSets.has(set)) out += Math.max(0, setBonus(after, set, model) - setBonus(before, set, model));
+  return out;
+}
+
+/** Sets whose page bonus counts in a buy: those of `--page-targets`. */
+export const scoredPageSets = (params: Pick<TradeParams, "pageTargets">): Set<string> => new Set((params.pageTargets ?? []).map(setOf));
+
+/** What one more copy of `ref` adds at our values, without the page bonus of a set outside `scoredSets`. */
+export function buyGain(counts: Map<string, number>, ref: string, model: ValueModel, scoredSets: ReadonlySet<string>): number {
+  return valueDelta(counts, [], [ref], model) - unscoredPageBonus(counts, applyCards(counts, [], [ref]), model, scoredSets);
+}
+
 /** Cambio de valor de cartas si damos `give` y recibimos `get`. */
 export function valueDelta(counts: Map<string, number>, give: string[], get: string[], model: ValueModel): number {
   return portfolioValue(applyCards(counts, give, get), model) - portfolioValue(counts, model);
@@ -405,6 +433,8 @@ export interface TradeParams {
   demandPremium: number;
   /** Cash kept for page-completing cards we still lack: only buys of `refs` may use it. */
   pageReserve?: { refs: readonly string[]; amount: number };
+  /** `--page-targets` (SAL-09): only their sets' page bonus counts in a buy; any other card is worth its standalone value. */
+  pageTargets?: readonly string[];
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -589,7 +619,8 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   const getCards = give.assets.map((a) => a.ref as string);
   const cashNet = give.cash - want.cash;
   const fee = tradeFee(give.cash + want.cash, getCards.length + giveCards.length, venueFeesOf(offer.venue, state.venueFees, params.fees));
-  const cardDelta = valueDelta(counts, giveCards, getCards, state.model);
+  // Completing a page outside the targets adds no bonus: the card counts at its standalone value only.
+  const cardDelta = valueDelta(counts, giveCards, getCards, state.model) - unscoredPageBonus(counts, applyCards(counts, giveCards, getCards), state.model, scoredPageSets(params));
   const risk = pageRisk(counts, giveCards, state.model, params.protectPageHave);
   const valueCreated = cardDelta + cashNet - fee - risk;
   const required = Math.max(params.minMargin, params.marginFrac * (give.cash + want.cash));
@@ -758,14 +789,16 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   };
   const backingOff = (assetId: number) => (state.listBackoff?.get(assetId) ?? -Infinity) > state.tick;
 
-  // Bids: page cards we don't hold from the album's sets; `missing` = page cards still missing (fewer first).
+  // Bids: page cards we don't hold from the album's sets; `missing` = page cards still missing (fewer first). Outside the
+  // page targets a bid needs standalone surplus (no page bonus) and ranks after them: no bid just to advance a page.
+  const scored = scoredPageSets(params);
   const bidTargets = new Map<string, { cap: number; target: number; value: number; reference: PriceRef | undefined; gain: number; missing: number }>();
   for (const set of state.pageSets) {
     const page = state.model.pages.get(set) ?? [];
-    const missing = page.filter((r) => (counts.get(r) ?? 0) === 0).length;
+    const missing = scored.has(set) ? page.filter((r) => (counts.get(r) ?? 0) === 0).length : 1e6;
     for (const ref of page) {
       if ((counts.get(ref) ?? 0) > 0) continue;
-      const gain = valueDelta(counts, [], [ref], state.model);
+      const gain = buyGain(counts, ref, state.model, scored);
       const cap = maxBid(gain, params.minMargin, fees);
       if (cap < 1) continue;
       const sameBids = bids.filter((q) => q.ref === ref).map((q) => q.price);

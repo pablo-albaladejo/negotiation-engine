@@ -2,6 +2,7 @@ import { counterText } from "../negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, plannedSchedule, type NegotiatorParams, type Rule, type Side } from "../negotiation/negotiator.js";
 import { rarityOf, type Target } from "./planner.js";
 import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
+import { buildValueModel, heldAssets } from "../../trades/trades.js";
 
 /**
  * Menu planner: from `/api/me`, `/api/catalog` and the dealer record, ranks what to
@@ -134,6 +135,11 @@ export interface RankInput {
   blindBuys?: boolean;
   /** Spend available to a page-completing buy (cash above the floor); without it, `budget`. */
   pageBudget?: number;
+  /**
+   * `--page-targets` (SAL-09): only a card of these completes a page with its bonus. The album scores nothing by itself,
+   * so a card that would complete any other page is valued at its standalone base (`buildValueModel`), like any card.
+   */
+  pageTargets?: readonly string[];
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -177,6 +183,8 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   const pages = pagesOf(me);
   const held = new Set(me.assets.filter((a) => a.kind === "card").map((a) => a.ref));
   const buys: Candidate[] = [];
+  /** Base of a card we lack (its first copy without the page bonus `value` carries when it completes the page). */
+  const standaloneBase = (card: string, value: number): number => buildValueModel(catalog, heldAssets(me.assets), new Map([[card, value]])).base.get(card) ?? value;
 
   for (const entry of dealer.menu.sells) {
     if (entry.pack) {
@@ -215,8 +223,13 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     if (opening === undefined) continue;
     const openingSource = entry.opening_ask ? "menu opening_ask" : `opening assumed list × ${ASSUMED_OPENING_MARKUP}`;
     const ref = list ?? opening;
-    const finish = (c: Omit<Candidate, "room" | "why" | "reservation" | "side" | "herList" | "herOpening" | "herOpeningSource" | "surplus">, extra: string): Candidate => {
-      const completing = c.kind === "buy-card" && c.page !== undefined && c.page.after >= c.page.of;
+    const finish = (raw: Omit<Candidate, "room" | "why" | "reservation" | "side" | "herList" | "herOpening" | "herOpeningSource" | "surplus">, extra: string): Candidate => {
+      const completes = raw.kind === "buy-card" && raw.page !== undefined && raw.page.after >= raw.page.of;
+      const completing = completes && raw.card !== undefined && (input.pageTargets ?? []).includes(raw.card);
+      // Completing a page that is not a target: its value without the bonus (no page-completing budget either).
+      const c = completes && !completing && raw.card !== undefined ? { ...raw, value: standaloneBase(raw.card, raw.value) } : raw;
+      const untargeted = completes && !completing ? `; would complete the ${raw.page!.set} page, valued without its bonus (not a page target): ${round1(raw.value)} → ${round1(c.value)}` : "";
+      extra += untargeted;
       const s = completing ? Math.min(safety, PAGE_COMPLETING_SAFETY) : safety;
       const reservation = Math.min(completing ? pageCap : cap, Math.floor(c.value * s));
       const room = reservation > ref;

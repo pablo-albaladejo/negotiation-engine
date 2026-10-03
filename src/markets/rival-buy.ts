@@ -2,7 +2,7 @@ import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
 import type { RivalsState, RivalTeam } from "../state/rivals.js";
-import { countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, slowReprice, tradeFee, valueDelta, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
+import { buyGain, countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, slowReprice, tradeFee, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
 
@@ -43,6 +43,8 @@ export interface RivalBuyInput {
   cashFloor: number;
   /** Agenda freeze: no new bids and open ones are cancelled. */
   opensBlocked?: string;
+  /** `--page-targets`: only their sets' page bonus counts in a bid; any other card is bid at its standalone value. */
+  pageTargets?: readonly string[];
 }
 
 export interface RivalBuyPricing {
@@ -126,7 +128,7 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   if (mine.length < 2) return { ok: false, reason: `${team.team} has no spare ${ref} seen` };
   const freshAt = Math.max(...mine.map((s) => s.confirmedTick ?? s.tick));
   if (input.tick - freshAt > params.maxStaleTicks) return { ok: false, reason: `spare seen at tick ${freshAt} (stale)` };
-  const gain = valueDelta(counts, [], [ref], model);
+  const gain = buyGain(counts, ref, model, new Set((input.pageTargets ?? []).map(setOf)));
   const cap = maxBid(gain, MIN_MARGIN, MAKER_FEES);
   const book = model.meta.get(ref)?.book ?? 0;
   const mHat = median([...setMultipliers(model).values()]) ?? 1;

@@ -105,7 +105,7 @@ async function main() {
     pageTargets,
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
-  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") }, defaultListBackoffFile(root));
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
@@ -327,7 +327,7 @@ async function main() {
           }
           // Directed bids to a rival seen holding a spare of a page card we lack (same safety: off with a note).
           try {
-            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
             rivalBuyPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);

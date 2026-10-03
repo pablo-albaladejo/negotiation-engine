@@ -105,13 +105,16 @@ interface Valued {
  * when selling), only for cards whose private value we know (held, or `/api/me/value`). Without it: the first-copy value
  * for a card we lack (buy) or a duplicate (sell; it overstates the loss, so it is conservative). Never a last copy.
  */
-function valueFor(e: PriceEntry, side: "buy" | "sell", counts: Map<string, number> | undefined, trade: TradeState | undefined): Valued | undefined {
+function valueFor(e: PriceEntry, side: "buy" | "sell", counts: Map<string, number> | undefined, trade: TradeState | undefined, scoredSets: ReadonlySet<string>): Valued | undefined {
   const held = counts?.get(e.ref) ?? 0;
   if (trade && counts && trade.model.base.has(e.ref) && (e.value !== undefined || held > 0)) {
     if (side === "sell" && held === 0) return undefined;
-    return { value: Math.round(marginalValue(counts, e.ref, side, trade.model) * 10) / 10, src: `${held} held` };
+    // A buy counts the page bonus only on a scored target set: anywhere else the card is worth its standalone value.
+    return { value: Math.round(marginalValue(counts, e.ref, side, trade.model, undefined, scoredSets) * 10) / 10, src: `${held} held` };
   }
   if (e.value === undefined) return undefined;
+  // Without the model the first-copy value of a page-completing card carries the bonus: no standalone value to buy at.
+  if (side === "buy" && e.completesPage && !scoredSets.has(setOfRef(e.ref))) return undefined;
   // With El Rastro state, `counts` (free copies when selling) beats the sheet's count, which includes locked copies.
   const n = counts ? held : e.holdings;
   if (side === "buy" && n === 0) return { value: e.value, src: "first copy (no model)" };
@@ -172,6 +175,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   const spendPerHour = ctx.spendPerHour ?? params.spendPerHour;
   const hour = gameHourOf(state.tick, state.time.gameHour ?? state.clock.tHours, state.clock.tickSeconds);
   const targetSets = new Set((ctx.pageTargets ?? []).map(setOfRef));
+  const scoredSets = targetSets;
   const notes: string[] = [
     `RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf}`,
     `[scanner] game hour ${hour} · spent ${ledger.spentIn(hour)}/${spendPerHour} P (in memory since start) · margin max(${params.minEdge} P, ${params.minEdgeFrac * 100} %) · ≤ ${params.dealsPerCounterpartyPerHour} deals/counterparty/h · cash floor ${cashFloor} · values: ${trade ? "marginal (El Rastro model)" : "first copy only (no El Rastro model this tick)"}`,
@@ -180,7 +184,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   const candidates: Candidate[] = [];
   for (const e of state.markets.prices) {
     // Buy: anything whose marginal value clears price + fee + margin; page-completing buys keep their own class and rule.
-    const bv = valueFor(e, "buy", counts, trade);
+    const bv = valueFor(e, "buy", counts, trade, scoredSets);
     const buy = bv && bestVenue(e, "buy", state.markets.venues, teams, bv.value);
     if (buy && e.completesPage) {
       if (buy.net >= MARKET_PARAMS.minNetEdge && cash >= buy.quote.price + buy.fee) {
@@ -199,7 +203,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
       notes.push(`[scanner] ${e.ref}: sale skipped (active rival-page directed listing)`);
       continue;
     }
-    const sv = valueFor(e, "sell", freeCounts, trade);
+    const sv = valueFor(e, "sell", freeCounts, trade, scoredSets);
     const sell = sv && bestVenue(e, "sell", state.markets.venues, teams, sv.value);
     if (!sell || !sv || sell.net <= 0) continue;
     const asset = freeAsset(e.ref, trade, assetsByRef);
