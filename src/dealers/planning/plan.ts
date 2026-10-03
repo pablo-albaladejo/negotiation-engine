@@ -19,10 +19,11 @@ export const PLAUSIBLE_BID_FRAC = 1.3;
 /**
  * Plausible bid ceiling by rarity for a dealer with no sell list for that rarity (Pilar only sells packs): the
  * highest price she paid in public settlements on 3 Oct (21 uncommons at 17–25 P, one epic LAV-11 at 140). Without
- * this fallback every sale to her was skipped and the planner reported `no-target`. Only decides whether to open;
+ * this fallback every sale to her was skipped and the planner reported `no-target`. Rare: no public settlement yet, so
+ * its catalog book (70), as her uncommon bids top out at their book (25). Only decides whether to open;
  * the reservation (value ÷ safety) still bounds the deal.
  */
-export const MEASURED_BID_CEILING: Readonly<Record<string, number>> = { uncommon: 25, epic: 140 };
+export const MEASURED_BID_CEILING: Readonly<Record<string, number>> = { uncommon: 25, rare: 70, epic: 140 };
 /**
  * Value of buying ONE MORE copy of a card we hold `copies` of (thread 493: RET-06 held, valued at 40, paid 24 for a ~10 P
  * duplicate). The client's value cache is seeded with `your_value` of the copies we hold (what we lose if one leaves),
@@ -324,6 +325,7 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const rarity = entry.rarity?.toLowerCase();
     if (rarity) buyRarities.set(rarity, setsOf(entry, catalog));
   }
+  const targetSets = new Set((input.pageTargets ?? []).map((t) => setOfCard(t)));
   const byRef = new Map<string, Me["assets"]>();
   for (const a of me.assets) if (a.kind === "card" && !a.locked) byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a]);
   for (const [ref, copies] of byRef) {
@@ -338,7 +340,7 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const bid =
       sellList !== undefined
         ? { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` }
-        : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements (${measured})` };
+        : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements, else its book (${measured})` };
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
     for (const { a, copy } of offered) {
       if (typeof a.your_value !== "number") continue;
@@ -352,7 +354,10 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       let guard = "";
       if (room && copy === "only") {
         const pageComplete = page ? page.have / page.of : undefined;
-        if (pageComplete !== undefined && pageComplete >= ONLY_COPY_PAGE_COMPLETE_BLOCK) {
+        // The album scores nothing by itself: the page guard only holds for a page-target set or a complete page; any other
+        // only copy is valued at its `your_value` (reservation) and still needs ONLY_COPY_MIN_SURPLUS.
+        const guarded = page !== undefined && (page.have >= page.of || targetSets.has(set));
+        if (guarded && pageComplete !== undefined && pageComplete >= ONLY_COPY_PAGE_COMPLETE_BLOCK) {
           room = false;
           guard = `; NEVER: our only copy and ${set} page is ${page!.have}/${page!.of} (≥ ${Math.round(ONLY_COPY_PAGE_COMPLETE_BLOCK * 100)} %) — that near-complete a page is where the page bonus drives most of the card's value, so we keep it and sell a duplicate instead`;
         } else if (surplus < ONLY_COPY_MIN_SURPLUS) {
