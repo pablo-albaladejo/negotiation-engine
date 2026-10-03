@@ -18,6 +18,8 @@ export interface OfferChartProps {
   theirOffers: OfferPoint[];
   target?: OfferPoint[];
   estimate?: OfferPoint[];
+  /** Camino previsto de nuestras ofertas (plan del código), en discontinua. */
+  planned?: OfferPoint[];
   ourReserve?: number;
   theirReserve?: number;
   zopa?: boolean;
@@ -101,7 +103,7 @@ function initialOfferChartIndex(points: OfferChartInteractivePoint[], selectedRo
 }
 
 export interface LegendItem {
-  kind: "us" | "them" | "target" | "estimate" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate" | "injection" | "end";
+  kind: "us" | "them" | "target" | "estimate" | "planned" | "zopa" | "reserve-us" | "reserve-them" | "same-round" | "mandate" | "injection" | "end";
   label: string;
 }
 
@@ -137,6 +139,7 @@ export function OfferChart({
   theirOffers,
   target,
   estimate,
+  planned,
   ourReserve,
   theirReserve,
   zopa,
@@ -288,6 +291,14 @@ export function OfferChart({
 
       {target ? <polyline className="target" points={toPolylinePoints(target, rounds, yDomain)} /> : null}
       {estimate ? <polyline className="estimate" points={toPolylinePoints(estimate, rounds, yDomain)} /> : null}
+      {planned && planned.length > 0 ? (
+        <g className="planned-path">
+          <polyline className="planned" points={toPolylinePoints(planned, rounds, yDomain)} />
+          {planned.map((point) => (
+            <circle key={`planned-${point.round}`} className="dot-planned" cx={offerChartXScale(point.round, rounds)} cy={offerChartYScale(point.value, yDomain)} r={3} />
+          ))}
+        </g>
+      ) : null}
 
       <polyline className="us-line" points={toPolylinePoints(ourOffers, rounds, yDomain)} />
       <polyline className="them-line" points={toPolylinePoints(theirOffers, rounds, yDomain)} />

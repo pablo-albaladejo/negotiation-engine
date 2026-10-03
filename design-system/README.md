@@ -53,7 +53,7 @@ del sistema operativo (`prefers-color-scheme`).
 | `Pill` | `PillProps` | Etiqueta redondeada para un estado final (veredicto, rechazo, muestra). |
 | `DataTable` | `DataTableProps` | Tabla de métricas con columnas numéricas y variación mejor/peor. |
 | `Heatmap` | `HeatmapProps` | Mapa de calor de excedente/ZOPA por rival × rol, construido sobre `DataTable`. |
-| `OfferChart` | `OfferChartProps` | SVG dibujado a mano con las ofertas por ronda; solo dibuja lo que se le pasa. |
+| `OfferChart` | `OfferChartProps` | SVG dibujado a mano con las ofertas por ronda; solo dibuja lo que se le pasa. `planned` (opcional) añade nuestro camino previsto en discontinua. |
 | `Legend` | — | Leyenda que acompaña siempre a `OfferChart`. |
 | `Filters` | `FiltersProps` | Barra de filtros controlada: rival, rol, resultado y checkboxes. |
 | `ModeBadge` | `ModeBadgeProps` | Insignia `ARENA` / `TOURNAMENT` según el modo. |
