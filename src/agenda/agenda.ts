@@ -58,7 +58,7 @@ const isHard = (p: Record<string, unknown>, note?: string) => /hard/i.test(name(
 
 /** Playbook por acción del calendario: antelación (horas de juego) y acción prevista. */
 export const PLAYBOOK: Record<string, Play> = {
-  bench: { leadHours: 1, planned: (p, n) => (isHard(p, n) ? "ensure board venue + broker plan, firmer broker params" : "ensure board venue + broker plan (dry-run intent)") },
+  bench: { leadHours: 1, planned: (p, n) => (isHard(p, n) ? "check the auto-vs-board decision + shadow broker, firmer broker params" : "check the auto-vs-board decision + shadow broker (dry-run intent)") },
   round: { leadHours: 0, planned: () => "re-plan the ladder (3 best deals per level per round)" },
   set_release: { leadHours: 0, planned: (p) => `read ${typeof p.set === "string" ? p.set : "new set"} catalogue + private values, update page targets` },
   grant_all: { leadHours: 0, planned: (p) => `re-plan purchases with +${typeof p.cash === "number" ? p.cash : "?"} P${Array.isArray(p.packs) && p.packs.length ? ", open the pack (dry-run intent)" : ""}` },
@@ -97,7 +97,7 @@ export function agendaEffects(items: readonly AgendaItem[], state: Pick<GameStat
     const label = `${i.action}@h${i.atHours}`;
     switch (i.action) {
       case "bench":
-        out.intents.push({ id: `agenda:bench:${i.atHours}`, route: "agenda", kind: "agenda", summary: `${label}: ensure our board venue is open + broker plan${isHard(p, i.note) ? " (firmer params)" : ""} (opening a venue needs --confirm and user approval)` });
+        out.intents.push({ id: `agenda:bench:${i.atHours}`, route: "agenda", kind: "agenda", summary: `${label}: check the auto-vs-board decision (decideMechanism) + shadow broker${isHard(p, i.note) ? " (firmer params)" : ""} (switching to board needs --confirm --allow-venue-switch and user approval)` });
         if (isHard(p, i.note)) out.firmerBroker = true;
         break;
       case "round":
