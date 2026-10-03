@@ -49,6 +49,8 @@ export const DuelSchema = z.preprocess(normalizeDuel, z.looseObject({
   deadline: z.union([num, z.string(), z.null()]).optional(),
   issues: z.array(z.string()).default(["price"]),
   your_days_weight: DaysWeightSchema,
+  /** Decay por ronda del trato (práctica: 0,06). */
+  decay_per_round: num.nullish(),
   status: z.string().nullish(),
   round: num.nullish(),
   rival: z.string().nullish(),
@@ -102,6 +104,29 @@ export function rivalOfferFrom(duel: Pick<Duel, "rival_offer" | "messages">): St
     if (offer) return offer;
   }
   return undefined;
+}
+
+/**
+ * Concesiones nuestras desde la última oferta con precio del rival: cuántas veces cambiamos precio o días en
+ * nuestros mensajes posteriores (la apertura no cuenta). Solo lee `from`, `price` y `days`, nunca el texto.
+ */
+export function concessionsSinceRival(messages: readonly Pick<DuelMessage, "from" | "sender" | "price" | "days">[]): number {
+  let n = 0;
+  let prev: StructuredOffer | undefined;
+  for (const m of messages) {
+    const offer = offerOfMessage(m);
+    if (!offer) continue;
+    const who = m.from ?? m.sender;
+    if (who != null && who !== "you") {
+      n = 0;
+      continue;
+    }
+    if (who === "you") {
+      if (prev && (prev.price !== offer.price || (prev.days ?? 0) !== (offer.days ?? 0))) n += 1;
+      prev = offer;
+    }
+  }
+  return n;
 }
 
 /** Nuestra última oferta según el servidor (`your_offer`); sirve para no reabrir tras un reinicio sin memoria. */

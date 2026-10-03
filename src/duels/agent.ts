@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { BazaarError } from "../shared/client.js";
-import { DEFAULT_DUEL_PARAMS, daysValueFrom, decideDuel, type DuelDecision, type DuelParams, type DuelState } from "./duels.js";
-import { ourOfferFrom, rivalOfferFrom, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./schemas.js";
+import { DAYS_MIN, DEFAULT_DUEL_PARAMS, daysValueFrom, decideDuel, textMatchesOffer, withinLimit, type DuelDecision, type DuelParams, type DuelState } from "./duels.js";
+import { concessionsSinceRival, ourOfferFrom, rivalOfferFrom, type Duel, type DuelsApi, type Schedule, type StructuredOffer } from "./schemas.js";
 import type { Clock } from "../shared/schemas.js";
 import { liveTraceDir } from "../shared/trace.js";
 
@@ -84,6 +84,22 @@ export interface DuelStepReport {
   entries: DuelStepEntry[];
 }
 
+/** Decisión de un duelo vivo, aún sin ejecutar. */
+export interface PlannedDuel {
+  duel: Duel;
+  state: DuelState;
+  rival?: StructuredOffer;
+  assumption?: string;
+  decision: DuelDecision;
+  /** Ya actuamos en este duelo en este tick. */
+  already: boolean;
+}
+
+export interface DuelProposal {
+  clock: Clock;
+  planned: PlannedDuel[];
+}
+
 export interface DuelsAgentOptions {
   dryRun: boolean;
   params?: Partial<DuelParams>;
@@ -113,7 +129,7 @@ const sameOffer = (a: StructuredOffer | undefined, b: StructuredOffer | undefine
 
 export class DuelsAgent {
   private readonly memory: Map<string, Memory>;
-  private readonly params: DuelParams;
+  readonly params: DuelParams;
   private readonly now: () => number;
 
   constructor(
@@ -154,13 +170,16 @@ export class DuelsAgent {
       ourOffers,
       rivalOffers,
       rivalMovedSinceOurLast: moved,
+      concessionsSinceRival: concessionsSinceRival(duel.messages ?? []),
+      ...(typeof duel.decay_per_round === "number" ? { decay: duel.decay_per_round } : {}),
       ...(lastOurTick !== undefined ? { ticksSinceOurLast: clock.tick - lastOurTick } : {}),
       ...(left !== undefined ? { ticksLeft: left } : {}),
     };
     return { state, ...(rival ? { rival } : {}), ...("assumption" in days && days.assumption ? { assumption: days.assumption } : {}) };
   }
 
-  async step(): Promise<DuelStepReport> {
+  /** Propuesta del tick sin enviar nada: reloj y decisión de cada duelo vivo (solo GET). */
+  async propose(): Promise<DuelProposal> {
     const clock = await this.api.clock();
     const { duels } = await this.api.duels();
     const live = duels.filter((d) => !d.status || !FINISHED.has(d.status));
@@ -171,14 +190,29 @@ export class DuelsAgent {
         const { state, rival, assumption } = this.stateOf(duel, clock);
         const mem = this.memory.get(this.key(duel.id));
         const already = mem?.lastActionTick === clock.tick;
-        return { duel, state, rival, assumption, decision: decideDuel(state, this.params), already };
+        return { duel, state, ...(rival ? { rival } : {}), ...(assumption ? { assumption } : {}), decision: decideDuel(state, this.params), already };
       });
+    return { clock, planned };
+  }
 
-    // Una aceptación por equipo y tick: la de mayor excedente; el resto espera.
-    // Si la aceptación elegida falla (p. ej. no_offer: el rival retiró la oferta), se prueba la siguiente en el mismo tick.
-    const accepts = planned
+  /** Paso autónomo (`pnpm bazaar:duels`): una aceptación por tick, la de más excedente; el resto espera. */
+  async step(): Promise<DuelStepReport> {
+    const proposal = await this.propose();
+    const accepts = proposal.planned
       .filter((p) => p.decision.action === "accept" && !p.already)
-      .sort((a, b) => b.decision.surplus - a.decision.surplus);
+      .sort((a, b) => b.decision.surplus - a.decision.surplus)
+      .map((p) => p.duel.id);
+    return this.execute(proposal, { accepts });
+  }
+
+  /**
+   * Ejecuta una propuesta. `accepts`: duelos cuya aceptación se intenta, en orden; como mucho una sale (si falla,
+   * p. ej. no_offer, se prueba la siguiente). Las demás aceptaciones quedan aplazadas. `messages`: si se da, solo
+   * esos duelos envían su mensaje (el coordinador reparte el cupo); los demás quedan `skipped`.
+   */
+  async execute(proposal: DuelProposal, choice: { accepts: readonly (number | string)[]; messages?: ReadonlySet<string> }): Promise<DuelStepReport> {
+    const { clock, planned } = proposal;
+    const byId = new Map(planned.map((p) => [this.key(p.duel.id), p]));
     let acceptDone = false;
 
     const entries: DuelStepEntry[] = [];
@@ -196,20 +230,21 @@ export class DuelsAgent {
       };
       entries.push(entry);
       if (p.already || p.decision.action === "wait") continue;
-      if (p.decision.action === "accept") continue; // se resuelven abajo, por excedente
+      if (p.decision.action === "accept") {
+        entry.outcome = "deferred"; // se resuelven abajo, en el orden dado
+        continue;
+      }
+      if (choice.messages && !choice.messages.has(this.key(p.duel.id))) continue;
       if (this.options.dryRun) {
         entry.outcome = "dry-run";
         continue;
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
     }
-    for (const p of accepts) {
-      const entry = entries.find((e) => e.duelId === p.duel.id);
-      if (!entry) continue;
-      if (acceptDone) {
-        entry.outcome = "deferred";
-        continue;
-      }
+    for (const id of choice.accepts) {
+      const p = byId.get(this.key(id));
+      const entry = entries.find((e) => this.key(e.duelId) === this.key(id));
+      if (!p || !entry || p.already || p.decision.action !== "accept" || acceptDone) continue;
       if (this.options.dryRun) {
         entry.outcome = "dry-run";
         acceptDone = true;
@@ -221,7 +256,14 @@ export class DuelsAgent {
       // No se puede aceptar, pero sí igualarla: proponemos exactamente su precio/días y el rival la cierra.
       else if (entry.outcome === "error:no_offer" && p.rival && !sameOffer(p.rival, p.state.ourOffers.at(-1))) {
         const offer: StructuredOffer = { ...p.rival };
-        const terms = p.state.withDays && offer.days !== undefined ? `${offer.price} P with ${offer.days} days` : `${offer.price} P`;
+        // Con días, el mensaje siempre lleva `days` (si no, missing_days): si su oferta no los trae, nuestro mejor día.
+        if (p.state.withDays && offer.days === undefined) offer.days = DAYS_MIN + p.state.daysValue.indexOf(Math.max(...p.state.daysValue));
+        // Guardarraíl: nunca se iguala una oferta fuera de nuestro límite.
+        if (!withinLimit(p.state, offer)) {
+          entry.fallback = "match skipped: outside our limit";
+          continue;
+        }
+        const terms = p.state.withDays ? `${offer.price} P with ${offer.days} days` : `${offer.price} P`;
         const match: DuelDecision = {
           action: "counter",
           offer,
@@ -230,6 +272,10 @@ export class DuelsAgent {
           surplus: p.decision.surplus,
           round: p.state.ourOffers.length,
         };
+        if (!textMatchesOffer(match.text!, offer)) {
+          entry.fallback = "match skipped: text and offer differ";
+          continue;
+        }
         entry.fallback = `match ${terms}: ${await this.act(p.duel.id, match, p.state, clock.tick)}`;
       }
     }

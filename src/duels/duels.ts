@@ -38,18 +38,35 @@ export interface DuelParams {
   assumedDaysWeight: number;
   /** Multiplicador de `your_days_weight` (por si llega en otra escala que P por día). */
   daysWeightScale: number;
+  /** Decay por ronda si el duelo no trae `decay_per_round` (el valor del trato se encoge cada ronda: 0,06–0,1). */
+  decay: number;
+  /** Aceptar pronto: la oferta del rival nos deja al menos esta fracción del excedente de apertura. */
+  acceptShare: number;
+  /** Rondas de decay con que se descuenta nuestra siguiente oferta al compararla con la del rival (AC_next con decay). */
+  acceptLookahead: number;
+  /** Concesiones nuestras permitidas sin una contraoferta nueva del rival (nunca dos seguidas: 1). */
+  maxSilentConcessions: number;
+  /** Tics que se espera a un rival callado antes de esa única concesión sin respuesta. */
+  silentWaitTicks: number;
 }
 
 export const DEFAULT_DUEL_PARAMS: DuelParams = {
   anchorMargin: 0.5,
   beta: 2,
-  maxRounds: 4,
+  // v2: 3 rondas hasta el suelo (antes 4): en práctica, los regateos de 6–7 rondas perdieron un 30–35 % por decay.
+  maxRounds: 3,
   floorShare: 0.3,
   minSurplus: 1,
   lastMoveTicks: 1,
   endgameTicks: 3,
   assumedDaysWeight: 0,
   daysWeightScale: 1,
+  decay: 0.08,
+  // Replay de los 27 duelos de práctica: 0,5 aceptaba demasiado pronto (89, 200); con 0,65 queda neutral (407 frente a 415 P reales).
+  acceptShare: 0.65,
+  acceptLookahead: 1,
+  maxSilentConcessions: 1,
+  silentWaitTicks: 2,
 };
 
 /** Valor para nosotros (P) de cada día de entrega 0..10. */
@@ -83,6 +100,10 @@ export interface DuelState {
   rivalOffers: readonly StructuredOffer[];
   /** El rival ha hecho una oferta nueva desde nuestro último mensaje. */
   rivalMovedSinceOurLast: boolean;
+  /** Concesiones nuestras (cambios de precio/días) desde la última oferta del rival; la apertura no cuenta. */
+  concessionsSinceRival?: number;
+  /** Decay por ronda del duelo (`decay_per_round`); si falta, `params.decay`. */
+  decay?: number;
   ticksSinceOurLast?: number;
   ticksLeft?: number;
 }
@@ -93,7 +114,7 @@ export interface DuelDecision {
   action: DuelAction;
   offer?: StructuredOffer;
   text?: string;
-  rule: AcceptanceRule | "opening" | "concede" | "endgame" | "waiting-for-rival" | "match-stale";
+  rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "waiting-for-rival" | "match-stale";
   /** Excedente objetivo de la oferta (o el de la oferta del rival que se acepta). */
   surplus: number;
   round: number;
@@ -254,13 +275,20 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   const endgame = state.ticksLeft !== undefined && state.ticksLeft <= params.endgameTicks;
   const previous = state.ourOffers.at(-1);
   const prevSurplus = previous ? surplusOf(state, previous) : undefined;
+  const decay = state.decay ?? params.decay;
   // En el final, solo se mueve hacia un trato si el rival ha ofertado alguna vez; si nunca ha
   // hablado no hay nada que partir y conviene mantener la oferta vigente en vez de ceder solo.
   const endgameWithRival = endgame && rivalHasOffered;
+  // Nunca dos concesiones sin una contraoferta nueva del rival: sin ella, como mucho `maxSilentConcessions`
+  // (una), tras esperar `silentWaitTicks` o ya en el final. En práctica, 8 de 10 duelos sin trato tuvieron un
+  // rival callado; 2 de esos rivales aceptaron una oferta nuestra sin decir nada.
+  const silentLeft = (state.concessionsSinceRival ?? 0) < params.maxSilentConcessions;
+  const waitedEnough = (state.ticksSinceOurLast ?? 0) >= params.silentWaitTicks;
+  const canConcede = !previous || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival));
 
   // Siguiente excedente objetivo: curva del motor, en el final partir la diferencia con el rival.
   let target = targetSurplus(state, params, round);
-  let rule: DuelDecision["rule"] = round === 0 ? "opening" : "concede";
+  let rule: DuelDecision["rule"] = round === 0 ? "opening" : state.rivalMovedSinceOurLast ? "concede" : "silent-concede";
   const rivalSurplus = rival && withinLimit(state, rival) ? surplusOf(state, rival) : undefined;
   if (endgameWithRival && round > 0 && rivalSurplus !== undefined && rivalSurplus < target) {
     target = Math.max(floorSurplus(state, params), (target + Math.max(rivalSurplus, params.minSurplus)) / 2);
@@ -268,6 +296,16 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   }
   // Guardarraíl del motor sobre el excedente: nunca sube respecto a la oferta anterior ni baja del mínimo.
   target = enforceGuardrails({ role: "seller", reservation: params.minSurplus }, target, prevSurplus);
+  // Lo que de verdad ofreceríamos después: si no podemos conceder, la oferta vigente.
+  const nextSurplus = canConcede || prevSurplus === undefined ? target : prevSurplus;
+
+  // Nunca se cierra fuera de nuestro límite: `rivalSurplus` solo existe si su oferta respeta `your_limit`.
+  if (rival && rivalSurplus !== undefined && rivalSurplus >= params.minSurplus) {
+    // Aceptar pronto: cada ronda encoge el trato (`decay`); una oferta que ya deja una parte razonable, o que vale
+    // más que nuestra siguiente oferta descontada una ronda, se acepta ya.
+    if (rivalSurplus >= params.acceptShare * openingSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
+    if (rivalSurplus >= (1 - decay) ** params.acceptLookahead * nextSurplus) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
+  }
 
   // Aceptación del motor (AC_next; en el último movimiento, todo lo que respete la reserva).
   if (rival && rivalSurplus !== undefined) {
@@ -282,7 +320,7 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
       issues: [issue],
       mandate: { role: "seller", reservation: { surplus: params.minSurplus } },
       rivalCurrent: { surplus: rivalSurplus },
-      ourNextUtility: utility([issue], { surplus: target }),
+      ourNextUtility: utility([issue], { surplus: nextSurplus }),
       time,
       acceptMargin: 0,
       acTimeThreshold: 2,
@@ -291,16 +329,14 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     if (verdict.verdict === "accept") return { action: "accept", rule: verdict.rule, surplus: rivalSurplus, round };
   }
 
-  // Nunca se concede sin una oferta nueva del rival desde la nuestra: sin ella, se espera (sin mensaje),
-  // salvo en el final si el rival ha ofertado alguna vez (entonces se mueve hacia un trato, arriba).
-  if (previous && !state.rivalMovedSinceOurLast && !endgameWithRival) {
-    return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
-  }
+  if (!canConcede) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
 
   let offer = offerForSurplus(state, target);
   // Con días, el redondeo de otro día podría pedir más que la oferta anterior: entonces se repite.
   if (previous && prevSurplus !== undefined && surplusOf(state, offer) > prevSurplus) offer = previous;
   const same = previous !== undefined && previous.price === offer.price && previous.days === offer.days;
+  // Repetir la misma oferta a un rival callado no aporta nada: se espera sin mensaje.
+  if (same && !state.rivalMovedSinceOurLast) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
   const kind = round === 0 ? "open" : same ? "hold" : "counter";
   return { action: "counter", offer, text: duelText(kind, round, offer), rule, surplus: surplusOf(state, offer), round };
 }
