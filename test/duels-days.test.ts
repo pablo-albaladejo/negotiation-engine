@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { DuelsAgent } from "../src/duels/agent.js";
-import { DAYS_MAX, DAYS_MIN, DEFAULT_DUEL_PARAMS, daysDirection, daysValueFrom, decideDuel, textMatchesOffer, type DuelState } from "../src/duels/duels.js";
+import { DAYS_MAX, DAYS_MIN, DEFAULT_DUEL_PARAMS, daysDirection, daysValueFrom, decideDuel, surplusOf, textMatchesOffer, type DuelState } from "../src/duels/duels.js";
 import { DuelSchema, type DuelsApi, type StructuredOffer } from "../src/duels/schemas.js";
 
 // Shapes `your_days_weight` might take on the live server (none seen yet: every recorded duel was price-only).
@@ -68,5 +68,23 @@ describe("two-issue duels: days weight", () => {
     const report = await agent.step();
     expect(said).toHaveLength(0);
     expect(report.entries[0]!.decision.rule).toBe("days-unreadable");
+  });
+});
+
+describe("days value is the real score, never shifted (Duels II: 'each delivery day costs you this much cash')", () => {
+  it("a buyer's surplus is limit − price − w·days, so a day-10 offer at the limit is a loss, never accepted", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 30, max: 200 }), fc.double({ min: 0.5, max: 8, noNaN: true }), fc.integer({ min: 0, max: 10 }), (limit, w, days) => {
+        const table = daysValueFrom(w, DEFAULT_DUEL_PARAMS, "each delivery day costs you this much cash").table;
+        expect(table[days]).toBeCloseTo(-w * days, 6);
+        const st = { role: "buyer" as const, limit, withDays: true, daysValue: table };
+        const price = limit - 1;
+        expect(surplusOf(st, { price, days })).toBeCloseTo(1 - w * days, 6);
+        if (1 - w * days < DEFAULT_DUEL_PARAMS.minSurplus) {
+          const d = decideDuel({ ...st, ourOffers: [{ price: Math.round(limit / 2), days: 0 }], rivalOffers: [{ price, days }], rivalMovedSinceOurLast: true, ticksLeft: 1 }, DEFAULT_DUEL_PARAMS);
+          expect(d.action).not.toBe("accept");
+        }
+      }),
+    );
   });
 });

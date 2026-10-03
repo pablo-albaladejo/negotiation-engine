@@ -128,7 +128,8 @@ export function daysValueFrom(
   if (perDay !== undefined) {
     const dir = daysDirection(meaning);
     const w = perDay * scale;
-    if (dir === "fewer") return { table: days.map((d) => Math.abs(w) * (DAYS_MAX - d)), assumption: `${perDay} P per day, earlier is better${note}` };
+    // Real value, not shifted: each day costs |w| (day 0 = 0). A +10·|w| shift made a day-10 offer look like profit (Duels II).
+    if (dir === "fewer") return { table: days.map((d) => -Math.abs(w) * d), assumption: `${perDay} P per day, earlier is better${note}` };
     if (dir === "more") return { table: days.map((d) => Math.abs(w) * d), assumption: `${perDay} P per day, later is better${note}` };
     return { table: days.map((d) => w * d), ...(note ? { assumption: `${perDay} P per day, direction from its sign${note}` } : {}) };
   }
