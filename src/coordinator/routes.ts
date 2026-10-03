@@ -19,6 +19,7 @@ import type { HintLine } from "../hints/corpus.js";
 import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
 import { marketSale, proposeMarkets, type MarketsContext } from "../markets/markets.js";
+import { ScoreAudit } from "./score-audit.js";
 import { directedListings } from "../markets/rival-page.js";
 
 /**
@@ -105,6 +106,8 @@ export interface DealersRouteOptions {
   trace?: TraceSink;
   /** `docs/bazaar/lessons.json`: only written live; in dry-run what would be added is printed (`docs/` is never touched). */
   lessonsFile?: string;
+  /** `score-audit.jsonl`: only written live; in dry-run the audit line is printed only. */
+  scoreAuditFile?: string;
 }
 
 /** First big concession (`firstStepFrac`) only against a persona with a true mirror (`mirror_concessions`); otherwise off. */
@@ -149,8 +152,8 @@ export class DealersRoute {
   private readonly logs: string[] = [];
   /** Tick state (conversations and personas) to pick the egg probe that goes with a counteroffer. */
   private state: GameState | undefined;
-  /** Last `neg_points` seen (score audit). */
-  private lastNeg: number | undefined;
+  /** Per-deal score audit: each `neg_points` Δ against the settlements of ours since the last read. */
+  private readonly scoreAudit: ScoreAudit;
   /** Lesson lines of the tick (dumped into notes or into the execution). */
   private readonly lessonLines: string[] = [];
   private readonly lessonsSeen = new Set<string>();
@@ -181,6 +184,7 @@ export class DealersRoute {
   ) {
     this.team = new TeamBudget({ maxSpendPerHour: o.maxSpendPerHour, maxSpendTotal: o.maxSpendTotal, cashFloor: o.cashFloor });
     this.trace = new SwitchableTrace(o.trace);
+    this.scoreAudit = new ScoreAudit({ mode: o.dryRun ? "dry-run" : "live", ...(o.scoreAuditFile ? { file: o.scoreAuditFile } : {}) });
   }
 
   private gate = (i: DealerIntent): boolean => {
@@ -244,12 +248,9 @@ export class DealersRoute {
     this.team.pageReserve = reserve.amount;
     if (reserve.amount) out.notes.push(`page reserve: ${reserve.amount} P kept for ${reserve.refs.join(", ")} (other buys stay above it)`);
     this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
-    // Score audit: each deal scores your_value − price at our private values; log every move to check it against the settlements.
-    const neg = (me.score as { neg_points?: unknown } | undefined)?.neg_points;
-    if (typeof neg === "number") {
-      if (this.lastNeg !== undefined && Math.round((neg - this.lastNeg) * 10) !== 0) out.notes.push(`score audit: neg_points ${this.lastNeg} → ${neg} (Δ ${Math.round((neg - this.lastNeg) * 10) / 10}) at tick ${clock.tick}: check against this tick's settlements (your_value − price)`);
-      this.lastNeg = neg;
-    }
+    // Score audit: each deal should score your_value − price at our private values; every Δ is checked against our settlements.
+    const audit = this.scoreAudit.observe({ tick: clock.tick, me, events: state.events ?? [], values: this.client.cachedValues() });
+    if (audit.line) out.notes.push(audit.line);
     this.mode = "propose";
     this.collected = [];
     this.trace.muted = true;

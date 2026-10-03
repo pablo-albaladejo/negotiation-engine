@@ -12,6 +12,7 @@ import { defaultConversationsFile, formatConversation, loadConversationMemos, sa
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
 import { arbitrageLines, personaArbitrage } from "./arbitrage.js";
 import { defaultPlanLogFile, holdingsOf, planExecution, planIntent, writePlanLine, type PlanExecution } from "./plan-log.js";
+import { defaultScoreAuditFile } from "./score-audit.js";
 import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
 import { defaultListBackoffFile } from "../trades/agent.js";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -102,7 +103,7 @@ async function main() {
     maxSpendTotal: num(values["max-spend"], "--max-spend"),
     cashFloor: num(values["cash-floor"], "--cash-floor"),
     pageTargets,
-    ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
+    ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
   const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor") }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;

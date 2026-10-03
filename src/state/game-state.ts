@@ -18,7 +18,7 @@ import { applyCardHistory, confirmCandidates, emptyRivalLedger, formatRivals, in
 import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, enrichLine, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { applyLabels, type HintLabel } from "../hints/labels.js";
-import { buildPersonas, mergeWorldEvents, parseFeed, recordedWorldEvents, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { buildPersonas, mergeWorldEvents, parseFeed, recordedWorldEvents, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FeedEvent, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
 
 /**
@@ -110,6 +110,8 @@ export interface GameState {
   conversations: Conversation[];
   /** Reads that failed (endpoint: code); the state is partial but usable. */
   missing: string[];
+  /** This tick's feed (`/api/feed`, last 200 events): the coordinator's score audit reads our settlements from it. */
+  events?: readonly FeedEvent[];
   /**
    * auto or board? Market Test sessions measured in shadow and the recommendation (`src/venue/mechanism.ts`). Filled in by
    * the coordinator after building the state (reads `bench-sessions.json` and the broker heartbeat from disk).
@@ -432,6 +434,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       ...world.ours,
     },
     markets: { prices, venues: venueInfo },
+    events,
     packs: buildPacks({ ...(me ? { me } : {}), ...(catalog ? { catalog } : {}), dealers: rawDealers, rastro: offers, ...(me?.id ? { team: me.id } : {}), events, values: Object.fromEntries(valueCache) }),
     hints: { all: hintsAll, fresh },
     personas,
