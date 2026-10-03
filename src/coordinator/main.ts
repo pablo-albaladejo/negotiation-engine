@@ -22,6 +22,7 @@ import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
+import { executeRivalBuy, proposeRivalBuy, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
@@ -60,6 +61,7 @@ async function main() {
       "flag-pressure": { type: "boolean", default: false },
       "allow-venue-switch": { type: "boolean", default: false },
       "rival-page": { type: "boolean", default: false },
+      "rival-buy": { type: "boolean", default: false },
       "plan-log": { type: "string", default: "" },
     },
   });
@@ -238,6 +240,7 @@ async function main() {
 
     const proposals: { route: string; p: RouteProposal }[] = [];
     let rivalPlan: RivalPagePlan = { posts: [], cancels: [] };
+    let rivalBuyPlan: RivalBuyPlan = { posts: [], cancels: [] };
     const routeErrors: string[] = [];
     const me = await client.me().catch(() => undefined);
     for (const [route, run] of [
@@ -271,6 +274,15 @@ async function main() {
             m.notes.push(...r.notes);
           } catch (e) {
             m.notes.push(`[rival-page] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
+          }
+          // Directed bids to a rival seen holding a spare of a page card we lack (same safety: off with a note).
+          try {
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            rivalBuyPlan = r.plan;
+            m.intents.push(...r.intents);
+            m.notes.push(...r.notes);
+          } catch (e) {
+            m.notes.push(`[rival-buy] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
           }
           return { ...m, strategies: new Map(), decisions: new Map() };
         },
@@ -337,6 +349,8 @@ async function main() {
     report("markets", await executeMarkets(client, selectedIntents, dryRun));
     // Rival-page listings go out only live AND with the opt-in --rival-page; otherwise "would" lines.
     report("markets", await executeRivalPage(client, selectedIntents, rivalPlan, dryRun || !values["rival-page"], undefined, undefined, state.tick));
+    // Rival-buy bids go out only live AND with the opt-in --rival-buy; otherwise "would" lines.
+    report("markets", await executeRivalBuy(client, selectedIntents, rivalBuyPlan, dryRun || !values["rival-buy"], undefined, undefined, state.tick));
     report("packs", await executePacks(client, selectedIntents, dryRun));
     report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);
