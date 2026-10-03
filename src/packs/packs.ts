@@ -3,19 +3,20 @@ import type { Catalog, Me } from "../shared/schemas.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, plannedSchedule } from "../dealers/negotiation/negotiator.js";
 import { negotiatorForDealer, traitsOf } from "../dealers/dealer-profile.js";
-import { readSide, type TradeOffer } from "../trades/trades.js";
+import { DEFAULT_VALUE_RULES, readSide, readValueRules, type TradeOffer } from "../trades/trades.js";
+import { nextCopyValue } from "../dealers/planning/plan.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import type { FeedEvent } from "../state/world.js";
 
 /**
  * Packs: the ones we hold sealed, the expected value of each type adjusted for supply, where they are sold and what
- * they are worth to us. PACKS route: buy from a dealer (only if the deal would be negotiated, never at the opening price,
- * so that it counts on the ladder), open the sealed ones (unless selling them sealed wins) and sell sealed when
- * the best bid exceeds our value. Every figure comes from code and goes through `enforceGuardrails`.
+ * they are worth to us. PACKS route: open the sealed ones (unless selling them sealed wins) and sell sealed when the
+ * best bid exceeds our value. Buying from a dealer is PAUSED (blind buy, decision of 3 Oct): only a note with the
+ * negotiator's path. Every figure comes from code and goes through `enforceGuardrails`.
  *
  * ASSUMPTIONS: `/api/me/value` does not accept packs (`unknown_card`, verified): the value of a pack we do not hold
- * is estimated with the average of our values per rarity; opening a pack (`POST /api/packs/{id}/open`) does not spend the
- * acceptance quota (unverified).
+ * is estimated card by card (per-rarity average of our values, a held card at its next copy's marginal); opening a
+ * pack (`POST /api/packs/{id}/open`) does not spend the acceptance quota (unverified).
  */
 
 /** Fixed draws (RULES.md:20): when a rarity runs out, the slot yields the next lower rarity. */
@@ -23,7 +24,7 @@ export const PRINT_RUNS: Record<string, number> = { common: 300, uncommon: 90, r
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 
 export const PACK_ASSUMPTIONS = [
-  "ASSUMPTION: /api/me/value rejects packs (unknown_card): value of a pack we don't hold = slots × our mean value per rarity",
+  "ASSUMPTION: /api/me/value rejects packs (unknown_card): value of a pack we don't hold = slots × our mean per-rarity value, held cards at their next copy (nextCopyValue)",
   "ASSUMPTION: opening a pack does not use the accept quota (unverified)",
 ];
 
@@ -35,7 +36,7 @@ export interface PackType {
   expectedBook?: number;
   /** Expected value in book with current supply (depleted rarities fall to the lower one). */
   adjustedBook?: number;
-  /** Our expected value (per-rarity averages of our known values). */
+  /** Our expected value (per-rarity averages of our known values; held cards at their next copy's marginal). */
   ourValue?: number;
   dealers: { persona: string; list?: number; opening?: number; perHour?: number }[];
   bestAsk?: { price: number; offer: number };
@@ -105,6 +106,17 @@ export function buildPacks(i: PacksInputs): PacksState {
   const gone = exhausted(i.catalog);
   const released = (i.catalog?.sets ?? []).filter((s) => (s as { released?: unknown }).released !== false).flatMap((s) => s.cards);
   const byRarity = (r: string, f: (c: (typeof released)[number]) => number | undefined) => mean(released.filter((c) => c.rarity === r).flatMap((c) => (f(c) !== undefined ? [f(c)!] : [])));
+  // Card by card: a card we already hold is worth its next copy (`nextCopyValue`), not the held copy's value.
+  const held: Record<string, number[]> = {};
+  for (const a of i.me?.assets ?? []) if ((a.kind ?? "card") === "card") (held[a.ref] ??= []).push(typeof a.your_value === "number" ? a.your_value : NaN);
+  const marginals = i.catalog ? readValueRules(i.catalog).marginals : DEFAULT_VALUE_RULES.marginals;
+  const marginalValue = (card: string): number | undefined => {
+    const v = i.values[card];
+    const copies = held[card];
+    if (v === undefined || !copies?.length) return v;
+    const vals = copies.filter(Number.isFinite);
+    return nextCopyValue(v, copies.length, vals.length ? Math.min(...vals) : undefined, marginals);
+  };
   const sealed: SealedPack[] = (i.me?.assets ?? [])
     .filter((a) => a.kind === "pack")
     .map((a) => ({ assetId: a.id, ref: a.ref, ...((a as { name?: unknown }).name ? { name: String((a as { name?: unknown }).name) } : {}), ...(typeof a.your_value === "number" ? { value: a.your_value } : {}) }));
@@ -121,7 +133,7 @@ export function buildPacks(i: PacksInputs): PacksState {
       return r1(total);
     };
     const adjustedBook = ev((r) => byRarity(r, (c) => num(c.book)));
-    const ourValue = ev((r) => byRarity(r, (c) => i.values[c.id]));
+    const ourValue = ev((r) => byRarity(r, (c) => marginalValue(c.id)));
     const dealers = i.dealers.flatMap((d) => {
       const menu = obj(obj(d).menu);
       const e = (Array.isArray(menu.sells) ? menu.sells : []).map(obj).find((x) => x.pack === p.id);
@@ -233,7 +245,7 @@ export function proposePacks(i: PacksRouteInput): PacksProposal {
   return out;
 }
 
-/** Live (only with --confirm): open and list the selection. Buying packs is not executed yet. */
+/** Live (only with --confirm): open and list the selection. Buying packs is paused (only a note in `proposePacks`). */
 export async function executePacks(client: BazaarClient, selected: readonly Intent[], dryRun: boolean): Promise<string[]> {
   const lines: string[] = [];
   for (const i of selected.filter((x) => x.route === "packs")) {
