@@ -14,6 +14,8 @@ export interface CardInfo {
   id: string;
   name: string;
   rarity?: string;
+  /** Set id (catalog set, or the id prefix: "LAT-06" → "LAT"). */
+  set?: string;
 }
 
 export interface CatalogIndex {
@@ -32,7 +34,7 @@ export function normalize(text: string): string {
 
 export function indexCatalog(catalog: Pick<Catalog, "sets"> & { rarities?: unknown }): CatalogIndex {
   const byId = new Map<string, CardInfo>();
-  for (const s of catalog.sets) for (const c of s.cards) byId.set(c.id, { id: c.id, name: c.name ?? c.id, ...(c.rarity ? { rarity: c.rarity } : {}) });
+  for (const s of catalog.sets) for (const c of s.cards) byId.set(c.id, { id: c.id, name: c.name ?? c.id, ...(c.rarity ? { rarity: c.rarity } : {}), set: s.id ?? c.id.split("-")[0]! });
   const names = [...byId.values()].filter((c) => c.name.length >= 4).map((card) => ({ norm: normalize(card.name), card })).sort((a, b) => b.norm.length - a.norm.length);
   const r = catalog.rarities && typeof catalog.rarities === "object" ? Object.keys(catalog.rarities) : [];
   return { byId, names, rarities: r.length ? r : DEFAULT_RARITIES };
@@ -40,11 +42,21 @@ export function indexCatalog(catalog: Pick<Catalog, "sets"> & { rarities?: unkno
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Cards the text names (by id or by full catalog name, whole word). */
-export function namedCards(text: string, idx: CatalogIndex): string[] {
+/**
+ * Egg phrases a dealer echoes when answering a probe (game text): "la chulapa dorada" holds the card name "La Chulapa"
+ * but names the legend, not a card (message 4743, tick 506: a wrong flag). Blanked before looking for card names.
+ */
+export const EGG_ECHO_PHRASES: readonly string[] = ["chulapa dorada", "golden chulapa"];
+
+/**
+ * Cards the text names (by id or by full catalog name, whole word). A name inside an `echoes` phrase (our own probe
+ * keywords in that thread, plus `EGG_ECHO_PHRASES`) does not count: the dealer is repeating our words, not naming a card.
+ */
+export function namedCards(text: string, idx: CatalogIndex, echoes: readonly string[] = []): string[] {
   const found = new Set<string>();
   for (const m of text.matchAll(/\b([A-Z]{3}-\d{2})\b/g)) if (idx.byId.has(m[1]!)) found.add(m[1]!);
   let norm = normalize(text);
+  for (const e of [...EGG_ECHO_PHRASES, ...echoes].map((x) => normalize(x).trim()).filter((x) => x.length >= 3)) norm = norm.split(e).join(" ");
   for (const { norm: name, card } of idx.names) {
     const re = new RegExp(`(^|[^a-z0-9])${escape(name)}([^a-z0-9]|$)`);
     if (re.test(norm)) {
@@ -142,10 +154,12 @@ export interface FlagCandidate {
 
 /**
  * Compares a dealer message's text with the attached offer. There is a verifiable candidate only if the offer
- * carries exactly one card known to the catalog and the text: names a single card and it is a different one; or attributes a
- * single rarity to the card and it is not its own; or claims a different number of cards. Without an offer, nothing.
+ * carries exactly one card known to the catalog and the text: names a single card of the SAME set and it is a different
+ * one (the trickster's switch binds a lower rarity of the same set while the text names the good card, site-map § 7.6);
+ * or attributes a single rarity to the card and it is not its own; or claims a different number of cards. Without an
+ * offer, nothing. `echoes`: our own probe phrases in that thread, which the dealer may repeat (see `namedCards`).
  */
-export function detectFlag(message: { id?: number | string | null; text?: string | null; offer?: OfferShape | null }, idx: CatalogIndex): FlagCandidate | undefined {
+export function detectFlag(message: { id?: number | string | null; text?: string | null; offer?: OfferShape | null }, idx: CatalogIndex, echoes: readonly string[] = []): FlagCandidate | undefined {
   if (message.id == null || !message.text || !message.offer) return undefined;
   const cards = offerCards(message.offer);
   if (cards.length === 0) return undefined;
@@ -157,10 +171,10 @@ export function detectFlag(message: { id?: number | string | null; text?: string
   if (cards.length !== 1) return undefined;
   const offerCard = idx.byId.get(cards[0]!);
   if (!offerCard) return undefined;
-  const named = namedCards(message.text, idx);
+  const named = namedCards(message.text, idx, echoes);
   // An announced gift ("a little present from me: …") names another card without contradicting the offer: not flagged.
   const mentionsGift = GIFT_RE.test(normalize(message.text));
-  if (!mentionsGift && named.length === 1 && named[0] !== offerCard.id) {
+  if (!mentionsGift && named.length === 1 && named[0] !== offerCard.id && idx.byId.get(named[0]!)?.set === offerCard.set) {
     return { ...base, namedCard: named[0]!, offerCard: offerCard.id, verifiable: true, reason: `text names ${named[0]} (${idx.byId.get(named[0]!)?.name}), the offer gives ${offerCard.id} (${offerCard.name})` };
   }
   const rarities = namedRarities(message.text, idx);

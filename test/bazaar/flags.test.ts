@@ -11,6 +11,7 @@ const catalog = {
       cards: [
         { id: "LAT-04", name: "Mercado de la Cebada", rarity: "common" },
         { id: "LAT-09", name: "Teatro Pavón", rarity: "rare" },
+        { id: "LAT-06", name: "La Chulapa", rarity: "epic" },
       ],
     },
     {
@@ -20,6 +21,7 @@ const catalog = {
         { id: "MAL-10", name: "Café Comercial", rarity: "epic" },
       ],
     },
+    { id: "RET", cards: [{ id: "RET-02", name: "La Castañera", rarity: "common" }] },
   ],
 };
 const idx = indexCatalog(catalog);
@@ -45,10 +47,30 @@ describe("flags detector guardrails", () => {
     );
   });
 
-  it("flags a named card that is not the one in the offer", () => {
-    const f = detectFlag({ id: 4, text: "Here you are: Café Comercial, 40 P.", offer: sells("LAT-04") }, idx);
+  it("flags a named card of the same set that is not the one in the offer (the trickster's switch)", () => {
+    const f = detectFlag({ id: 4, text: "Here you are: Teatro Pavón, 40 P.", offer: sells("LAT-04") }, idx);
     expect(f?.verifiable).toBe(true);
-    expect(f?.namedCard).toBe("MAL-10");
+    expect(f?.namedCard).toBe("LAT-09");
+  });
+
+  it("never flags a card named from another set than the offered one", () => {
+    fc.assert(
+      fc.property(fc.constantFrom(...cards), fc.constantFrom(...cards), fc.integer({ min: 1, max: 99 }), (named, offered, price) => {
+        fc.pre(named.id.split("-")[0] !== offered.id.split("-")[0]);
+        expect(detectFlag({ id: 5, text: `Look, ${named.name}, ${price} P.`, offer: sells(offered.id) }, idx)).toBeUndefined();
+      }),
+    );
+  });
+
+  it("never flags a card name the dealer echoes from our own probe or an egg phrase (message 4743, tick 506)", () => {
+    const egg = "Ay, qué lista eres, cariño! Let us say ten P, yes? And shh... la chulapa dorada... there was only ever one, hijo. Ask him about the Moscow gold. He will know.";
+    expect(detectFlag({ id: 4743, text: egg, offer: sells("RET-02") }, idx)).toBeUndefined();
+    fc.assert(
+      fc.property(fc.constantFrom(...cards), fc.constantFrom(...cards), fc.constantFrom("the legend of {c}", "{c} of old", "the golden {c}"), (named, offered, tpl) => {
+        const probe = tpl.replace("{c}", named.name);
+        expect(detectFlag({ id: 6, text: `Ah, ${probe}... a story, cariño. 12 P.`, offer: sells(offered.id) }, idx, [probe])).toBeUndefined();
+      }),
+    );
   });
 });
 

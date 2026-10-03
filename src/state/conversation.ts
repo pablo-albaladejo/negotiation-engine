@@ -160,12 +160,14 @@ function flagCandidateOf(t: Thread, i: ConversationInputs): FlagCandidate | unde
   if (!i.catalog || !t.with) return undefined;
   const theirs = t.messages.filter((m) => m.sender === t.with);
   const from = i.flagsFromFirstMessage?.has(t.with) ? 0 : 1;
+  // Our own egg probes in this thread ("Do you know about X?"): the dealer's reply may echo X without naming a card.
+  const echoes = t.messages.filter((m) => m.sender !== t.with && m.text).flatMap((m) => [...m.text!.matchAll(/Do you know about ([^?]{3,40})\?/g)].map((x) => x[1]!));
   let found: FlagCandidate | undefined;
   let pressure: FlagCandidate | undefined;
   theirs.forEach((m, k) => {
     const msg = { ...(m.id != null ? { id: m.id } : {}), ...(m.text ? { text: m.text } : {}), ...(m.offer && typeof m.offer === "object" ? { offer: m.offer } : {}) };
     if (k >= from) {
-      const f = detectFlag(msg, i.catalog!);
+      const f = detectFlag(msg, i.catalog!, echoes);
       if (f?.verifiable) found = f;
     }
     pressure = detectPressure(msg, k >= 1) ?? pressure;
