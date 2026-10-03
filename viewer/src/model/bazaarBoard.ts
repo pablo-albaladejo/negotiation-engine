@@ -147,6 +147,37 @@ export interface BoardSchedule {
   upcoming: { at_hours: number; action: string; note: string; wall: string | null }[];
 }
 
+export interface BoardDeskStep {
+  tick: number | null;
+  event: string;
+  status: string | null;
+  offerId: number | null;
+  ref: string | null;
+  price: number | null;
+  anchor: number | null;
+  floor: number | null;
+  serverValue: number | null;
+  negIfFilled: number | null;
+  reason: string | null;
+}
+
+export interface BoardDeskChain {
+  key: string;
+  venue: string | null;
+  incoming: { id?: number | null; weGet?: string | null; weGive?: string | null; kind?: string | null; value?: number | null; verdict?: string | null } | null;
+  incomingTick: number | null;
+  steps: BoardDeskStep[];
+  outcome: { tick: number | null; status: string | null; negDelta: number | null; reason: string | null } | null;
+  status: string | null;
+}
+
+export interface BoardDeskTeam {
+  team: string;
+  chains: BoardDeskChain[];
+  negWon: number;
+  negOpen: number;
+}
+
 export interface BoardScoreParts {
   tick: number | null;
   now: Record<string, number>;
@@ -195,6 +226,8 @@ export interface Board {
   workshop?: BoardWorkshop;
   /** Every score part now, at the day's first snapshot and at the previous tick; absent on an older server. */
   score_parts?: BoardScoreParts;
+  /** Team desk: offers other teams make to us, our counters and outcomes, per team; absent on an older server. */
+  team_desk?: BoardDeskTeam[];
 }
 
 export const EMPTY_BOARD: Board = {

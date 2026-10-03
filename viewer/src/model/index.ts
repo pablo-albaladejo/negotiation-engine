@@ -16,6 +16,8 @@ export {
   type Board,
   type BoardAgent,
   type BoardWorkshop,
+  type BoardDeskTeam,
+  type BoardDeskChain,
   type BoardAlbum,
   type BoardAlbumPage,
   type BoardMissingCard,

@@ -139,3 +139,114 @@ export function scorePartsOf(now: Record<string, number>, tick: number | null, h
   const earlier = tick === null ? [...history] : history.filter((h) => h.tick < tick);
   return { tick, now, day_start: history[0] ?? null, prev: earlier.at(-1) ?? null };
 }
+
+// ---------------------------------------------------------------- team desk
+
+/** One line of `team-desk.jsonl` (written by `bazaar:play`): offers other teams make to us and our counter (structure only). */
+export const TeamDeskLineSchema = z.looseObject({
+  ts: str.nullish(),
+  tick: num.nullish(),
+  event: str,
+  team: str,
+  venue: str.nullish(),
+  incoming: z.looseObject({ id: num.nullish(), weGet: str.nullish(), weGive: str.nullish(), kind: str.nullish(), value: num.nullish(), verdict: str.nullish() }).nullish(),
+  counter: z
+    .looseObject({ offerId: num.nullish(), ref: str.nullish(), assetId: num.nullish(), price: num.nullish(), floor: num.nullish(), anchor: num.nullish(), serverValue: num.nullish(), negIfFilled: num.nullish(), replaces: num.nullish() })
+    .nullish(),
+  status: str.nullish(),
+  negDelta: num.nullish(),
+  reason: str.nullish(),
+});
+export type TeamDeskLine = z.infer<typeof TeamDeskLineSchema>;
+
+export interface TeamDeskStep {
+  tick: number | null;
+  event: string;
+  status: string | null;
+  offerId: number | null;
+  ref: string | null;
+  price: number | null;
+  anchor: number | null;
+  floor: number | null;
+  serverValue: number | null;
+  negIfFilled: number | null;
+  reason: string | null;
+}
+
+export interface TeamDeskChain {
+  key: string;
+  venue: string | null;
+  incoming: NonNullable<TeamDeskLine["incoming"]> | null;
+  incomingTick: number | null;
+  steps: TeamDeskStep[];
+  outcome: { tick: number | null; status: string | null; negDelta: number | null; reason: string | null } | null;
+  /** Status of the latest event (would, sent, filled, expired…). */
+  status: string | null;
+}
+
+export interface TeamDeskTeam {
+  team: string;
+  chains: TeamDeskChain[];
+  /** Σ negDelta of filled counters. */
+  negWon: number;
+  /** Σ negIfFilled of the latest counter of each chain still open. */
+  negOpen: number;
+}
+
+/**
+ * Chains per team: incoming → counter → steps → outcome. A chain is keyed by the to-me offer id; events without one
+ * join the chain of the offer they replace (`counter.replaces`), else of the same team and card.
+ */
+export function teamDeskOf(lines: readonly TeamDeskLine[]): TeamDeskTeam[] {
+  const chains = new Map<string, TeamDeskChain & { team: string }>();
+  const byOffer = new Map<number, string>();
+  const byRef = new Map<string, string>();
+  for (const l of lines) {
+    const c = l.counter ?? null;
+    const key =
+      l.incoming?.id != null
+        ? `${l.team}|in:${l.incoming.id}`
+        : (c?.replaces != null ? byOffer.get(c.replaces) : undefined) ?? (c?.offerId != null ? byOffer.get(c.offerId) : undefined) ?? byRef.get(`${l.team}|${c?.ref ?? ""}`) ?? `${l.team}|ref:${c?.ref ?? "?"}`;
+    let ch = chains.get(key);
+    if (!ch) {
+      ch = { key, team: l.team, venue: l.venue ?? null, incoming: null, incomingTick: null, steps: [], outcome: null, status: null };
+      chains.set(key, ch);
+    }
+    if (l.venue) ch.venue = l.venue;
+    if (l.incoming && !ch.incoming) {
+      ch.incoming = l.incoming;
+      ch.incomingTick = l.tick ?? null;
+    }
+    if (c?.ref) byRef.set(`${l.team}|${c.ref}`, key);
+    if (c?.offerId != null) byOffer.set(c.offerId, key);
+    if (l.event === "outcome") ch.outcome = { tick: l.tick ?? null, status: l.status ?? null, negDelta: l.negDelta ?? null, reason: l.reason ?? null };
+    else if (l.event !== "incoming" || c)
+      ch.steps.push({
+        tick: l.tick ?? null,
+        event: l.event,
+        status: l.status ?? null,
+        offerId: c?.offerId ?? null,
+        ref: c?.ref ?? null,
+        price: c?.price ?? null,
+        anchor: c?.anchor ?? null,
+        floor: c?.floor ?? null,
+        serverValue: c?.serverValue ?? null,
+        negIfFilled: c?.negIfFilled ?? null,
+        reason: l.reason ?? null,
+      });
+    ch.status = l.status ?? ch.status;
+  }
+  const teams = new Map<string, TeamDeskTeam>();
+  for (const ch of chains.values()) {
+    const t = teams.get(ch.team) ?? { team: ch.team, chains: [], negWon: 0, negOpen: 0 };
+    const { team: _team, ...chain } = ch;
+    t.chains.push(chain);
+    if (ch.outcome?.status === "filled") t.negWon += ch.outcome.negDelta ?? 0;
+    else if (!ch.outcome && ch.status !== "cancelled") t.negOpen += [...ch.steps].reverse().find((s) => s.negIfFilled !== null)?.negIfFilled ?? 0;
+    teams.set(ch.team, t);
+  }
+  const r2 = (x: number) => Math.round(x * 10) / 10;
+  return [...teams.values()]
+    .map((t) => ({ ...t, negWon: r2(t.negWon), negOpen: r2(t.negOpen), chains: t.chains.reverse() }))
+    .sort((a, b) => b.negWon - a.negWon || b.negOpen - a.negOpen || a.team.localeCompare(b.team));
+}

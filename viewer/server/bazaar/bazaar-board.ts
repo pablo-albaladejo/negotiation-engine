@@ -39,7 +39,7 @@ import {
   type VerdictCache,
 } from "./bazaar-board-core.js";
 import { agentStatuses, playMode, type AgentStatus } from "./bazaar-agents.js";
-import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, scoreNumbers, scorePartsOf, ScorePartsLineSchema, type AlbumOut, type ScheduleOut, type ScorePartsLine, type ScorePartsOut } from "./bazaar-cockpit-core.js";
+import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, scoreNumbers, scorePartsOf, ScorePartsLineSchema, teamDeskOf, TeamDeskLineSchema, type TeamDeskTeam, type AlbumOut, type ScheduleOut, type ScorePartsLine, type ScorePartsOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
 import { workshopOf, type WorkshopOut } from "./bazaar-workshop.js";
@@ -98,6 +98,8 @@ export interface BoardOut {
   workshop: WorkshopOut;
   /** Every score part now, at the day's first snapshot and at the previous tick (Δ day / Δ tick). */
   score_parts: ScorePartsOut;
+  /** Team desk (`team-desk.jsonl`, today): offers other teams make to us, our counters and outcomes, per team. */
+  team_desk: TeamDeskTeam[];
 }
 
 export interface BazaarBoardDeps {
@@ -370,6 +372,7 @@ export class BazaarBoard {
       schedule,
       agents,
       play_mode: await playMode(this.bazaarDir),
+      team_desk: teamDeskOf((await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data),
       score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),
     };

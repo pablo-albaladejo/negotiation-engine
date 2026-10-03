@@ -3,6 +3,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 import { Workshop } from "./Workshop.js";
+import { TeamDesk } from "./TeamDesk.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
 import { componentOf } from "../model/scoreTree.js";
 import type { ModelLadderLevel } from "../model/gameModel.js";
@@ -820,6 +821,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <Upcoming board={board} />
       </div>
       <RightNow board={board} onOpen={open} />
+      <TeamDesk board={board} />
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>
         <Album board={board} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
