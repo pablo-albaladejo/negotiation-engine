@@ -13,8 +13,7 @@ Biblioteca de componentes compartida entre visor y posibles otros clientes. Buil
 - **[`.design-sync/`](.design-sync/AGENTS.md)** — Sincronización con Claude Design (previews, config, convenciones).
 - **[`examples/`](examples/AGENTS.md)** — ejemplos de uso por familia.
 - **[`scripts/`](scripts/AGENTS.md)** — build.
-- **`package.json`** — Paquete independiente (`@negotiation-ring/design-system`).
-- **`pnpm-lock.yaml`** — Lockfile específico.
+- **`README.md`**, **`package.json`**, **`pnpm-lock.yaml`**, `tsconfig.json`, `vitest.config.ts` — paquete independiente (`@negotiation-ring/design-system`) y su configuración.
 
 ## Build
 
