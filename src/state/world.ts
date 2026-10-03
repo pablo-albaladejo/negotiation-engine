@@ -143,11 +143,58 @@ export function parseFeed(raw: unknown): FeedEvent[] {
   });
 }
 
+/** Feed event types that make up eggs, badges and gifts (kept for the whole day, not only the feed's window). */
+const WORLD_EVENT_TYPES = new Set(["egg.found", "egg.given", "badge.awarded", "gift.given"]);
+
+/**
+ * Egg, badge and gift events of the day from the recorder (`<dayDir>/stream-public.jsonl` and `stream-team.jsonl`):
+ * `/api/feed(200)` drops them within minutes, the recorder keeps them all. Missing files → empty; never throws.
+ */
+export function recordedWorldEvents(dayDir: string): FeedEvent[] {
+  const raw: unknown[] = [];
+  for (const name of ["stream-public.jsonl", "stream-team.jsonl"]) {
+    const file = join(dayDir, name);
+    let text: string;
+    try {
+      text = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of text.split("\n")) {
+      if (!line.includes('"egg.') && !line.includes('"badge.awarded"') && !line.includes('"gift.given"')) continue;
+      try {
+        const data = obj(JSON.parse(line)).data;
+        if (data) raw.push(data);
+      } catch {
+        // truncated line (the recorder may be writing it): skipped
+      }
+    }
+  }
+  return parseFeed(raw).filter((e) => WORLD_EVENT_TYPES.has(e.type));
+}
+
+/** Feed plus recorded world events, deduplicated by event id (an event without id is kept as is). */
+export function mergeWorldEvents(feed: readonly FeedEvent[], recorded: readonly FeedEvent[]): FeedEvent[] {
+  const seen = new Set<number>();
+  const out: FeedEvent[] = [];
+  for (const e of [...recorded, ...feed]) {
+    if (e.id !== undefined) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+    }
+    out.push(e);
+  }
+  return out.sort((a, b) => a.tick - b.tick);
+}
+
 const personaOf = (e: FeedEvent) => str(e.payload.persona) ?? str(e.payload.dealer) ?? e.actor;
 const prizeOf = (p: Record<string, unknown>) => str(p.prize) ?? str(p.reward) ?? str(p.badge) ?? str(p.card) ?? (num(p.cash) !== undefined ? `${num(p.cash)} P` : undefined);
 
-/** World eggs and ours (eggs, badges, hidden cards, gifts, flag results) from the feed. */
-export function worldFromFeed(events: readonly FeedEvent[], team: string | undefined, personaIds: readonly string[], heldRefs: readonly string[], catalog: Catalog | undefined, flags: readonly FlagRecord[]): { eggs: WorldEggs; ours: OursWorld } {
+/**
+ * World eggs and ours (eggs, badges, hidden cards, gifts, flag results) from the feed (merged with the recorder's
+ * world events, see `mergeWorldEvents`). `meBadges` (`/api/me` badges) is authoritative for our badges when given.
+ */
+export function worldFromFeed(events: readonly FeedEvent[], team: string | undefined, personaIds: readonly string[], heldRefs: readonly string[], catalog: Catalog | undefined, flags: readonly FlagRecord[], meBadges: readonly string[] = []): { eggs: WorldEggs; ours: OursWorld } {
   const byPersona: WorldEggs["byPersona"] = {};
   const slot = (p: string) => (byPersona[p] ??= { foundByOthers: [], left: EGGS_PER_PERSONA_ASSUMPTION, leftAssumed: true });
   for (const p of personaIds) slot(p);
@@ -183,6 +230,7 @@ export function worldFromFeed(events: readonly FeedEvent[], team: string | undef
     const s = slot(p);
     s.left = Math.max(0, s.left - n);
   }
+  if (meBadges.length) ours.badges = [...new Set([...meBadges, ...ours.badges])];
   ours.flags.balance = ours.flags.sent.reduce((a, f) => a + (f.points ?? 0), 0);
   const hidden = new Set((catalog?.sets ?? []).flatMap((s) => s.cards.filter((c) => (c as { hidden?: unknown }).hidden === true).map((c) => c.id)));
   ours.hiddenCards = [...new Set(heldRefs.filter((r) => hidden.has(r)))];

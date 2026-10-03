@@ -18,7 +18,7 @@ import { applyCardHistory, confirmCandidates, emptyRivalLedger, formatRivals, in
 import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, enrichLine, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { applyLabels, type HintLabel } from "../hints/labels.js";
-import { buildPersonas, parseFeed, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { buildPersonas, mergeWorldEvents, parseFeed, recordedWorldEvents, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
 
 /**
@@ -238,7 +238,7 @@ export interface BuildOptions {
   rivalConfirmPerTick?: number;
   /** Leaderboard ranks from the previous tick (if this tick does not read it). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
-  /** Folder with news-summary.json (default `<cwd>/results/bazaar-live/<local date>`); missing or bad file → empty. */
+  /** Day folder with news-summary.json and the recorder's stream-*.jsonl (default `<cwd>/results/bazaar-live/<local date>`); missing or bad file → empty. */
   newsDir?: string;
 }
 
@@ -273,6 +273,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   const others = (venues?.venues ?? []).filter((v) => v.venue && v.venue !== "rastro" && (v as { status?: unknown }).status !== "closed");
   const otherBoards = await Promise.all(others.map(async (v) => ({ venue: v.venue!, offers: parseOffers(await settle(`board ${v.venue}`, client.board(v.venue!))) })));
   const events = parseFeed(feed);
+  const dayDir = opts.newsDir ?? join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE"));
   const rawDealers = (dealers?.dealers ?? []) as unknown[];
   const c = clock as Clock & Record<string, unknown>;
   const ours = me ? oursFrom(me) : { unlocked: [], album: { pages: [] }, holdings: { cards: 0, packs: 0, byRef: {}, spares: 0 }, values: {} };
@@ -329,8 +330,11 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     const est = fit.posterior.estimates[p.id];
     if (est) p.estimates = est;
   }
-  const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
-  // Egg probes resolve from the feed's egg events (structure): hit or miss, persisted with the persona memo.
+  // Eggs, badges and gifts: the feed's 200 events cover only minutes, so the recorder's whole day is merged in.
+  const worldEvents = mergeWorldEvents(events, recordedWorldEvents(dayDir));
+  const meBadges = Array.isArray(me?.badges) ? me.badges.filter((b): b is string => typeof b === "string") : [];
+  const world = worldFromFeed(worldEvents, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? [], meBadges);
+  // Egg probes resolve from the day's egg events (structure): hit or miss, persisted with the persona memo.
   for (const p of personas) p.eggProbes = resolveProbes(p.eggProbes, world.ours.eggs.filter((e) => e.persona === p.id), clock.tick);
   // Model of each persona: the fit (estimates) writes it and it accumulates over the previous tick's.
   for (const p of personas) {
@@ -432,7 +436,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
-    news: readNewsSignals(opts.newsDir ?? join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE")), clock.tick),
+    news: readNewsSignals(dayDir, clock.tick),
     env: {
       schedule: scheduleSummary(schedule),
       dealers: (dealers?.dealers ?? []).map((d) => ({ id: d.id, ...(d.name ? { name: d.name } : {}), ...(d.status ? { status: d.status } : {}), ...(typeof d.level === "number" ? { level: d.level } : {}) })),
