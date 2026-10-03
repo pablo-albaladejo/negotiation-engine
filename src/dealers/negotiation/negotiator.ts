@@ -143,6 +143,7 @@ export type Rule =
   | "mirror-first-step"
   | "ac-next"
   | "welcome-first-deal"
+  | "welcome-counter"
   | "final-above-reservation"
   | "final-below-reservation"
   | "fixed-price"
@@ -373,9 +374,11 @@ export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOp
 }
 
 /**
- * Regla `welcome-first-deal`: en la primera conversación con un dealer nuevo su apertura es su límite, así que su precio
- * se acepta si cabe en la reserva privada y crea valor a nuestro valor privado (EV > 0). Sustituye, solo en esa
- * conversación, el «no cerrar a su apertura» de `effectiveReservation`. Sin valor privado conocido, no aplica.
+ * `welcome_first_deal`: en la primera conversación con un dealer nuevo su apertura es su límite. Aceptar la apertura
+ * sin ofertar cuenta como took_opening, no como trato negociado (personas.md § 9), así que primero va UNA contraoferta
+ * nuestra 1 P mejor para nosotros (`welcome-counter`, con guardarraíles); el dealer no puede pasar su límite y repite
+ * precio, y entonces se acepta (`welcome-first-deal`). Solo si su precio cabe en la reserva privada y crea valor a
+ * nuestro valor privado (EV > 0); sustituye en esa conversación el «no cerrar a su apertura» de `effectiveReservation`.
  */
 export function welcomeTake(view: Pick<ThreadView, "side" | "reservation" | "privateValue" | "herCurrent" | "welcomeFirstDeal">): boolean {
   return !!view.welcomeFirstDeal && !!view.herCurrent && view.privateValue !== undefined && valuePositive(view, view.herCurrent.price);
@@ -384,8 +387,17 @@ export function welcomeTake(view: Pick<ThreadView, "side" | "reservation" | "pri
 export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): Decision {
   const effRes = effectiveReservation(view);
   if (view.herCurrent && welcomeTake(view)) {
+    const her = view.herCurrent;
+    if (view.ourPrices.length === 0) {
+      const mandate: Mandate = { role: view.side === "buy" ? "buyer" : "seller", reservation: view.reservation };
+      const price = enforceGuardrails(mandate, her.price + (view.side === "buy" ? -1 : 1));
+      if (price !== her.price && price >= 1) {
+        if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes };
+        return { action: { kind: "counter", price }, rule: "welcome-counter", effectiveReservation: effRes, ourNext: price };
+      }
+    }
     if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
-    return { action: { kind: "accept", offerId: view.herCurrent.offerId, price: view.herCurrent.price }, rule: "welcome-first-deal", effectiveReservation: effRes };
+    return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule: "welcome-first-deal", effectiveReservation: effRes };
   }
   if (effRes < 1) return { action: { kind: "close" }, rule: "no-zone", effectiveReservation: effRes };
   const next = nextPrice(view, p);
