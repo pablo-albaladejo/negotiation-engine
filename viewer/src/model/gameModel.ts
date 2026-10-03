@@ -143,12 +143,25 @@ export interface ModelRivalPage {
   missing: string[];
 }
 
+export interface ModelBoardSnapshot {
+  tick: number;
+  albumFilled?: number;
+  albumSlots?: number;
+  pagesComplete?: number;
+  rarest?: string;
+  deals?: number;
+  score?: number;
+  rank?: number;
+}
+
 export interface ModelRivalTeam {
   team: string;
-  seen: { assetId: number; ref: string; tick: number; source: string }[];
+  seen: { assetId: number; ref: string; tick: number; source: string; confirmedTick?: number }[];
   distinct: number;
   spares: string[];
-  board?: { tick: number; albumFilled?: number; albumSlots?: number; pagesComplete?: number; rarest?: string; deals?: number; score?: number; rank?: number };
+  board?: ModelBoardSnapshot;
+  /** Leaderboard rows over time (optional: an older server does not provide it). */
+  history?: ModelBoardSnapshot[];
   unseen?: number;
   pages: ModelRivalPage[];
   wants: { ref: string; tick: number }[];

@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import type { Board } from "../model/bazaarBoard.js";
 import { teamLabel } from "../model/cockpit.js";
 import type { GameModel, ModelRivalTeam, ModelRivals } from "../model/gameModel.js";
+import { Sparkline } from "../ui/sparkline.js";
 
 /**
  * «Other teams»: what each team holds and wants, estimated from public structure only (`GameState.rivals`).
@@ -12,6 +13,9 @@ import type { GameModel, ModelRivalTeam, ModelRivals } from "../model/gameModel.
 
 const muted = { color: "var(--muted)" } as const;
 const col = { display: "flex", flexDirection: "column", gap: "var(--space-3)" } as const;
+
+/** One leaderboard field over time (rows without it are skipped). */
+const series = (t: ModelRivalTeam, k: "score" | "rank" | "albumFilled"): number[] => (t.history ?? []).flatMap((h) => (typeof h[k] === "number" ? [h[k]] : []));
 
 const closest = (t: ModelRivalTeam) => t.pages.filter((p) => p.have < p.of).sort((a, b) => a.of - a.have - (b.of - b.have))[0];
 
@@ -53,13 +57,20 @@ function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
           rows={t.pages.map((p) => ({ set: p.set, have: `${p.have}/${p.of}`, missing: p.missing.join(" ") || "—" }))}
         />
       ) : null}
+      {(t.history?.length ?? 0) > 1 ? (
+        <span style={muted}>
+          Since tick {t.history![0]!.tick}: score <Sparkline values={series(t, "score")} label={`${t.team} score`} /> · rank{" "}
+          <Sparkline values={series(t, "rank").map((r) => -r)} label={`${t.team} rank (higher is better)`} /> · album <Sparkline values={series(t, "albumFilled")} label={`${t.team} album`} />
+        </span>
+      ) : null}
       <DataTable
         columns={[
           { key: "ref", label: "Card seen" },
           { key: "source", label: "How" },
           { key: "tick", label: "Tick", numeric: true },
+          { key: "confirmed", label: "Still theirs at", numeric: true },
         ]}
-        rows={t.seen.map((s) => ({ ref: s.ref, source: s.source, tick: s.tick }))}
+        rows={t.seen.map((s) => ({ ref: s.ref, source: s.source, tick: s.tick, confirmed: s.confirmedTick ?? "—" }))}
       />
     </div>
   );
@@ -110,6 +121,7 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
           columns={[
             { key: "team", label: "Team" },
             { key: "rank", label: "Rank", numeric: true },
+            { key: "trend", label: "Score over time" },
             { key: "album", label: "Album", numeric: true },
             { key: "seen", label: "Seen", numeric: true },
             { key: "unseen", label: "Not seen", numeric: true },
@@ -122,6 +134,7 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
             return {
               team: teamLabel(board, t.team),
               rank: t.board?.rank ?? "—",
+              trend: <Sparkline values={series(t, "score")} label={`${t.team} score`} />,
               album: t.board ? `${t.board.albumFilled ?? "?"}/${t.board.albumSlots ?? "?"}` : "—",
               seen: t.distinct,
               unseen: t.unseen ?? "—",
