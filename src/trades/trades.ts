@@ -452,6 +452,20 @@ export interface TradeState {
   listBackoff?: Map<number, number>;
   /** Other teams' demand and supply (only when the coordinator has `GameState.rivals`). */
   rivals?: RivalSignals;
+  /** Fees of other venues (`/api/venues` fee_bps, fee_per_card) for offers we accept there; unknown → `params.fees`. */
+  venueFees?: Map<string, FeeModel>;
+}
+
+/** Fee model for accepting an offer at `venue`: El Rastro and unknown venues pay `fallback` (the Rastro fee, conservative). */
+export function venueFeesOf(venue: string | null | undefined, venueFees: ReadonlyMap<string, FeeModel> | undefined, fallback: FeeModel): FeeModel {
+  return venue && venue !== "rastro" ? (venueFees?.get(venue) ?? fallback) : fallback;
+}
+
+/** `/api/venues` → fee model per venue (only venues that state both fees). */
+export function parseVenueFees(venues: readonly { venue?: string | null | undefined; fee_bps?: number | null | undefined; fee_per_card?: number | null | undefined }[]): Map<string, FeeModel> {
+  const out = new Map<string, FeeModel>();
+  for (const v of venues) if (v.venue && typeof v.fee_bps === "number" && typeof v.fee_per_card === "number") out.set(v.venue, { bps: v.fee_bps, perCard: v.fee_per_card });
+  return out;
 }
 
 export interface Evaluation {
@@ -547,7 +561,7 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   }
   const getCards = give.assets.map((a) => a.ref as string);
   const cashNet = give.cash - want.cash;
-  const fee = tradeFee(give.cash + want.cash, getCards.length + giveCards.length, params.fees);
+  const fee = tradeFee(give.cash + want.cash, getCards.length + giveCards.length, venueFeesOf(offer.venue, state.venueFees, params.fees));
   const cardDelta = valueDelta(counts, giveCards, getCards, state.model);
   const risk = pageRisk(counts, giveCards, state.model, params.protectPageHave);
   const valueCreated = cardDelta + cashNet - fee - risk;

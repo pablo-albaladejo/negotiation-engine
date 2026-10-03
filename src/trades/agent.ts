@@ -11,9 +11,11 @@ import {
   parseMyOffers,
   parseOffers,
   parseSettlements,
+  parseVenueFees,
   planTick,
   readSide,
   setOf,
+  type FeeModel,
   type RivalSignals,
   type TickPlan,
   type TradeParams,
@@ -21,7 +23,7 @@ import {
 } from "./trades.js";
 
 /** What the trades loop needs from the client (injectable in tests). */
-export type TradesApi = Pick<BazaarClient, "me" | "catalog" | "clock" | "value" | "board" | "myOffers" | "myThreads" | "feed" | "postOffer" | "cancelOffer" | "acceptOffer">;
+export type TradesApi = Pick<BazaarClient, "me" | "catalog" | "clock" | "value" | "board" | "myOffers" | "myThreads" | "feed" | "postOffer" | "cancelOffer" | "acceptOffer" | "venues">;
 
 export interface TradesAgentOptions {
   dryRun: boolean;
@@ -75,6 +77,8 @@ export class TradesAgent {
   private readonly reservedUntil = new Map<number, number>();
   private readonly cancelled = new Set<number>();
   private openBids = new Map<number, { cash: number; expires: number }>();
+  /** Fees per venue for offers addressed to us elsewhere (last good read is kept if `/api/venues` fails). */
+  private venueFees = new Map<string, FeeModel>();
   /** Listings posted per asset in this run, and the tick until which reposting it backs off. */
   private readonly listPosts = new Map<number, number>();
   private readonly listBackoff = new Map<number, number>();
@@ -113,6 +117,11 @@ export class TradesAgent {
     let settlements: TradeState["settlements"] = [];
     try {
       settlements = parseSettlements(await this.api.feed(200));
+    } catch (e) {
+      if (!(e instanceof BazaarError)) throw e;
+    }
+    try {
+      this.venueFees = parseVenueFees((await this.api.venues()).venues);
     } catch (e) {
       if (!(e instanceof BazaarError)) throw e;
     }
@@ -160,6 +169,7 @@ export class TradesAgent {
       spent: this.spent,
       reserved: new Set([...this.reservedUntil.keys(), ...inThreads.map(([id]) => id)]),
       listBackoff: new Map(this.listBackoff),
+      venueFees: new Map(this.venueFees),
     };
   }
 
