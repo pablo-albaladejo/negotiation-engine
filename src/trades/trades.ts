@@ -323,23 +323,37 @@ export function boardQuotes(board: TradeOffer[], mineIds: Set<number>, model: Va
 export interface PriceRef {
   price: number;
   source: string;
+  /** From other cards of the same rarity: a weak reference, so no ask premium is added on top. */
+  byRarity?: boolean;
 }
 
+/** Lower quartile (nearest rank, rounding down). */
+export function lowerQuartile(xs: number[]): number | undefined {
+  if (xs.length === 0) return undefined;
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.floor((s.length - 1) / 4)];
+}
+
+/** Rival asks of the same rarity needed before they are a reference (fewer mix too few different cards). */
+export const RARITY_ASKS_MIN = 3;
+
 /**
- * Reference price of a card: median of that card's settlements, then of its rarity; if none,
- * median of what is asked on the board (card, then rarity); otherwise its book.
+ * Reference price of a card: median of that card's settlements, then of its rarity; if none, median of what is asked
+ * on the board for that card, then the lower quartile of its rarity's asks (only with ≥ `RARITY_ASKS_MIN` of them);
+ * otherwise its book.
  */
 export function priceReference(ref: string, model: ValueModel, settlements: Quote[], asks: Quote[]): PriceRef | undefined {
   const rarity = model.meta.get(ref)?.rarity;
-  const tiers: [string, number[]][] = [
-    ["settled card", settlements.filter((q) => q.ref === ref).map((q) => q.price)],
-    [`settled ${rarity ?? "?"}`, settlements.filter((q) => rarity !== undefined && (q.rarity ?? model.meta.get(q.ref)?.rarity) === rarity).map((q) => q.price)],
-    ["asks card", asks.filter((q) => q.ref === ref).map((q) => q.price)],
-    [`asks ${rarity ?? "?"}`, asks.filter((q) => rarity !== undefined && q.rarity === rarity).map((q) => q.price)],
+  const rarityAsks = asks.filter((q) => rarity !== undefined && q.rarity === rarity).map((q) => q.price);
+  const tiers: [string, number[], boolean, (xs: number[]) => number | undefined][] = [
+    ["settled card", settlements.filter((q) => q.ref === ref).map((q) => q.price), false, median],
+    [`settled ${rarity ?? "?"}`, settlements.filter((q) => rarity !== undefined && (q.rarity ?? model.meta.get(q.ref)?.rarity) === rarity).map((q) => q.price), true, median],
+    ["asks card", asks.filter((q) => q.ref === ref).map((q) => q.price), false, median],
+    [`asks ${rarity ?? "?"} q1`, rarityAsks.length >= RARITY_ASKS_MIN ? rarityAsks : [], true, lowerQuartile],
   ];
-  for (const [source, xs] of tiers) {
-    const m = median(xs);
-    if (m !== undefined) return { price: m, source: `${source} n=${xs.length}` };
+  for (const [source, xs, byRarity, stat] of tiers) {
+    const m = stat(xs);
+    if (m !== undefined) return { price: m, source: `${source} n=${xs.length}`, ...(byRarity ? { byRarity } : {}) };
   }
   const book = model.meta.get(ref)?.book;
   return book ? { price: book, source: "book" } : undefined;
@@ -691,8 +705,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       target = Math.max(floor, rival - 1);
     } else {
       reference = priceReference(ref, state.model, state.settlements, asks);
-      const extra = demanded(ref) ? params.demandPremium : 0;
-      target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + params.askPremium + extra)) : Math.ceil(floor * (1 + extra)));
+      // A rarity-wide reference mixes other cards: no premium on top of it.
+      const extra = demanded(ref) && !reference?.byRarity ? params.demandPremium : 0;
+      const premium = reference?.byRarity ? 0 : params.askPremium + extra;
+      target = Math.max(floor, reference ? Math.ceil(reference.price * (1 + premium)) : Math.ceil(floor * (1 + extra)));
     }
     const out = { floor, reference, target };
     targets.set(ref, out);
@@ -879,7 +895,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
 
   if (overBudget.length) notes.push(`${overBudget.length} bids skipped by --max-spend budget: ${overBudget.join(" ")}`);
   if (state.rivals) {
-    const lifted = posts.filter((p) => p.kind === "list" && demanded(p.ref)).map((p) => `${p.ref}@${p.price} (${state.rivals!.demand.get(p.ref)!.join(",")})`);
+    const lifted = posts.filter((p) => p.kind === "list" && demanded(p.ref) && !p.reference?.byRarity && p.reference?.source !== "cheapest rival ask").map((p) => `${p.ref}@${p.price} (${state.rivals!.demand.get(p.ref)!.join(",")})`);
     const supplied = posts.filter((p) => p.kind === "bid" && state.rivals!.supply.has(p.ref)).map((p) => p.ref);
     notes.push(`rivals: ${state.rivals.demand.size} cards in demand, ${state.rivals.supply.size} held by a rival${lifted.length ? ` · listings +${Math.round(params.demandPremium * 100)}%: ${lifted.join(" ")}` : ""}${supplied.length ? ` · bids with a known holder: ${supplied.join(" ")}` : ""}`);
   }
