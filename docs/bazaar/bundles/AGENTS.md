@@ -12,7 +12,9 @@ assets/ está exenta de la regla de 10 ficheros por carpeta (copia literal; ver 
   - **PersonaEditor-CY0YsfDU.js** — editor de personas de admin: bandas de trades, vista previa de la curva de concesión, concesiones en espejo, precio de bienvenida, trickster.
   - **util-CFqlaVVI.js** — frase de prompt por rasgo y tramo, palabras por respuesta y la curva.
   - **useEvents-BpJ5PfZT.js** — escalera de 5 niveles (Friendly, Sharp, Collector, Tricksters, Banker).
+- **[`pretty/`](pretty/AGENTS.md)** — los mismos ficheros en versión legible (wakaru + Prettier). Para leer, empieza aquí.
 
 ## Links
 
 - ↑ [`docs/bazaar/`](../AGENTS.md)
+- → [`pretty/`](pretty/AGENTS.md)

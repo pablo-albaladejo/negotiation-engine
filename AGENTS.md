@@ -78,7 +78,7 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 
 - **Como mucho 10 ficheros versionados por carpeta**; si hay más, se crean subcarpetas por concepto.
 - **Cada carpeta tiene un AGENTS.md corto en español** (qué vive ahí, puntos de entrada, reglas propias; sin repetir al padre) que enlaza al AGENTS.md del padre y al de cada subcarpeta.
-- Exentas: la raíz no cuenta para el tope (la configuración de las herramientas tiene que vivir aquí); `results/` (trazas en vivo), `design-system/.design-sync/` (generado) y `docs/bazaar/bundles/assets/` (copia literal del frontend) quedan fuera del tope y sin AGENTS.md por subcarpeta.
+- Exentas: la raíz no cuenta para el tope (la configuración de las herramientas tiene que vivir aquí); `results/` (trazas en vivo), `design-system/.design-sync/` (generado), `docs/bazaar/bundles/assets/` (copia literal del frontend) y `docs/bazaar/bundles/pretty/assets/` (su versión legible) quedan fuera del tope y sin AGENTS.md por subcarpeta.
 - Lo comprueba `pnpm docs:check` (`scripts/check-agents-tree.mjs`).
 
 ## Links a subcarpetas

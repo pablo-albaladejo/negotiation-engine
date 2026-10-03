@@ -5,8 +5,8 @@
 //   - tiene una subcarpeta cuyo AGENTS.md no enlaza desde el suyo, o su AGENTS.md no enlaza al del padre.
 // Exenciones (documentadas también en el AGENTS.md raíz):
 //   - la raíz no cuenta para el tope: la configuración de las herramientas tiene que vivir ahí;
-//   - `results/` (trazas en vivo), `design-system/.design-sync/` (generado) y `docs/bazaar/bundles/assets/`
-//     (copia literal del frontend del Bazaar) quedan fuera de todo,
+//   - `results/` (trazas en vivo), `design-system/.design-sync/` (generado), `docs/bazaar/bundles/assets/`
+//     (copia literal del frontend del Bazaar) y `docs/bazaar/bundles/pretty/assets/` (su versión legible) quedan fuera de todo,
 //     y no llevan AGENTS.md propio por subcarpeta.
 
 import { execFileSync } from "node:child_process";
@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MAX_FILES = 10;
 const COUNT_EXEMPT = new Set(["."]);
-const TREE_EXEMPT = ["results", "design-system/.design-sync", "docs/bazaar/bundles/assets"];
+const TREE_EXEMPT = ["results", "design-system/.design-sync", "docs/bazaar/bundles/assets", "docs/bazaar/bundles/pretty/assets"];
 
 const isTreeExempt = (dir) => TREE_EXEMPT.some((e) => dir === e || dir.startsWith(`${e}/`));
 
