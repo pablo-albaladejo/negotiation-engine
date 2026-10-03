@@ -20,6 +20,9 @@ src/
 ├─ engine/    matemáticas puras: concesión, aceptación, guardarraíles, RNG
 ├─ shared/    cliente de la API, esquemas, claves, trazas, la cifra
 ├─ dealers/   negociar con Abuela y El Chato     (pnpm bazaar)
+│   ├─ negotiation/  la cifra de cada mensaje y la forma de la oferta
+│   ├─ planning/     qué comprar o vender a cada dealer
+│   └─ history/      resumen por conversación y lecciones
 ├─ duels/     duelos 1 contra 1                  (pnpm bazaar:duels)
 ├─ trades/    El Rastro con otros equipos        (pnpm bazaar:trades)
 ├─ broker/    casar ofertas en nuestro venue     (pnpm bazaar:broker)
@@ -34,9 +37,9 @@ src/
 test/        solo tests de guardarraíles (fast-check)
 scripts/     escaneo de la API y comprobación de docs
 docs/        lecciones de los dealers y kit oficial del Bazaar
-viewer/         visor local del Bazaar (paquete independiente)
-design-system/  componentes React del visor (por alias, sin build)
-handoff/     traspaso del día 1 (solo HANDOFF.md en git)
+viewer/         visor local del Bazaar (paquete independiente; server/bazaar/ = /api/bazaar/*)
+design-system/  componentes React del visor (por alias, sin build; components/ y examples/ por familia)
+handoff/     traspasos entre días (en git solo HANDOFF.md y AGENTS.md)
 results/     trazas en vivo (fuera de git)
 ```
 
@@ -46,7 +49,7 @@ results/     trazas en vivo (fuera de git)
 |---------|-------------|
 | `pnpm test` | Tests de guardarraíles (límite, cifra = texto, un activo en un sitio, topes). Deben pasar antes de cada commit. |
 | `pnpm typecheck` | TypeScript. |
-| `pnpm docs:check` | Enlaces e identificadores de los AGENTS.md. |
+| `pnpm docs:check` | Enlaces e identificadores de los AGENTS.md, y el árbol de carpetas (≤ 10 ficheros y un AGENTS.md enlazado por carpeta). |
 | `pnpm bazaar` | Agente de dealers (`--serious`, `--dry-run`, `--once`, `--max-spend`, `--cash-floor`…). |
 | `pnpm bazaar:duels` | Duelos 1 contra 1. |
 | `pnpm bazaar:trades` | Ofertas entre equipos en El Rastro (en vivo con `--confirm`). |
@@ -71,6 +74,13 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 # BAZAAR_BROKER_KEY va en .env.broker (X-Broker-Key)
 ```
 
+## Estructura de carpetas
+
+- **Como mucho 10 ficheros versionados por carpeta**; si hay más, se crean subcarpetas por concepto.
+- **Cada carpeta tiene un AGENTS.md corto en español** (qué vive ahí, puntos de entrada, reglas propias; sin repetir al padre) que enlaza al AGENTS.md del padre y al de cada subcarpeta.
+- Exentas: la raíz no cuenta para el tope (la configuración de las herramientas tiene que vivir aquí); `results/` (trazas en vivo) y `design-system/.design-sync/` (generado) quedan fuera del tope y sin AGENTS.md por subcarpeta.
+- Lo comprueba `pnpm docs:check` (`scripts/check-agents-tree.mjs`).
+
 ## Links a subcarpetas
 
 - [`src/`](src/AGENTS.md) — agente del Bazaar, una carpeta por concepto
@@ -79,6 +89,8 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 - [`scripts/`](scripts/AGENTS.md) — utilidades
 - [`docs/`](docs/AGENTS.md) — lecciones y kit
 - [`viewer/`](viewer/AGENTS.md) — visor
+- [`design-system/`](design-system/AGENTS.md) — componentes React del visor
+- [`handoff/`](handoff/AGENTS.md) — traspasos entre días
 
 ---
 
