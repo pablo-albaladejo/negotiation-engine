@@ -338,6 +338,8 @@ Cada persona tiene también `hints`: *"Plant rumours about other stalls, point t
 
 ## 8. Modelo de precio de los dealers (leído del frontend)
 
+Detalle completo (esquema, todos los campos, frases literales): [`personas.md`](personas.md).
+
 Sale del editor de personas de la consola de admin, que viene en el bundle público: `PersonaEditor-*.js` (vista previa de la curva) y `util-*.js` (rasgos y curva). Copia en [`bundles/`](bundles/) (capturada el 3 oct). Es lo que **pinta** el editor; el servidor puede diferir en detalles. Los parámetros de cada dealer (`strategy`, bandas de `trades`) **no son públicos**: `/api/dealers/{id}` solo da `traits` y `menu`.
 
 ### 8.1 Niveles y rasgos
