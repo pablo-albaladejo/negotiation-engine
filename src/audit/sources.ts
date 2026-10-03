@@ -126,6 +126,9 @@ export interface DuelSend {
   action: "counter" | "accept";
   price?: number;
   rule?: string;
+  /** From the duel header: our role and our limit (the private value) at that tick. */
+  role?: "seller" | "buyer";
+  limit?: number;
   line: string;
 }
 
@@ -137,18 +140,21 @@ export interface DuelSend {
 export class DuelSendParser {
   readonly sends: DuelSend[] = [];
   private duel: number | undefined;
+  private head: { role: "seller" | "buyer"; limit?: number } | undefined;
 
   push(line: string, tick: number): void {
-    const head = /^duel (\d+) · (?:seller|buyer) · /.exec(line);
+    const head = /^duel (\d+) · (seller|buyer) · (?:.*?\blimit (\d+(?:\.\d+)?))?/.exec(line);
     if (head) {
       this.duel = Number(head[1]);
+      this.head = { role: head[2] as "seller" | "buyer", ...(head[3] !== undefined ? { limit: Number(head[3]) } : {}) };
       return;
     }
     const sent = /^→ (COUNTER|ACCEPT) (?:rival )?(\d+(?:\.\d+)?) P\b.*?\(([^()]*)\).*\[sent\]/.exec(line);
     if (!sent || this.duel === undefined) return;
     const rule = sent[3]!.split(",").at(-1)?.trim();
-    this.sends.push({ tick, duel: this.duel, action: sent[1] === "ACCEPT" ? "accept" : "counter", price: Number(sent[2]), ...(rule ? { rule } : {}), line });
+    this.sends.push({ tick, duel: this.duel, action: sent[1] === "ACCEPT" ? "accept" : "counter", price: Number(sent[2]), ...(rule ? { rule } : {}), ...this.head, line });
     this.duel = undefined;
+    this.head = undefined;
   }
 }
 

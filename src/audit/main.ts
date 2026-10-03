@@ -8,6 +8,7 @@ import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.j
 import { albumCopyLost, bookGaps, cashFloor, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
 import { dealerSpam, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
+import { ValueHistory } from "./value-history.js";
 import { daySnapshots, DuelSendParser, latestCatalog, parseDealerEvent, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readDuelsState, readValuesFile, Tail, type DealerEvent, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
 
 /**
@@ -71,6 +72,7 @@ const seenTick = (s: SourceName, tick: number): void => {
 const events = new Map<number, StreamEvent>();
 const planLines = new Map<number, PlanLine>();
 const play = new PlayLogParser();
+const history = new ValueHistory();
 const decisions: DecisionNote[] = [];
 const dealerEvents: DealerEvent[] = [];
 const duelsStateFile = join(dayDir, "duels-state.json");
@@ -90,9 +92,13 @@ function readAll(): void {
     const p = parsePlanLine(line);
     if (!p) continue;
     planLines.set(p.tick, p);
+    history.addPlan(p);
     seenTick("plan", p.tick);
   }
-  for (const line of tails["play.log"].read()) play.push(line);
+  for (const line of tails["play.log"].read()) {
+    play.push(line);
+    history.pushPlayLog(line);
+  }
   for (const t of play.ticks.keys()) seenTick("play.log", t);
   for (const line of tails.decisions.read()) {
     const ev = parseDealerEvent(line);
@@ -259,11 +265,13 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     ];
   });
 
+  // Values as of each trade's tick; reservations need the ledger's book to map sold asset ids to refs (re-adding is a no-op).
+  history.addDecisions(decisions, ledger.lots);
   const alerts = [
-    ...dupBuy(ledger, model),
+    ...dupBuy(ledger, model, history),
     ...tradePairs(ledger),
     ...bookGaps(ledger),
-    ...albumCopyLost(ledger, model),
+    ...albumCopyLost(ledger, model, history),
     ...cashFloor(views),
     ...maxSpend(views, ledger),
     ...doubleAct(views, ledger),
@@ -327,35 +335,85 @@ function markOverlaps(alerts: Alert[]): number {
 
 // ---------------------------------------------------------------- output
 
-const written = new Set<string>();
+/**
+ * Detectors whose verdict on a past trade or run is final once its sources are read: a key of theirs that a measured
+ * pass no longer produces is retracted (e.g. an album-copy-lost judged with today's value, or a duel held at our floor).
+ */
+const RETRACTABLE: ReadonlySet<Detector> = new Set<Detector>(["dup-buy", "album-copy-lost", "repeated-price"]);
+const RETRACT_WHY: Partial<Record<Detector, string>> = {
+  "dup-buy": "no longer qualifies: the next copy valued as of the trade's tick covers its cost",
+  "album-copy-lost": "no longer qualifies: valued as of the trade's tick, the sale covered the card's value",
+  "repeated-price": "no longer qualifies: the repeated price was our floor (no room to move)",
+};
+
+/** A line of audit.jsonl that withdraws an earlier alert; the last line of a key wins. */
+interface Retraction {
+  v: 1;
+  kind: "retract";
+  ts: string;
+  key: string;
+  detector: Detector;
+  reason: string;
+}
+
+type Written = { detector: Detector; severity: string; lossP?: number } | "retracted";
+const written = new Map<string, Written>();
 if (existsSync(auditFile)) {
   for (const line of readFileSync(auditFile, "utf8").split("\n")) {
-    const k = (parseJson(line) as { key?: unknown } | undefined)?.key;
-    if (typeof k === "string") written.add(k);
+    const j = parseJson(line) as { key?: unknown; kind?: unknown; detector?: unknown; severity?: unknown; lossP?: unknown } | undefined;
+    if (typeof j?.key !== "string") continue;
+    if (j.kind === "retract") written.set(j.key, "retracted");
+    else written.set(j.key, { detector: j.detector as Detector, severity: String(j.severity), ...(typeof j.lossP === "number" ? { lossP: j.lossP } : {}) });
   }
 }
 
 const fmt = (a: Alert): string => `[audit] ${a.severity.toUpperCase().padEnd(6)} ${a.detector.padEnd(15)} t${a.tick}${a.lossP !== undefined ? ` −${a.lossP} P` : ""} · ${a.summary}`;
+const fmtLoss = (w: { severity: string; lossP?: number }): string => `${w.severity}${w.lossP !== undefined ? ` −${w.lossP} P` : ""}`;
 
-/** Appends the alerts not yet in audit.jsonl; prints every alert (`printAll`) or only the new ones. */
+/**
+ * Appends to audit.jsonl the alerts not yet there, a retraction plus the new version of an alert whose severity or loss
+ * changed, and a retraction for each key of a RETRACTABLE detector (measured this pass) that no longer comes out. A
+ * retracted key that qualifies again is written again. Prints every alert (`printAll`) or only what changed.
+ */
 function emit(alerts: Alert[], status: Record<string, unknown>, printAll: boolean): Alert[] {
   mkdirSync(outDir, { recursive: true });
-  const fresh = alerts.filter((a) => !written.has(a.key));
+  const retract = (key: string, detector: Detector, reason: string): Retraction => ({ v: 1, kind: "retract", ts: new Date().toISOString(), key, detector, reason });
+  const retractions: Retraction[] = [];
+  const fresh: Alert[] = [];
+  const now = new Set(alerts.map((a) => a.key));
+  for (const a of alerts) {
+    const prev = written.get(a.key);
+    if (prev && prev !== "retracted" && prev.severity === a.severity && prev.lossP === a.lossP) continue;
+    if (prev && prev !== "retracted") retractions.push(retract(a.key, a.detector, `re-evaluated: ${fmtLoss(prev)} → ${fmtLoss(a)}`));
+    fresh.push(a);
+  }
+  const detectors = status.detectors as Record<string, DetectorStatus>;
+  for (const [key, prev] of written) {
+    if (prev === "retracted" || now.has(key) || !RETRACTABLE.has(prev.detector) || detectors[prev.detector]?.status !== "measured") continue;
+    retractions.push(retract(key, prev.detector, RETRACT_WHY[prev.detector] ?? "no longer qualifies"));
+  }
+  for (const r of retractions) {
+    appendFileSync(auditFile, `${JSON.stringify(r)}\n`);
+    written.set(r.key, "retracted");
+    console.log(`[audit] RETRACT ${r.detector.padEnd(15)} ${r.key} · ${r.reason}`);
+  }
   for (const a of fresh) {
     appendFileSync(auditFile, `${JSON.stringify(a)}\n`);
-    written.add(a.key);
+    written.set(a.key, { detector: a.detector, severity: a.severity, ...(a.lossP !== undefined ? { lossP: a.lossP } : {}) });
   }
   for (const a of printAll ? alerts : fresh) console.log(fmt(a));
+  status.retracted = [...written].filter(([, w]) => w === "retracted").map(([k]) => k);
   writeFileSync(statusFile, `${JSON.stringify(status, null, 2)}\n`);
   return fresh;
 }
 
-function report(alerts: Alert[], status: { detectors: Record<string, DetectorStatus>; team: string; clock: number; lossP: { gross: number; deduped: number } }, ledger: Ledger): void {
+function report(alerts: Alert[], status: { detectors: Record<string, DetectorStatus>; team: string; clock: number; lossP: { gross: number; deduped: number }; retracted?: string[] }, ledger: Ledger): void {
   console.log(`\n== audit ${date} · team ${status.team} · clock tick ${status.clock} · ${ledger.trades.length} of our trades · ${ledger.lots.length} cards in the book ==`);
   for (const [d, s] of Object.entries(status.detectors)) {
     console.log(`  ${d.padEnd(15)} ${s.status.padEnd(10)} ${String(s.alerts).padStart(3)} alerts · ${String(s.lossP).padStart(6)} P · ${s.reason}`);
   }
-  console.log(`  total: ${alerts.length} alerts · ${status.lossP.gross} P gross · ${status.lossP.deduped} P counting each overlapping loss once`);
+  console.log(`  total: ${alerts.length} alerts · ${status.lossP.gross} P gross · ${status.lossP.deduped} P counting each overlapping loss once (retracted alerts never count)`);
+  if (status.retracted?.length) console.log(`  retracted in audit.jsonl: ${status.retracted.length} (${status.retracted.join(", ")})`);
   console.log(`  written: ${show(auditFile)} · ${show(statusFile)}`);
 }
 

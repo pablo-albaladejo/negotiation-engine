@@ -1,3 +1,4 @@
+import { DEFAULT_DUEL_PARAMS } from "../duels/duels.js";
 import { alert, NOT_A_FAILURE, type Alert } from "./detectors.js";
 import type { DealerEvent, DuelMemory, DuelSend, StreamEvent } from "./sources.js";
 
@@ -86,17 +87,20 @@ function equalRuns(xs: (number | undefined)[]): [number, number][] {
 /**
  * `repeated-price`: we sent the same cash figure in ≥ 2 consecutive offers of ours in one dealer thread or duel (hint 5:
  * 20 → 20 → 20 earns no concession). Low for 2 in a row, medium for ≥ 3. A deliberate hold (`final`, the agent's rule)
- * is still flagged, with the rule in the evidence. Dealer threads come from the stream (decisions.jsonl `ourPrice` for
+ * is still flagged, with the rule in the evidence; a duel run held at our floor (limit ± minSurplus, from the duel header
+ * line) is not: there was no room to move. Dealer threads come from the stream (decisions.jsonl `ourPrice` for
  * threads the stream lacks); duels from the `[sent]` counters (duels-state.json prices for duels without them).
  */
 export function repeatedPrice(input: ConductInput): Alert[] {
   const out: Alert[] = [];
   const live = input.dealerEvents.filter((d) => !d.dryRun);
   const ruleAt = new Map(live.filter((d) => d.thread !== undefined && d.rule).map((d) => [`${d.thread}:${d.tick}`, d.rule!]));
-  const push = (where: string, label: string, seq: { tick: number; price?: number; rule?: string; final?: boolean }[], source: string, extra: Record<string, unknown> = {}): void => {
+  const push = (where: string, label: string, seq: { tick: number; price?: number; rule?: string; final?: boolean; floor?: number; role?: string }[], source: string, extra: Record<string, unknown> = {}): void => {
     for (const [i, n] of equalRuns(seq.map((s) => s.price))) {
       const run = seq.slice(i, i + n);
       const price = run[0]!.price!;
+      // A duel held at our floor (limit ± minSurplus) had no room to move: holding there is not a missed concession.
+      if (run.every((s) => s.floor !== undefined && (s.role === "seller" ? s.price! <= s.floor : s.price! >= s.floor))) continue;
       const rules = [...new Set(run.flatMap((s) => (s.rule ? [s.rule] : [])))];
       const final = run.some((s) => s.final);
       out.push(
@@ -137,7 +141,10 @@ export function repeatedPrice(input: ConductInput): Alert[] {
     byDuel.set(s.duel, ticks);
   }
   for (const [duel, ticks] of byDuel) {
-    const seq = [...ticks.values()].sort((a, b) => a.tick - b.tick).map((s) => ({ tick: s.tick, ...(s.price !== undefined ? { price: s.price } : {}), ...(s.rule ? { rule: s.rule } : {}) }));
+    const floorOf = (s: DuelSend): number | undefined => (s.limit === undefined ? undefined : s.role === "seller" ? s.limit + DEFAULT_DUEL_PARAMS.minSurplus : s.limit - DEFAULT_DUEL_PARAMS.minSurplus);
+    const seq = [...ticks.values()]
+      .sort((a, b) => a.tick - b.tick)
+      .map((s) => ({ tick: s.tick, ...(s.price !== undefined ? { price: s.price } : {}), ...(s.rule ? { rule: s.rule } : {}), ...(floorOf(s) !== undefined ? { floor: floorOf(s)!, role: s.role! } : {}) }));
     push(`duel:${duel}`, `Duel ${duel}`, seq, "play.log/plan.jsonl", { duel });
   }
   for (const [duel, mem] of input.duelMemory) {

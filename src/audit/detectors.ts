@@ -2,6 +2,7 @@ import { nextCopyValue } from "../dealers/planning/plan.js";
 import { valueDelta, type ValueModel } from "../trades/trades.js";
 import type { Ledger, Lot, OurTrade } from "./ledger.js";
 import type { PlanLine, PlayTick } from "./sources.js";
+import { VALUE_WINDOW_TICKS, type ValueHistory } from "./value-history.js";
 
 /**
  * Inefficiency detectors over the replayed ledger and the per-tick view of the coordinator (`plan.jsonl`, or `play.log`
@@ -84,27 +85,62 @@ function flippedAtProfit(lot: Lot | undefined): boolean {
   return !!lot && lot.inPrice !== undefined && lot.outPrice !== undefined && lot.outTick !== undefined && lot.outTick - lot.inTick <= ROUND_TRIP_TICKS && lot.outPrice - (lot.outFee ?? 0) >= lot.inPrice;
 }
 
-export function dupBuy(ledger: Ledger, model: ValueModel | undefined): Alert[] {
+/** Base value (first copy) of a card as of a past tick, or today's when no historical value is near (`hindsight`). */
+interface ValueAt {
+  base: number;
+  source: string;
+  tick?: number;
+  hindsight: boolean;
+}
+
+function valueAt(ref: string, tick: number, ledger: Ledger, model: ValueModel | undefined, history: ValueHistory | undefined): ValueAt | undefined {
+  const marg = model?.rules.marginals ?? [1, 0.25, 0.1];
+  const p = history?.at(ref, tick, ledger.lots);
+  if (p) {
+    // The point values the copy at stake then: the last held copy (its marginal) or the first one if we held none.
+    const m = p.held > 0 ? (marg[p.held - 1] ?? 0) : 1;
+    if (m > 0) return { base: p.value / m, source: p.source, tick: p.tick, hindsight: false };
+  }
+  const base = model?.base.get(ref);
+  return base === undefined ? undefined : { base, source: "current (hindsight)", hindsight: true };
+}
+
+const valueEvidence = (v: ValueAt): Record<string, unknown> => ({ valueSource: v.source, ...(v.tick !== undefined ? { valueTick: v.tick } : {}) });
+const HINDSIGHT_NOTE = ` (today's value: no historical value within ±${VALUE_WINDOW_TICKS} ticks, so no loss is counted)`;
+
+/**
+ * `dup-buy`: a copy bought while we already held one, worth less than it cost. The next copy is valued as of the
+ * trade's tick (ValueHistory); with only today's value the alert is low and counts no loss.
+ */
+export function dupBuy(ledger: Ledger, model: ValueModel | undefined, history?: ValueHistory): Alert[] {
   const marg = model?.rules.marginals ?? [1, 0.25, 0.1];
   return ledger.trades.flatMap((t) => {
     if (t.side !== "buy" || t.copiesBefore < 1) return [];
     const lot = ledger.lots.find((l) => l.id === t.assetId && l.inSettlement === t.settlement);
     if (flippedAtProfit(lot)) return [];
-    const base = model?.base.get(t.ref);
-    const next = base === undefined ? undefined : nextCopyValue(base, t.copiesBefore, base * (marg[t.copiesBefore - 1] ?? 0), marg);
+    const v = valueAt(t.ref, t.tick, ledger, model, history);
+    const next = v === undefined ? undefined : nextCopyValue(v.base, t.copiesBefore, v.base * (marg[t.copiesBefore - 1] ?? 0), marg);
     const cost = t.price + (t.venue ? t.fee : 0);
     const loss = next === undefined ? undefined : cost - next;
     if (loss !== undefined && loss <= 0) return [];
+    const counted = v?.hindsight ? undefined : loss;
     const heldIds = ledger.lots.filter((l) => l.ref === t.ref && l.inTick <= t.tick && (l.outTick === undefined || l.outTick >= t.tick) && l.id !== t.assetId).map((l) => l.id);
     return [
       alert({
         tick: t.tick,
         detector: "dup-buy",
-        ...(loss !== undefined ? { lossP: loss } : {}),
+        ...(v?.hindsight ? { severity: "low" as const } : {}),
+        ...(counted !== undefined ? { lossP: counted } : {}),
         refs: [t.ref],
         assets: [t.assetId],
-        summary: `Bought ${t.ref} #${t.assetId} for ${t.price} P from ${where(t)} while holding ${t.copiesBefore} cop${t.copiesBefore === 1 ? "y" : "ies"}; next copy worth ${next === undefined ? "?" : round(next)} P.`,
-        evidence: { ...tradeEvidence(t), copiesBefore: t.copiesBefore, heldAssets: heldIds, ...(next !== undefined ? { nextCopyValue: round(next), baseValue: base } : {}) },
+        summary: `Bought ${t.ref} #${t.assetId} for ${t.price} P from ${where(t)} while holding ${t.copiesBefore} cop${t.copiesBefore === 1 ? "y" : "ies"}; next copy worth ${next === undefined ? "?" : round(next)} P${v?.hindsight ? HINDSIGHT_NOTE : ""}.`,
+        evidence: {
+          ...tradeEvidence(t),
+          copiesBefore: t.copiesBefore,
+          heldAssets: heldIds,
+          ...(next !== undefined && v ? { nextCopyValue: round(next), baseValue: round(v.base), ...valueEvidence(v) } : {}),
+          ...(v?.hindsight && loss !== undefined ? { hindsightLossP: round(loss) } : {}),
+        },
         key: `dup-buy:${t.settlement}:${t.assetId}`,
       }),
     ];
@@ -212,7 +248,12 @@ export function bookGaps(ledger: Ledger): Alert[] {
   });
 }
 
-export function albumCopyLost(ledger: Ledger, model: ValueModel | undefined): Alert[] {
+/**
+ * `album-copy-lost`: our only copy of a page card left and what we got does not cover its value to us, valued as of the
+ * trade's tick (a page that progressed later makes the card worth more today, which we could not have collected). High
+ * if it breaks a complete page. With only today's value: low (medium if it breaks a complete page) and no loss counted.
+ */
+export function albumCopyLost(ledger: Ledger, model: ValueModel | undefined, history?: ValueHistory): Alert[] {
   if (!model || model.pages.size === 0) return [];
   return ledger.trades.flatMap((t) => {
     if (t.side === "buy" || t.copiesBefore !== 1) return [];
@@ -220,20 +261,23 @@ export function albumCopyLost(ledger: Ledger, model: ValueModel | undefined): Al
     const page = set ? model.pages.get(set) : undefined;
     if (!page?.includes(t.ref)) return [];
     const complete = page.every((r) => (t.countsBefore.get(r) ?? 0) > 0);
-    const lost = -valueDelta(t.countsBefore, [t.ref], [], model);
+    const v = valueAt(t.ref, t.tick, ledger, model, history);
+    const asOf: ValueModel = v ? { ...model, base: new Map(model.base).set(t.ref, v.base) } : model;
+    const lost = -valueDelta(t.countsBefore, [t.ref], [], asOf);
     const loss = lost - (t.price - t.fee);
     if (!complete && loss <= 0) return [];
     const have = page.filter((r) => (t.countsBefore.get(r) ?? 0) > 0).length;
+    const hindsight = v?.hindsight ?? true;
     return [
       alert({
         tick: t.tick,
         detector: "album-copy-lost",
-        severity: complete ? "high" : severityOf(loss),
-        lossP: Math.max(0, loss),
+        severity: hindsight ? (complete ? "medium" : "low") : complete ? "high" : severityOf(loss),
+        ...(hindsight ? {} : { lossP: Math.max(0, loss) }),
         refs: [t.ref],
         assets: [t.assetId],
-        summary: `${t.side === "swap" ? "Swapped" : "Sold"} our only ${t.ref} #${t.assetId} to ${where(t)} for ${t.price} P${complete ? `, breaking the complete ${set} page` : ` (${set} page ${have}/${page.length})`}; it was worth ${round(lost)} P to us.`,
-        evidence: { ...tradeEvidence(t), pageHave: have, pageSize: page.length, pageComplete: complete, valueLost: round(lost) },
+        summary: `${t.side === "swap" ? "Swapped" : "Sold"} our only ${t.ref} #${t.assetId} to ${where(t)} for ${t.price} P${complete ? `, breaking the complete ${set} page` : ` (${set} page ${have}/${page.length})`}; it was worth ${round(lost)} P to us${hindsight ? HINDSIGHT_NOTE : v?.tick !== undefined ? ` at tick ${v.tick}` : ""}.`,
+        evidence: { ...tradeEvidence(t), pageHave: have, pageSize: page.length, pageComplete: complete, valueLost: round(lost), ...(v ? valueEvidence(v) : { valueSource: "none" }), ...(hindsight ? { hindsightLossP: round(Math.max(0, loss)) } : {}) },
         key: `album-copy-lost:${t.settlement}:${t.assetId}`,
       }),
     ];
