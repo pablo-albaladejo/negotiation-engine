@@ -202,18 +202,48 @@ export type BoardSort = "tick" | "surplus";
 export type BoardScope = "all" | "ours" | "others";
 export const SCOPE_LABEL: Record<BoardScope, string> = { all: "Everyone", ours: "Only us", others: "Other teams" };
 
+/** How an entry ended, the same for threads, duels, book fills and other teams' trades. */
+export type BoardOutcome = "open" | "deal" | "no deal";
+/** Which way the asset went for us (null for other teams' trades and undetermined rows). */
+export type BoardSide = "buy" | "sell";
+
+const OPEN_STATUSES = new Set(["open", "live", "pending"]);
+const DEAL_STATUSES = new Set(["deal", "bought", "sold", "matched", "settled", "accepted", "filled"]);
+
+/** Outcome of a row: raw statuses (`walked`, `cooloff`, `no_deal`, `bought`, `matched`…) collapsed to open / deal / no deal. */
+export function outcomeOf(r: BoardRow): BoardOutcome {
+  if (OPEN_STATUSES.has(r.status)) return "open";
+  if (DEAL_STATUSES.has(r.status)) return "deal";
+  // A thread closed by the server still counts as a deal when it has a settled price.
+  return r.status === "closed" && r.price !== null ? "deal" : "no deal";
+}
+
+export function sideOf(r: BoardRow): BoardSide | null {
+  if (r.kind === "dealer-buy" || r.kind === "duel-buyer" || r.status === "bought") return "buy";
+  if (r.kind === "dealer-sell" || r.kind === "duel-seller" || r.status === "sold") return "sell";
+  return null;
+}
+
+/** Status column: the outcome plus the raw detail when it adds something (`deal · auto-match`, `no deal · walked`). */
+export function statusLabel(r: BoardRow): string {
+  const outcome = outcomeOf(r);
+  const detail = r.status === "matched" ? "auto-match" : r.status === "settled" && r.kind === "other-trade" ? "board" : r.status === outcome || r.status === "bought" || r.status === "sold" ? null : r.status;
+  return [outcome, detail, r.closed_reason].filter(Boolean).join(" · ");
+}
+
 export interface BoardFilters {
   scope: BoardScope;
   kind: string;
   counterparty: string;
   status: string;
+  side: string;
   verdict: string;
   sort: BoardSort;
   row: string;
 }
 
 export const ALL = "all";
-const DEFAULT_FILTERS: BoardFilters = { scope: "all", kind: ALL, counterparty: ALL, status: ALL, verdict: ALL, sort: "tick", row: "" };
+const DEFAULT_FILTERS: BoardFilters = { scope: "all", kind: ALL, counterparty: ALL, status: ALL, side: ALL, verdict: ALL, sort: "tick", row: "" };
 
 /** Filters from the hash query (`#/bazaar?kind=duel-buyer&verdict=bad&sort=surplus&row=thread:178`). */
 export function parseBoardQuery(query: string): BoardFilters {
@@ -225,6 +255,7 @@ export function parseBoardQuery(query: string): BoardFilters {
     kind: p.get("kind") || ALL,
     counterparty: p.get("with") || ALL,
     status: p.get("status") || ALL,
+    side: p.get("side") || ALL,
     verdict: p.get("verdict") || ALL,
     sort,
     row: p.get("row") || "",
@@ -237,6 +268,7 @@ export function boardQuery(f: BoardFilters): string {
   if (f.kind !== ALL) p.set("kind", f.kind);
   if (f.counterparty !== ALL) p.set("with", f.counterparty);
   if (f.status !== ALL) p.set("status", f.status);
+  if (f.side !== ALL) p.set("side", f.side);
   if (f.verdict !== ALL) p.set("verdict", f.verdict);
   if (f.sort !== DEFAULT_FILTERS.sort) p.set("sort", f.sort);
   if (f.row) p.set("row", f.row);
@@ -249,7 +281,8 @@ export function filterBoardRows(rows: readonly BoardRow[], f: BoardFilters): Boa
       inScope(r, f.scope) &&
       (f.kind === ALL || r.kind === f.kind) &&
       (f.counterparty === ALL || counterpartiesOf(r).includes(f.counterparty)) &&
-      (f.status === ALL || r.status === f.status) &&
+      (f.status === ALL || outcomeOf(r) === f.status) &&
+      (f.side === ALL || sideOf(r) === f.side) &&
       (f.verdict === ALL || r.verdict === f.verdict),
   );
   const tick = (r: BoardRow) => r.tick_settled ?? r.tick_opened ?? -1;
@@ -264,11 +297,12 @@ const inScope = (r: BoardRow, scope: BoardScope) => scope === "all" || (scope ==
 /** What the counterparty filter matches: each team of an other teams' trade, our counterparty otherwise. */
 const counterpartiesOf = (r: BoardRow): string[] => (isOthers(r) ? (r.parties ?? []) : [r.counterparty]);
 
-export function boardFilterOptions(rows: readonly BoardRow[]): { kind: string[]; counterparty: string[]; status: string[]; verdict: string[] } {
+export function boardFilterOptions(rows: readonly BoardRow[]): { kind: string[]; counterparty: string[]; status: string[]; side: string[]; verdict: string[] } {
   return {
     kind: uniq(rows.map((r) => r.kind)),
     counterparty: uniq(rows.flatMap(counterpartiesOf)),
-    status: uniq(rows.map((r) => r.status)),
+    status: (["open", "deal", "no deal"] as const).filter((o) => rows.some((r) => outcomeOf(r) === o)),
+    side: uniq(rows.flatMap((r) => sideOf(r) ?? [])),
     verdict: uniq(rows.map((r) => r.verdict)),
   };
 }

@@ -13,6 +13,7 @@ import {
   filterBoardRows,
   KIND_LABEL,
   SCOPE_LABEL,
+  statusLabel,
   type Board,
   type BazaarModel,
   type BoardFilters,
@@ -102,6 +103,7 @@ function FiltersBar({ board, rows, filters, onChange }: { board: Board; rows: Bo
       <SelectField label="Kind" value={filters.kind} options={opts.kind} onChange={(kind) => set({ kind })} format={(k) => KIND_LABEL[k as BoardRowKind] ?? k} />
       <SelectField label="Counterparty" value={filters.counterparty} options={opts.counterparty} onChange={(counterparty) => set({ counterparty })} format={(c) => withTeamNames(board, c)} />
       <SelectField label="Status" value={filters.status} options={opts.status} onChange={(status) => set({ status })} />
+      {opts.side.length ? <SelectField label="Side" value={filters.side} options={opts.side} onChange={(side) => set({ side })} format={(s) => (s === "buy" ? "we buy" : "we sell")} /> : null}
       <div className="nr-filter-field">
         <label className="nr-muted nr-filter-label" htmlFor={sortId}>
           Sort by
@@ -148,7 +150,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         party: PARTY_LABEL[partyOf(board, r).kind],
         kind: KIND_LABEL[r.kind] ?? r.kind,
         item: r.item,
-        status: r.closed_reason ? `${r.status} · ${r.closed_reason}` : r.status,
+        status: statusLabel(r),
         price: show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
@@ -177,8 +179,7 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
           {row.d_score !== null && row.d_score !== 0 ? <Flag kind={row.d_score < 0 ? "walk" : "decision"}>{`Δ score ${row.d_score > 0 ? "+" : ""}${row.d_score}`}</Flag> : null}
           <span>{row.item}</span>
           <span className="nr-muted">
-            {row.status}
-            {row.closed_reason ? ` · ${row.closed_reason}` : ""} · price {show(row.price, "—")} · our value {show(row.our_value)}
+            {statusLabel(row)} · price {show(row.price, "—")} · our value {show(row.our_value)}
             {row.value_source ? ` (${row.value_source})` : ""} · margin vs our value {show(row.surplus, "—")}
             {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
           </span>
