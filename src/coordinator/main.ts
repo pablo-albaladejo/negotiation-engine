@@ -75,7 +75,7 @@ async function main() {
     maxSpendTotal: num(values["max-spend"], "--max-spend"),
     cashFloor: num(values["cash-floor"], "--cash-floor"),
     pageTargets,
-    ...(live ? { trace: new FileTrace(liveTraceDir(root)) } : {}),
+    ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json") } : {}),
   });
   const trades = new TradesRoute(client, dryRun);
   // Frases de presión: solo con aprobación (ids uno a uno o en bloque); las candidatas se listan en dry-run.
@@ -300,7 +300,10 @@ async function main() {
       saveTriggerMemo(triggersFile, dryMemo);
       if (flagged.records.length) saveFlags(flagsFile, [...flags, ...flagged.records]);
     }
-    if (values.once) break;
+    if (values.once) {
+      for (const l of dealers.flushLessons()) console.log(`  ${l}`);
+      break;
+    }
     const after = await client.clock().catch(() => undefined);
     await sleep(Math.max(1, after?.next_tick_in ?? 5) * 1000 + 300);
   }

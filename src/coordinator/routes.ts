@@ -5,6 +5,7 @@ import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "../dealers/dealer-profile.js";
 import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
+import { appendLesson, PendingLessons } from "../dealers/history/lessons.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
@@ -98,6 +99,8 @@ export interface DealersRouteOptions {
   cashFloor: number;
   pageTargets: readonly string[];
   trace?: TraceSink;
+  /** `docs/bazaar/lessons.json`: solo se escribe en vivo; en dry-run se imprime lo que se añadiría (nunca se toca `docs/`). */
+  lessonsFile?: string;
 }
 
 const dealerKey = (i: DealerIntent) => `dealers:${i.kind}:${i.dealer}:${i.thread ?? i.target}`;
@@ -129,6 +132,29 @@ export class DealersRoute {
   private readonly logs: string[] = [];
   /** Estado del tick (conversaciones y personas) para elegir el probe de egg que va con una contraoferta. */
   private state: GameState | undefined;
+  /** Líneas de lecciones del tick (se vuelcan en notas o en la ejecución). */
+  private readonly lessonLines: string[] = [];
+  private readonly lessonsSeen = new Set<string>();
+  private readonly lessons = new PendingLessons((entry) => {
+    if (this.o.dryRun || !this.o.lessonsFile) {
+      const key = `${entry.dealer}:${entry.thread}`;
+      if (this.lessonsSeen.has(key)) return;
+      this.lessonsSeen.add(key);
+      this.lessonLines.push(`lessons (dry-run, nothing written): would append thread ${entry.thread} (${entry.dealer}, ${entry.outcome}) · ${entry.lessons.length} lesson(s)${entry.lessons.length ? `: ${entry.lessons.join(" | ")}` : ""}`);
+      return;
+    }
+    try {
+      if (appendLesson(this.o.lessonsFile, entry)) this.lessonLines.push(`lessons: thread ${entry.thread} appended (${entry.lessons.length} lesson(s))`);
+    } catch (e) {
+      this.lessonLines.push(`lessons: could not append thread ${entry.thread}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  });
+
+  /** Al parar: escribe las lecciones que aún esperan a que neg_points se asiente. */
+  flushLessons(): string[] {
+    this.lessons.flush();
+    return this.lessonLines.splice(0);
+  }
 
   constructor(
     private readonly client: BazaarClient,
@@ -170,6 +196,7 @@ export class DealersRoute {
           trace: this.trace,
           log: (line) => this.logs.push(line),
           gate: this.gate,
+          onThreadSummary: (summary) => this.lessons.add(summary),
           probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
@@ -190,6 +217,7 @@ export class DealersRoute {
     this.state = state;
     const me = await this.client.me();
     await this.ensureAgents(me);
+    this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
     this.mode = "propose";
     this.collected = [];
     this.trace.muted = true;
@@ -199,6 +227,7 @@ export class DealersRoute {
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }
+    out.notes.push(...this.lessonLines.splice(0));
     for (const i of this.collected) {
       const conv = i.thread !== undefined ? `dealer:${i.thread}` : undefined;
       const ev = i.value !== undefined && i.price !== undefined ? (i.side === "buy" ? i.value - i.price : i.price - i.value) : i.value;
@@ -235,6 +264,7 @@ export class DealersRoute {
       lines.push(...this.logs.map((l) => `dealer ${id}: ${l}`));
     }
     this.trace.muted = true;
+    lines.push(...this.lessonLines.splice(0));
     return lines;
   }
 }
