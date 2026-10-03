@@ -257,7 +257,8 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     "stale-source": { ok: true, why: "file ticks against the clock" },
   };
 
-  const stale: Alert[] = (["stream-team", "stream-public", "plan", "play.log", "score"] as const).flatMap((s) => {
+  // score.jsonl is only written by a standalone `pnpm bazaar`, never by bazaar:play: its silence is not a stale source.
+  const stale: Alert[] = (["stream-team", "stream-public", "plan", "play.log"] as const).flatMap((s) => {
     const t = lastTick[s];
     if (t === undefined || clock - t <= STALE_TICKS) return [];
     return [
