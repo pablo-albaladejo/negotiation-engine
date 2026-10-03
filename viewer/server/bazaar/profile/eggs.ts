@@ -4,7 +4,7 @@ import type { FeedEvent } from "../bazaar-board-core.js";
 /**
  * Easter eggs for our profile: every egg we found (persona, tick, the probe phrase of ours that fired it, the prize —
  * cards, cash, packs and the badge awarded the same tick), every egg found per persona (who and when) and our probes per
- * persona (`personas.json`, sent / hit / miss). From the public stream the recorder saves plus the feed: structure only,
+ * persona (`personas.json`, sent / hit / miss), plus our badges and the gifts personas gave us (`gift.given`). From the public stream the recorder saves plus the feed: structure only,
  * never a dealer's text. Read-only.
  */
 
@@ -54,9 +54,21 @@ export interface PersonaEggs {
   probes: { sent: number; hit: number; miss: number; last: { phrase: string; tick: number; result: string } | null };
 }
 
+export interface OurGift {
+  tick: number;
+  from: string | null;
+  cards: EggCard[];
+  cash: number;
+  packs: string[];
+  reason: string | null;
+}
+
 export interface EggsOut {
   ours: OurEgg[];
   personas: PersonaEggs[];
+  /** Our badges, in award order (`badge.awarded`). */
+  badges: { badge: string; tick: number }[];
+  gifts: OurGift[];
 }
 
 const PROBE_WINDOW = 6;
@@ -136,5 +148,18 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
       .sort((a, b) => b.tick - a.tick)[0];
     ours.push({ tick, persona: f.data.persona, persona_name: f.data.persona_name ?? null, probe: probe ? { phrase: probe.phrase, tick: probe.tick } : null, prize, order: p.found.length });
   }
-  return { ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
+  const badges: EggsOut["badges"] = [];
+  const gifts: OurGift[] = [];
+  for (const e of unique) {
+    if (e.tick == null) continue;
+    if (e.type === "badge.awarded") {
+      const b = BadgeSchema.safeParse(e.payload);
+      if (b.success && b.data.team === team && b.data.badge) badges.push({ badge: b.data.badge, tick: e.tick });
+    } else if (e.type === "gift.given") {
+      const g = GivenSchema.safeParse(e.payload);
+      if (g.success && g.data.team === team)
+        gifts.push({ tick: e.tick, from: e.actor ?? null, cards: strings(g.data.cards).map(cardOf), cash: g.data.cash ?? 0, packs: strings(g.data.packs), reason: g.data.reason ?? null });
+    }
+  }
+  return { badges, gifts, ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
 }

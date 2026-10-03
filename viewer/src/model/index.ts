@@ -22,6 +22,7 @@ export {
   type BoardOfferOrigin,
   type BoardDirectedOffer,
   type BoardEggs,
+  type BoardEggCard,
   type BoardOurEgg,
   type BoardPersonaEggs,
   type BoardVenueBook,

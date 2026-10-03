@@ -1,4 +1,5 @@
 import { Card, DataTable, Flag, KpiStrip, Pill } from "@negotiation-ring/design-system";
+import { Eggs } from "./profile/Eggs.js";
 import { useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { TableLink } from "../ui/buttons.js";
@@ -886,7 +887,28 @@ function Prices({ model }: { model: GameModel }) {
 
 // ---------------------------------------------------------------- eggs and flags
 
-function EggsAndFlags({ model }: { model: GameModel }) {
+/** One flag we sent (`FlagRecord` from src/state/world.ts), tolerant of missing fields. */
+function flagRow(f: unknown, nowTick: number | null) {
+  const r = (f && typeof f === "object" ? f : {}) as Record<string, unknown>;
+  const n = (x: unknown) => (typeof x === "number" ? x : null);
+  const tick = n(r.tick);
+  const result = typeof r.result === "string" ? r.result : "pending";
+  const points = n(r.points);
+  return {
+    tick: tick ?? "?",
+    persona: typeof r.persona === "string" ? r.persona : "—",
+    message: r.messageId != null ? `#${String(r.messageId)}` : "—",
+    reason: typeof r.reason === "string" ? r.reason : "—",
+    result: (
+      <span style={{ color: result === "hit" ? "var(--ok)" : result === "miss" ? "var(--warn)" : "var(--muted)", fontWeight: 700 }}>
+        {result === "pending" ? `pending${tick !== null && nowTick !== null ? ` · ${nowTick - tick} ticks, no result published` : ""}` : result}
+        {points !== null ? ` (${points > 0 ? "+" : ""}${points})` : ""}
+      </span>
+    ),
+  };
+}
+
+function EggsAndFlags({ model, board }: { model: GameModel; board: Board }) {
   const o = model.state?.ours;
   const flags = flagsOf(model);
   const byPersona = Object.entries(model.state?.world?.eggs?.byPersona ?? {});
@@ -895,9 +917,10 @@ function EggsAndFlags({ model }: { model: GameModel }) {
       {label}: {xs && xs.length ? xs.map(textOf).join("; ") : "none"}
     </span>
   );
+  const nowTick = board.clock?.tick ?? null;
   return (
-    <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
-      <Card title="Eggs (prestige, not scored)">
+    <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(0, 2fr)")}>
+      {board.eggs ? <Eggs board={board} title={`Eggs (prestige, not scored) · ${board.eggs.ours.length} ours`} /> : <Card title="Eggs (prestige, not scored)">
         <div style={col}>
           <strong>Ours</strong>
           {items("eggs", o?.eggs)}
@@ -924,22 +947,28 @@ function EggsAndFlags({ model }: { model: GameModel }) {
                 </li>
               ))}
             </ul>
-          ) : (
-            <Muted>No egg.found / egg.given in the recent feed.</Muted>
-          )}
+          ) : null}
         </div>
-      </Card>
+      </Card>}
       <Card title="Flags (scored: a hit adds, a miss costs)">
         <div style={col}>
           <span>
-            sent {flags.sent.length} · balance <strong>{flags.balance === null ? "—" : fmt(flags.balance, 2)}</strong>
+            sent <strong>{flags.sent.length}</strong> · balance <strong>{flags.balance === null ? "—" : fmt(flags.balance, 2)}</strong>
+            <Muted>{" · the game has not published a flag result yet, so «pending» may stay"}</Muted>
           </span>
           {flags.sent.length ? (
-            <ul style={list}>
-              {flags.sent.map((f, k) => (
-                <li key={k}>{textOf(f)}</li>
-              ))}
-            </ul>
+            <div style={{ overflowX: "auto" }}>
+              <DataTable
+                columns={[
+                  { key: "tick", label: "Tick", numeric: true },
+                  { key: "persona", label: "Persona" },
+                  { key: "message", label: "Message" },
+                  { key: "reason", label: "Contradiction (text vs offer)" },
+                  { key: "result", label: "Result" },
+                ]}
+                rows={flags.sent.map((f) => flagRow(f, nowTick))}
+              />
+            </div>
           ) : null}
           <strong>Candidates (verifiable contradiction between text and offer structure)</strong>
           {flags.candidates.length ? (
@@ -990,7 +1019,7 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Rivals model={model} board={board} />
       <Prices model={model} />
       <Packs model={model} />
-      <EggsAndFlags model={model} />
+      <EggsAndFlags model={model} board={board} />
     </div>
   );
 }

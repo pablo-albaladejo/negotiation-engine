@@ -205,6 +205,17 @@ export function worldFromFeed(events: readonly FeedEvent[], team: string | undef
     if (e.type === "egg.found" || e.type === "egg.given") {
       const persona = personaOf(e);
       const find: EggFind = { ...(who ? { team: who } : {}), ...(persona ? { persona } : {}), tick: e.tick, ...(prizeOf(e.payload) ? { prize: prizeOf(e.payload)! } : {}) };
+      // The prize (egg.given) follows its egg.found within a tick: it completes that find instead of counting a second egg.
+      if (e.type === "egg.given") {
+        const pool = who && who === team ? ours.eggs : persona ? slot(persona).foundByOthers : [];
+        const prev = [...pool].reverse().find((f) => f.team === who && (!persona || f.persona === persona) && e.tick - f.tick <= 1 && f.tick <= e.tick);
+        if (prev) {
+          const cards = Array.isArray(e.payload.cards) ? e.payload.cards.filter((c): c is string => typeof c === "string") : [];
+          const prize = [...cards, ...(num(e.payload.cash) ? [`${num(e.payload.cash)} P`] : [])].join(" + ");
+          if (prize) prev.prize = prize;
+          continue;
+        }
+      }
       if (persona) {
         foundPerPersona.set(persona, (foundPerPersona.get(persona) ?? 0) + 1);
         const max = num(e.payload.max_total);

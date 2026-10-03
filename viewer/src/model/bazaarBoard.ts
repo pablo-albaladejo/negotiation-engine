@@ -539,4 +539,7 @@ export interface BoardPersonaEggs {
 export interface BoardEggs {
   ours: BoardOurEgg[];
   personas: BoardPersonaEggs[];
+  /** Absent on an older server. */
+  badges?: { badge: string; tick: number }[];
+  gifts?: { tick: number; from: string | null; cards: BoardEggCard[]; cash: number; packs: string[]; reason: string | null }[];
 }
