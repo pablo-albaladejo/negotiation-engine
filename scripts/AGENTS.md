@@ -6,6 +6,11 @@
 - **`bazaar-convo-feed.mjs`** — `pnpm bazaar:feed`: imprime en vivo cada mensaje nuevo de nuestros hilos (dealers y equipos). Solo lectura, la clave nunca se imprime.
 - **`check-agents-links.mjs`**, **`check-identifiers.mjs`** y **`check-agents-tree.mjs`** — `pnpm docs:check`: enlaces de los AGENTS.md, identificadores citados que existen en el código, y el árbol de carpetas (como mucho 10 ficheros versionados por carpeta, un AGENTS.md en cada una, enlazado desde el padre y con enlace al padre; exentas la raíz para el tope, `results/` y `design-system/.design-sync/`).
 
+## Subcarpetas
+
+- [`ops/`](ops/AGENTS.md) — `pnpm bazaar:doctor`, `pnpm bazaar:up` y `pnpm bazaar:down`: comprobar, arrancar y parar el día.
+
 ## Links
 
 - ↑ [`AGENTS.md`](../AGENTS.md)
+- → [`ops/`](ops/AGENTS.md)

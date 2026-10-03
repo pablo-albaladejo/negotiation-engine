@@ -25,6 +25,9 @@
     "bazaar:feed": "node scripts/bazaar-convo-feed.mjs",
     "bazaar:dump": "node scripts/bazaar-dump.mjs",
     "bazaar:record": "node scripts/bazaar-stream-record.mjs",
+    "bazaar:doctor": "node scripts/ops/doctor.mjs",
+    "bazaar:up": "node scripts/ops/up.mjs",
+    "bazaar:down": "node scripts/ops/down.mjs",
     "ds:test": "pnpm --dir design-system test",
     "docs:check": "node scripts/check-agents-links.mjs; links=$?; node scripts/check-identifiers.mjs; ids=$?; node scripts/check-agents-tree.mjs; tree=$?; [ $links -eq 0 ] && [ $ids -eq 0 ] && [ $tree -eq 0 ]"
   },
