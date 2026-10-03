@@ -907,6 +907,10 @@ export function feedLine(e: FeedEvent): FeedLine {
     text = `duel ${s(p.duel)} ${s(p.status, "")} · ${s(p.item, "")}`;
   } else if (type === "thread.opened") {
     text = `${s(p.team)} ↔ ${s(p.with)}`;
+  } else if (type === "admin.grant") {
+    const packs = Array.isArray(p.packs) ? p.packs.filter((x): x is string => typeof x === "string") : [];
+    const cash = typeof p.cash === "number" ? p.cash : 0;
+    text = `GRANT (organisers, not a trade) to ${s(p.team)}: ${[...(cash ? [`+${cash} P`] : []), ...packs.map((x) => `pack ${x}`)].join(" + ") || "—"}${typeof p.reason === "string" ? ` · ${p.reason}` : ""}`;
   } else if (type === "pack.opened") {
     text = `${s(p.team)} opened ${s(p.pack, "a pack")}`;
   } else if (type === "offer.cancelled") {

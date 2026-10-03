@@ -531,6 +531,7 @@ function Scoreboard({ board }: { board: Board }) {
             {fmt(h?.cash, 0)} P <span className="nr-muted" style={{ fontSize: 13, fontWeight: 500 }}>{`cash · level ${fmt(h?.level, 0)}`}</span>
           </span>
         </div>
+        <Grants board={board} />
         <span className="nr-muted">
           {st.ahead ? `${fmt(st.gapToAhead)} behind ${st.ahead.name} (next place)` : st.rank === 1 ? "We lead" : ""}
           {st.leader && st.leader.name !== st.ahead?.name ? ` · ${fmt(st.gapToLeader)} behind the leader ${st.leader.name}` : ""}
@@ -540,6 +541,33 @@ function Scoreboard({ board }: { board: Board }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+/** Organiser grants today (cash the whole field receives): labelled so a cash jump never reads as a trade or an error. */
+function Grants({ board }: { board: Board }) {
+  const all = board.grants ?? [];
+  // Recorder day folders are UTC dates (bazaar-board.ts `today()`).
+  const today = new Date().toISOString().slice(0, 10);
+  const todays = all.filter((g) => g.day === today && (g.cash || g.packs.length || g.cards.length));
+  if (!todays.length) return null;
+  const tick = board.clock?.tick ?? null;
+  const cash = todays.reduce((s, g) => s + g.cash, 0);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span>
+        <strong style={{ color: "var(--ok)" }}>{`+${cash} P from grants today`}</strong>
+        <span className="nr-muted">{" (organisers, to every team: not a trade, not an error)"}</span>
+      </span>
+      {todays.map((g, i) => {
+        const fresh = tick !== null && g.tick !== null && tick - g.tick <= 30;
+        return (
+          <span key={i} className={fresh ? undefined : "nr-muted"} style={{ fontSize: 12, fontWeight: fresh ? 700 : 400 }}>
+            {`${fresh ? "NEW · " : ""}t${g.tick ?? "?"} · ${[...(g.cash ? [`+${g.cash} P`] : []), ...g.packs.map((x) => `pack ${x}`), ...g.cards].join(" + ")}${g.actor ? ` · ${g.actor}` : ""}${g.reason ? ` · ${g.reason}` : ""}`}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 

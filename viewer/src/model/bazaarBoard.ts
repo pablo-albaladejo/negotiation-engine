@@ -260,6 +260,8 @@ export interface Board {
   directed?: BoardDirectedOffer[];
   /** Easter eggs: ours (probe and prize) and every find per persona. */
   eggs?: BoardEggs;
+  /** Organiser grants to us (admin.grant), oldest first; absent on an older server. */
+  grants?: BoardGrant[];
 }
 
 export const EMPTY_BOARD: Board = {
@@ -617,4 +619,14 @@ export interface BoardEggs {
   /** Absent on an older server. */
   badges?: { badge: string; tick: number }[];
   gifts?: { tick: number; from: string | null; cards: BoardEggCard[]; cash: number; packs: string[]; reason: string | null }[];
+}
+
+export interface BoardGrant {
+  day: string;
+  tick: number | null;
+  actor: string | null;
+  cash: number;
+  packs: string[];
+  cards: string[];
+  reason: string | null;
 }

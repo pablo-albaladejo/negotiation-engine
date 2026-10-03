@@ -17,6 +17,6 @@ Lo que sirve el visor sobre la API del Bazaar y `results/bazaar-live/`. Hacia el
 
 - ↑ [`viewer/server/`](../AGENTS.md)
 - ↓ [`venues/`](venues/AGENTS.md) — libros de todos los venues (`board.venue_books`)
-- ↓ [`profile/`](profile/AGENTS.md) — nuestro perfil: easter eggs (`board.eggs`)
+- ↓ [`profile/`](profile/AGENTS.md) — nuestro perfil: easter eggs (`board.eggs`) y subvenciones de la organización (`board.grants`)
 - ↓ [`forex/`](forex/AGENTS.md) — cadenas forex A → B → C de forex.json (`board.forex`)
 - → [`src/`](../../../src/AGENTS.md) — `GameState`, rutas y cliente que reutiliza el modelo

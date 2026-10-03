@@ -23,6 +23,7 @@ export {
   type BoardDirectedOffer,
   type BoardEggs,
   type BoardEggCard,
+  type BoardGrant,
   type BoardOurEgg,
   type BoardPersonaEggs,
   type BoardVenueBook,

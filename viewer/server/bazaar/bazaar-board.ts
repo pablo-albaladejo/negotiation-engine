@@ -5,6 +5,7 @@ import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
 import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer-origins.js";
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
 import { eggsOf, type EggsOut } from "./profile/eggs.js";
+import { grantsOf, type Grant } from "./profile/grants.js";
 import { forexOf, type ForexOut } from "./forex/forex.js";
 import { forexThreadsOf } from "./forex/forex-threads.js";
 import { TokenBucket } from "../../../src/shared/client.js";
@@ -116,6 +117,8 @@ export interface BoardOut {
   directed: DirectedOffer[];
   /** Easter eggs: ours (probe, prize) and every find per persona (public stream + personas.json). */
   eggs: EggsOut;
+  /** Organiser grants to us (admin.grant: allowance, top-ups, news prizes), oldest first: a cash jump that is not a trade. */
+  grants: Grant[];
 }
 
 export interface BazaarBoardDeps {
@@ -405,6 +408,7 @@ export class BazaarBoard {
       forex: await this.forex(decisions, lessons, meRaw),
       offer_origins: offerOriginsOf((await readJsonl(join(this.bazaarDir, this.today(), "plan.jsonl"), `${this.today()}/plan.jsonl`, PlanLineSchema)).data, myOffers, clock?.tick ?? null),
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
+      grants: await grantsOf(this.bazaarDir, team),
       eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
       team_desk: teamDeskOf(
         (await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data,
