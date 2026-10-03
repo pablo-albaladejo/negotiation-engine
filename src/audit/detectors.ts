@@ -12,10 +12,12 @@ import type { PlanLine, PlayTick } from "./sources.js";
 export const DETECTORS = [
   "dup-buy",
   "round-trip-loss",
+  "buy-back",
   "below-best-bid",
   "above-best-ask",
   "album-copy-lost",
   "cash-floor",
+  "max-spend",
   "double-act",
   "repeat-failure",
   "churn",
@@ -35,10 +37,14 @@ export interface Alert {
   summary: string;
   evidence: Record<string, unknown>;
   key: string;
+  /** Keys of other alerts that count a loss on the same trade (set by the report; the deduplicated total keeps the largest). */
+  overlaps?: string[];
 }
 
 /** Window (ticks) for a buy and its resale to count as one round trip. */
 export const ROUND_TRIP_TICKS = 30;
+/** Window (ticks) for a sale and the later purchase of the same card to count as buying it back. */
+export const BUY_BACK_TICKS = 120;
 /** Minimum gap (P) against the best quote elsewhere for a below-best-bid / above-best-ask alert. */
 export const BOOK_GAP_P = 1;
 export const CHURN_COUNT = 3;
@@ -53,7 +59,10 @@ function alert(a: Omit<Alert, "v" | "ts" | "severity"> & { severity?: Alert["sev
 }
 
 const where = (t: OurTrade): string => (t.persona ? `dealer ${t.persona}${t.thread !== undefined ? ` (thread ${t.thread})` : ""}` : `venue ${t.venue ?? "?"}`);
+/** Trade id used to group alerts that count the same loss (`evidence.trades`). */
+export const tradeId = (t: Pick<OurTrade, "settlement" | "assetId">): string => `${t.settlement}:${t.assetId}`;
 const tradeEvidence = (t: OurTrade): Record<string, unknown> => ({
+  trades: [tradeId(t)],
   settlement: t.settlement,
   tick: t.tick,
   price: t.price,
@@ -97,24 +106,65 @@ export function dupBuy(ledger: Ledger, model: ValueModel | undefined): Alert[] {
   });
 }
 
-export function roundTripLoss(ledger: Ledger): Alert[] {
-  return ledger.lots.flatMap((l) => {
-    if (l.inPrice === undefined || l.outPrice === undefined || l.outTick === undefined || l.outTick - l.inTick > ROUND_TRIP_TICKS) return [];
-    const net = l.outPrice - (l.outFee ?? 0) - l.inPrice;
-    if (net >= 0) return [];
-    return [
-      alert({
-        tick: l.outTick,
-        detector: "round-trip-loss",
-        lossP: -net,
-        refs: [l.ref],
-        assets: [l.id],
-        summary: `${l.ref} #${l.id} bought for ${l.inPrice} P (${l.inFrom}, tick ${l.inTick}) and sold for ${l.outPrice} P − fee ${l.outFee ?? 0} to ${l.outTo ?? "?"} at tick ${l.outTick}: net ${round(net)} P.`,
-        evidence: { buySettlement: l.inSettlement, buyTick: l.inTick, buyFrom: l.inFrom, buyPrice: l.inPrice, ...(l.inThread !== undefined ? { thread: l.inThread } : {}), sellSettlement: l.outSettlement, sellTick: l.outTick, sellTo: l.outTo, sellPrice: l.outPrice, sellFee: l.outFee ?? 0 },
-        key: `round-trip-loss:${l.id}:${l.inSettlement}:${l.outSettlement}`,
-      }),
-    ];
-  });
+/**
+ * Pairs our trades of the same card in time order (the same asset first, otherwise the latest open one of that ref):
+ * - `round-trip-loss`: a buy closed by a sale within ROUND_TRIP_TICKS with sale − fee − purchase < 0;
+ * - `buy-back`: a sale closed by a purchase within BUY_BACK_TICKS that cost more than the sale brought in.
+ * Each trade opens and closes at most one pair per direction.
+ */
+export function tradePairs(ledger: Ledger): Alert[] {
+  const out: Alert[] = [];
+  const openBuys = new Map<string, OurTrade[]>();
+  const openSells = new Map<string, OurTrade[]>();
+  const take = (open: Map<string, OurTrade[]>, t: OurTrade, window: number): OurTrade | undefined => {
+    const list = (open.get(t.ref) ?? []).filter((o) => t.tick - o.tick <= window);
+    const pick = list.find((o) => o.assetId === t.assetId) ?? list.at(-1);
+    open.set(t.ref, list.filter((o) => o !== pick));
+    return pick;
+  };
+  for (const t of ledger.trades) {
+    if (t.side === "sell") {
+      const b = take(openBuys, t, ROUND_TRIP_TICKS);
+      openSells.set(t.ref, [...(openSells.get(t.ref) ?? []), t]);
+      if (!b) continue;
+      const net = t.price - t.fee - b.price;
+      if (net >= 0) continue;
+      const same = b.assetId === t.assetId;
+      out.push(
+        alert({
+          tick: t.tick,
+          detector: "round-trip-loss",
+          lossP: -net,
+          refs: [t.ref],
+          assets: same ? [t.assetId] : [b.assetId, t.assetId],
+          summary: `${t.ref} ${same ? `#${t.assetId}` : `#${b.assetId}`} bought for ${b.price} P (${where(b)}, tick ${b.tick}) and ${same ? "" : `#${t.assetId} `}sold for ${t.price} P − fee ${t.fee} to ${where(t)} at tick ${t.tick}: net ${round(net)} P.`,
+          evidence: { trades: [tradeId(b), tradeId(t)], sameAsset: same, buySettlement: b.settlement, buyTick: b.tick, buyPrice: b.price, ...(b.thread !== undefined ? { thread: b.thread } : {}), sellSettlement: t.settlement, sellTick: t.tick, sellTo: t.counterparty, sellPrice: t.price, sellFee: t.fee },
+          key: same ? `round-trip-loss:${t.assetId}:${b.settlement}:${t.settlement}` : `round-trip-loss:${b.assetId}>${t.assetId}:${b.settlement}:${t.settlement}`,
+        }),
+      );
+    } else if (t.side === "buy") {
+      const s = take(openSells, t, BUY_BACK_TICKS);
+      openBuys.set(t.ref, [...(openBuys.get(t.ref) ?? []), t]);
+      if (!s) continue;
+      const cost = t.price + (t.venue ? t.fee : 0);
+      const got = s.price - s.fee;
+      if (cost - got <= 0) continue;
+      const same = s.assetId === t.assetId;
+      out.push(
+        alert({
+          tick: t.tick,
+          detector: "buy-back",
+          lossP: cost - got,
+          refs: [t.ref],
+          assets: same ? [t.assetId] : [s.assetId, t.assetId],
+          summary: `${t.ref} ${same ? `#${t.assetId}` : `#${s.assetId}`} sold for ${s.price} P − fee ${s.fee} to ${where(s)} at tick ${s.tick} and ${same ? "bought back" : `#${t.assetId} bought`} for ${t.price} P from ${where(t)} at tick ${t.tick}.`,
+          evidence: { trades: [tradeId(s), tradeId(t)], sameAsset: same, sellSettlement: s.settlement, sellTick: s.tick, sellPrice: s.price, sellFee: s.fee, buySettlement: t.settlement, buyTick: t.tick, buyPrice: t.price, ...(t.thread !== undefined ? { thread: t.thread } : {}) },
+          key: `buy-back:${s.settlement}:${s.assetId}:${t.settlement}:${t.assetId}`,
+        }),
+      );
+    }
+  }
+  return out;
 }
 
 export function bookGaps(ledger: Ledger): Alert[] {
@@ -214,7 +264,12 @@ export function planView(line: PlanLine): TickView {
     if (!ref && assetId === undefined) continue;
     acts.push({ route: i.route, side, ...(ref ? { ref } : {}), ...(assetId !== undefined ? { assetId } : {}), id: i.id });
   }
-  const failures = line.execution.filter((e) => !e.ok).map((e) => ({ shape: `${e.route}:${e.error ?? "failed"}`, id: e.id, line: e.detail ?? "" }));
+  // The coordinator only reads `failed: <code>`; a dealer line `· error · … error <code>` comes as ok but is a failure too.
+  const failures = line.execution.flatMap((e) => {
+    const dealerErr = /· error · .*\berror ([\w-]+)/.exec(e.detail ?? "");
+    if (e.ok && !dealerErr) return [];
+    return [{ shape: `${e.route}:${e.error ?? dealerErr?.[1] ?? "failed"}`, id: e.id, line: e.detail ?? "" }];
+  });
   return {
     tick: line.tick,
     source: "plan",
@@ -237,7 +292,7 @@ export function playView(t: PlayTick): TickView {
   };
 }
 
-export function cashFloor(views: TickView[], ledger: Ledger): Alert[] {
+export function cashFloor(views: TickView[]): Alert[] {
   const out: Alert[] = [];
   let episode: number | undefined;
   for (const v of views) {
@@ -257,23 +312,28 @@ export function cashFloor(views: TickView[], ledger: Ledger): Alert[] {
         }),
       );
     } else if (!below) episode = undefined;
-    const spent = ledger.spendByTick.get(v.tick) ?? 0;
-    if (v.maxSpend !== undefined && spent > v.maxSpend) {
-      out.push(
-        alert({
-          tick: v.tick,
-          detector: "cash-floor",
-          lossP: spent - v.maxSpend,
-          refs: [],
-          assets: [],
-          summary: `Spent ${spent} P at tick ${v.tick}, above --max-spend ${v.maxSpend} P.`,
-          evidence: { tick: v.tick, spent, maxSpend: v.maxSpend, source: v.source },
-          key: `max-spend:${v.tick}`,
-        }),
-      );
-    }
   }
   return out;
+}
+
+/** Our spend in a tick (buys plus venue fees, from settlements) above that tick's `--max-spend` (plan.jsonl only). */
+export function maxSpend(views: TickView[], ledger: Ledger): Alert[] {
+  return views.flatMap((v) => {
+    const spent = ledger.spendByTick.get(v.tick) ?? 0;
+    if (v.maxSpend === undefined || spent <= v.maxSpend) return [];
+    return [
+      alert({
+        tick: v.tick,
+        detector: "max-spend",
+        lossP: spent - v.maxSpend,
+        refs: [],
+        assets: [],
+        summary: `Spent ${spent} P at tick ${v.tick}, above --max-spend ${v.maxSpend} P.`,
+        evidence: { tick: v.tick, spent, maxSpend: v.maxSpend, source: v.source },
+        key: `max-spend:${v.tick}`,
+      }),
+    ];
+  });
 }
 
 export function doubleAct(views: TickView[], ledger: Ledger): Alert[] {

@@ -1,11 +1,11 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 import { parseArgs } from "node:util";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.js";
-import { albumCopyLost, bookGaps, cashFloor, churn, DETECTORS, doubleAct, dupBuy, planView, playView, repeatFailure, roundTripLoss, type Alert, type Detector, type TickView } from "./detectors.js";
+import { albumCopyLost, bookGaps, cashFloor, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
 import { daySnapshots, latestCatalog, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readValuesFile, Tail, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
 
@@ -44,6 +44,11 @@ const localDate = new Date().toLocaleDateString("sv-SE");
 const logsDir = [join(root, "results", "logs", date), join(root, "results", "logs", localDate)].find((d) => existsSync(join(d, "play.log"))) ?? join(root, "results", "logs", date);
 const outDir = args.out ?? dayDir;
 const auditFile = join(outDir, "audit.jsonl");
+/** A path relative to the repo when it is inside it, otherwise absolute. */
+const show = (p: string): string => {
+  const r = relative(root, p);
+  return r.startsWith("..") || isAbsolute(r) ? p : r;
+};
 const statusFile = join(outDir, "audit-status.json");
 
 // ---------------------------------------------------------------- sources
@@ -132,7 +137,7 @@ function baseline(): Baseline | undefined {
   const withMe = snapshots.filter((s) => s.me);
   if (withMe.length === 0) snapshots = daySnapshots(dayDir);
   const snap = withMe.filter((s) => s.tick <= firstTick).at(-1) ?? withMe[0];
-  if (snap?.me) return baselineFromMe(snap.me, snap.tick, snap.file.slice(root.length + 1));
+  if (snap?.me) return baselineFromMe(snap.me, snap.tick, show(snap.file));
   const first = [...planLines.values()].sort((a, b) => a.tick - b.tick)[0];
   if (first?.holdings) return baselineFromCounts(first.holdings, first.tick, "plan.jsonl (first line)");
   return undefined;
@@ -189,13 +194,12 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
   const requirements: Record<Detector, { ok: boolean; why: string }> = {
     "dup-buy": need("stream-team", "baseline", "values"),
     "round-trip-loss": need("stream-team"),
+    "buy-back": need("stream-team"),
     "below-best-bid": need("stream-team", "stream-public"),
     "above-best-ask": need("stream-team", "stream-public"),
     "album-copy-lost": need("stream-team", "baseline", "catalog", "values"),
-    "cash-floor": (() => {
-      const c = coord();
-      return health("plan").ok ? c : { ...c, why: `${c.why}; max-spend part needs plan.jsonl` };
-    })(),
+    "cash-floor": coord(),
+    "max-spend": need("plan", "stream-team"),
     "double-act": coord(),
     "repeat-failure": coord(),
     churn: need("stream-team"),
@@ -223,15 +227,17 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
 
   const alerts = [
     ...dupBuy(ledger, model),
-    ...roundTripLoss(ledger),
+    ...tradePairs(ledger),
     ...bookGaps(ledger),
     ...albumCopyLost(ledger, model),
-    ...cashFloor(views, ledger),
+    ...cashFloor(views),
+    ...maxSpend(views, ledger),
     ...doubleAct(views, ledger),
     ...repeatFailure(views),
     ...churn(ledger),
     ...stale,
   ].sort((a, b) => a.tick - b.tick);
+  const deduped = markOverlaps(alerts);
 
   const detectors: Record<string, DetectorStatus> = {};
   for (const d of DETECTORS) {
@@ -245,14 +251,42 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     date,
     team,
     clock,
+    lossP: { gross: round(alerts.reduce((s, a) => s + (a.lossP ?? 0), 0)), deduped: deduped },
     baseline: base ? { source: base.source, tick: base.tick, cards: base.cards.length } : null,
-    sources: Object.fromEntries((Object.keys(tails) as SourceName[]).map((s) => [s, { file: tails[s].file.slice(root.length + 1), lastTick: lastTick[s] ?? null, stale: lastTick[s] === undefined ? null : clock - lastTick[s]! > STALE_TICKS }])),
+    sources: Object.fromEntries((Object.keys(tails) as SourceName[]).map((s) => [s, { file: show(tails[s].file), lastTick: lastTick[s] ?? null, stale: lastTick[s] === undefined ? null : clock - lastTick[s]! > STALE_TICKS }])),
     detectors,
   };
   return { alerts, status, ledger };
 }
 
 const round = (x: number): number => Math.round(x * 10) / 10;
+
+/**
+ * Alerts that count a loss on the same trade (`evidence.trades`: dup-buy and the round trip of that copy, a buy-back and
+ * the round trip before it…) form one group: each alert gets `overlaps` (the other keys) and the deduplicated total
+ * counts only the largest loss of each group.
+ */
+function markOverlaps(alerts: Alert[]): number {
+  const parent = alerts.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  const owner = new Map<string, number>();
+  alerts.forEach((a, i) => {
+    const trades = Array.isArray(a.evidence.trades) ? (a.evidence.trades as string[]) : [];
+    for (const t of trades) {
+      const j = owner.get(t);
+      if (j === undefined) owner.set(t, i);
+      else parent[find(i)] = find(j);
+    }
+  });
+  const groups = new Map<number, number[]>();
+  alerts.forEach((_, i) => groups.set(find(i), [...(groups.get(find(i)) ?? []), i]));
+  let total = 0;
+  for (const members of groups.values()) {
+    total += Math.max(0, ...members.map((i) => alerts[i]!.lossP ?? 0));
+    if (members.length > 1) for (const i of members) alerts[i]!.overlaps = members.filter((j) => j !== i).map((j) => alerts[j]!.key);
+  }
+  return round(total);
+}
 
 // ---------------------------------------------------------------- output
 
@@ -279,40 +313,43 @@ function emit(alerts: Alert[], status: Record<string, unknown>, printAll: boolea
   return fresh;
 }
 
-function report(alerts: Alert[], status: { detectors: Record<string, DetectorStatus>; team: string; clock: number; baseline: unknown }, ledger: Ledger): void {
+function report(alerts: Alert[], status: { detectors: Record<string, DetectorStatus>; team: string; clock: number; lossP: { gross: number; deduped: number } }, ledger: Ledger): void {
   console.log(`\n== audit ${date} · team ${status.team} · clock tick ${status.clock} · ${ledger.trades.length} of our trades · ${ledger.lots.length} cards in the book ==`);
-  let total = 0;
   for (const [d, s] of Object.entries(status.detectors)) {
-    total += s.lossP;
     console.log(`  ${d.padEnd(15)} ${s.status.padEnd(10)} ${String(s.alerts).padStart(3)} alerts · ${String(s.lossP).padStart(6)} P · ${s.reason}`);
   }
-  console.log(`  total: ${alerts.length} alerts · ${round(total)} P estimated loss`);
-  console.log(`  written: ${auditFile.slice(root.length + 1)} · ${statusFile.slice(root.length + 1)}`);
+  console.log(`  total: ${alerts.length} alerts · ${status.lossP.gross} P gross · ${status.lossP.deduped} P counting each overlapping loss once`);
+  console.log(`  written: ${show(auditFile)} · ${show(statusFile)}`);
+}
+
+async function cycle(printAll: boolean): Promise<{ r: ReturnType<typeof evaluate>; fresh: Alert[] }> {
+  await refreshMe();
+  readAll();
+  const r = evaluate();
+  return { r, fresh: emit(r.alerts, r.status, printAll) };
 }
 
 async function main(): Promise<void> {
-  await refreshMe();
-  readAll();
-  const first = evaluate();
-  const fresh = emit(first.alerts, first.status, !args.watch);
   if (!args.watch) {
-    report(first.alerts, first.status as never, first.ledger);
+    const { r } = await cycle(true);
+    report(r.alerts, r.status as never, r.ledger);
     return;
   }
-  console.log(`[audit] watching ${date} every ${args.interval} s · ${first.alerts.length} alerts so far (${fresh.length} new) · Ctrl-C to stop`);
   const every = Math.max(5, Number(args.interval) || 15) * 1000;
   // Writes are synchronous: a signal can stop it at once.
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(sig, () => process.exit(0));
+  let started = false;
   for (;;) {
-    await new Promise((r) => setTimeout(r, every));
+    // Every pass, the first one included, is retried on the next interval instead of exiting (under bazaar:up a
+    // crash would burn its restarts).
     try {
-      await refreshMe();
-      readAll();
-      const r = evaluate();
-      emit(r.alerts, r.status, false);
+      const { r, fresh } = await cycle(false);
+      if (!started) console.log(`[audit] watching ${date} every ${every / 1000} s · ${r.alerts.length} alerts so far (${fresh.length} new) · Ctrl-C to stop`);
+      started = true;
     } catch (e) {
-      console.log(`[audit] cycle failed: ${e instanceof Error ? e.message : String(e)}`);
+      console.log(`[audit] cycle failed: ${e instanceof Error ? e.message : String(e)} (retrying in ${every / 1000} s)`);
     }
+    await new Promise((r) => setTimeout(r, every));
   }
 }
 

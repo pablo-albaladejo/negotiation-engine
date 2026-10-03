@@ -1,6 +1,7 @@
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { PlanLineSchema, type PlanLine } from "../coordinator/plan-log.js";
 import { CatalogSchema, MeSchema, type Catalog, type Me } from "../shared/schemas.js";
 
 /**
@@ -104,32 +105,9 @@ export function parseStreamLine(line: string): { event?: StreamEvent; team?: str
   return { event: { id: d.id, tick: d.tick, type: r.data.event, scope: d.scope ?? "", payload: d.payload } };
 }
 
-// ---------------------------------------------------------------- plan.jsonl (coordinator)
+// ---------------------------------------------------------------- plan.jsonl (coordinator, schema from src/coordinator/plan-log.ts)
 
-/** Tolerant local copy of the coordinator's `plan.jsonl` line (src/coordinator/plan-log.ts): extra fields allowed. */
-const PlanIntentSchema = z.looseObject({
-  id: z.string(),
-  route: z.string(),
-  kind: z.string().optional(),
-  ref: z.string().optional(),
-  assetIds: z.array(num).optional(),
-  price: num.optional(),
-  summary: z.string().optional(),
-});
-export const PlanLineSchema = z.looseObject({
-  v: num,
-  tick: num,
-  ts: z.string().optional(),
-  mode: z.string().optional(),
-  cash: num.optional(),
-  cashFloor: num.optional(),
-  maxSpend: num.optional(),
-  holdings: z.record(z.string(), num).optional(),
-  intents: z.array(PlanIntentSchema).default([]),
-  arbitration: z.array(z.looseObject({ id: z.string(), verdict: z.string(), reason: z.string().optional() })).default([]),
-  execution: z.array(z.looseObject({ id: z.string(), route: z.string(), ok: z.boolean(), error: z.string().optional(), detail: z.string().optional() })).default([]),
-});
-export type PlanLine = z.infer<typeof PlanLineSchema>;
+export type { PlanLine };
 
 export function parsePlanLine(line: string): PlanLine | undefined {
   const r = PlanLineSchema.safeParse(parseJson(line));
