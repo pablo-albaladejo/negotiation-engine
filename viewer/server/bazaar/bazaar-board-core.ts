@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 /**
- * Núcleo puro de `/api/bazaar/board`: a partir de las respuestas crudas del Bazaar (GET), nuestras
- * trazas locales y la caché de veredictos arma UNA lista de todas nuestras conversaciones (hilos
- * con dealers, duelos, tratos y ofertas entre equipos) con valor, excedente, veredicto y deltas de
- * la cifra ya calculados. Sin E/S: `bazaar-board.ts` hace las llamadas y persiste la caché. El texto
- * de los mensajes se copia literal (puede traer inyección): nunca se interpreta aquí.
+ * Pure core of `/api/bazaar/board`: from the raw Bazaar responses (GET), our local traces and the
+ * verdict cache it builds ONE list of all our conversations (dealer threads, duels, deals and
+ * offers between teams) with value, surplus, verdict and score deltas already computed. No I/O:
+ * `bazaar-board.ts` makes the calls and persists the cache. Message text is copied verbatim (it may
+ * carry injection): it is never interpreted here.
  */
 
 export const OUR_TEAM_FALLBACK = "t02";
-/** Un trato liquidado hace ≤ este nº de ticks se valora "en el momento" (`/api/me/value` si vendimos). */
+/** A deal settled ≤ this many ticks ago is valued "on the spot" (`/api/me/value` if we sold). */
 export const FRESH_TICKS = 3;
 
 const num = z.number();
@@ -121,7 +121,7 @@ export const LeaderboardSchema = z.looseObject({
     .nullish(),
 });
 
-/** Una línea de `decisions.jsonl` / `thread-<id>.jsonl` (nuestra traza; tolerante). */
+/** One line of `decisions.jsonl` / `thread-<id>.jsonl` (our trace; tolerant). */
 export const DecisionSchema = z.looseObject({
   ts: str.optional(),
   tick: num.optional(),
@@ -147,7 +147,7 @@ export const ScoreLineSchema = z.looseObject({
 });
 export type ScoreLine = z.infer<typeof ScoreLineSchema>;
 
-/** `docs/bazaar/lessons.json` → `conversations[]`: solo `thread` + `our_value` (valor que logueamos). */
+/** `docs/bazaar/lessons.json` → `conversations[]`: only `thread` + `our_value` (the value we logged). */
 export const LessonSchema = z.looseObject({ thread: num.optional(), kind: str.optional(), our_value: num.nullish() });
 export type Lesson = z.infer<typeof LessonSchema>;
 
@@ -182,7 +182,7 @@ export function parseCache(raw: unknown): VerdictCache {
   return { schema: "bazaar-verdicts/v1", updated: null, values, settlements: parsed.data.settlements };
 }
 
-// ---------------------------------------------------------------- salida
+// ---------------------------------------------------------------- output
 
 export type RowKind = "dealer-buy" | "dealer-sell" | "dealer" | "duel-buyer" | "duel-seller" | "team-trade" | "team-offer";
 export type Verdict = "good" | "bad" | "neutral" | "open" | "no deal" | "not logged";
@@ -262,7 +262,7 @@ export interface BoardInput {
   scoreLines: ScoreLine[];
   lessons: Lesson[];
   cache: VerdictCache;
-  /** `/api/me/value?card=REF` ya consultado en este ciclo (solo para ventas recién liquidadas). */
+  /** `/api/me/value?card=REF` already queried this cycle (only for just-settled sales). */
   apiValues: ReadonlyMap<string, number>;
 }
 
@@ -287,7 +287,7 @@ export function verdictOf(surplus: number | null): Verdict {
   return "neutral";
 }
 
-/** Excedente desde nuestro lado: compra = valor − precio; venta = precio − valor. */
+/** Surplus from our side: buy = value − price; sell = price − value. */
 export function surplusOf(side: "buy" | "sell", price: number | null, value: number | null): number | null {
   if (price === null || value === null) return null;
   return round2(side === "buy" ? value - price : price - value);
@@ -322,7 +322,7 @@ export function sideLabel(side: RawSide | null | undefined): string {
   return parts.length ? parts.join(" + ") : "nothing";
 }
 
-/** Lado que damos / recibimos en una oferta (según quién la hizo). */
+/** Side we give / receive in an offer (depending on who made it). */
 function ourSides(o: RawOffer, team: string): { give: RawSide | null; get: RawSide | null } {
   const weMade = o.maker === team;
   return { give: (weMade ? o.give : o.want) ?? null, get: (weMade ? o.want : o.give) ?? null };
@@ -351,7 +351,7 @@ function topicLabel(topic: unknown): string | null {
   return null;
 }
 
-/** Deltas de `score.jsonl` cuya causa es este hilo/duelo (suma; `null` si nunca apareció). */
+/** Deltas from `score.jsonl` caused by this thread/duel (summed; `null` if it never appeared). */
 export function scoreDeltas(lines: readonly ScoreLine[], match: { thread?: number; duel?: number }): { neg: number | null; ladder: number | null; score: number | null } {
   let found = false;
   let neg = 0;
@@ -399,10 +399,10 @@ interface DealToValue {
   thread?: number;
 }
 
-/** Valor de lo que de verdad recibimos (compra) o entregamos (venta), en este orden: caché →
- * venta recién liquidada (`/api/me/value`) → compra cuya carta sigue en nuestras manos (valor
- * ahora, `your_value` de ese asset en `/api/me`) → nuestra traza (`summary.ourValue`, solo si el
- * resumen nombra esa misma carta) → lecciones (solo ventas) → "not logged". */
+/** Value of what we actually received (buy) or handed over (sell), in this order: cache →
+ * just-settled sale (`/api/me/value`) → purchase whose card is still in our hands (value
+ * now, `your_value` of that asset in `/api/me`) → our trace (`summary.ourValue`, only if the
+ * summary names that same card) → lessons (sales only) → "not logged". */
 export function valueDeal(deal: DealToValue, input: BoardInput): Valuation {
   const cached = input.cache.values[deal.rowId];
   if (cached) return { value: cached.value, source: cached.source };
@@ -430,7 +430,7 @@ export function valueDeal(deal: DealToValue, input: BoardInput): Valuation {
   return { value: null, source: "not logged" };
 }
 
-/** Oferta liquidada de un hilo (la última con `status: "settled"`), con su tick. */
+/** Settled offer of a thread (the last one with `status: "settled"`), with its tick. */
 function settledOfferOf(t: BoardThread): { offer: RawOffer; tick: number | null } | null {
   let found: { offer: RawOffer; tick: number | null } | null = null;
   const isSettled = (s: string | null | undefined) => s === "settled" || s === "accepted";
@@ -451,7 +451,7 @@ function lastTick(t: BoardThread): number | null {
   return last;
 }
 
-/** Liquidación del feed para un hilo: misma contraparte, alguna carta (ref o id) en común y mismo precio. */
+/** Feed settlement for a thread: same counterparty, some card (ref or id) in common and same price. */
 function matchSettlement(settlements: readonly Settlement[], counterparty: string, assets: readonly AssetRef[], price: number | null, minTick: number | null): Settlement | null {
   return (
     settlements.find(
@@ -667,7 +667,7 @@ function assemble(input: BoardInput): { rows: BoardRow[]; deals: DealToValue[] }
   for (const d of input.duels) rows.push(duelRow(d, input));
   for (const s of input.settlements) {
     if (consumed.has(s.settlement) || !(s.parties ?? []).includes(input.team)) continue;
-    if (s.persona && !s.venue) continue; // trato con dealer: lo cubre su hilo
+    if (s.persona && !s.venue) continue; // dealer deal: covered by its thread
     const b = settlementRow(s, input.team);
     rows.push(b.row);
     if (b.deal) deals.push(b.deal);
@@ -676,7 +676,7 @@ function assemble(input: BoardInput): { rows: BoardRow[]; deals: DealToValue[] }
   return { rows, deals };
 }
 
-/** Qué refs hay que valorar con `/api/me/value` en este ciclo: ventas recién liquidadas sin caché. */
+/** Which refs must be valued with `/api/me/value` this cycle: just-settled sales not in the cache. */
 export function pendingValueRequests(input: BoardInput): ValueRequest[] {
   const { deals } = assemble(input);
   const out: ValueRequest[] = [];
@@ -688,7 +688,7 @@ export function pendingValueRequests(input: BoardInput): ValueRequest[] {
   return out;
 }
 
-/** Lista unificada + entradas nuevas para la caché (`newValues`: solo las resueltas ahora). */
+/** Unified list + new cache entries (`newValues`: only those resolved now). */
 export function buildRows(input: BoardInput): { rows: BoardRow[]; newValues: Record<string, CachedValue> } {
   const { rows, deals } = assemble(input);
   const newValues: Record<string, CachedValue> = {};
@@ -726,7 +726,7 @@ export function headerOf(me: BoardMe | null, team: string): BoardHeader | null {
   };
 }
 
-/** Liquidaciones del feed que nos involucran (se acumulan en la caché: el feed es corto). */
+/** Feed settlements that involve us (accumulated in the cache: the feed is short). */
 export function ourSettlements(events: readonly FeedEvent[], team: string): Settlement[] {
   const out: Settlement[] = [];
   for (const e of events) {
@@ -737,7 +737,7 @@ export function ourSettlements(events: readonly FeedEvent[], team: string): Sett
   return out;
 }
 
-// ---------------------------------------------------------------- mercado
+// ---------------------------------------------------------------- market
 
 export interface FeedLine {
   id: number;
@@ -760,20 +760,20 @@ export interface LeaderLine {
   name: string;
   score: number | null;
   us: boolean;
-  /** Partes públicas de la cifra y del álbum (`/api/leaderboard`, refresco cada 5 ticks). */
+  /** Public parts of the score and the album (`/api/leaderboard`, refreshed every 5 ticks). */
   negotiating: number | null;
   market: number | null;
   level: number | null;
   album_filled: number | null;
   album_slots: number | null;
-  /** Páginas completas: las ★ del leaderboard oficial. */
+  /** Complete pages: the ★ of the official leaderboard. */
   pages_complete: number | null;
   deals: number | null;
 }
 
 const s = (v: unknown, dflt = "?"): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : dflt);
 
-/** Resumen literal de un evento del feed (el texto de terceros se copia tal cual, nunca se interpreta). */
+/** Literal summary of a feed event (third-party text is copied as is, never interpreted). */
 export function feedLine(e: FeedEvent): FeedLine {
   const p = (e.payload && typeof e.payload === "object" ? e.payload : {}) as Record<string, unknown>;
   const type = e.type ?? "event";
@@ -806,8 +806,8 @@ export function feedLine(e: FeedEvent): FeedLine {
 }
 
 /**
- * Libro de un venue: las `max` ofertas más recientes, y siempre las nuestras (`keep`), aunque
- * sean más antiguas; el Bazaar anonimiza al autor, así que solo las reconocemos por id.
+ * Book of a venue: the `max` most recent offers, and always ours (`keep`), even if
+ * older; the Bazaar anonymises the author, so we only recognise them by id.
  */
 export function bookLines(raw: unknown, max = 40, keep: ReadonlySet<number> = new Set()): BookLine[] {
   const offers = parseOffers(raw).sort((a, b) => b.id - a.id);

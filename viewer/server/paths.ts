@@ -1,7 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { join, sep } from "node:path";
 
-/** Identificador de run, partida o sesión: un solo segmento, sin `..` (design.md §4). */
+/** Run, game or session identifier: a single segment, no `..` (design.md §4). */
 const SAFE_ID = /^[A-Za-z0-9_.-]{1,128}$/;
 
 export function isSafeId(id: string): boolean {
@@ -9,8 +9,8 @@ export function isSafeId(id: string): boolean {
 }
 
 /**
- * Ruta real de `root/...parts` solo si existe y, resueltos los enlaces simbólicos, queda dentro de
- * `root`; si no, `null` (el llamador responde 404 sin revelar la ruta).
+ * Real path of `root/...parts` only if it exists and, once symlinks are resolved, stays inside
+ * `root`; otherwise `null` (the caller answers 404 without revealing the path).
  */
 export async function resolveInside(root: string, ...parts: string[]): Promise<string | null> {
   try {

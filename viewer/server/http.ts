@@ -7,10 +7,10 @@ import { BazaarBoard, type BazaarBoardDeps } from "./bazaar/bazaar-board.js";
 import { BazaarModel, type BazaarModelDeps } from "./bazaar/bazaar-model.js";
 
 /**
- * Servidor local del visor. SOLO escucha en 127.0.0.1 (la dirección no es configurable, solo el
- * puerto con VIEWER_PORT) y NO tiene autenticación: es una decisión deliberada porque nadie fuera
- * de esta máquina puede conectarse. La cabecera Host se comprueba contra DNS rebinding. Solo GET y
- * HEAD; solo sirve la pestaña del Bazaar (`/api/bazaar/*`) y el resto lo delega en Vite.
+ * Local viewer server. It ONLY listens on 127.0.0.1 (the address is not configurable, only the
+ * port via VIEWER_PORT) and has NO authentication: a deliberate decision because nobody outside
+ * this machine can connect. The Host header is checked against DNS rebinding. GET and HEAD only;
+ * it only serves the Bazaar tab (`/api/bazaar/*`) and delegates the rest to Vite.
  */
 export const LOOPBACK = "127.0.0.1";
 export const DEFAULT_PORT = 5199;
@@ -19,19 +19,19 @@ export type Middleware = (req: IncomingMessage, res: ServerResponse, next: () =>
 
 export interface ViewerServerOptions {
   repoRoot: string;
-  /** Resto de rutas (Vite en modo middleware o estáticos); sin él, 404. */
+  /** Remaining routes (Vite in middleware mode or static files); without it, 404. */
   middleware?: Middleware;
-  /** Directorio de `score.jsonl` distinto de `<repoRoot>/results/bazaar-live` (`VIEWER_BAZAAR_DIR`). */
+  /** `score.jsonl` directory other than `<repoRoot>/results/bazaar-live` (`VIEWER_BAZAAR_DIR`). */
   bazaarDir?: string;
-  /** Inyectable en tests (clase `BazaarLive`); por defecto, usa `BAZAAR_KEY`/`BAZAAR_URL` del entorno. */
+  /** Injectable in tests (`BazaarLive` class); by default, uses `BAZAAR_KEY`/`BAZAAR_URL` from the environment. */
   bazaarLiveDeps?: BazaarLiveDeps;
-  /** Inyectable en tests (clase `BazaarThreads`). */
+  /** Injectable in tests (`BazaarThreads` class). */
   bazaarThreadsDeps?: BazaarThreadsDeps;
-  /** Inyectable en tests (clase `BazaarDuels`). */
+  /** Injectable in tests (`BazaarDuels` class). */
   bazaarDuelsDeps?: BazaarDuelsDeps;
-  /** Inyectable en tests (clase `BazaarBoard`, `/api/bazaar/board`). */
+  /** Injectable in tests (`BazaarBoard` class, `/api/bazaar/board`). */
   bazaarBoardDeps?: BazaarBoardDeps;
-  /** Inyectable en tests (clase `BazaarModel`, `/api/bazaar/model`). */
+  /** Injectable in tests (`BazaarModel` class, `/api/bazaar/model`). */
   bazaarModelDeps?: BazaarModelDeps;
 }
 
@@ -59,7 +59,7 @@ export function createViewerServer({ repoRoot, bazaarDir, bazaarLiveDeps, bazaar
     snapshotsFile: process.env.VIEWER_BAZAAR_SNAPSHOTS ?? join(repoRoot, "..", "causa-prima", "bazaar-sim", "monitor", "data", "snapshots.jsonl"),
     ...bazaarBoardDeps,
   });
-  // El modelo reutiliza el feed, el catálogo y el libro de El Rastro que ya lee el tablero (no repite los GET).
+  // The model reuses the feed, catalog and El Rastro book the board already reads (no repeated GETs).
   const bazaarModel = new BazaarModel(bazaarRoot, { feed: () => bazaarBoard.recentFeed(), market: () => bazaarBoard.marketInputs(), ...bazaarModelDeps });
 
   const server = createServer((req, res) => {
@@ -132,11 +132,11 @@ function portFrom(env: NodeJS.ProcessEnv): number {
   const raw = env.VIEWER_PORT;
   if (raw === undefined || raw === "") return DEFAULT_PORT;
   const port = Number(raw);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`VIEWER_PORT inválido: ${raw}`);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid VIEWER_PORT: ${raw}`);
   return port;
 }
 
-/** Arranca en 127.0.0.1 y el puerto de `VIEWER_PORT` (0 = libre). Ninguna variable cambia la dirección. */
+/** Starts on 127.0.0.1 and the `VIEWER_PORT` port (0 = any free port). No variable changes the address. */
 export async function startViewerServer(
   options: ViewerServerOptions & { env?: NodeJS.ProcessEnv },
 ): Promise<{ server: Server; port: number; url: string }> {

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * Núcleo puro de la cabina del Bazaar: álbum (páginas, cartas que faltan y copias que tenemos) y
- * calendario, a partir de `/api/me`, `/api/catalog` y `/api/schedule`. Sin E/S ni cálculo de la
- * cifra: el servidor del juego la da hecha.
+ * Pure core of the Bazaar cockpit: album (pages, missing cards and copies we hold) and
+ * schedule, built from `/api/me`, `/api/catalog` and `/api/schedule`. No I/O and no figure
+ * computation: the game server provides it ready-made.
  */
 
 const num = z.number();
@@ -31,9 +31,9 @@ export interface MissingCard {
   ref: string;
   name: string;
   rarity: string | null;
-  /** Precio de referencia del catálogo (`book`). */
+  /** Catalog reference price (`book`). */
   book: number | null;
-  /** Nuestro valor privado (`/api/me/value`), si ya se consultó. */
+  /** Our private value (`/api/me/value`), if already queried. */
   value: number | null;
 }
 
@@ -64,7 +64,7 @@ export interface ScheduleOut {
   upcoming: ScheduleItem[];
 }
 
-/** Copias que tenemos de cada carta (`/api/me` → assets de tipo carta). */
+/** Copies we hold of each card (`/api/me` → card-type assets). */
 export function holdingsOf(meRaw: unknown): Record<string, number> {
   const p = MeAlbumSchema.safeParse(meRaw);
   const out: Record<string, number> = {};
@@ -76,8 +76,8 @@ export function holdingsOf(meRaw: unknown): Record<string, number> {
 }
 
 /**
- * Páginas del álbum, de la más completa a la menos, con las cartas de página que nos faltan según
- * el catálogo. `values` trae nuestro valor privado de las cartas ya consultadas.
+ * Album pages, from most to least complete, with the page cards we are missing according to
+ * the catalog. `values` carries our private value for the cards already queried.
  */
 export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap<string, number>): AlbumOut | null {
   const me = MeAlbumSchema.safeParse(meRaw);
@@ -96,13 +96,13 @@ export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap
   return { filled: me.data.album.filled ?? null, slots: me.data.album.slots ?? null, pages };
 }
 
-/** Cartas que faltan cuyo valor privado aún no sabemos, empezando por las páginas más completas. */
+/** Missing cards whose private value we don't know yet, starting with the most complete pages. */
 export function missingWithoutValue(album: AlbumOut | null, max: number): string[] {
   if (!album) return [];
   return album.pages.flatMap((p) => p.missing.filter((m) => m.value === null).map((m) => m.ref)).slice(0, max);
 }
 
-/** Calendario: solo lo que aún no ha pasado, en orden. */
+/** Schedule: only what hasn't happened yet, in order. */
 export function scheduleOf(raw: unknown): ScheduleOut | null {
   const p = ScheduleSchema.safeParse(raw);
   if (!p.success) return null;

@@ -2,16 +2,16 @@ import { open, readdir, stat } from "node:fs/promises";
 import { isSafeId, resolveInside } from "../paths.js";
 
 /**
- * Señal de vida de cada agente: cuándo escribió por última vez su traza en
- * `results/bazaar-live/<fecha>/`. Solo lectura (stat + cola del fichero).
+ * Liveness signal of each agent: when it last wrote its trace in
+ * `results/bazaar-live/<date>/`. Read-only (stat + file tail).
  */
 
 export interface AgentStatus {
   agent: "dealers" | "duels" | "broker" | "trades";
-  /** Última escritura (ISO) o `null` si no hay traza. */
+  /** Last write (ISO) or `null` if there is no trace. */
   last_at: string | null;
   last_tick: number | null;
-  /** Última acción legible (p. ej. "counter · rule adaptive" o "dry-run"). */
+  /** Last human-readable action (e.g."counter · rule adaptive" o "dry-run"). */
   detail: string | null;
 }
 
@@ -48,7 +48,7 @@ function describe(line: Record<string, unknown> | null): { tick: number | null; 
   return { tick, detail: detail || null };
 }
 
-/** Estado de dealers, duelos y broker según sus trazas (la fecha más reciente que tenga cada fichero). */
+/** Status of dealers, duels and broker from their traces (the most recent date each file has). */
 export async function agentStatuses(bazaarDir: string): Promise<AgentStatus[]> {
   let dates: string[] = [];
   try {
@@ -67,7 +67,7 @@ export async function agentStatuses(bazaarDir: string): Promise<AgentStatus[]> {
           const s = await stat(path);
           if (!best || s.mtime > best.mtime) best = { mtime: s.mtime, path, file };
         } catch {
-          // sin fichero en esa fecha
+          // no file on that date
         }
       }
       if (best) break;

@@ -4,8 +4,8 @@ import { createServer as createVite, type ViteDevServer } from "vite";
 import { startViewerServer } from "./http.js";
 
 /**
- * `pnpm viewer`: un solo proceso `node:http` en 127.0.0.1 que atiende `/api/*` y delega el resto
- * en Vite en modo middleware. Local, de solo lectura y sin autenticación (ver http.ts).
+ * `pnpm viewer`: a single `node:http` process on 127.0.0.1 that serves `/api/*` and delegates the rest
+ * to Vite in middleware mode. Local, read-only and unauthenticated (see http.ts).
  */
 const viewerRoot = fileURLToPath(new URL("../", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
@@ -24,7 +24,7 @@ vite = await createVite({
   server: { middlewareMode: true, ws: { server } },
 });
 
-console.log(`Visor en ${url}#bazaar (solo local)`);
+console.log(`Viewer at ${url}#bazaar (local only)`);
 
 const stop = () => {
   void vite?.close();

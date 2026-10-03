@@ -3,18 +3,18 @@ import type { GameState } from "../../../src/state/game-state.js";
 import { parseMyOffers, parseOffers, readSide, type TradeOffer } from "../../../src/trades/trades.js";
 
 /**
- * Núcleo puro de la pestaña «Now» (`/api/bazaar/model` → `now`): a qué objetivo sirve cada intención del tick,
- * nuestras ofertas publicadas (precio, edad, comisión, si cruzan algo), el estado de nuestro venue y los plazos.
- * Solo lee lo que ya trae el modelo (estructura, nunca texto del rival); no calcula ninguna cifra nueva:
- * la cifra de cada intención es la que decidió el código (`price`, la decisión de la ruta o la de su resumen).
+ * Pure core of the "Now" tab (`/api/bazaar/model` → `now`): which goal each intent of the tick serves,
+ * our published offers (price, age, fee, whether they cross anything), the state of our venue and the deadlines.
+ * It only reads what the model already carries (structure, never rival text); it computes no new figure:
+ * each intent's figure is the one the code decided (`price`, the route's decision or its summary's).
  */
 
 export interface NowIntentGoal {
-  /** Objetivo de la conversación (`goal.why`) o el que se deduce de la ruta. */
+  /** Conversation goal (`goal.why`) or the one inferred from the route. */
   goal: string;
-  /** Objetivo global al que sirve: página del álbum, escalera de dealers, duelo, ventaja de mercado… */
+  /** Global goal it serves: album page, dealer ladder, duel, market edge… */
   global: string;
-  /** Cifra decidida por código, si la intención lleva una. */
+  /** Figure decided by code, if the intent carries one. */
   figure: number | null;
 }
 
@@ -23,19 +23,19 @@ export interface NowOffer {
   venue: string;
   venue_name: string | null;
   side: "sell" | "buy" | "swap";
-  /** Lo que damos y lo que pedimos, en texto corto ("SAL-07" / "32 P"). */
+  /** What we give and what we ask for, in short text ("SAL-07" / "32 P"). */
   give: string;
   want: string;
   refs: string[];
-  /** Cifra de la oferta (P), si es dinero contra carta. */
+  /** Offer figure (P), if it is money for a card. */
   price: number | null;
   created_tick: number | null;
   expires_tick: number | null;
   age_ticks: number | null;
   fee: { bps: number; per_card: number; est: number | null } | null;
-  /** Mejor oferta ajena que cruza la nuestra en el mismo libro; `null` si no cruza; "unknown" sin libro. */
+  /** Best foreign offer crossing ours in the same book; `null` if none crosses; "unknown" without a book. */
   crosses: { offer: number; price: number } | null | "unknown";
-  /** Objetivo de la conversación `rastro:<id>` si el modelo la tiene. */
+  /** Goal of the `rastro:<id>` conversation if the model has it. */
   goal: string | null;
 }
 
@@ -55,9 +55,9 @@ export interface NowVenue {
 }
 
 export interface NowOut {
-  /** Por id de intención. */
+  /** By intent id. */
   goals: Record<string, NowIntentGoal>;
-  /** Tick límite por conversación (duelos: `deadline_tick`; ofertas: `expires_tick`). */
+  /** Deadline tick per conversation (duels: `deadline_tick`; offers: `expires_tick`). */
   deadlines: Record<string, number>;
   offers: NowOffer[];
   venue: NowVenue | null;
@@ -67,7 +67,7 @@ const record = (x: unknown): Record<string, unknown> => (x && typeof x === "obje
 const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
 const str = (x: unknown): string | null => (typeof x === "string" && x !== "" ? x : null);
 
-/** Objetivo global de cada `goal.why`. */
+/** Global goal for each `goal.why`. */
 function globalOf(why: string, state: GameState, pageTargets: readonly string[], ref: string | null): string {
   if (why === "page") return `album page${ref ? ` (${ref} completes ${ref.split("-")[0]})` : pageTargets.length ? ` (${pageTargets.join(", ")})` : ""}`;
   if (why === "ladder") return `dealer ladder (level ${state.ours.level ?? "?"})`;
@@ -80,7 +80,7 @@ function globalOf(why: string, state: GameState, pageTargets: readonly string[],
 
 const CARD = /\b[A-Z]{3}-\d{2}\b/;
 
-/** Cifra del resumen (`@ 32 P`, `COUNTER 86 P`, `cash 55 P`): la escribió el código, no el rival. */
+/** Figure from the summary (`@ 32 P`, `COUNTER 86 P`, `cash 55 P`): written by the code, not the rival. */
 function figureOf(summary: string): number | null {
   const m = /(?:@|COUNTER|ACCEPT[^(]*\(|cash)\s*(-?\d+(?:\.\d+)?)\s*P\b/.exec(summary) ?? /(-?\d+(?:\.\d+)?)\s*P\b/.exec(summary);
   return m ? Number(m[1]) : null;
@@ -105,12 +105,12 @@ export function intentGoals(intents: readonly Intent[], state: GameState, pageTa
   return out;
 }
 
-/** Pasadas de `arbitrate`, en su orden (`arbitrate` devuelve los veredictos en el orden de entrada). */
+/** Passes of `arbitrate`, in order (`arbitrate` returns the verdicts in input order). */
 const PASS: Record<string, number> = { accept: 0, message: 1, probe: 2, open: 3, unpack: 4, agenda: 5, flag: 6, cancel: 7, listing: 8 };
 
 /**
- * Orden en que `arbitrate` reparte el tick: aceptaciones por `ACCEPT_PRIORITY` y EV, mensajes, probes, hilos
- * nuevos por EV, sobres, agenda, flags, cancelaciones y altas. Solo para pintar el plan en ese orden.
+ * Order in which `arbitrate` allocates the tick: accepts by `ACCEPT_PRIORITY` and EV, messages, probes, new
+ * threads by EV, packs, agenda, flags, cancellations and listings. Only to render the plan in that order.
  */
 export function arbitrationOrder(intents: readonly Intent[]): Map<string, number> {
   const rank = (i: Intent) => (i.kind === "accept" ? ACCEPT_PRIORITY[i.acceptClass ?? "other"].rank : 0);
@@ -119,7 +119,7 @@ export function arbitrationOrder(intents: readonly Intent[]): Map<string, number
   return new Map(sorted.map(({ i }, k) => [i.id, k]));
 }
 
-/** Plazos de los duelos (`/api/duels`: `deadline_tick` o `deadline` si es un tick). */
+/** Duel deadlines (`/api/duels`: `deadline_tick` or `deadline` if it is a tick). */
 export function duelDeadlines(raw: unknown): Record<string, number> {
   const out: Record<string, number> = {};
   for (const d of Array.isArray(record(raw).duels) ? (record(raw).duels as unknown[]) : []) {
@@ -142,7 +142,7 @@ interface VenueFee {
   perCard: number;
 }
 
-/** Comisión de cada venue (`state.markets.venues` en camelCase o `/api/venues` en snake_case). */
+/** Fee of each venue (`state.markets.venues` in camelCase or `/api/venues` in snake_case). */
 export function venueFees(list: readonly unknown[]): Map<string, VenueFee> {
   const out = new Map<string, VenueFee>();
   for (const v of list) {
@@ -155,8 +155,8 @@ export function venueFees(list: readonly unknown[]): Map<string, VenueFee> {
 }
 
 /**
- * Nuestras ofertas abiertas en cualquier venue. Cruza = en el mismo libro hay una oferta ajena de dinero contra la
- * misma carta al otro lado a un precio que casaría (bid ≥ nuestro ask, o ask ≤ nuestro bid).
+ * Our open offers on any venue. Crosses = the same book has a foreign money-for-card offer on the
+ * same card on the other side at a price that would match (bid ≥ our ask, or ask ≤ our bid).
  */
 export function ourOffers(input: { myOffers: unknown; team: string; tick: number; books: Map<string, unknown>; venues: readonly unknown[]; state: GameState }): NowOffer[] {
   const { mine } = parseMyOffers(input.myOffers, input.team);
@@ -183,7 +183,7 @@ export function ourOffers(input: { myOffers: unknown; team: string; tick: number
         for (const b of book) {
           const bg = readSide(b.give);
           const bw = readSide(b.want);
-          // Del otro lado: si vendemos, una puja (dinero por nuestra carta); si compramos, una venta de esa carta.
+          // Other side: if we sell, a bid (money for our card); if we buy, a sale of that card.
           const theirPrice = side === "sell" ? (bw.cards.includes(ref) && bg.assets.length === 0 && bg.cash > 0 ? bg.cash : null) : bg.assets.some((a) => a.ref === ref) && bw.cash > 0 && bw.cards.length + bw.assets.length === 0 ? bw.cash : null;
           if (theirPrice === null) continue;
           const match = side === "sell" ? theirPrice >= price : theirPrice <= price;
@@ -211,7 +211,7 @@ export function ourOffers(input: { myOffers: unknown; team: string; tick: number
     .sort((a, b) => a.venue.localeCompare(b.venue) || a.id - b.id);
 }
 
-/** Nuestro venue (`/api/me` → `venue`): estado, apertura y el cambio de comisión pendiente con su cuenta atrás. */
+/** Our venue (`/api/me` → `venue`): status, opening and the pending fee change with its countdown. */
 export function ourVenue(me: unknown, tick: number): NowVenue | null {
   const v = record(record(me).venue);
   const id = str(v.venue) ?? str(v.id);

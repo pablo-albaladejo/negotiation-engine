@@ -40,12 +40,12 @@ import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
 
 /**
- * `GET /api/bazaar/board`: la vista unificada del Bazaar. Un ciclo por tick del juego (programado
- * con `next_tick_in` de `/api/clock`, nunca un sondeo apretado) hace solo GET al Bazaar a través
- * de un cubo de fichas de ≤ 2 req/s para todo el ciclo; los navegadores reciben la copia cacheada.
- * La clave del equipo vive solo en este proceso: se envía solo en las rutas privadas y nunca sale
- * en la respuesta ni en un log. Escribe un único fichero, `verdicts.json` en la fecha de hoy bajo
- * `VIEWER_BAZAAR_DIR`, para que el valor de cada trato (calculado una vez) sobreviva a reinicios.
+ * `GET /api/bazaar/board`: the unified Bazaar view. One cycle per game tick (scheduled
+ * with `next_tick_in` from `/api/clock`, never tight polling) makes only GETs to the Bazaar through
+ * a token bucket of ≤ 2 req/s for the whole cycle; browsers get the cached copy.
+ * The team key lives only in this process: it is sent only on private routes and never appears
+ * in the response or in a log. It writes a single file, `verdicts.json` under today's date in
+ * `VIEWER_BAZAAR_DIR`, so each deal's value (computed once) survives restarts.
  */
 
 const ok = (data: unknown): ApiResponse => ({ status: 200, body: { data, errors: [] } });
@@ -79,9 +79,9 @@ export interface BoardOut {
   header: ReturnType<typeof headerOf>;
   rows: BoardRow[];
   market: { leaderboard: LeaderLine[]; feed: FeedLine[]; rastro: BookLine[]; venue: BoardVenueOut | null };
-  /** Páginas del álbum con las cartas que faltan (cabina). */
+  /** Album pages with the missing cards (cockpit). */
   album: AlbumOut | null;
-  /** Copias que tenemos de cada carta (para saber si una oferta vende una repetida o la única). */
+  /** Copies we hold of each card (to tell whether an offer sells a duplicate or the only one). */
   holdings: Record<string, number>;
   schedule: ScheduleOut | null;
   agents: AgentStatus[];
@@ -92,20 +92,20 @@ export interface BazaarBoardDeps {
   fetch?: typeof fetch;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
-  /** Peticiones por segundo al Bazaar para todo el visor (por defecto 2; el juego permite 5). */
+  /** Requests per second to the Bazaar for the whole viewer (default 2; the game allows 5). */
   ratePerSec?: number;
   minRefreshMs?: number;
   lessonsFile?: string | null;
-  /** `snapshots.jsonl` del monitor de causa-prima (`{ts, endpoint, status, body}`), solo lectura y solo como respaldo. */
+  /** `snapshots.jsonl` from the causa-prima monitor (`{ts, endpoint, status, body}`), read-only and only as a fallback. */
   snapshotsFile?: string | null;
   feedLimit?: number;
 }
 
 const PRIVATE = /^\/api\/(me|duels|threads)(\/|\?|$)/;
 const MAX_VALUE_LOOKUPS = 4;
-/** Valores privados de cartas que faltan consultados por ciclo (el resto, en ciclos siguientes). */
+/** Private values of missing cards queried per cycle (the rest, in following cycles). */
 const MAX_MISSING_LOOKUPS = 3;
-/** El catálogo apenas cambia: se relee como mucho una vez por hora. */
+/** The catalog barely changes: re-read at most once per hour. */
 const CATALOG_TTL_MS = 3_600_000;
 
 async function datesOf(dir: string): Promise<string[]> {
@@ -143,7 +143,7 @@ async function readJsonFile(path: string | null | undefined): Promise<unknown> {
   }
 }
 
-/** Último cuerpo por endpoint del `snapshots.jsonl` del monitor (lee solo la cola del fichero). */
+/** Last body per endpoint from the monitor's `snapshots.jsonl` (reads only the file tail). */
 export async function readSnapshotTail(file: string | null | undefined, bytes = 2_000_000): Promise<Map<string, unknown>> {
   const out = new Map<string, unknown>();
   if (!file) return out;
@@ -159,14 +159,14 @@ export async function readSnapshotTail(file: string | null | undefined, bytes = 
           const j = JSON.parse(line) as { endpoint?: unknown; status?: unknown; body?: unknown };
           if (typeof j.endpoint === "string" && j.status === 200) out.set(j.endpoint, j.body);
         } catch {
-          // línea parcial (inicio de la cola) o corrupta
+          // partial line (start of the tail) or corrupt
         }
       }
     } finally {
       await fh.close();
     }
   } catch {
-    // sin fichero: sin respaldo
+    // no file: no fallback
   }
   return out;
 }
@@ -177,7 +177,7 @@ export class BazaarBoard {
   private bucket: TokenBucket;
   private last = new Map<string, unknown>();
   private catalog: { at: number; raw: unknown } | null = null;
-  /** Valor privado de cartas que nos faltan; se invalida cuando cambia lo que tenemos (`filled`). */
+  /** Private value of cards we are missing; invalidated when what we hold changes (`filled`). */
   private missingValues = new Map<string, number>();
   private missingValuesKey: string | null = null;
 
@@ -185,7 +185,7 @@ export class BazaarBoard {
     private readonly bazaarDir: string,
     private readonly deps: BazaarBoardDeps = {},
   ) {
-    // El cubo usa siempre el reloj real (`now` inyectable solo afecta a la caché y a la fecha).
+    // The bucket always uses the real clock (the injectable `now` only affects the cache and the date).
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     this.bucket = new TokenBucket(deps.ratePerSec ?? 2, 2, Date.now, sleep);
   }
@@ -199,18 +199,18 @@ export class BazaarBoard {
     return ok(await this.inflight);
   }
 
-  /** Último cuerpo bueno de `/api/feed` (lo reutiliza `/api/bazaar/model` para eggs y disparadores). */
+  /** Last good body of `/api/feed` (reused by `/api/bazaar/model` for eggs and triggers). */
   recentFeed(): unknown {
     return this.last.get(`/api/feed?limit=${this.deps.feedLimit ?? 200}`) ?? null;
   }
 
-  /** Catálogo, libro de El Rastro y `/api/me` ya leídos (sin GET nuevo) y valores privados de cartas que faltan. Solo local. */
+  /** Catalog, El Rastro book and `/api/me` already read (no new GET) and private values of missing cards. Local only. */
   marketInputs(): { catalog: unknown; rastro: unknown; values: Record<string, number>; me: unknown } {
     return { catalog: this.catalog?.raw ?? null, rastro: this.last.get("/api/venues/rastro/offers") ?? null, values: Object.fromEntries(this.missingValues), me: this.last.get("/api/me") ?? null };
   }
 
-  /** GET al Bazaar (cubo compartido). La clave solo va en rutas privadas; un fallo devuelve el último
-   * cuerpo bueno de esa ruta (o `null`), sin volcar nada de la respuesta. */
+  /** GET to the Bazaar (shared bucket). The key goes only on private routes; a failure returns the last
+   * good body of that route (or `null`), without dumping anything from the response. */
   private async getJson(url: string, key: string | undefined, path: string): Promise<unknown> {
     const isPrivate = PRIVATE.test(path);
     if (isPrivate && !key) return null;
@@ -359,7 +359,7 @@ export class BazaarBoard {
     return new Date((this.deps.now ?? Date.now)()).toISOString().slice(0, 10);
   }
 
-  /** Caché de veredictos: se fusionan las de todas las fechas (la de hoy manda). */
+  /** Verdict cache: the ones from all dates are merged (today's wins). */
   private async readCache(): Promise<VerdictCache> {
     const merged = emptyCache();
     for (const date of await datesOf(this.bazaarDir)) {
@@ -381,7 +381,7 @@ export class BazaarBoard {
       await writeFile(tmp, JSON.stringify({ ...cache, updated: new Date((this.deps.now ?? Date.now)()).toISOString() }, null, 2) + "\n");
       await rename(tmp, file);
     } catch {
-      // sin permiso de escritura: el veredicto se recalcula en el siguiente ciclo
+      // no write permission: the verdict is recomputed next cycle
     }
   }
 }

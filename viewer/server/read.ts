@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { z } from "zod";
 
-/** Un registro omitido: fichero relativo a su raíz, línea desde 1 (`null` en un JSON entero) y campo. */
+/** A skipped record: file relative to its root, 1-based line (`null` for a whole JSON) and field. */
 export interface ReadError {
   file: string | null;
   line: number | null;
@@ -22,8 +22,8 @@ const isDiscriminatorMiss = (branch: readonly Issue[]) =>
   branch.length === 1 && branch[0]?.code === "invalid_union" && branch[0].errors.length === 0;
 
 /**
- * En una unión, la rama que más se acercó a validar: descarta las que fallan por discriminante,
- * elige la de menos errores y, a igualdad, el campo más profundo.
+ * In a union, the branch that came closest to validating: drops those failing on the discriminator,
+ * picks the one with the fewest errors and, on a tie, the deepest field.
  */
 function locateIssue(issue: Issue, prefix: readonly PropertyKey[] = []): { path: PropertyKey[]; message: string } {
   const path = [...prefix, ...issue.path];
@@ -47,13 +47,13 @@ function schemaError(file: string, line: number | null, error: z.ZodError): Read
   return { file, line, path: path.map(String).join("."), message };
 }
 
-/** Sin rutas absolutas en la respuesta: solo el código del error de E/S. */
+/** No absolute paths in the response: only the I/O error code. */
 function ioError(file: string, error: unknown): ReadError {
   const code = (error as NodeJS.ErrnoException | null)?.code ?? "EIO";
   return { file, line: null, path: "", message: `cannot read file (${code})` };
 }
 
-/** Una línea JSONL validada con el esquema del escritor, o su error (fichero, línea, campo). Nunca lanza. */
+/** A JSONL line validated against the writer's schema, or its error (file, line, field). Never throws. */
 export function parseLine<S extends z.ZodType>(
   text: string,
   file: string,
@@ -71,8 +71,8 @@ export function parseLine<S extends z.ZodType>(
 }
 
 /**
- * Lee un JSONL en streaming y valida cada línea con el esquema del escritor. Una línea inválida
- * (JSON truncado o campo erróneo) se omite y va a `errors`; el resto se sigue cargando. Nunca lanza.
+ * Streams a JSONL and validates each line against the writer's schema. An invalid line
+ * (truncated JSON or bad field) is skipped and goes to `errors`; the rest keeps loading. Never throws.
  */
 export async function readJsonl<S extends z.ZodType>(absPath: string, file: string, schema: S): Promise<Read<z.infer<S>[]>> {
   const data: z.infer<S>[] = [];
@@ -93,7 +93,7 @@ export async function readJsonl<S extends z.ZodType>(absPath: string, file: stri
   return { data, errors };
 }
 
-/** Un JSON entero validado; `data: null` si no se puede leer o no valida. Nunca lanza. */
+/** A whole validated JSON; `data: null` if it can't be read or doesn't validate. Never throws. */
 export async function readJson<S extends z.ZodType>(absPath: string, file: string, schema: S): Promise<Read<z.infer<S> | null>> {
   let text: string;
   try {

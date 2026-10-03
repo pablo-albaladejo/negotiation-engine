@@ -14,13 +14,13 @@ import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl, type ReadError } from "../read.js";
 
 /**
- * Bazaar de solo lectura: `/api/bazaar/score` lee los `score.jsonl` escritos por el agente
- * (`VIEWER_BAZAAR_DIR`, por defecto `<repo>/results/bazaar-live`); `/api/bazaar/live` llama
- * `GET /api/me` + `GET /api/clock` del Bazaar en vivo; `/api/bazaar/threads` llama
- * `GET /api/me/threads` + `GET /api/threads/{id}` (las 6 más recientes / abiertas) y las combina con
- * nuestra traza local (`thread-<id>.jsonl`); `/api/bazaar/duels` llama `GET /api/duels` (abiertos y
- * cerrados). Todo solo si `BAZAAR_KEY` está en el entorno del servidor del visor, y nunca devuelve
- * la clave, assets/your_value del equipo, ni rarest/luck/luck_private.
+ * Read-only Bazaar: `/api/bazaar/score` reads the `score.jsonl` files written by the agent
+ * (`VIEWER_BAZAAR_DIR`, default `<repo>/results/bazaar-live`); `/api/bazaar/live` calls the live
+ * Bazaar's `GET /api/me` + `GET /api/clock`; `/api/bazaar/threads` calls
+ * `GET /api/me/threads` + `GET /api/threads/{id}` (the 6 most recent / open) and merges them with
+ * our local trace (`thread-<id>.jsonl`); `/api/bazaar/duels` calls `GET /api/duels` (open and
+ * closed). All only if `BAZAAR_KEY` is in the viewer server's environment, and it never returns
+ * the key, the team's assets/your_value, or rarest/luck/luck_private.
  */
 
 const ok = (data: unknown, errors: ReadError[] = []): ApiResponse => ({ status: 200, body: { data, errors } });
@@ -40,7 +40,7 @@ const ScoreSnapshotSchema = ScoreFieldsSchema.extend({
   cause: z.array(CauseEntrySchema).optional(),
 });
 
-/** Snapshots de todas las fechas bajo `dir`, en orden cronológico (más recientes al final). */
+/** Snapshots from all dates under `dir`, in chronological order (most recent last). */
 export async function bazaarScore(dir: string): Promise<ApiResponse> {
   let dates: string[];
   try {
@@ -72,8 +72,8 @@ export interface BazaarLiveDeps {
   cacheMs?: number;
 }
 
-/** `GET /api/bazaar/live`: cachea ~5 s para no reventar el límite de tasa del Bazaar con pollers
- * del visor; la clave vive solo en este proceso (nunca en la respuesta ni en un log). */
+/** `GET /api/bazaar/live`: caches ~5 s so viewer pollers don't blow the Bazaar's rate limit;
+ * the key lives only in this process (never in the response or a log). */
 export class BazaarLive {
   private cache: { at: number; data: unknown } | null = null;
 
@@ -101,8 +101,8 @@ export class BazaarLive {
   }
 }
 
-/** Una entrada de `thread-<id>.jsonl` (`src/shared/trace.ts`): nuestro precio/límite/regla por tic y el
- * log de paciencia. Tolerante (`looseObject`): es nuestra traza local, no una respuesta del Bazaar. */
+/** An entry of `thread-<id>.jsonl` (`src/shared/trace.ts`): our price/limit/rule per tick and the
+ * patience log. Tolerant (`looseObject`): it is our local trace, not a Bazaar response. */
 const ThreadTraceEntrySchema = z.looseObject({
   ts: z.string().optional(),
   tick: z.number().optional(),
@@ -122,8 +122,8 @@ const ThreadTraceEntrySchema = z.looseObject({
 });
 export type ThreadTraceEntry = z.infer<typeof ThreadTraceEntrySchema>;
 
-/** Nuestra traza local de un hilo (`thread-<id>.jsonl`), buscada en todas las fechas de `dir`; vacía
- * si no existe (el agente aún no ha trazado ese hilo, o el visor mira otro directorio). */
+/** Our local trace of a thread (`thread-<id>.jsonl`), searched across all dates of `dir`; empty
+ * if it doesn't exist (the agent hasn't traced that thread yet, or the viewer looks at another directory). */
 async function readThreadTrace(dir: string, id: number): Promise<ThreadTraceEntry[]> {
   let dates: string[];
   try {
@@ -141,7 +141,7 @@ async function readThreadTrace(dir: string, id: number): Promise<ThreadTraceEntr
   return data;
 }
 
-/** Referencias de carta en un lado de oferta: de `assets[].ref` (objetos) y de `types` ("card:REF"). */
+/** Card references on one side of an offer: from `assets[].ref` (objects) and from `types` ("card:REF"). */
 function offerAssetRefs(side: OfferSide | null | undefined): string[] {
   if (!side) return [];
   const fromAssets = (side.assets ?? []).flatMap((a) =>
@@ -197,7 +197,7 @@ function toThreadOut(t: Thread, trace: ThreadTraceEntry[]): ThreadOut {
   };
 }
 
-/** Hasta 6 hilos: todos los abiertos primero, luego los más recientes (id más alto = más reciente). */
+/** Up to 6 threads: all open ones first, then the most recent (highest id = most recent). */
 function pickThreads(summaries: readonly ThreadSummary[], max: number): ThreadSummary[] {
   const sorted = [...summaries].sort((a, b) => b.id - a.id);
   const open = sorted.filter((t) => (t.status ?? "open") === "open");
@@ -218,8 +218,8 @@ export interface BazaarThreadsDeps {
   maxThreads?: number;
 }
 
-/** `GET /api/bazaar/threads`: hilos de `/api/me/threads` + detalle de `/api/threads/{id}` para las
- * 6 más recientes/abiertas, con nuestra traza local si existe. Cachea ~5 s. */
+/** `GET /api/bazaar/threads`: threads from `/api/me/threads` + detail from `/api/threads/{id}` for the
+ * 6 most recent/open, with our local trace if it exists. Caches ~5 s. */
 export class BazaarThreads {
   private cache: { at: number; data: unknown } | null = null;
 
@@ -275,8 +275,8 @@ export interface BazaarDuelsDeps {
   cacheMs?: number;
 }
 
-/** `GET /api/bazaar/duels`: `/api/duels` (abiertos) + `/api/duels?done=true` (si el servidor lo
- * soporta), etiquetados con `done`. Cachea ~5 s. */
+/** `GET /api/bazaar/duels`: `/api/duels` (open) + `/api/duels?done=true` (if the server
+ * supports it), tagged with `done`. Caches ~5 s. */
 export class BazaarDuels {
   private cache: { at: number; data: unknown } | null = null;
 

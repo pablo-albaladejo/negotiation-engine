@@ -17,19 +17,19 @@ import { isSafeId, resolveInside } from "../paths.js";
 import { arbitrationOrder, duelDeadlines, intentGoals, ourOffers, ourVenue, type NowOut } from "./bazaar-now.js";
 
 /**
- * `GET /api/bazaar/model`: NUESTRO modelo interno, no un espejo de la API. Una vez por tick construye el
- * `GameState` (solo GET), lee el presupuesto de `clock.limits`, pide a cada ruta del coordinador (duelos, dealers,
- * El Rastro) sus intenciones en dry-run y las arbitra con `arbitrate`, igual que `pnpm bazaar:play --dry-run --once`.
- * Nunca llama a `execute` ni a nada que envíe.
+ * `GET /api/bazaar/model`: OUR internal model, not a mirror of the API. Once per tick it builds the
+ * `GameState` (GET only), reads the budget from `clock.limits`, asks each coordinator route (duels, dealers,
+ * El Rastro) for its intents in dry-run and arbitrates them with `arbitrate`, just like `pnpm bazaar:play --dry-run --once`.
+ * It never calls `execute` or anything that sends.
  *
- * Guardia de solo lectura, en dos capas:
- *  1. `ReadOnlyBazaarClient` sobrescribe `raw` (por donde pasan TODAS las llamadas del cliente, también las de
- *     `duelsApi`): un método distinto de GET/HEAD lanza `ModelPostBlocked` antes de tocar la red.
- *  2. `readOnlyFetch` envuelve el `fetch` del cliente: aunque algo esquivara `raw`, un POST/DELETE no sale.
- * Cada intento bloqueado se cuenta y se devuelve en `safety.blocked` (debería ser siempre 0).
+ * Read-only guard, in two layers:
+ *  1. `ReadOnlyBazaarClient` overrides `raw` (which ALL client calls go through, including those of
+ *     `duelsApi`): any method other than GET/HEAD throws `ModelPostBlocked` before touching the network.
+ *  2. `readOnlyFetch` wraps the client's `fetch`: even if something bypassed `raw`, a POST/DELETE does not go out.
+ * Each blocked attempt is counted and returned in `safety.blocked` (should always be 0).
  *
- * El modelo lleva datos privados (valor privado, `your_limit`, reservas): el servidor solo escucha en 127.0.0.1
- * y comprueba el Host (ver `http.ts`); nada de esto sale de la máquina.
+ * The model carries private data (private value, `your_limit`, reservations): the server only listens on 127.0.0.1
+ * and checks the Host (see `http.ts`); none of this leaves the machine.
  */
 
 export class ModelPostBlocked extends Error {
@@ -41,7 +41,7 @@ export class ModelPostBlocked extends Error {
 
 const READ_METHODS = new Set(["GET", "HEAD"]);
 
-/** `fetch` que solo deja pasar GET/HEAD; cualquier otro método lanza sin llamar al `fetch` real. */
+/** `fetch` that only lets GET/HEAD through; any other method rejects without calling the real `fetch`. */
 export function readOnlyFetch(inner: typeof fetch, onBlocked: () => void = () => {}): typeof fetch {
   return ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
@@ -54,7 +54,7 @@ export function readOnlyFetch(inner: typeof fetch, onBlocked: () => void = () =>
   }) as typeof fetch;
 }
 
-/** Cliente del Bazaar que no puede escribir: `raw` rechaza todo lo que no sea GET/HEAD. */
+/** Bazaar client that cannot write: `raw` rejects anything that is not GET/HEAD. */
 export class ReadOnlyBazaarClient extends BazaarClient {
   private readonly guard: { blocked: number };
   constructor(options: BazaarClientOptions) {
@@ -62,7 +62,7 @@ export class ReadOnlyBazaarClient extends BazaarClient {
     super({ ...options, fetch: readOnlyFetch(options.fetch ?? fetch, () => (guard.blocked += 1)) });
     this.guard = guard;
   }
-  /** Intentos de escritura bloqueados (debería ser siempre 0). */
+  /** Blocked write attempts (should always be 0). */
   get blocked(): number {
     return this.guard.blocked;
   }
@@ -75,18 +75,18 @@ export class ReadOnlyBazaarClient extends BazaarClient {
   }
 }
 
-// ---------------------------------------------------------------- salida
+// ---------------------------------------------------------------- output
 
 export interface ModelIntentOut extends Intent {
   selected: boolean;
   reason: string;
-  /** Posición en el orden de arbitraje (aceptaciones por `ACCEPT_PRIORITY`, mensajes, hilos, altas…). */
+  /** Position in the arbitration order (accepts by `ACCEPT_PRIORITY`, messages, threads, sign-ups…). */
   order: number;
 }
 
 export interface ModelRouteOut {
   route: string;
-  /** Qué ruta del coordinador es (texto de la UI). */
+  /** Which coordinator route this is (UI text). */
   label: string;
   status: "ok" | "failed" | "not wired";
   error?: string;
@@ -108,11 +108,11 @@ export interface ModelOut {
   tick: number | null;
   built_at: string | null;
   next_refresh_ms: number;
-  /** `true` si esta respuesta es la última construcción y otra se está haciendo ya (no se espera por ella). */
+  /** `true` if this response is the last build and another one is already in progress (not awaited). */
   rebuilding: boolean;
   safety: { mode: "dry-run"; blocked: number; note: string };
   inputs: { ok: string[]; missing: string[] };
-  /** El `GameState` del tick (con las conversaciones completadas con turno y estrategia). Solo local. */
+  /** The tick's `GameState` (with conversations completed with turn and strategy). Local only. */
   state: GameState | null;
   budget: (Budget & { lines: string[]; assumption: string }) | null;
   accept_priority: { cls: string; rank: number; why: string }[];
@@ -127,32 +127,32 @@ export interface ModelOut {
     judges: string;
   };
   schedule: { now_hours: number | null; events: ScheduleEventOut[] };
-  /** Últimos eventos del feed que disparan algo (niveles, límites, eggs, strikes) y los eggs ajenos. */
+  /** Latest feed events that trigger something (levels, limits, eggs, strikes) and other teams' eggs. */
   triggers: FeedLine[];
   eggs_feed: (FeedLine & { actor: string | null; persona: string | null })[];
   persisted: { date: string | null; conversations: boolean; personas: unknown; flags: unknown };
-  /** Corpus de pistas (`hints.jsonl`, append-only), lo más reciente primero; texto del dealer solo como texto plano. */
+  /** Hints corpus (`hints.jsonl`, append-only), most recent first; dealer text only as plain text. */
   hints: Record<string, unknown>[];
-  /** Precios por carta: `state.markets.prices` si existe; si no, reconstruidos aquí (fuente en `source`). */
+  /** Prices per card: `state.markets.prices` if present; otherwise rebuilt here (origin in `source`). */
   prices: { source: "state" | "viewer" | "none"; rows: Record<string, unknown>[] };
-  /** Sobres: lo que traiga el estado (ruta PACKS) y, si no, el catálogo (`packs`) y nuestros sobres cerrados. */
+  /** Packs: whatever the state carries (PACKS route) and, failing that, the catalog (`packs`) and our sealed packs. */
   packs: { state: unknown; catalog: unknown[]; held: unknown[] };
-  /** Venues: `state.markets.venues` si existe; si no, `/api/venues`. */
+  /** Venues: `state.markets.venues` if present; otherwise `/api/venues`. */
   venues: { state: unknown; api: unknown[] };
-  /** Pestaña «Now»: objetivo de cada intención, plazos, nuestras ofertas publicadas y nuestro venue. */
+  /** «Now» tab: goal of each intent, deadlines, our published offers and our venue. */
   now: NowOut | null;
   /**
-   * Ajuste de la curva por persona: estimaciones del lado del dealer (nunca valores nuestros), del posterior guardado
-   * (`persona-posterior.json`, solo lectura) más las conversaciones del tick. También van en `state.personas[].estimates`
-   * y `state.conversations[].prediction`.
+   * Per-persona curve fit: dealer-side estimates (never our values), from the saved posterior
+   * (`persona-posterior.json`, read-only) plus the tick's conversations. They also go in `state.personas[].estimates`
+   * and `state.conversations[].prediction`.
    */
   fit: { source: "persona-posterior.json" | "this tick only"; estimates: Record<string, PersonaEstimates>; welcome: string[]; bands: Record<string, string> } | null;
 }
 
 /**
- * Precios por carta cuando el `GameState` aún no los trae: libro, rareza y tirada del catálogo; mejor oferta de
- * venta (ask) y de compra (bid) en El Rastro; nuestro valor privado (solo local); copias; márgenes; `dealerCap`
- * = min(valor, libro) (ASSUMPTION de cómo puntúa un trato con dealer) y si completa página.
+ * Prices per card when the `GameState` does not carry them yet: book, rarity and print run from the catalog; best
+ * sell offer (ask) and buy offer (bid) in El Rastro; our private value (local only); copies; margins; `dealerCap`
+ * = min(value, book) (ASSUMPTION about how a dealer deal is scored) and whether it completes a page.
  */
 export function fallbackPrices(input: { catalog: unknown; rastro: unknown; values: Record<string, number> }, state: GameState, pageTargets: readonly string[]): Record<string, unknown>[] {
   const sets = Array.isArray(record(input.catalog).sets) ? (record(input.catalog).sets as unknown[]) : [];
@@ -213,16 +213,16 @@ export interface BazaarModelDeps {
   loadEnv?: typeof loadBazaarEnv;
   fetch?: typeof fetch;
   now?: () => number;
-  /** Peticiones por segundo del modelo (por defecto 1,5; el tablero usa 2: el visor queda < 4 req/s). */
+  /** Requests per second of the model (default 1.5; the board uses 2: the viewer stays < 4 req/s). */
   ratePerSec?: number;
   minRefreshMs?: number;
-  /** Eventos recientes del feed que ya lee el tablero (no se repite el GET). */
+  /** Recent feed events the board already reads (the GET is not repeated). */
   feed?: () => unknown;
-  /** Catálogo, libro de El Rastro y valores de cartas que faltan que ya tiene el tablero (para `prices`). */
+  /** Catalog, El Rastro book and missing-card values the board already has (for `prices`). */
   market?: () => { catalog: unknown; rastro: unknown; values: Record<string, number>; me?: unknown };
 }
 
-/** Parámetros por defecto de `pnpm bazaar:play` (src/coordinator/main.ts). */
+/** Default parameters of `pnpm bazaar:play` (src/coordinator/main.ts). */
 const PLAY_DEFAULTS = { maxSpendPerHour: 60, maxSpendTotal: 150, cashFloor: 20, pageTargets: ["SAL-09"], leaderboardEvery: 5 };
 
 const LEVERS = [
@@ -275,7 +275,7 @@ function acceptPriority(): ModelOut["accept_priority"] {
 }
 
 function goals(events: ScheduleEventOut[]): ModelOut["goals"] {
-  // R1 pesa 0,5 (spec); R2 y R3 traen su peso en `/api/schedule` (acción `round`).
+  // R1 weighs 0.5 (spec); R2 and R3 carry their weight in `/api/schedule` (action `round`).
   const rounds = events
     .filter((e) => e.action === "round")
     .map((e, k) => ({ round: k + 2, name: typeof e.params.name === "string" ? e.params.name : `Round ${k + 2}`, at_hours: e.at_hours, weight: typeof e.params.weight === "number" ? e.params.weight : 1 }));
@@ -338,7 +338,7 @@ export class BazaarModel {
     this.inflight ??= this.cycle().finally(() => {
       this.inflight = null;
     });
-    // Con una construcción anterior se sirve esa sin esperar (14–47 s) y se avisa de que hay otra en marcha.
+    // With a previous build, serve that one without waiting (14–47 s) and flag that another is in progress.
     if (this.cache) {
       this.inflight.catch(() => {});
       return ok({ ...this.cache.data, rebuilding: true, next_refresh_ms: 10_000 });
@@ -346,7 +346,7 @@ export class BazaarModel {
     return ok(await this.inflight);
   }
 
-  /** Bloqueos acumulados del cliente (para tests y para `safety.blocked`). */
+  /** Accumulated client blocks (for tests and for `safety.blocked`). */
   get blocked(): number {
     return this.client?.blocked ?? 0;
   }
@@ -355,7 +355,7 @@ export class BazaarModel {
     if (!this.client || !this.routes) {
       const client = new ReadOnlyBazaarClient({ url, key, ratePerSec: this.deps.ratePerSec ?? 1.5, burst: 2, retries: 1, ...(this.deps.fetch ? { fetch: this.deps.fetch } : {}) });
       this.client = client;
-      // Siempre dry-run y sin traza ni fichero de estado: ninguna ruta escribe en results/.
+      // Always dry-run and with no trace or state file: no route writes to results/.
       this.routes = {
         duels: new DuelsRoute(client, true),
         dealers: new DealersRoute(client, { dryRun: true, maxSpendPerHour: PLAY_DEFAULTS.maxSpendPerHour, maxSpendTotal: PLAY_DEFAULTS.maxSpendTotal, cashFloor: PLAY_DEFAULTS.cashFloor, pageTargets: PLAY_DEFAULTS.pageTargets }),
@@ -376,11 +376,11 @@ export class BazaarModel {
     }
     const { client, routes } = this.ensure(env.url, env.key);
     const persisted = await this.readPersisted();
-    // Posterior del ajuste por persona: se lee y se reajusta en memoria; el visor nunca lo guarda.
+    // Per-persona fit posterior: read and refit in memory; the viewer never saves it.
     const posteriorPath = await resolveInside(this.bazaarDir, "persona-posterior.json");
     const posterior = posteriorPath ? loadPosterior(posteriorPath) : { observations: {}, estimates: {} };
-    // Primera conversación del equipo con ese dealer (`welcome: true` en la observación guardada); antes del reajuste,
-    // que reescribe las observaciones en memoria.
+    // Team's first conversation with that dealer (`welcome: true` in the saved observation); before the refit,
+    // which rewrites the observations in memory.
     const welcome = Object.values(posterior.observations).flatMap((o) => ((o as unknown as Record<string, unknown>).welcome === true ? [o.id] : []));
     let state: GameState;
     try {
@@ -416,7 +416,7 @@ export class BazaarModel {
     const byId = new Map(verdicts.map((v) => [v.intent.id, v]));
     const orderOf = arbitrationOrder(intents);
 
-    // Igual que `bazaar:play`: turno del tick, estrategia y última decisión de cada ruta en su conversación.
+    // Same as `bazaar:play`: tick turn, strategy and last decision of each route in its conversation.
     const acceptedConv = new Set(verdicts.filter((v) => v.selected && v.intent.kind === "accept").map((v) => v.intent.conversation));
     const acceptsLeft = budget.accepts - acceptedConv.size;
     for (const c of state.conversations) {
@@ -441,7 +441,7 @@ export class BazaarModel {
       notes: p?.notes ?? [],
       intents: (p?.intents ?? []).map((i) => ({ ...i, selected: byId.get(i.id)?.selected ?? false, reason: byId.get(i.id)?.reason ?? "-", order: orderOf.get(i.id) ?? 999 })),
     }));
-    // Rutas del modelo que el coordinador aún no tiene: se enseñan para que se vea el hueco.
+    // Model routes the coordinator does not have yet: shown so the gap is visible.
     const venue = state.ours.venue;
     routeOut.push({
       route: "venue",
@@ -461,7 +461,7 @@ export class BazaarModel {
     const nowOut = await this.nowOf(client, state, me, market?.rastro ?? null, Array.isArray(record(stateAny.markets).venues) ? (record(stateAny.markets).venues as unknown[]) : Array.isArray(record(venuesRaw).venues) ? (record(venuesRaw).venues as unknown[]) : [], intents);
     const schedRaw = await client.raw("GET", "/api/schedule").catch(() => null);
     const sched = scheduleEvents(schedRaw);
-    // ¿auto o board? Misma regla que `bazaar:play`: sesiones y latido del broker en sombra (disco, solo lectura).
+    // auto or board? Same rule as `bazaar:play`: sessions and heartbeat of the shadow broker (disk, read-only).
     const schedParsed = ScheduleSchema.safeParse(schedRaw);
     const nowHours = state.time.gameHour ?? state.clock.tHours;
     const heartbeat = loadHeartbeat(join(this.bazaarDir, DEFAULT_HEARTBEAT_FILE));
@@ -527,7 +527,7 @@ export class BazaarModel {
         source: posteriorPath ? "persona-posterior.json" : "this tick only",
         estimates: posterior.estimates,
         welcome,
-        // Banda de cada conversación observada (`sells|buys:<rareza>`), también cuando el GameState no sabe la rareza.
+        // Band of each observed conversation (`sells|buys:<rarity>`), also when the GameState does not know the rarity.
         bands: Object.fromEntries(Object.values(posterior.observations).map((o) => [o.id, o.band])),
       },
     };
@@ -536,8 +536,8 @@ export class BazaarModel {
   }
 
   /**
-   * Datos de la pestaña «Now» (solo GET): `/api/me/offers`, `/api/duels` (plazos) y el libro de cada venue donde
-   * tenemos ofertas (El Rastro ya lo trae el tablero; como mucho 3 venues más). Si un GET falla, ese dato falta.
+   * Data for the «Now» tab (GET only): `/api/me/offers`, `/api/duels` (deadlines) and the book of each venue where
+   * we have offers (the board already brings El Rastro; at most 3 more venues). If a GET fails, that data is missing.
    */
   private async nowOf(client: ReadOnlyBazaarClient, state: GameState, me: unknown, rastro: unknown, venues: unknown[], intents: Intent[]): Promise<NowOut> {
     const team = typeof record(me).id === "string" ? (record(me).id as string) : (state.ours.team ?? "");
@@ -557,7 +557,7 @@ export class BazaarModel {
     return { goals: intentGoals(intents, state, PLAY_DEFAULTS.pageTargets), deadlines, offers, venue: ourVenue(me, state.tick) };
   }
 
-  /** Últimas entradas de `hints.jsonl` (raíz de las trazas o la fecha más reciente), leyendo solo la cola. */
+  /** Latest entries of `hints.jsonl` (trace root or the most recent date), reading only the tail. */
   private async readHints(max = 500, bytes = 1_000_000): Promise<Record<string, unknown>[]> {
     let dates: string[] = [];
     try {
@@ -580,7 +580,7 @@ export class BazaarModel {
             const j: unknown = JSON.parse(line);
             if (j && typeof j === "object" && !Array.isArray(j)) out.push(j as Record<string, unknown>);
           } catch {
-            // línea parcial (inicio de la cola) o vacía
+            // partial line (start of the tail) or empty
           }
         }
         return out.slice(-max).reverse();
@@ -592,7 +592,7 @@ export class BazaarModel {
     }
   }
 
-  /** `conversations.json`, `personas.json` y `flags.json` de la fecha más reciente (solo lectura). */
+  /** `conversations.json`, `personas.json` and `flags.json` from the most recent date (read-only). */
   private async readPersisted(): Promise<{ date: string | null; memos: ReturnType<typeof loadConversationMemos>; personas: unknown; flags: unknown }> {
     let dates: string[] = [];
     try {
