@@ -1,6 +1,6 @@
 export interface HeatmapCell {
   label: string;
-  /** Sin valor (null/undefined): celda neutra rotulada "n/a", nunca con banda. */
+  /** No value (null/undefined): neutral cell labelled "n/a", never with a band. */
   value?: number | null;
 }
 

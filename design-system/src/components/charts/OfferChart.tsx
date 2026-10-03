@@ -11,7 +11,7 @@ export interface OfferChartEnd {
   label: string;
 }
 
-/** Punto de un camino previsto con su intervalo (lo–hi). */
+/** Point of a planned path with its interval (lo–hi). */
 export interface OfferBandPoint {
   round: number;
   value: number;
@@ -26,13 +26,13 @@ export interface OfferChartProps {
   theirOffers: OfferPoint[];
   target?: OfferPoint[];
   estimate?: OfferPoint[];
-  /** Camino previsto de nuestras ofertas (plan del código), en discontinua. */
+  /** Planned path of our offers (the code's plan), dashed. */
   planned?: OfferPoint[];
-  /** Camino previsto del rival (estimación del modelo): discontinua con su banda lo–hi sombreada. */
+  /** Planned path of the rival (model estimate): dashed with its lo–hi band shaded. */
   predicted?: OfferBandPoint[];
-  /** Límite estimado del rival: línea horizontal con su banda lo–hi. */
+  /** Estimated rival limit: horizontal line with its lo–hi band. */
   theirLimit?: { value: number; lo: number; hi: number };
-  /** Marca vertical en la ronda en que se prevé que el rival se retire. */
+  /** Vertical mark at the round where the rival is expected to walk away. */
   walkMarker?: { round: number; label: string };
   ourReserve?: number;
   theirReserve?: number;
@@ -42,15 +42,15 @@ export interface OfferChartProps {
   onPointClick?: (point: { side: "us" | "them"; round: number; value: number }) => void;
   /** Roving tab stop starts on this round's point (and marks it aria-pressed) instead of the first one (A2). */
   selectedRound?: number;
-  /** Título del eje X (por defecto "round"). */
+  /** X axis title (default "round"). */
   xLabel?: string;
-  /** Etiqueta de cada marca del eje X (por defecto el número de ronda); "" la oculta. */
+  /** Label of each X axis tick (default the round number); "" hides it. */
   xTickLabel?: (round: number) => string;
-  /** Valores del eje Y con línea de rejilla (por defecto, 5 repartidos en `yDomain`). */
+  /** Y axis values with a grid line (default: 5 spread across `yDomain`). */
   yTicks?: number[];
   /**
-   * Al pasar el cursor: líneas de texto que describen esa ronda (o `null` si no hay nada). Con esta
-   * prop el gráfico muestra una guía vertical y una caja con los valores.
+   * On hover: text lines describing that round (or `null` if there is nothing). With this
+   * prop the chart shows a vertical guide and a box with the values.
    */
   describeRound?: (round: number) => string[] | null;
 }
@@ -65,7 +65,7 @@ export function offerChartXScale(round: number, rounds: number): number {
   return MARGIN.left + (round / rounds) * INNER_WIDTH;
 }
 
-/** Ronda más cercana a una x del viewBox (inversa de `offerChartXScale`, acotada a [0, rounds]). */
+/** Round closest to an x in the viewBox (inverse of `offerChartXScale`, clamped to [0, rounds]). */
 export function offerChartRoundAt(x: number, rounds: number): number {
   return Math.max(0, Math.min(rounds, Math.round(((x - MARGIN.left) / INNER_WIDTH) * rounds)));
 }
@@ -442,7 +442,7 @@ export function OfferChart({
   );
 }
 
-/** Guía vertical y caja con los valores de la ronda bajo el cursor; se gira al lado izquierdo cerca del borde. */
+/** Vertical guide and box with the values of the round under the cursor; flips to the left side near the edge. */
 function HoverBox({ x, lines }: { x: number; lines: string[] }) {
   const lineHeight = 15;
   const width = Math.max(...lines.map((l) => l.length)) * 6.4 + 16;
