@@ -232,6 +232,59 @@ export function duelUnanswered(input: ConductInput): Alert[] {
 }
 
 /**
+ * `duel-left-on-table`: a duel closed at a worse price than an offer the rival had already made and we countered instead
+ * of accepting (duel 2558: we sold, the rival offered 136 at tick 560, we asked 139 and closed at 125 two rounds later).
+ * Any earlier rival offer better than the deal was inside our limit, because the deal was. `lossP` is the price gap,
+ * before the per-round decay that also shrinks the later deal.
+ */
+export function duelLeftOnTable(input: ConductInput): Alert[] {
+  interface Offer { tick: number; price: number }
+  interface Duel { id: number; role?: string; rival: Offer[]; deal?: { tick: number; price: number }; firstRecv?: string; session?: number; rivalName?: string }
+  const duels = new Map<number, Duel>();
+  const practice = new Set<number>();
+  for (const e of [...input.events].sort((a, b) => a.id - b.id)) {
+    const p = e.payload;
+    if (e.type === "duels.finished" && /practice/i.test(asStr(p.name) ?? "")) practice.add(asNum(p.session) ?? -1);
+    const id = asNum(p.duel);
+    if (id === undefined || !e.scope.startsWith("team:") || !e.type.startsWith("duel.")) continue;
+    const d = duels.get(id) ?? (duels.set(id, { id, rival: [] }).get(id) as Duel);
+    if (e.recv) d.firstRecv ??= e.recv;
+    if (e.type === "duel.started") {
+      if (asStr(p.role)) d.role = asStr(p.role)!;
+      if (asNum(p.session) !== undefined) d.session = asNum(p.session)!;
+    } else if (e.type === "duel.message" && asNum(p.price) !== undefined) {
+      d.rival.push({ tick: e.tick, price: asNum(p.price)! });
+      if (asStr(p.from)) d.rivalName = asStr(p.from)!;
+    } else if (e.type === "duel.result" && p.status === "deal" && asNum(p.price) !== undefined) d.deal = { tick: e.tick, price: asNum(p.price)! };
+  }
+  const scoringFrom = new Date(`${input.date}T${DUEL_SCORING_FROM}:00`).getTime();
+  const out: Alert[] = [];
+  for (const d of duels.values()) {
+    if (!d.deal || (d.role !== "seller" && d.role !== "buyer")) continue;
+    const seller = d.role === "seller";
+    const better = (o: Offer): number => (seller ? o.price - d.deal!.price : d.deal!.price - o.price);
+    const best = d.rival.filter((o) => o.tick < d.deal!.tick && better(o) > 0).sort((a, b) => better(b) - better(a) || a.tick - b.tick)[0];
+    if (!best) continue;
+    const gap = better(best);
+    const counts = (d.session === undefined || !practice.has(d.session)) && (d.firstRecv === undefined || Date.parse(d.firstRecv) >= scoringFrom);
+    out.push(
+      alert({
+        tick: d.deal.tick,
+        detector: "duel-left-on-table",
+        severity: !counts ? "low" : gap >= 10 ? "high" : gap >= 3 ? "medium" : "low",
+        ...(counts ? { lossP: gap } : {}),
+        refs: [],
+        assets: [],
+        summary: `Duel ${d.id}${d.rivalName ? ` with ${d.rivalName}` : ""} (we ${seller ? "sell" : "buy"}) closed at ${d.deal.price} P, but the rival had offered ${best.price} P at tick ${best.tick} and we countered instead of accepting (${gap} P left, ${d.deal.tick - best.tick} ticks later, with decay)${counts ? "" : " (before scoring / practice)"}.`,
+        evidence: { duel: d.id, role: d.role, deal: d.deal, bestRivalOffer: best, rivalOffers: d.rival, scored: counts },
+        key: `duel-left-on-table:${d.id}`,
+      }),
+    );
+  }
+  return out;
+}
+
+/**
  * `dealer-spam` (hint 5: flood a dealer and they stop talking to you for a while):
  * - burst: ≥ DEALER_BURST_COUNT of our opens + messages to one dealer inside DEALER_BURST_TICKS, above our designed
  *   cadence (one alert per episode);

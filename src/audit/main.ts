@@ -6,7 +6,7 @@ import { loadBazaarEnv } from "../shared/env.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.js";
 import { albumCopyLost, bookGaps, cashFloor, reserveBreach, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
-import { dealerSpam, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
+import { dealerSpam, duelLeftOnTable, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
 import { ValueHistory } from "./value-history.js";
 import { daySnapshots, DuelSendParser, latestCatalog, parseDealerEvent, parseDecision, parseJson, parsePlanLine, parseStreamLine, PlayLogParser, readDuelsState, readValuesFile, Tail, type DealerEvent, type DecisionNote, type PlanLine, type Snapshot, type StreamEvent } from "./sources.js";
@@ -227,6 +227,15 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     const c = coord();
     return st.ok && c.ok ? { ok: true, why: `${st.why}; our sends from ${c.why}` } : { ok: false, why: [st, c].filter((h) => !h.ok).map((h) => h.why).join("; ") };
   };
+  // Dealers need decisions.jsonl, duels only the stream and our sends: one stale half must not hide the other.
+  const repeatedCoverage = (): { ok: boolean; why: string } => {
+    const dealers = need("stream-team", "decisions");
+    const duels = duelCoverage();
+    if (dealers.ok && duels.ok) return { ok: true, why: dealers.why };
+    if (duels.ok) return { ok: true, why: `duels only (${duels.why}); dealers unmeasured: ${dealers.why}` };
+    if (dealers.ok) return { ok: true, why: `dealers only (${dealers.why}); duels unmeasured: ${duels.why}` };
+    return { ok: false, why: `${dealers.why}; ${duels.why}` };
+  };
   const conduct: ConductInput = { team, events: [...events.values()], dealerEvents, duelSends: duelSends(), duelMemory: readDuelsState(duelsStateFile), date, clock };
   const requirements: Record<Detector, { ok: boolean; why: string }> = {
     "dup-buy": need("stream-team", "baseline", "values"),
@@ -241,8 +250,9 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     "double-act": coord(),
     "repeat-failure": coord(),
     churn: need("stream-team"),
-    "repeated-price": need("stream-team", "decisions"),
+    "repeated-price": repeatedCoverage(),
     "duel-unanswered": duelCoverage(),
+    "duel-left-on-table": need("stream-team"),
     "dealer-spam": need("stream-team", "decisions"),
     "stale-source": { ok: true, why: "file ticks against the clock" },
   };
@@ -281,6 +291,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     ...churn(ledger),
     ...repeatedPrice(conduct),
     ...duelUnanswered(conduct),
+    ...duelLeftOnTable(conduct),
     ...dealerSpam(conduct, planDealerErrors()),
     ...stale,
   ].sort((a, b) => a.tick - b.tick);
