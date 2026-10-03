@@ -180,7 +180,12 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
     <Card title={`Conversation · ${party.label} (${party.kind}) · ${KIND_LABEL[row.kind] ?? row.kind}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-          {row.d_score !== null && row.d_score !== 0 ? <Flag kind={row.d_score < 0 ? "walk" : "decision"}>{`Δ score ${row.d_score > 0 ? "+" : ""}${row.d_score}`}</Flag> : null}
+          {(() => {
+            const pts = pointsLabel(row);
+            if (pts) return <Flag kind={pts.tone === "worse" ? "walk" : "decision"}>{`Points ${pts.value}`}</Flag>;
+            if (row.d_score !== null && row.d_score !== 0) return <Flag kind={row.d_score < 0 ? "walk" : "decision"}>{`Δ score ${row.d_score > 0 ? "+" : ""}${row.d_score}`}</Flag>;
+            return outcomeOf(row) === "deal" ? <span className="nr-muted">Points: not audited</span> : null;
+          })()}
           <span>{row.item}</span>
           <span className="nr-muted">
             {statusLabel(row)} · price {show(row.price, "—")} · our value {show(row.our_value)}
