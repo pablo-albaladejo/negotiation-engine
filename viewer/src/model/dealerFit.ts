@@ -40,7 +40,7 @@ const mirrorText = (m: boolean | "unknown") => (m === true ? "yes" : m === false
 
 /** "fitted from n observations · mirror yes/no/unknown · next ≈ X P". */
 export function predictionCaption(p: ModelPrediction): string {
-  return `fitted from ${p.fittedFrom} observation${p.fittedFrom === 1 ? "" : "s"} · mirror ${mirrorText(p.mirror)} · next ≈ ${p.herNext !== undefined ? `${fmtP(p.herNext)} P` : "— (final)"}`;
+  return `fitted from ${p.fittedFrom} observation${p.fittedFrom === 1 ? "" : "s"} · mirror ${mirrorText(p.mirror)} · next ${p.herNext !== undefined ? `≈ ${fmtP(p.herNext)} P` : "—"}`;
 }
 
 export interface PredictionOverlay {
@@ -190,7 +190,7 @@ export function dealerFitStrip(model: GameModel | null, conv: ModelConversation 
   const welcome = (model.fit?.welcome ?? []).includes(conv.id) || rec(conv.prediction).welcome === true || rec(conv).welcome === true;
   return {
     persona: typeof fromState?.name === "string" && fromState.name ? fromState.name : persona,
-    band: band.replace(":", " "),
+    band: `she ${band.replace(":", " · ")}`,
     items: [
       ...item("β", "beta"),
       ...item("max_rounds", "max_rounds"),

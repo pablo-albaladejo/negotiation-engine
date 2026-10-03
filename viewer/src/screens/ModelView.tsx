@@ -5,6 +5,8 @@ import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
 import { DealerEstimates } from "./DealerEstimates.js";
+import { PersonaStrategy } from "./DealerFitStrip.js";
+import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 import {
   arr,
@@ -521,7 +523,7 @@ function ConversationsTable({ convs, onOpen }: { convs: ModelConversation[]; onO
         asset: (
           <span>
             <RarityDot rarity={c.asset.rarity} />
-            {`${c.side} ${assetLabel(c)}`}
+            {`${sideLabel(c)} ${assetLabel(c)}`}
           </span>
         ),
         goal: `${c.goal.why}${c.goal.expectedValue !== undefined ? ` · EV ${fmt(c.goal.expectedValue)}` : ""}`,
@@ -535,8 +537,12 @@ function ConversationsTable({ convs, onOpen }: { convs: ModelConversation[]; onO
   );
 }
 
+/** Texto o «—» si viene vacío o como «-». */
+const dash = (s: string | undefined): string => (s && s.trim() !== "" && s.trim() !== "-" ? s : "—");
+
 /** Estado y estrategia de una conversación (cajón lateral). Privado: solo local. */
-export function ConversationModelPanel({ conv }: { conv: ModelConversation }) {
+export function ConversationModelPanel({ conv, model = null }: { conv: ModelConversation; model?: GameModel | null }) {
+  const herWalk = herWalkText(model, conv);
   const p = conv.strategy.plan;
   const d = conv.strategy.lastDecision;
   const hints = arr(conv.hints);
@@ -545,7 +551,8 @@ export function ConversationModelPanel({ conv }: { conv: ModelConversation }) {
       <Card title="State (our model)">
         <div style={col}>
           <span>
-            phase <strong>{conv.phase}</strong> · round {roundOf(conv)} of the {conv.kind === "duel" ? "duel rounds" : "patience budget"}
+            phase <strong>{conv.phase}</strong> · {sideLabel(conv)} · round {roundOf(conv)} of the {conv.kind === "duel" ? "duel rounds" : "patience budget"}
+            {herWalk !== null ? ` · her walk ≈ round ${herWalk} (estimated, today)` : ""}
             {conv.patience?.probeCostNow !== undefined ? ` · probe cost now ${conv.patience.probeCostNow}` : ""}
           </span>
           <span>
@@ -586,15 +593,16 @@ export function ConversationModelPanel({ conv }: { conv: ModelConversation }) {
           </span>
           <span>path: {p.plannedPath.length ? p.plannedPath.join(" → ") : "—"}</span>
           {p.daysPlan ? <span>days: {p.daysPlan}</span> : null}
-          <span className="nr-muted">walk: {p.walkCondition}</span>
+          <span className="nr-muted">walk: {dash(p.walkCondition)}</span>
           <span>
             last decision: <strong>{decisionLabel(d)}</strong>
             {d ? <Muted>{` · ${d.reason} (tick ${d.tick})`}</Muted> : null}
           </span>
           <span>
             next: {conv.strategy.next.priceIfTheyHold !== undefined ? `${conv.strategy.next.priceIfTheyHold} if they hold · ` : ""}
-            <Muted>{conv.strategy.next.walkWhen}</Muted>
+            <Muted>{dash(conv.strategy.next.walkWhen)}</Muted>
           </span>
+          <PersonaStrategy model={model} conv={conv} />
         </div>
       </Card>
     </div>

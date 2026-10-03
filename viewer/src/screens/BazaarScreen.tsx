@@ -39,7 +39,8 @@ import {
 } from "../model/index.js";
 import { useBazaarModel } from "../bazaarModelLive.js";
 import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type GameModel, type ModelConversation } from "../model/gameModel.js";
-import { predictionCaption, predictionLines, predictionOf, withPrediction, type PredictionOverlay } from "../model/dealerFit.js";
+import { predictionCaption, predictionLines, withPrediction, type PredictionOverlay } from "../model/dealerFit.js";
+import { currentPrediction, isWelcome, sideLabel } from "../model/personaModel.js";
 import { ConversationModelPanel, ModelView } from "./ModelView.js";
 import { DealerFitStrip } from "./DealerFitStrip.js";
 import { NowView } from "./now/NowView.js";
@@ -162,8 +163,8 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
             {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
           </span>
         </div>
-        {conv ? <ConversationModelPanel conv={conv} /> : null}
-        <NegotiationCurve row={row} conv={conv} />
+        {conv ? <ConversationModelPanel conv={conv} model={model} /> : null}
+        <NegotiationCurve row={row} conv={conv} model={model} />
         {steps.length > 0 ? (
           <div className="nr-chat" aria-label="Messages and our decisions by tick">
             {steps.map((s, i) => (
@@ -213,12 +214,12 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
 
 /** Curva de la negociación: nuestras ofertas, las suyas, nuestro límite por tick, nuestro valor, el final y, si
  * el modelo lo tiene, el camino previsto (discontinuo) en los ticks siguientes. */
-function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversation | null }) {
+function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConversation | null; model: GameModel | null }) {
   const base = offerCurve(row);
-  if (!base) return conv ? <ModelCurve conv={conv} /> : null;
+  if (!base) return conv ? <ModelCurve conv={conv} model={model} /> : null;
   const withPlan = withPlannedPath(base, conv);
   const { planned } = withPlan;
-  const pred = predictionOf(conv);
+  const pred = currentPrediction(model, conv);
   const herXs = withPlan.curve.theirs.slice(0, conv?.history.herPrices.length ?? withPlan.curve.theirs.length).map((p) => p.round);
   const fitted = pred ? withPrediction(withPlan.curve, pred, herXs, planned.map((p) => p.value)) : null;
   const curve = fitted?.curve ?? withPlan.curve;
@@ -252,7 +253,7 @@ function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversatio
           ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
         ]}
       />
-      {pred ? <span className="nr-muted">{predictionCaption(pred)}</span> : null}
+      {pred ? <span className="nr-muted">{`${predictionCaption(pred)} · today's model`}{conv && isWelcome(model, conv) ? " · welcome: counts only towards her limit, not the curve" : ""}</span> : null}
       {curve.capped ? (
         <span className="nr-muted">
           Our limit dropped from {curve.capped.from} to {curve.capped.to} during the turns. The agent lowers it when our cash or the spending budget runs short, or reprices it when the dealer reveals which card it is; the log does not say which.
@@ -292,11 +293,11 @@ function plannedLines(curve: OfferCurve, planned: { round: number; value: number
 }
 
 /** Curva solo del modelo (duelo o conversación sin precios registrados en el tablero): eje X = paso. */
-function ModelCurve({ conv }: { conv: ModelConversation }) {
+function ModelCurve({ conv, model }: { conv: ModelConversation; model: GameModel | null }) {
   const out = modelCurve(conv);
   if (!out) return null;
   const { planned } = out;
-  const pred = predictionOf(conv);
+  const pred = currentPrediction(model, conv);
   const fitted = pred ? withPrediction(out.curve, pred, out.curve.theirs.map((p) => p.round), planned.map((p) => p.value)) : null;
   const curve = fitted?.curve ?? out.curve;
   const overlay = fitted?.overlay ?? null;
@@ -323,7 +324,7 @@ function ModelCurve({ conv }: { conv: ModelConversation }) {
           ...(curve.reference ? [{ kind: "reserve-us" as const, label: `${curve.reference.label} (private, local only)` }] : []),
         ]}
       />
-      {pred ? <span className="nr-muted">{predictionCaption(pred)}</span> : null}
+      {pred ? <span className="nr-muted">{`${predictionCaption(pred)} · today's model`}{conv && isWelcome(model, conv) ? " · welcome: counts only towards her limit, not the curve" : ""}</span> : null}
     </figure>
   );
 }
@@ -331,10 +332,10 @@ function ModelCurve({ conv }: { conv: ModelConversation }) {
 /** Cajón de una conversación que solo está en el modelo (sin fila en el tablero). */
 function ModelOnlyDetail({ conv, model }: { conv: ModelConversation; model: GameModel | null }) {
   return (
-    <Card title={`Conversation · ${conv.counterparty} (${conv.kind}) · ${conv.id}`}>
+    <Card title={`Conversation · ${conv.counterparty} (${conv.kind}) · ${sideLabel(conv)} · ${conv.id}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-        <ConversationModelPanel conv={conv} />
-        <ModelCurve conv={conv} />
+        <ConversationModelPanel conv={conv} model={model} />
+        <ModelCurve conv={conv} model={model} />
         <DealerFitStrip model={model} conv={conv} />
         <span className="nr-muted">
           ours [{conv.history.ourPrices.join(", ")}] · theirs [{conv.history.herPrices.join(", ")}]

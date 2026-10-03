@@ -179,11 +179,11 @@ export const EMPTY_BOARD: Board = {
 };
 
 export const KIND_LABEL: Record<BoardRowKind, string> = {
-  "dealer-buy": "dealer buy",
-  "dealer-sell": "dealer sell",
+  "dealer-buy": "dealer · we buy, she sells",
+  "dealer-sell": "dealer · we sell, she buys",
   dealer: "dealer",
-  "duel-buyer": "duel buyer",
-  "duel-seller": "duel seller",
+  "duel-buyer": "duel · we buy",
+  "duel-seller": "duel · we sell",
   "team-trade": "team trade",
   "team-offer": "team offer",
 };

@@ -131,7 +131,7 @@ function ConvTable({ rows, onOpen }: { rows: LiveConv[]; onOpen: (id: string) =>
             {`${c.counterparty} · ${c.kind}`}
           </TableLink>
         ),
-        what: `${c.side} ${c.asset}`,
+        what: `${c.side === "buy" || c.side === "sell" ? `we ${c.side}` : c.side} ${c.asset}`,
         goal: `${c.why} · ${c.phase}`,
         rounds: c.roundsUsed === null ? "—" : `${c.roundsUsed} / ${c.roundsLeft !== null ? `~${c.roundsLeft}` : "?"}`,
         last: `${n(c.lastOurs)} / ${n(c.lastTheirs)}`,
@@ -175,7 +175,7 @@ function Conversations({ board, model, onOpen }: { board: Board; model: GameMode
                     {`${c.counterparty} · ${c.kind}`}
                   </TableLink>
                 ),
-                what: `${c.side} ${c.asset}`,
+                what: `${c.side === "buy" || c.side === "sell" ? `we ${c.side}` : c.side} ${c.asset}`,
                 goal: c.why,
                 outcome: c.outcome ?? "—",
                 last: `${n(c.lastOurs)} / ${n(c.lastTheirs)}`,

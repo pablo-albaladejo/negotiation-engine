@@ -1,6 +1,7 @@
 import { Flag } from "@negotiation-ring/design-system";
 import { dealerFitStrip } from "../model/dealerFit.js";
 import type { GameModel, ModelConversation } from "../model/gameModel.js";
+import { bandView, isWelcome, strategyLines } from "../model/personaModel.js";
 
 /**
  * Tira compacta «Dealer fit» del cajón: estimaciones de esa persona (β, max_rounds, markup, espejo, ronda de retirada,
@@ -36,6 +37,40 @@ export function DealerFitStrip({ model, conv }: { model: GameModel | null; conv:
           {s.welcomeLimit ? ` · welcome limit ${s.welcomeLimit.value} [${s.welcomeLimit.interval}] n${s.welcomeLimit.n}` : ""}.
         </span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Estrategia de la persona según el modelo de HOY (también en conversaciones viejas o cerradas): cada parámetro como
+ * «value [lo–hi] · n · source» o «unknown»; el límite medido de la banda de esta conversación con su book; y la marca
+ * `welcome` (solo cuenta para su límite). Solo el lado del dealer.
+ */
+export function PersonaStrategy({ model, conv }: { model: GameModel | null; conv: ModelConversation }) {
+  if (conv.kind !== "dealer") return null;
+  const lines = strategyLines(model, conv);
+  const band = bandView(model, conv);
+  const welcome = isWelcome(model, conv);
+  return (
+    <div aria-label="Persona strategy (today's model)" style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: "1px solid var(--line)", paddingTop: "var(--space-2)", fontSize: 12.5 }}>
+      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+        <strong>{conv.counterparty} · today's model</strong>
+        {welcome ? <Flag kind="decision">welcome: counts only towards her limit</Flag> : null}
+      </div>
+      {lines.map((l) => (
+        <span key={l.key} style={{ fontFamily: "var(--font-mono)" }}>
+          {l.label}: <span className={l.text === "unknown" ? "nr-muted" : undefined}>{l.text}</span>
+        </span>
+      ))}
+      <span style={{ fontFamily: "var(--font-mono)" }}>
+        {band ? (
+          <>
+            band {band.band} · her {band.kind}: {band.limit} · samples {band.samples} · book {band.book ?? "unknown"} {band.fewSamples ? <Flag kind="fallback">fewSamples</Flag> : null}
+          </>
+        ) : (
+          <span className="nr-muted">band: unknown (no rarity for this conversation)</span>
+        )}
+      </span>
     </div>
   );
 }
