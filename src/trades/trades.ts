@@ -249,8 +249,13 @@ export interface FeeModel {
   perCard: number;
 }
 export const RASTRO_FEES: FeeModel = { bps: 500, perCard: 1 };
+/**
+ * Fees of an offer we post: El Rastro charges only the side that accepts, never the maker (verified on our cash,
+ * ticks 320–380: our listings and bids settled at the exact price; our accepts paid price ± fee).
+ */
+export const MAKER_FEES: FeeModel = { bps: 0, perCard: 0 };
 
-/** Fee of a deal, rounded up (the feed shows 9 P → 2 P). Assumed to be paid by us. */
+/** Fee of a deal, rounded up (the feed shows 9 P → 2 P). Paid by the side that accepts. */
 export function tradeFee(cash: number, cards: number, fees: FeeModel): number {
   if (cash <= 0 && cards <= 0) return 0;
   return Math.ceil((Math.max(0, cash) * fees.bps) / 10_000 + cards * fees.perCard - 1e-9);
@@ -624,7 +629,8 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const acceptSpend = accept?.spend ?? 0;
   const acceptCash = accept ? Math.max(0, readSide(accept.offer.want).cash - readSide(accept.offer.give).cash) : 0;
   const { asks, bids } = boardQuotes(state.board, mineIds, state.model, state.tick);
-  const fees = params.fees;
+  // Everything below is an offer we post: as maker we pay no fee (only `evaluateOffer`, an accept, pays `params.fees`).
+  const fees = MAKER_FEES;
 
   // Our El Rastro offers (those in dealer threads and directed ones, `to` set, are left alone but still count as open).
   const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !(o.venue === "rastro" && o.thread == null && !o.to)).length;

@@ -2,14 +2,14 @@ import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
 import type { RivalsState, RivalTeam } from "../state/rivals.js";
-import { countHoldings, maxBid, median, RASTRO_FEES, readSide, setOf, slowReprice, tradeFee, valueDelta, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
+import { countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, slowReprice, tradeFee, valueDelta, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
 
 /**
  * Rival buy: a directed El Rastro bid (`to` = the team, cash for one card) for a page card we lack, sent to a rival
  * seen holding a spare copy of it. Structure only (cards seen with the team, `/api/cards` confirmations); the figure
- * comes from code: our cap = what the card adds to us minus fee and margin (`maxBid`); their floor = the estimated
+ * comes from code: our cap = what the card adds to us minus margin (`maxBid`; no fee: the seller accepts and pays it); their floor = the estimated
  * value of a spare copy to them (median set multiplier × book × second-copy marginal); we bid their floor plus a share
  * of the gap, never above the cap. Never for a card El Rastro already bids on (no double fill), and only within the
  * `--max-spend` budget that El Rastro leaves.
@@ -127,7 +127,7 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   const freshAt = Math.max(...mine.map((s) => s.confirmedTick ?? s.tick));
   if (input.tick - freshAt > params.maxStaleTicks) return { ok: false, reason: `spare seen at tick ${freshAt} (stale)` };
   const gain = valueDelta(counts, [], [ref], model);
-  const cap = maxBid(gain, MIN_MARGIN, RASTRO_FEES);
+  const cap = maxBid(gain, MIN_MARGIN, MAKER_FEES);
   const book = model.meta.get(ref)?.book ?? 0;
   const mHat = median([...setMultipliers(model).values()]) ?? 1;
   const second = model.rules.marginals[1] ?? model.rules.marginals.at(-1) ?? 0.5;
@@ -137,7 +137,7 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   if (cap - theirFloor < params.minGap) return { ok: false, reason: `cap ${cap} − their floor ${theirFloor} < ${params.minGap}`, p: base };
   const raw = theirFloor + Math.round(params.shareOfGap * (cap - theirFloor));
   const bid = enforceGuardrails({ role: "buyer", reservation: cap }, raw);
-  const fee = tradeFee(bid, 1, RASTRO_FEES);
+  const fee = tradeFee(bid, 1, MAKER_FEES);
   if (!fairPrice("buy", bid, book || undefined)) return { ok: false, reason: `bid ${bid} above fair play (twice the book)`, p: base };
   return { ok: true, p: { ...(base as RivalBuyPricing), bid, fee } };
 }
@@ -213,11 +213,11 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       continue;
     }
     const age = trade.tick - (e.offer.created_tick ?? trade.tick);
-    let committed = e.price + tradeFee(e.price, 1, RASTRO_FEES);
+    let committed = e.price + tradeFee(e.price, 1, MAKER_FEES);
     if (age >= params.repriceAfterTicks) {
       const n = memo.get(key)?.reprices ?? 0;
       const next = enforceGuardrails({ role: "buyer", reservation: cap }, Math.min(cap, slowReprice(e.price, cap, params.repriceFrac)), e.price);
-      const extra = next + tradeFee(next, 1, RASTRO_FEES) - committed;
+      const extra = next + tradeFee(next, 1, MAKER_FEES) - committed;
       if (n >= params.maxReprices || next <= e.price || extra > budget) {
         cancel(e.offer.id, key, `no fill after ${n} reprice(s)${extra > budget ? " and no budget to raise" : ""}; backoff ${params.backoffTicks} ticks`, true);
         continue;
@@ -225,9 +225,9 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       cancel(e.offer.id, key, `reprice ${e.price} → ${next}`);
       const post = makePost(e.team, e.ref, next, params, n + 1, e.offer.id);
       plan.posts.push(post);
-      intents.push(postIntent(post, `${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`, (asm.p?.gain ?? 0) - next - tradeFee(next, 1, RASTRO_FEES)));
+      intents.push(postIntent(post, `${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`, (asm.p?.gain ?? 0) - next - tradeFee(next, 1, MAKER_FEES)));
       notes.push(`${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`);
-      committed = next + tradeFee(next, 1, RASTRO_FEES);
+      committed = next + tradeFee(next, 1, MAKER_FEES);
     }
     budget -= committed;
     open += 1;

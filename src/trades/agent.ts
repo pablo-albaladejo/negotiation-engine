@@ -139,7 +139,8 @@ export class TradesAgent {
     }
     for (const [id, b] of this.openBids) {
       if (now.has(id) || this.cancelled.has(id) || b.expires <= tick) continue;
-      this.spent += b.cash + Math.ceil((b.cash * this.params.fees.bps) / 10_000 + this.params.fees.perCard - 1e-9);
+      // A filled bid of ours: we were the maker, so no fee.
+      this.spent += b.cash;
     }
     this.openBids = now;
   }

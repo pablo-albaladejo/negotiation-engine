@@ -7,7 +7,7 @@ import {
   median,
   minAsk,
   pageRisk,
-  RASTRO_FEES,
+  MAKER_FEES,
   readSide,
   setOf,
   slowReprice,
@@ -23,7 +23,8 @@ import { fairPrice, RIVAL_PENALTY } from "./markets.js";
 /**
  * Rival page: a directed El Rastro listing (`to` = the team) of a card a rival team lacks to complete an album page.
  * Structure only (leaderboard bounds, cards seen with the team, cards it asked for); the figure comes from code:
- * floor = what the card costs us (copy + option on our own page + rank penalty) with fee and margin; their value is
+ * floor = what the card costs us (copy + option on our own page + rank penalty) plus margin (no fee: the buyer
+ * accepts, so the buyer pays it); their value is
  * estimated with our median set multiplier; we ask the floor plus a κ-weighted share of the estimated surplus.
  */
 
@@ -204,7 +205,7 @@ export function assessRivalPage(team: RivalTeam, ref: string, input: RivalPageIn
   const pageBases = page.reduce((s, r) => s + (model.base.get(r) ?? 0), 0);
   const option = model.rules.pageBonus * pageBases * (haveS / Math.max(1, page.length)) ** params.optionExp;
   const rankPen = rankPenalty(rank, teams);
-  const floor = minAsk(cost + option + rankPen, MIN_MARGIN, RASTRO_FEES);
+  const floor = minAsk(cost + option + rankPen, MIN_MARGIN, MAKER_FEES);
   const mults = setMultipliers(model);
   const mHat = median([...mults].filter(([s]) => s !== set).map(([, m]) => m)) ?? 0;
   const book = (r: string) => model.meta.get(r)?.book ?? 0;
@@ -214,7 +215,7 @@ export function assessRivalPage(team: RivalTeam, ref: string, input: RivalPageIn
   if (theirValue - floor < params.minSurplus) return { ok: false, reason: `their est ${theirValue} − floor ${floor} < ${params.minSurplus}`, p: base };
   const raw = Math.min(theirValue, floor + Math.round(params.shareOfSurplus * kappa * (theirValue - floor)));
   const ask = enforceGuardrails({ role: "seller", reservation: floor }, raw);
-  const fee = tradeFee(ask, 1, RASTRO_FEES);
+  const fee = tradeFee(ask, 1, MAKER_FEES);
   if (!fairPrice("sell", ask, book(ref) || undefined)) return { ok: false, reason: `ask ${ask} below fair play (half the book)`, p: base };
   if (trade.cash - input.cashFloor < fee) return { ok: false, reason: `cash ${trade.cash} − floor ${input.cashFloor} < fee ${fee}`, p: base };
   return { ok: true, p: { ...(base as RivalPagePricing), ask, fee } };
@@ -326,7 +327,7 @@ export function proposeRivalPage(input: RivalPageInput, params: RivalPageParams 
       cancel(e.offer.id, key, `reprice ${e.price} → ${next}`);
       const post = makePost(e.team, e.ref, e.assetId, next, params, n + 1, e.offer.id, pc ?? entry?.pagesComplete);
       plan.posts.push(post);
-      intents.push(postIntent(post, `${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`, next - tradeFee(next, 1, RASTRO_FEES) - floor));
+      intents.push(postIntent(post, `${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`, next - tradeFee(next, 1, MAKER_FEES) - floor));
       notes.push(`${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`);
     }
     open += 1;

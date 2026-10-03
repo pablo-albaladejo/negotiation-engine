@@ -31,7 +31,7 @@ export function rivalPenalty(v: VenueInfo, teams: number): number {
   return v.ownerRank > teams / 2 ? RIVAL_PENALTY.bottomHalf : RIVAL_PENALTY.middle;
 }
 
-/** Fee of a one-card deal at `price` (fee_bps on the price + fee_per_card). ASSUMPTION: we pay it. */
+/** Fee of a one-card deal at `price` (fee_bps on the price + fee_per_card). We accept, so we pay it (verified: El Rastro charges the side that accepts). */
 export const feeOf = (v: VenueInfo, price: number) => Math.round(((price * v.feeBps) / 10_000 + v.feePerCard) * 10) / 10;
 
 /**
