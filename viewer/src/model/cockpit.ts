@@ -44,7 +44,7 @@ export function scoreParts(board: Board): { label: string; value: number | null 
 
 export interface LiveItem {
   id: string;
-  kind: "duel" | "dealer" | "offer";
+  kind: "duel" | "dealer" | "team" | "offer";
   title: string;
   counterparty: string;
   party: PartyKind;
@@ -79,8 +79,17 @@ export function liveItems(board: Board): LiveItem[] {
       out.push({ id: r.id, kind: "duel", title: `${buyer ? "Buy" : "Sell"} ${r.item}`, counterparty: who.label, party: who.kind, state: parts.filter(Boolean).join(" · "), warning: null });
     } else if (r.kind === "team-offer") {
       const o = r.offers[r.offers.length - 1];
-      const give = o?.give ?? "?";
-      const want = o?.want ?? "?";
+      // Offers another team made to us come in their perspective: what they give is what we would get.
+      const incoming = !!o && o.maker !== board.team;
+      const give = (incoming ? o.want : o?.give) ?? "?";
+      const want = (incoming ? o.give : o?.want) ?? "?";
+      if (incoming) {
+        const ref = cardRef(want);
+        const held = ref ? (board.holdings[ref] ?? 0) : null;
+        const note = ref && held !== null ? (held === 0 ? `we lack ${ref}` : `we already hold ${held} ${ref}`) : "";
+        out.push({ id: r.id, kind: "offer", title: `Offered to us: get ${want} for ${give}`, counterparty: who.label, party: who.kind, state: note, warning: null });
+        continue;
+      }
       const selling = cardRef(give);
       const copies = selling ? (board.holdings[selling] ?? 0) : null;
       const warning = selling && copies !== null && copies <= 1 ? `selling our only ${selling}` : null;
@@ -90,10 +99,11 @@ export function liveItems(board: Board): LiveItem[] {
       const ours = lastPrice(r, true);
       const theirs = lastPrice(r, false);
       const parts = [r.our_value !== null ? `our value ${r.our_value}` : null, ours !== null ? `we say ${ours}` : null, theirs !== null ? `they say ${theirs}` : null];
-      out.push({ id: r.id, kind: "dealer", title: `${r.kind === "dealer-sell" ? "Sell" : "Buy"} ${r.item}`, counterparty: who.label, party: who.kind, state: parts.filter(Boolean).join(" · "), warning: null });
+      const team = r.kind === "team-trade";
+      out.push({ id: r.id, kind: team ? "team" : "dealer", title: team ? `Talk with a team${r.item !== "—" ? ` · ${r.item}` : ""}` : `${r.kind === "dealer-sell" ? "Sell" : "Buy"} ${r.item}`, counterparty: who.label, party: who.kind, state: parts.filter(Boolean).join(" · "), warning: null });
     }
   }
-  const order = { duel: 0, dealer: 1, offer: 2 };
+  const order = { duel: 0, dealer: 1, team: 2, offer: 3 };
   return out.sort((a, b) => order[a.kind] - order[b.kind]);
 }
 
@@ -230,7 +240,11 @@ export function mentionsUs(board: Board, text: string): boolean {
 export function partyOf(board: Board, row: BoardRow): Party {
   if (row.kind.startsWith("dealer")) return { label: row.counterparty, kind: "dealer" };
   if (row.kind.startsWith("duel")) return { label: row.counterparty, kind: "duel rival" };
-  if (row.kind === "team-offer") return { label: "anyone (public offer)", kind: "public" };
+  if (row.kind === "team-offer") {
+    const maker = row.offers[row.offers.length - 1]?.maker;
+    if (maker && maker !== board.team) return { label: withTeamNames(board, maker), kind: "team" };
+    return { label: "anyone (public offer)", kind: "public" };
+  }
   if (row.kind === "other-trade") return { label: withTeamNames(board, row.counterparty), kind: "others" };
   return { label: withTeamNames(board, row.counterparty), kind: "team" };
 }
