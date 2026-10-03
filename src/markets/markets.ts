@@ -8,9 +8,8 @@ import type { PriceEntry, Quote, VenueInfo } from "../state/prices.js";
  * sale the net gap per venue = gap − fee − rival penalty is computed, and the
  * best is chosen (on a tie, El Rastro). Structure only (prices and offers); the figure is that of the offer on display.
  *
- * UNVERIFIED hypothesis (RULES.md:75): in an `auto` venue an offer that crosses the house engine without spending
- * our acceptance. Until verified, those intents are marked "fills without accept (unverified)" but the
- * coordinator counts them against the acceptance quota like any other.
+ * `auto` venues: the engine crosses overlapping offers every tick before anyone can accept (RULES.md), so a
+ * resting offer there crosses nothing and accepting it is a plain accept (v10 tick 311: settlement kind "trade").
  */
 
 /**
@@ -110,7 +109,6 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
 }
 
 function intent(c: MarketChoice, e: PriceEntry, asset: number | undefined): Intent {
-  const auto = c.venue.mechanism === "auto" ? " · fills without accept (unverified; counted in the accept quota)" : "";
   return {
     id: `markets:accept:${c.venue.id}:${c.quote.offer}`,
     route: "markets",
@@ -121,7 +119,7 @@ function intent(c: MarketChoice, e: PriceEntry, asset: number | undefined): Inte
     price: c.quote.price,
     // `sell:<ref>`: one sale of a card per tick across routes (El Rastro lists the same card with that lock).
     locks: [`offer:${c.quote.offer}`, ...(asset !== undefined ? [`asset:${asset}`, `sell:${e.ref}`] : [`buy:${e.ref}`])],
-    summary: `${c.side.toUpperCase()} ${e.ref} on ${c.venue.id} at ${c.quote.price} P (offer #${c.quote.offer}): edge ${c.edge} − fee ${c.fee} − rival ${c.penalty} = net ${c.net}${auto}`,
+    summary: `${c.side.toUpperCase()} ${e.ref} on ${c.venue.id} at ${c.quote.price} P (offer #${c.quote.offer}): edge ${c.edge} − fee ${c.fee} − rival ${c.penalty} = net ${c.net}`,
   };
 }
 
