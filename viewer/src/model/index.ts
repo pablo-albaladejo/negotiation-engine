@@ -11,6 +11,7 @@ export {
   KIND_LABEL,
   parseBoardQuery,
   outcomeOf,
+  pointsLabel,
   statusLabel,
   type Board,
   type BoardAgent,

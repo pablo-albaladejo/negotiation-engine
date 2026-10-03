@@ -15,6 +15,7 @@ import {
   KIND_LABEL,
   SCOPE_LABEL,
   outcomeOf,
+  pointsLabel,
   statusLabel,
   type Board,
   type BazaarModel,
@@ -140,7 +141,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         { key: "price", label: "Price", numeric: true },
         { key: "value", label: "Our value", numeric: true },
         { key: "surplus", label: "Margin vs our value", numeric: true },
-        { key: "score", label: "Δ score", numeric: true },
+        { key: "score", label: "Points (Δ on its tick)", numeric: true },
         { key: "ticks", label: "Ticks" },
       ]}
       rows={rows.map((r) => ({
@@ -156,8 +157,8 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         price: show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
-        // A dealer deal scores through the ladder (share of her range, best three per level), never neg_points.
-        score: r.kind.startsWith("dealer") && outcomeOf(r) === "deal" ? (r.d_ladder_points !== null ? `ladder ${r.d_ladder_points > 0 ? "+" : ""}${r.d_ladder_points}` : "ladder only · not logged") : r.d_score === null ? "—" : toned(r.d_score),
+        // Per-deal Δ from score-audit.jsonl; a dealer deal scores through the ladder, never neg_points.
+        score: pointsLabel(r) ?? (outcomeOf(r) !== "deal" ? "—" : r.d_score !== null ? toned(r.d_score) : "not audited"),
         ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
       }))}
       onRowClick={(i) => {

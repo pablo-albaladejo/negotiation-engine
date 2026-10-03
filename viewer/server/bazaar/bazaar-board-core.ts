@@ -231,6 +231,12 @@ export interface BoardRow {
   d_neg_points: number | null;
   d_ladder_points: number | null;
   d_score: number | null;
+  /** Settlement that closed this deal (thread or book fill), to join `score-audit.jsonl`. */
+  settlement: number | null;
+  /** Δ of each score part on the tick this deal settled (`score-audit.jsonl` → parts / neg_points). */
+  d_parts: Record<string, number> | null;
+  /** Our deals that settled on that same tick: the Δ is theirs together when > 1. */
+  d_shared: number;
   duel_result: number | null;
   tick_opened: number | null;
   tick_settled: number | null;
@@ -262,6 +268,8 @@ export interface BoardInput {
   settlements: Settlement[];
   decisions: Decision[];
   scoreLines: ScoreLine[];
+  /** `score-audit.jsonl` lines (optional: absent before bazaar:play ran live). */
+  audit?: ScoreAuditLine[];
   lessons: Lesson[];
   cache: VerdictCache;
   /** `/api/me/value?card=REF` already queried this cycle (only for just-settled sales). */
@@ -399,6 +407,7 @@ interface DealToValue {
   assets: AssetRef[];
   tickSettled: number | null;
   thread?: number;
+  settlement?: number | null;
 }
 
 /** Value of what we actually received (buy) or handed over (sell), in this order: cache →
@@ -487,6 +496,9 @@ const blankRow = (): Omit<BoardRow, "id" | "kind" | "counterparty" | "item" | "s
   d_neg_points: null,
   d_ladder_points: null,
   d_score: null,
+  settlement: null,
+  d_parts: null,
+  d_shared: 0,
   duel_result: null,
   tick_opened: null,
   tick_settled: null,
@@ -546,7 +558,7 @@ function threadRow(t: BoardThread, input: BoardInput, consumed: Set<number>): Bu
     tickSettled = match?.tick ?? scoreTick(input.scoreLines, t.id) ?? (status === "deal" ? lastTick(t) : settled.tick);
     const refs = assets.map((a) => a.ref).filter(Boolean);
     if (refs.length) item = t.item ? `${t.item} (${refs.join(" + ")})` : refs.join(" + ");
-    deal = { rowId: `thread:${t.id}`, side: dealSide, assets, tickSettled, thread: t.id };
+    deal = { rowId: `thread:${t.id}`, side: dealSide, assets, tickSettled, thread: t.id, settlement: match?.settlement ?? null };
   }
   const d = scoreDeltas(input.scoreLines, { thread: t.id });
   const row: BoardRow = {
@@ -627,6 +639,7 @@ function settlementRow(s: Settlement, team: string): Built {
     status: side === "buy" ? "bought" : "sold",
     price: s.price ?? null,
     tick_settled: s.tick ?? null,
+    settlement: s.settlement,
   };
   return { row, deal: { rowId: row.id, side, assets, tickSettled: s.tick ?? null } };
 }
@@ -705,9 +718,47 @@ export function buildRows(input: BoardInput): { rows: BoardRow[]; newValues: Rec
     row.verdict = verdictOf(row.surplus);
     if (v.value !== null && !input.cache.values[deal.rowId]) newValues[deal.rowId] = { value: v.value, source: v.source, refs: deal.assets.map((a) => a.ref).filter(Boolean), tick: deal.tickSettled };
   }
+  for (const deal of deals) {
+    const row = rows.find((r) => r.id === deal.rowId);
+    if (row && deal.settlement != null) row.settlement = deal.settlement;
+  }
+  applyScoreAudit(rows, input.audit ?? []);
   const key = (r: BoardRow) => r.tick_opened ?? r.tick_settled ?? -1;
   rows.sort((a, b) => key(b) - key(a));
   return { rows, newValues };
+}
+
+/** One line of `score-audit.jsonl` (written by `bazaar:play` live): the Δ of a tick and our deals in it. */
+export const ScoreAuditSchema = z.looseObject({
+  tick: num,
+  delta: num.optional(),
+  parts: z.record(str, num).optional(),
+  deals: z.array(z.looseObject({ settlement: num })).optional(),
+});
+export type ScoreAuditLine = z.infer<typeof ScoreAuditSchema>;
+
+/**
+ * Puts each tick's score Δ on the deals that settled in it. Older lines carry only the neg_points Δ (`delta`); newer
+ * ones every part (`parts`). With two deals in one tick the Δ is shared (`d_shared`), never split by guess.
+ */
+export function applyScoreAudit(rows: BoardRow[], audit: readonly ScoreAuditLine[]): void {
+  const bySettlement = new Map<number, BoardRow>();
+  for (const r of rows) if (r.settlement !== null) bySettlement.set(r.settlement, r);
+  for (const a of audit) {
+    const deals = a.deals ?? [];
+    if (!deals.length) continue;
+    // `parts` only lists the parts that moved: a missing one is a measured 0.
+    const parts: Record<string, number> = a.parts ? { neg_points: 0, ladder_points: 0, ...a.parts } : { neg_points: a.delta ?? 0 };
+    for (const d of deals) {
+      const row = bySettlement.get(d.settlement);
+      if (!row) continue;
+      row.d_parts = parts;
+      row.d_shared = deals.length;
+      row.d_neg_points = parts.neg_points ?? null;
+      row.d_ladder_points = parts.ladder_points ?? row.d_ladder_points;
+      if (parts.score !== undefined) row.d_score = parts.score;
+    }
+  }
 }
 
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);

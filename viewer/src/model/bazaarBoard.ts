@@ -51,6 +51,10 @@ export interface BoardRow {
   d_neg_points: number | null;
   d_ladder_points: number | null;
   d_score: number | null;
+  /** Δ of each score part on the tick this deal settled (`score-audit.jsonl`); absent on an older server. */
+  d_parts?: Record<string, number> | null;
+  /** Our deals settled on that same tick (the Δ is theirs together when > 1). */
+  d_shared?: number;
   duel_result: number | null;
   tick_opened: number | null;
   tick_settled: number | null;
@@ -236,6 +240,24 @@ export function sideOf(r: BoardRow): BoardSide | null {
   if (r.kind === "dealer-buy" || r.kind === "duel-buyer" || r.status === "bought") return "buy";
   if (r.kind === "dealer-sell" || r.kind === "duel-seller" || r.status === "sold") return "sell";
   return null;
+}
+
+const PART_LABEL: Record<string, string> = { neg_points: "neg", ladder_points: "ladder", duel_points: "duel", mm_points: "mm", score: "score" };
+
+/**
+ * Points column: the Δ of each raw part on the deal's tick (neg, ladder… always shown, the rest only when they moved),
+ * then the score Δ. `null` when the deal was not audited.
+ */
+export function pointsLabel(r: BoardRow): { value: string; tone?: "better" | "worse" } | null {
+  const p = r.d_parts;
+  if (!p) return null;
+  const sign = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 1000) / 1000}`;
+  const shown = Object.entries(PART_LABEL).filter(([k]) => p[k] !== undefined && (k === "neg_points" || k === "ladder_points" || p[k] !== 0));
+  const text = shown.map(([k, label]) => `${label} ${sign(p[k]!)}`).join(" · ");
+  const net = p.score ?? (p.neg_points ?? 0) + (p.ladder_points ?? 0);
+  const tone = net > 0 ? "better" : net < 0 ? "worse" : undefined;
+  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} deals)` : ""}`;
+  return tone ? { value, tone } : { value };
 }
 
 /** Status column: the outcome plus the raw detail when it adds something (`deal · auto-match`, `no deal · walked`). */

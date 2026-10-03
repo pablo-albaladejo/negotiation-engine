@@ -41,7 +41,13 @@ export interface ScoreAuditRecord {
   /** Some deal had no value at deal time: `expected` leaves it out. */
   missingValue?: boolean;
   verdict: AuditVerdict;
+  /** Δ of every score part this tick (`/api/me` → score; dealer deals move `ladder_points`, not `neg_points`). */
+  parts?: Partial<Record<ScorePart, number>>;
 }
+
+/** Score parts read from `/api/me` → score, compared tick to tick. */
+export const SCORE_PARTS = ["score", "negotiating", "market", "neg_points", "ladder_points", "duel_points", "mm_points"] as const;
+export type ScorePart = (typeof SCORE_PARTS)[number];
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -96,6 +102,7 @@ export function defaultScoreAuditFile(root: string, now: Date = new Date()): str
  */
 export class ScoreAudit {
   private lastNeg: number | undefined;
+  private lastParts: Partial<Record<ScorePart, number>> = {};
   private readonly seen = new Set<number>();
   private byAsset = new Map<number, number>();
   private byRef = new Map<string, number>();
@@ -103,7 +110,14 @@ export class ScoreAudit {
   constructor(private readonly o: { file?: string; mode: "live" | "dry-run" }) {}
 
   observe(input: { tick: number; me: Me; events: readonly FeedEvent[]; values: Readonly<Record<string, number>> }): { line?: string; record?: ScoreAuditRecord } {
-    const neg = num((input.me.score as { neg_points?: unknown } | undefined)?.neg_points);
+    const score = (input.me.score ?? {}) as Record<string, unknown>;
+    const neg = num(score.neg_points);
+    const parts: Partial<Record<ScorePart, number>> = {};
+    for (const k of SCORE_PARTS) {
+      const now = num(score[k]);
+      const before = this.lastParts[k];
+      if (now !== undefined && before !== undefined && Math.round((now - before) * 1000) !== 0) parts[k] = Math.round((now - before) * 1000) / 1000;
+    }
     const team = input.me.id;
     const fresh = input.events.filter((e) => e.type === "settlement" && !this.seen.has(num(e.payload.settlement) ?? e.id ?? -1));
     for (const e of fresh) this.seen.add(num(e.payload.settlement) ?? e.id ?? -1);
@@ -112,13 +126,13 @@ export class ScoreAudit {
     if (!first && neg !== undefined && team) {
       const deals = ourDeals(fresh, team, (side, item) => (side === "sell" && item.id !== undefined ? this.byAsset.get(item.id) : undefined) ?? this.byRef.get(item.ref));
       const delta = round1(neg - this.lastNeg!);
-      if (delta !== 0 || deals.length) {
+      if (delta !== 0 || deals.length || parts.ladder_points !== undefined) {
         const expected = round1(deals.reduce((s, d) => s + (d.expected ?? 0), 0));
         const missingValue = deals.some((d) => d.expected === undefined);
         const verdict = auditVerdict(delta, expected, deals);
-        const record: ScoreAuditRecord = { v: 1, tick: input.tick, ts: new Date().toISOString(), mode: this.o.mode, negBefore: this.lastNeg!, negAfter: neg, delta, deals, expected, ...(missingValue ? { missingValue } : {}), verdict };
+        const record: ScoreAuditRecord = { v: 1, tick: input.tick, ts: new Date().toISOString(), mode: this.o.mode, negBefore: this.lastNeg!, negAfter: neg, delta, deals, expected, ...(missingValue ? { missingValue } : {}), verdict, ...(Object.keys(parts).length ? { parts } : {}) };
         const list = deals.map((d) => `${d.source} ${d.counterparty} ${d.side} ${d.refs.join("+")} @ ${d.price} P (${d.value !== undefined ? `v ${d.value}, exp ${d.expected! >= 0 ? "+" : ""}${d.expected}` : "v ?"}, tick ${d.tick})`).join("; ");
-        out.line = `score audit: neg_points ${this.lastNeg} → ${neg} (Δ ${delta}) at tick ${input.tick}: ${verdict} · expected ${expected}${missingValue ? " (a value unknown)" : ""} · deals: ${list || "none of ours in the feed"}`;
+        out.line = `score audit: neg_points ${this.lastNeg} → ${neg} (Δ ${delta}) at tick ${input.tick}: ${verdict} · expected ${expected}${missingValue ? " (a value unknown)" : ""} · deals: ${list || "none of ours in the feed"}${Object.keys(parts).length ? ` · parts: ${Object.entries(parts).map(([k, v]) => `${k} ${v > 0 ? "+" : ""}${v}`).join(", ")}` : ""}`;
         out.record = record;
         if (this.o.file) {
           try {
@@ -131,6 +145,10 @@ export class ScoreAudit {
       }
     }
     if (neg !== undefined) this.lastNeg = neg;
+    for (const k of SCORE_PARTS) {
+      const v = num(score[k]);
+      if (v !== undefined) this.lastParts[k] = v;
+    }
     // Values before the next tick's deals: what we hold (sold assets) and the private-values cache (cards we could buy).
     this.byAsset = new Map(input.me.assets.flatMap((a) => (typeof a.your_value === "number" ? [[a.id, a.your_value] as [number, number]] : [])));
     const byRef = new Map(Object.entries(input.values));
