@@ -3,6 +3,7 @@ import { DEFAULT_NEGOTIATOR_PARAMS, decide, plannedSchedule, type NegotiatorPara
 import { rarityOf, type Target } from "./planner.js";
 import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
 import { buildValueModel, heldAssets } from "../../trades/trades.js";
+import { isKeepsake } from "../../shared/asset-locks.js";
 
 /**
  * Menu planner: from `/api/me`, `/api/catalog` and the dealer record, ranks what to
@@ -327,7 +328,9 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   }
   const targetSets = new Set((input.pageTargets ?? []).map((t) => setOfCard(t)));
   const byRef = new Map<string, Me["assets"]>();
-  for (const a of me.assets) if (a.kind === "card" && !a.locked) byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a]);
+  // Pablo, 3 Oct: hidden cards are never sold (catalog `hidden`, e.g. the egg prize LAT-13), nor any keepsake (`isKeepsake`).
+  const hidden = new Set(catalog.sets.flatMap((st) => st.cards.filter((c) => (c as { hidden?: unknown }).hidden === true).map((c) => c.id)));
+  for (const a of me.assets) if (a.kind === "card" && !a.locked && !hidden.has(a.ref) && !isKeepsake(a)) byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a]);
   for (const [ref, copies] of byRef) {
     const sorted = [...copies].sort((x, y) => (y.your_value ?? 0) - (x.your_value ?? 0));
     const top = sorted[0]!;
