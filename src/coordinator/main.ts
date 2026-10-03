@@ -122,7 +122,7 @@ async function main() {
   let prevTime: TimeState | undefined;
   const hintsFile = defaultHintsFile(root);
   // LLM labels of the hint corpus (egg probe phrases): in the background, also in dry-run (it only reads game text).
-  // Opt-in (--hint-llm); off with --once: a pending `claude -p` child would hold the process for up to 90 s.
+  // Opt-in (--hint-llm); off with --once: a pending `claude -p` child would hold the process for minutes.
   const hintLabelsFile = defaultHintLabelsFile(root);
   const hintLabeler = values["hint-llm"] && !values.once ? new HintLabeler(hintLabelsFile) : undefined;
   const valuesFile = defaultValuesFile(root);

@@ -25,7 +25,7 @@ export interface HintLabel {
 const SCHEMA = "bazaar-hint-labels/v1";
 const CLASSES: readonly HintClass[] = ["hint", "egg-clue", "voice"];
 /** Lines per LLM call: one call labels a batch, the rest wait for the next ones. */
-export const LABEL_BATCH = 15;
+export const LABEL_BATCH = 10;
 
 export const defaultHintLabelsFile = (root: string) => join(root, "results", "bazaar-live", "hint-labels.json");
 
@@ -106,7 +106,7 @@ export class HintLabeler {
 
   constructor(
     private readonly file: string,
-    private readonly ask: (prompt: string) => Promise<string | null> = (p) => claudeOnce(p, { timeoutMs: 90_000 }),
+    private readonly ask: (prompt: string) => Promise<string | null> = (p) => claudeOnce(p, { timeoutMs: 240_000 }),
   ) {}
 
   tick(lines: readonly HintLine[], personas: readonly { id: string; name?: string }[]): string | undefined {
