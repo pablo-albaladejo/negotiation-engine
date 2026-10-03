@@ -1,9 +1,9 @@
 import type { Side } from "./negotiator.js";
 
 /**
- * Plantillas deterministas (amables, en inglés natural). El texto lleva exactamente una cifra y es
- * la del precio estructurado; nunca menciona nuestra valoración ni ids de cartas.
- * Se rota por ronda para no repetir las mismas palabras (algunos dealers lo toman por spam).
+ * Deterministic templates (polite, in natural English). The text carries exactly one figure and it is
+ * the structured price; it never mentions our valuation or card ids.
+ * Rotated per round so as not to repeat the same words (some dealers take it for spam).
  */
 
 const BUY_OPEN = [
@@ -41,18 +41,18 @@ const HOLD = [
 ];
 
 /**
- * Palabras que ninguna plantilla ni probe puede llevar (site-map § 9.2: el juez marca injection, spam y false_claim, y
- * la cortesía baja su límite): suenan a inyección, a presión o a afirmación que no podemos sostener.
+ * Words that no template or probe may carry (site-map § 9.2: the judge flags injection, spam and false_claim, and
+ * courtesy lowers its limit): they sound like injection, pressure or a claim we can't back up.
  */
 export const TEMPLATE_BLOCKLIST = ["ignore", "instruction", "system prompt", "prompt", "last one", "other offer", "another offer", "another buyer", "deadline", "lowest price", "final offer", "hurry", "your limit", "my limit", "guarantee"];
 
-/** El texto contiene alguna palabra de `TEMPLATE_BLOCKLIST` (sin mayúsculas). */
+/** The text contains some word of `TEMPLATE_BLOCKLIST` (case-insensitive). */
 export function hasBlockedPhrase(text: string): boolean {
   const t = text.toLowerCase();
   return TEMPLATE_BLOCKLIST.some((w) => t.includes(w));
 }
 
-/** Todas las plantillas de dealer (para el guardarraíl de cortesía y lista negra). */
+/** All dealer templates (for the courtesy guardrail and blocklist). */
 export const DEALER_TEMPLATES: readonly string[] = [...BUY_OPEN, ...BUY_COUNTER, ...SELL_OPEN, ...SELL_COUNTER, ...CLOSE, ...HOLD];
 
 function pick(list: readonly string[], round: number): string {
@@ -60,22 +60,22 @@ function pick(list: readonly string[], round: number): string {
 }
 
 /**
- * Frase X de un probe de egg («Do you know about X?», la forma del Playground, site-map § 9.3): de 3 a 40 caracteres,
- * solo letras, espacios, apóstrofos y guiones (NUNCA dígitos: el mensaje lleva una sola cifra, la decidida).
+ * Phrase X of an egg probe («Do you know about X?», the Playground form, site-map § 9.3): 3 to 40 characters,
+ * only letters, spaces, apostrophes and hyphens (NEVER digits: the message carries a single figure, the decided one).
  */
 export function isProbePhrase(x: string): boolean {
   return /^[\p{L}][\p{L} '’-]{1,38}[\p{L}]$/u.test(x.trim()) && !/\d/.test(x) && !hasBlockedPhrase(x);
 }
 
 /**
- * Texto para una contraoferta con precio `price` en la ronda `round` (0 = apertura). Con `probe`, la plantilla añade
- * una sola pregunta amable de egg; si la frase no es válida (`isProbePhrase`), no se añade.
+ * Text for a counteroffer at price `price` in round `round` (0 = opening). With `probe`, the template adds
+ * a single polite egg question; if the phrase is not valid (`isProbePhrase`), it is not added.
  */
 export function counterText(side: Side, round: number, price: number, probe?: string): string {
   const tpl = round === 0 ? pick(side === "buy" ? BUY_OPEN : SELL_OPEN, price) : pick(side === "buy" ? BUY_COUNTER : SELL_COUNTER, round - 1);
   const ask = probe !== undefined && isProbePhrase(probe) ? ` Do you know about ${probe.trim()}?` : "";
   const text = tpl.replace("{p}", String(Math.round(price))) + ask;
-  if (!textMatchesPrice(text, price)) throw new Error("plantilla con cifra distinta del precio");
+  if (!textMatchesPrice(text, price)) throw new Error("template figure differs from the price");
   return text;
 }
 
@@ -83,19 +83,19 @@ export function closeText(round: number): string {
   return pick(CLOSE, round);
 }
 
-/** Texto para aguantar el precio `price` ya enviado (ronda `round`), sin abrir una oferta nueva. */
+/** Text to hold the already-sent price `price` (round `round`), without opening a new offer. */
 export function holdText(round: number, price: number): string {
   const text = pick(HOLD, round).replace("{p}", String(Math.round(price)));
-  if (!textMatchesPrice(text, price)) throw new Error("plantilla con cifra distinta del precio");
+  if (!textMatchesPrice(text, price)) throw new Error("template figure differs from the price");
   return text;
 }
 
-/** Todas las cifras del texto. */
+/** All figures in the text. */
 export function numbersIn(text: string): number[] {
   return (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((n) => Number(n.replace(",", ".")));
 }
 
-/** El texto lleva exactamente una cifra y es la del precio estructurado. */
+/** The text carries exactly one figure and it is the structured price. */
 export function textMatchesPrice(text: string, price: number): boolean {
   const nums = numbersIn(text);
   return nums.length === 1 && nums[0] === Math.round(price);

@@ -2,12 +2,12 @@ import { enforceGuardrails, type Mandate } from "../../engine/guardrails.js";
 import { concession } from "../../engine/offer.js";
 
 /**
- * Negociador con un dealer (un hilo, una cifra): decide aceptar, contraofertar, esperar o cerrar.
- * Por defecto, pasos adaptativos a su paciencia (medida en vivo en intercambios, no en tics): el
- * paso cierra el hueco hasta nuestro límite en los mensajes que le quedan, y vuelve a pasos de 1 si
- * los pasos grandes no le arrancan más que los de 1. El modo `boulware` (anterior) usa la curva del
- * motor (`concession`). Siempre: monotonía y mandato (`enforceGuardrails`) y AC_next.
- * Puro y determinista: sin red, sin reloj, sin texto del dealer.
+ * Negotiator for one dealer (one thread, one price): decides to accept, counter, wait or close.
+ * By default, steps adapt to its patience (measured live in exchanges, not ticks): the
+ * step closes the gap to our limit in the messages it has left, and goes back to steps of 1 if
+ * big steps don't extract more than steps of 1. The (older) `boulware` mode uses the engine curve
+ * (`concession`). Always: monotonicity and mandate (`enforceGuardrails`) and AC_next.
+ * Pure and deterministic: no network, no clock, no dealer text.
  */
 
 export type Side = "buy" | "sell";
@@ -15,56 +15,56 @@ export type Side = "buy" | "sell";
 export type StepMode = "adaptive" | "boulware";
 
 export interface NegotiatorParams {
-  /** `adaptive` (por defecto): paso = ⌈hueco ÷ paciencia restante⌉; `boulware`: curva del motor (negociador anterior). */
+  /** `adaptive` (default): step = ⌈gap ÷ remaining patience⌉; `boulware`: engine curve (older negotiator). */
   stepMode: StepMode;
-  /** Paciencia estimada del dealer en mensajes nuestros por hilo (hilos 56 y 125: ~6–7). */
+  /** Estimated dealer patience in our messages per thread (threads 56 and 125: ~6–7). */
   patienceBudget: number;
-  /** Paso máximo por contraoferta en modo adaptativo (P). */
+  /** Max step per counteroffer in adaptive mode (P). */
   maxStep: number;
-  /** Compra: apertura = fracción de su primer precio (adaptativo) o de min(reserva, su primer precio) (boulware). */
+  /** Buy: opening = fraction of its first price (adaptive) or of min(reservation, its first price) (boulware). */
   buyAnchorFrac: number;
-  /** Venta con su puja por encima de nuestro mínimo: apertura = múltiplo de su puja (adaptativo: recortada para cerrar el hueco en la paciencia). */
+  /** Sell with its bid above our floor: opening = multiple of its bid (adaptive: trimmed to close the gap within its patience). */
   sellAnchorMult: number;
-  /** Venta con su puja por debajo de nuestro mínimo (o sin puja): apertura = ⌈mínimo × esto⌉ (modo adaptativo). */
+  /** Sell with its bid below our floor (or no bid): opening = ⌈floor × this⌉ (adaptive mode). */
   sellFloorAnchorMult: number;
   /**
-   * Venta: el ancla nunca pasa de `herList` (su lista de venta de esa rareza) × esto, aunque su puja plausible o
-   * `sellFloorAnchorMult` × nuestro mínimo den más; sin su lista, sin tope. Su lista es lo único público y estable
-   * que tenemos del dealer, así que es la vara de medir un ancla razonable (evita anclas como 2× una puja ya
-   * inflada, p. ej. 107 para una lista de rareza bien menor). El mínimo sigue siendo nuestra reserva efectiva.
+   * Sell: the anchor never exceeds `herList` (its sell list for that rarity) × this, even if its plausible bid or
+   * `sellFloorAnchorMult` × our floor give more; without its list, no cap. Its list is the only public and stable
+   * figure we have for the dealer, so it is the yardstick for a reasonable anchor (avoids anchors like 2× an already
+   * inflated bid, e.g. 107 for a list of a much lower rarity). The floor is still our effective reservation.
    */
   sellAnchorCapMult: number;
-  /** β de la curva Boulware (< 1 concede despacio al principio). */
+  /** β of the Boulware curve (< 1 concedes slowly at first). */
   beta: number;
-  /** Número de contraofertas en que la curva llega a la reserva efectiva. */
+  /** Number of counteroffers over which the curve reaches the effective reservation. */
   horizon: number;
-  /** Paso máximo por contraoferta como fracción del tramo apertura-reserva. */
+  /** Max step per counteroffer as a fraction of the opening-reservation span. */
   maxStepFrac: number;
-  /** Reciprocidad: fracción de su último movimiento que devolvemos. */
+  /** Reciprocity: fraction of its last move that we return. */
   reciprocity: number;
-  /** Tics que aguantamos sin movernos (mensaje educado, mismo precio) antes de cerrar si estamos atascados. */
+  /** Ticks we hold without moving (polite message, same price) before closing if stuck. */
   maxHolds: number;
   /**
-   * Precio fijo: si tras este número de concesiones nuestras su precio no se ha movido, se trata como fijo
-   * (aceptar si cabe en la reserva y crea valor, aunque sea su apertura; si no, cerrar). 0 lo desactiva.
+   * Fixed price: if after this many of our concessions its price has not moved, it is treated as fixed
+   * (accept if it fits the reservation and creates value, even if it is its opening; otherwise close). 0 disables it.
    */
   fixedAfterConcessions: number;
   /**
-   * El precio fijo solo vale contra una persona que concede pronto: con su β (`herBeta`) por debajo de esto, que no se
-   * mueva en las primeras rondas es lo que predice su curva (El Chato, β ≈ 0,35: 4 % del camino en la ronda 2), no su
-   * límite. Sin β conocida, se aplica como siempre.
+   * The fixed price only holds against a person who concedes early: with its β (`herBeta`) below this, not moving in the
+   * first rounds is what its curve predicts (El Chato, β ≈ 0.35: 4 % of the way in round 2), not its
+   * limit. Without a known β, it applies as usual.
    */
   fixedPriceMinBeta: number;
   /**
-   * Venta con su primera puja < esto × nuestro mínimo (o compra con su precio > nuestro máximo ÷ esto): tras una
-   * contraoferta, si sigue igual de lejos, se cierra educadamente para no gastar su paciencia ni la cuota de tratos
-   * (hilo 125: pujó 5–6 por un mínimo de 10). 0 lo desactiva.
+   * Sell with its first bid < this × our floor (or buy with its price > our max ÷ this): after one
+   * counteroffer, if it stays as far away, close politely so as not to waste its patience or the deal quota
+   * (thread 125: bid 5–6 for a floor of 10). 0 disables it.
    */
   lowballFrac: number;
   /**
-   * `mirror_concessions` (site-map § 8.3): el dealer nunca cede más rápido que nuestro último paso. Nuestra PRIMERA
-   * concesión tras el ancla es al menos esta fracción del tramo ancla → reserva efectiva (aunque supere `maxStep`);
-   * después, la curva de siempre (adaptativa o Boulware). 0 lo desactiva.
+   * `mirror_concessions` (site-map § 8.3): the dealer never concedes faster than our last step. Our FIRST
+   * concession after the anchor is at least this fraction of the anchor → effective reservation span (even if above `maxStep`);
+   * after that, the usual curve (adaptive or Boulware). 0 disables it.
    */
   firstStepFrac: number;
 }
@@ -85,12 +85,12 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   fixedAfterConcessions: 2,
   fixedPriceMinBeta: 1,
   lowballFrac: 0.7,
-  // APAGADO por defecto; el coordinador lo enciende por persona solo con espejo cierto (`MIRROR_FIRST_STEP_FRAC`). Replay offline (modelo de personas.md § 3.3, con y sin espejo): en los 11 hilos guardados, igual (huecos
-  // pequeños); en hilos sintéticos de rara/épica, peor (EV medio 11,42 → 10,92 con 0,12). Se prueba con --first-step-frac.
+  // OFF by default; the coordinator turns it on per persona only with a certain mirror (`MIRROR_FIRST_STEP_FRAC`). Offline replay (personas.md § 3.3 model, with and without mirror): on the 11 saved threads, the same (small gaps);
+  // on synthetic rare/epic threads, worse (mean EV 11.42 → 10.92 with 0.12). Try it with --first-step-frac.
   firstStepFrac: 0,
 };
 
-/** Negociador anterior a la evidencia de los hilos 56 y 125 (ancla lejana + Boulware), para comparar. */
+/** Negotiator from before the evidence of threads 56 and 125 (far anchor + Boulware), for comparison. */
 export const LEGACY_NEGOTIATOR_PARAMS: NegotiatorParams = {
   ...DEFAULT_NEGOTIATOR_PARAMS,
   stepMode: "boulware",
@@ -107,44 +107,44 @@ export interface HerOffer {
 
 export interface ThreadView {
   side: Side;
-  /** Reserva privada: compra = máximo a pagar; venta = mínimo a cobrar. Nunca sale en un mensaje. */
+  /** Private reservation: buy = max to pay; sell = min to charge. Never appears in a message. */
   reservation: number;
-  /** Su primer precio en el hilo (cerrar a ese precio no cuenta en la escalera). */
+  /** Its first price in the thread (closing at that price doesn't count on the ladder). */
   herOpening?: number;
-  /** Venta: su lista de venta publicada para esa rareza (tope del ancla, `sellAnchorCapMult`); sin ella, sin tope. */
+  /** Sell: its published sell list for that rarity (anchor cap, `sellAnchorCapMult`); without it, no cap. */
   herList?: number | undefined;
-  /** Sus precios en orden (incluido el actual). */
+  /** Its prices in order (including the current one). */
   herPrices: readonly number[];
-  /** Su oferta vigente (abierta), si hay. */
+  /** Its standing (open) offer, if any. */
   herCurrent?: HerOffer;
-  /** Nuestros precios enviados en orden. */
+  /** Our sent prices in order. */
   ourPrices: readonly number[];
-  /** Aún no hemos escrito en este hilo en este tick. */
+  /** We have not yet written in this thread this tick. */
   canMessage: boolean;
-  /** El equipo aún no ha aceptado nada en este tick. */
+  /** The team has not yet accepted anything this tick. */
   canAccept: boolean;
-  /** Mensajes de espera ya gastados en este hilo (mismo precio, sin nueva oferta) esperando su final. */
+  /** Hold messages already spent in this thread (same price, no new offer) waiting for its final. */
   holdsUsed?: number;
-  /** Nuestro valor privado de lo que se compra o se vende: un trato solo crea valor si el precio lo mejora. */
+  /** Our private value of what is bought or sold: a deal only creates value if the price beats it. */
   privateValue?: number;
   /**
-   * Su precio vigente cuando enviamos cada uno de nuestros precios (misma longitud que `ourPrices`). Con él y
-   * `herCurrent` se mide su respuesta a cada paso nuestro; sin él se supone `herPrices[j]` = su precio antes de nuestro mensaje j.
+   * Its standing price when we sent each of our prices (same length as `ourPrices`). With it and
+   * `herCurrent` its response to each of our steps is measured; without it, `herPrices[j]` is assumed to be its price before our message j.
    */
   herAtOurMessages?: readonly number[];
   /**
-   * `welcome_first_deal` (site-map § 8.2): primera conversación del equipo con este dealer, en la que su apertura es su
-   * límite (no va a mejorar). Con esto, su precio se acepta si crea valor a nuestro valor privado (regla `welcome-first-deal`).
+   * `welcome_first_deal` (site-map § 8.2): the team's first conversation with this dealer, in which its opening is its
+   * limit (it won't improve). With this, its price is accepted if it creates value at our private value (rule `welcome-first-deal`).
    */
   welcomeFirstDeal?: boolean;
-  /** Nuestro último mensaje en el hilo fue solo texto (un aguante, sin oferta nueva): nunca dos seguidos. */
+  /** Our last message in the thread was text only (a hold, no new offer): never two in a row. */
   lastWasTextOnly?: boolean;
   /**
-   * Tope por su límite previsto (`offerCap` en `src/dealers/history/persona-fit.ts`): comprando, nunca ofrecer por encima;
-   * vendiendo, nunca pedir por debajo. Solo estrecha la reserva de la oferta; la aceptación sigue con la reserva privada.
+   * Cap by its expected limit (`offerCap` in `src/dealers/history/persona-fit.ts`): when buying, never offer above;
+   * when selling, never ask below. Only narrows the offer reservation; acceptance still uses the private reservation.
    */
   herLimitCap?: number;
-  /** β estimada de la curva de su persona (`PersonaModel.strategy.beta`); sin ella, `undefined`. */
+  /** Estimated β of its persona's curve (`PersonaModel.strategy.beta`); `undefined` without it. */
   herBeta?: number;
 }
 
@@ -184,9 +184,9 @@ export type Action =
 export interface Decision {
   action: Action;
   rule: Rule;
-  /** Reserva efectiva: la privada, recortada para no cerrar a su precio de apertura. */
+  /** Effective reservation: the private one, trimmed so as not to close at its opening price. */
   effectiveReservation: number;
-  /** Contraoferta que enviaríamos (para AC_next y trazas). */
+  /** Counteroffer we would send (for AC_next and traces). */
   ourNext?: number;
 }
 
@@ -200,7 +200,7 @@ export function effectiveReservation(view: Pick<ThreadView, "side" | "reservatio
 }
 
 export function anchorPrice(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herList">, p: NegotiatorParams, effRes: number): number {
-  // Venta: el ancla nunca pasa de su lista × sellAnchorCapMult (sin su lista, sin tope); el mínimo sigue siendo effRes.
+  // Sell: the anchor never exceeds its list × sellAnchorCapMult (without its list, no cap); the floor is still effRes.
   const sellCap = view.herList !== undefined ? Math.round(view.herList * p.sellAnchorCapMult) : undefined;
   const clampSell = (x: number) => Math.max(effRes, sellCap !== undefined ? Math.min(x, sellCap) : x);
   if (p.stepMode === "adaptive") {
@@ -209,7 +209,7 @@ export function anchorPrice(view: Pick<ThreadView, "side" | "reservation" | "her
       return Math.max(1, Math.min(effRes - 1, Math.round(ref * p.buyAnchorFrac)));
     }
     if (view.herOpening === undefined || view.herOpening < view.reservation) return clampSell(Math.ceil(view.reservation * p.sellFloorAnchorMult));
-    // Su puja ya cubre nuestro mínimo: ancla relativa a ella, pero cerrable en la paciencia con pasos de `maxStep`.
+    // Its bid already covers our floor: anchor relative to it, but closable within its patience with steps of `maxStep`.
     const closable = effRes + Math.max(1, p.maxStep) * Math.max(0, p.patienceBudget - 1);
     return clampSell(Math.min(closable, Math.round(view.herOpening * p.sellAnchorMult)));
   }
@@ -221,7 +221,7 @@ export function anchorPrice(view: Pick<ThreadView, "side" | "reservation" | "her
   return clampSell(Math.round(ref * p.sellAnchorMult));
 }
 
-/** Lo que concedió en su último movimiento, en nuestra dirección (0 si no se movió o retrocedió). */
+/** What it conceded in its last move, in our direction (0 if it didn't move or went back). */
 export function herLastConcession(side: Side, herPrices: readonly number[]): number {
   if (herPrices.length < 2) return 0;
   const cur = herPrices[herPrices.length - 1]!;
@@ -229,7 +229,7 @@ export function herLastConcession(side: Side, herPrices: readonly number[]): num
   return Math.max(0, side === "buy" ? prev - cur : cur - prev);
 }
 
-/** Concesiones nuestras: veces que nuestro precio se acercó al suyo respecto al anterior. */
+/** Our concessions: times our price moved closer to its price relative to the previous one. */
 export function ourConcessions(side: Side, ourPrices: readonly number[]): number {
   let n = 0;
   for (let i = 1; i < ourPrices.length; i++) if (better(side, ourPrices[i - 1]!, ourPrices[i]!)) n += 1;
@@ -237,9 +237,9 @@ export function ourConcessions(side: Side, ourPrices: readonly number[]): number
 }
 
 /**
- * Su precio no se ha movido tras `fixedAfterConcessions` concesiones nuestras (Abuela comprando comunes, hilo 56).
- * Solo cuando el dealer nos compra (vendemos): cuando nos vende, sí concede (hilo 178: 29→25), así que se negocia hasta su final.
- * Y solo si su persona concede pronto (`herBeta` ≥ `fixedPriceMinBeta`): con β < 1 su curva no se mueve al principio.
+ * Its price has not moved after `fixedAfterConcessions` of our concessions (Abuela buying commons, thread 56).
+ * Only when the dealer buys from us (we sell): when it sells to us it does concede (thread 178: 29→25), so we negotiate until its final.
+ * And only if its persona concedes early (`herBeta` ≥ `fixedPriceMinBeta`): with β < 1 its curve doesn't move at first.
  */
 export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "ourPrices" | "herCurrent" | "herBeta">, p: Pick<NegotiatorParams, "fixedAfterConcessions" | "fixedPriceMinBeta">): boolean {
   if (view.side !== "sell" || p.fixedAfterConcessions <= 0 || !view.herCurrent || view.herPrices.length === 0) return false;
@@ -249,22 +249,22 @@ export function herPriceIsFixed(view: Pick<ThreadView, "side" | "herPrices" | "o
   return ourConcessions(view.side, view.ourPrices) >= p.fixedAfterConcessions;
 }
 
-/** Su precio cabe en nuestra reserva privada (sin el recorte de la apertura) y crea valor a nuestro valor privado. */
+/** Its price fits our private reservation (without the opening trim) and creates value at our private value. */
 export function valuePositive(view: Pick<ThreadView, "side" | "reservation" | "privateValue">, price: number): boolean {
   if (!atLeastAsGood(view.side, price, view.reservation)) return false;
   return view.privateValue === undefined || better(view.side, price, view.privateValue);
 }
 
 export interface StepResponse {
-  /** Índice de nuestro mensaje (1 = la primera concesión tras el ancla). */
+  /** Index of our message (1 = the first concession after the anchor). */
   index: number;
-  /** Tamaño de nuestro paso (P, hacia ella). */
+  /** Size of our step (P, towards her). */
   step: number;
-  /** Lo que ella se movió hacia nosotros en respuesta (puede ser 0 o negativo). */
+  /** How much she moved towards us in response (may be 0 or negative). */
   herMove: number;
 }
 
-/** Su respuesta a cada paso nuestro ya contestado (el ancla no es un paso). */
+/** Its response to each of our already-answered steps (the anchor is not a step). */
 export function stepResponses(view: Pick<ThreadView, "side" | "ourPrices" | "herPrices" | "herCurrent" | "herAtOurMessages">): StepResponse[] {
   const { side, ourPrices } = view;
   const aligned = view.herAtOurMessages && view.herAtOurMessages.length === ourPrices.length && view.herCurrent;
@@ -279,7 +279,7 @@ export function stepResponses(view: Pick<ThreadView, "side" | "ourPrices" | "her
   return out;
 }
 
-/** Algún paso grande (≥ 2) no le arrancó más que el mejor de nuestros pasos de 1 (0 si aún no hubo ninguno): volver a pasos de 1. */
+/** Some big step (≥ 2) extracted no more than the best of our steps of 1 (0 if there was none yet): go back to steps of 1. */
 export function bigStepsDidNotPay(responses: readonly StepResponse[]): boolean {
   const big = responses.filter((r) => r.step >= 2);
   if (!big.length) return false;
@@ -291,22 +291,22 @@ export function bigStepsDidNotPay(responses: readonly StepResponse[]): boolean {
 export type MirrorVerdict = "mirror" | "not-mirror" | "unknown";
 
 /**
- * ¿Sus pasos siguen a los nuestros (`mirror_concessions`)? Se comparan tamaños: «mirror» si algún paso grande nuestro
- * (≥ 2) le arrancó más que el mejor de nuestros pasos de 1 (o que 0); «not-mirror» si ninguno lo hizo
- * (`bigStepsDidNotPay`): entonces se vuelve a pasos pequeños. Sin pasos grandes contestados, «unknown».
+ * Do its steps follow ours (`mirror_concessions`)? Sizes are compared: «mirror» if some big step of ours
+ * (≥ 2) extracted more than the best of our steps of 1 (or than 0); «not-mirror» if none did
+ * (`bigStepsDidNotPay`): then we go back to small steps. Without answered big steps, «unknown».
  */
 export function mirrorVerdict(responses: readonly StepResponse[]): MirrorVerdict {
   if (!responses.some((r) => r.step >= 2)) return "unknown";
   return bigStepsDidNotPay(responses) ? "not-mirror" : "mirror";
 }
 
-/** Paso adaptativo: ⌈hueco hasta nuestro límite ÷ mensajes que le quedan de paciencia⌉, entre 1 y `maxStep`. */
+/** Adaptive step: ⌈gap to our limit ÷ messages of patience it has left⌉, between 1 and `maxStep`. */
 export function adaptiveStep(gap: number, sent: number, p: Pick<NegotiatorParams, "patienceBudget" | "maxStep">): number {
   const remaining = Math.max(1, p.patienceBudget - sent);
   return Math.min(Math.max(1, p.maxStep), Math.max(1, Math.ceil(Math.max(0, gap) / remaining)));
 }
 
-/** Camino previsto del ancla a nuestro límite en `patienceBudget` mensajes si ella responde (sin vuelta a pasos de 1). */
+/** Planned path from the anchor to our limit in `patienceBudget` messages if she responds (without going back to steps of 1). */
 export function plannedSchedule(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herList">, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): number[] {
   const effRes = effectiveReservation(view);
   if (effRes < 1) return [];
@@ -322,8 +322,8 @@ export function plannedSchedule(view: Pick<ThreadView, "side" | "reservation" | 
 }
 
 /**
- * Siguiente contraoferta, estrictamente monótona y sin cruzar la reserva efectiva. Adaptativo: paso según la
- * paciencia que le queda (vuelta a 1 si los pasos grandes no pagan). Boulware: curva del motor y reciprocidad.
+ * Next counteroffer, strictly monotonic and not crossing the effective reservation. Adaptive: step according to the
+ * patience it has left (back to 1 if big steps don't pay). Boulware: engine curve and reciprocity.
  */
 export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): { price: number; rule: Rule } | undefined {
   const effRes = effectiveReservation(view);
@@ -334,7 +334,7 @@ export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTI
   const prev = view.ourPrices[view.ourPrices.length - 1];
   if (prev === undefined) return { price: enforceGuardrails(mandate, anchor), rule: "anchor" };
 
-  // Primera concesión tras el ancla con `firstStepFrac` (mirror_concessions): paso grande, guardarraíles y monotonía intactos.
+  // First concession after the anchor with `firstStepFrac` (mirror_concessions): big step, guardrails and monotonicity intact.
   if (view.ourPrices.length === 1 && p.firstStepFrac > 0) {
     const dir = view.side === "buy" ? 1 : -1;
     const big = Math.max(1, Math.round(p.firstStepFrac * Math.abs(effRes - view.ourPrices[0]!)));
@@ -368,17 +368,17 @@ export function nextPrice(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTI
 }
 
 /**
- * Aguantes permitidos: `maxHolds` (1 por defecto). Antes, en adaptativo, se aguantaba hasta su paciencia + maxHolds
- * mensajes esperando su final; en vivo (hilo 184: aguantamos 9 durante 6 tics) no llegó ninguna final y ella se
- * marchó con `no_progress`, así que aguantar el mismo precio no le arranca la final: provoca la retirada.
+ * Allowed holds: `maxHolds` (1 by default). Previously, in adaptive mode, we held up to its patience + maxHolds
+ * messages waiting for its final; live (thread 184: we held 9 over 6 ticks) no final ever came and she
+ * left with `no_progress`, so holding the same price doesn't extract the final: it provokes the walk-away.
  */
 export function holdsAllowed(_pricedSent: number, p: Pick<NegotiatorParams, "stepMode" | "maxHolds" | "patienceBudget">): number {
   return p.maxHolds;
 }
 
 /**
- * Su primer precio y el vigente quedan lejos de nuestro límite tras una contraoferta nuestra: venta, puja < `lowballFrac` ×
- * nuestro mínimo; compra, precio > nuestro máximo ÷ `lowballFrac` (p. ej. al revelar una repetida en rareza+set).
+ * Its first and current prices are far from our limit after a counteroffer of ours: sell, bid < `lowballFrac` ×
+ * our floor; buy, price > our max ÷ `lowballFrac` (e.g. when revealing a duplicate by rarity+set).
  */
 export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOpening" | "herCurrent" | "ourPrices">, p: Pick<NegotiatorParams, "lowballFrac">): boolean {
   if (p.lowballFrac <= 0 || view.ourPrices.length < 1 || !view.herCurrent) return false;
@@ -392,11 +392,11 @@ export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOp
 }
 
 /**
- * `welcome_first_deal`: en la primera conversación con un dealer nuevo su apertura es su límite. Aceptar la apertura
- * sin ofertar cuenta como took_opening, no como trato negociado (personas.md § 9), así que primero va UNA contraoferta
- * nuestra 1 P mejor para nosotros (`welcome-counter`, con guardarraíles); el dealer no puede pasar su límite y repite
- * precio, y entonces se acepta (`welcome-first-deal`). Solo si su precio cabe en la reserva privada y crea valor a
- * nuestro valor privado (EV > 0); sustituye en esa conversación el «no cerrar a su apertura» de `effectiveReservation`.
+ * `welcome_first_deal`: in the first conversation with a new dealer its opening is its limit. Accepting the opening
+ * without offering counts as took_opening, not as a negotiated deal (personas.md § 9), so first ONE counteroffer
+ * of ours 1 P better for us goes out (`welcome-counter`, with guardrails); the dealer can't pass its limit and repeats the
+ * price, and then it is accepted (`welcome-first-deal`). Only if its price fits the private reservation and creates value at
+ * our private value (EV > 0); in that conversation it replaces the «don't close at its opening» of `effectiveReservation`.
  */
 export function welcomeTake(view: Pick<ThreadView, "side" | "reservation" | "privateValue" | "herCurrent" | "welcomeFirstDeal">): boolean {
   return !!view.welcomeFirstDeal && !!view.herCurrent && view.privateValue !== undefined && valuePositive(view, view.herCurrent.price);
@@ -430,12 +430,12 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
   if (her) {
     const isOpening = view.herOpening !== undefined && her.price === view.herOpening;
     const withinRes = !isOpening && atLeastAsGood(view.side, her.price, effRes);
-    // AC_next: su oferta es al menos tan buena como la que le mandaríamos; o ya no podemos movernos.
+    // AC_next: its offer is at least as good as the one we would send; or we can no longer move.
     const acNext = withinRes && (next === undefined || atLeastAsGood(view.side, her.price, next.price));
-    // Una oferta final se acepta si cabe en la reserva privada y crea valor, aunque sea su apertura (cuenta como trato).
+    // A final offer is accepted if it fits the private reservation and creates value, even if it is its opening (counts as a deal).
     const finalTake = her.final && valuePositive(view, her.price);
-    // Está a punto de irse (final, o nuestro próximo mensaje agota la paciencia que le calculamos) con su apertura
-    // sin mover: mejor cerrar en efectivo positivo que arriesgar el no-deal (hilo 257: su apertura 13, reserva 9).
+    // It is about to leave (final, or our next message exhausts the patience we estimated for it) with its opening
+    // unmoved: better to close at positive cash than risk no-deal (thread 257: its opening 13, reservation 9).
     const aboutToWalk = her.final || view.ourPrices.length >= p.patienceBudget - 1;
     const openingLastChance = isOpening && !finalTake && aboutToWalk && valuePositive(view, her.price);
     const take = acNext || finalTake || openingLastChance;
@@ -448,19 +448,19 @@ export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATO
     if (isLowball(view, p)) return { action: { kind: "close" }, rule: "lowball-bid", effectiveReservation: effRes };
   }
 
-  // Atascados: nuestra siguiente contraoferta cruzaría la reserva efectiva (no mejora su oferta, o no hay
-  // margen para moverse). En vez de cerrar de golpe, aguantamos el precio unos tics (sin oferta final suya)
-  // para que ella diga su última palabra; solo cerramos si ya se agotaron los aguantes.
+  // Stuck: our next counteroffer would cross the effective reservation (doesn't improve its offer, or no
+  // room to move). Instead of closing at once, we hold the price a few ticks (without a final offer from it)
+  // so she says her last word; we only close once the holds are exhausted.
   const stuck = next === undefined || (her !== undefined && !better(view.side, next.price, her.price));
   if (stuck) {
-    // Atascados con su precio dentro de nuestro límite privado y creando valor: se acepta ya (el trato cuenta).
+    // Stuck with its price within our private limit and creating value: accept now (the deal counts).
     if (her && valuePositive(view, her.price)) {
       if (!view.canAccept) return { action: { kind: "wait" }, rule: "one-accept-per-tick", effectiveReservation: effRes };
       return { action: { kind: "accept", offerId: her.offerId, price: her.price }, rule: "stuck-accept-within-limit", effectiveReservation: effRes };
     }
     const prevPrice = view.ourPrices[view.ourPrices.length - 1];
     const holdsUsed = view.holdsUsed ?? 0;
-    // Nunca dos mensajes sin oferta seguidos (el juez lo puede marcar como spam, site-map § 9.5).
+    // Never two messages without an offer in a row (the judge may flag it as spam, site-map § 9.5).
     if (her && !her.final && prevPrice !== undefined && !view.lastWasTextOnly && holdsUsed < holdsAllowed(view.ourPrices.length, p)) {
       if (!view.canMessage) return { action: { kind: "wait" }, rule: "one-message-per-tick", effectiveReservation: effRes };
       return { action: { kind: "hold", price: prevPrice }, rule: "hold", effectiveReservation: effRes };

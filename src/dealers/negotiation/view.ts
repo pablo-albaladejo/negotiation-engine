@@ -1,11 +1,11 @@
 import type { HerOffer, Side } from "./negotiator.js";
 import { StandingOfferSchema, type StandingOffer, type Thread } from "../../shared/schemas.js";
 
-/** Lectura estructurada de un hilo con un dealer: solo campos de precio y oferta, nunca su texto. */
+/** Structured reading of a thread with a dealer: price and offer fields only, never its text. */
 
 export interface DealerRef {
   id: string;
-  /** Nombres con los que puede firmar (id, "Abuela Carmen"...). */
+  /** Names it may sign with (id, "Abuela Carmen"...). */
   aliases: readonly string[];
 }
 
@@ -15,7 +15,7 @@ export function isDealer(dealer: DealerRef, who: string | null | undefined): boo
   return [dealer.id, ...dealer.aliases].some((a) => a && (w === a.toLowerCase() || w.includes(a.toLowerCase())));
 }
 
-/** Lado del hilo desde su topic: `{buy: ...}` = compramos; `{sell: ...}` = vendemos. */
+/** Side of the thread from its topic: `{buy: ...}` = we buy; `{sell: ...}` = we sell. */
 export function sideOfTopic(topic: unknown): Side | undefined {
   if (topic && typeof topic === "object") {
     if ("buy" in topic) return "buy";
@@ -24,12 +24,12 @@ export function sideOfTopic(topic: unknown): Side | undefined {
   return undefined;
 }
 
-/** Precio de una oferta del dealer: al comprar, el efectivo que pide; al vender, el que da. */
+/** Price of a dealer offer: when buying, the cash it asks; when selling, the cash it gives. */
 export function offerPrice(side: Side, offer: StandingOffer): number | undefined {
   return positive(side === "buy" ? offer.want?.cash : offer.give?.cash);
 }
 
-/** Precio de una oferta nuestra: al comprar, el efectivo que damos; al vender, el que pedimos. */
+/** Price of an offer of ours: when buying, the cash we give; when selling, the cash we ask. */
 export function ourOfferPrice(side: Side, offer: StandingOffer): number | undefined {
   return positive(side === "buy" ? offer.give?.cash : offer.want?.cash);
 }
@@ -43,15 +43,15 @@ export interface ThreadPrices {
   ourPrices: number[];
 }
 
-/** Nuestros precios sin repeticiones consecutivas (un reenvío no es una concesión). */
+/** Our prices without consecutive repeats (a resend is not a concession). */
 function dedupe(prices: number[]): number[] {
   return prices.filter((p, i) => i === 0 || p !== prices[i - 1]);
 }
 
 /**
- * Precios del hilo. El servidor real pone la cifra en la oferta de cada mensaje (`message.offer`,
- * `price` suele ser null) y en `standing_offers`; se usa `message.price` solo si no hay oferta.
- * Somos nosotros quien firma con `selfId` (p. ej. "t02"); sin `selfId`, cualquiera que no sea el dealer.
+ * Thread prices. The real server puts the price in each message's offer (`message.offer`,
+ * `price` is usually null) and in `standing_offers`; `message.price` is used only if there is no offer.
+ * We are the one who signs with `selfId` (e.g. "t02"); without `selfId`, anyone who is not the dealer.
  */
 export function threadPrices(thread: Thread, side: Side, dealer: DealerRef, selfId?: string): ThreadPrices {
   const self = selfId ?? thread.team ?? undefined;

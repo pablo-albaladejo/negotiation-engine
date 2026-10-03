@@ -3,19 +3,19 @@ import { StandingOfferSchema, type StandingOffer, type Thread } from "../../shar
 import { isDealer, type DealerRef } from "./view.js";
 
 /**
- * Estructura de una oferta del dealer frente a lo que pedimos en el hilo. El precio no basta: en una venta solo
- * vale «nos da efectivo (> 0) y quiere exactamente nuestros activos»; en una compra, «nos da exactamente la carta
- * pedida y solo quiere efectivo ≤ nuestro límite». Cualquier otra forma (nos ofrece un sobre, pide efectivo en una
- * venta, quiere otros activos) no se acepta nunca: se cierra educadamente con la regla `structure-mismatch`.
+ * Structure of a dealer offer versus what we asked for in the thread. The price is not enough: in a sale only
+ * «gives us cash (> 0) and wants exactly our assets» is valid; in a purchase, «gives us exactly the card
+ * asked for and only wants cash ≤ our limit». Any other shape (offers us a pack, asks for cash in a
+ * sale, wants other assets) is never accepted: we close politely with the rule `structure-mismatch`.
  */
 
 export type Expectation =
   | { side: "sell"; assetIds: readonly number[] }
   | {
       side: "buy";
-      /** Carta pedida con `{buy: {card}}`. */
+      /** Card asked for with `{buy: {card}}`. */
       card?: string;
-      /** Rareza+set: la carta que da debe ser de esa rareza y set. */
+      /** Rarity+set: the card it gives must be of that rarity and set. */
       matches?: (ref: string) => boolean;
     };
 
@@ -31,12 +31,12 @@ type OfferSide = NonNullable<StandingOffer["give"]>;
 const list = (xs: readonly unknown[] | null | undefined): unknown[] => (Array.isArray(xs) ? [...xs] : []);
 const cashOf = (s: OfferSide | null | undefined): number => (typeof s?.cash === "number" ? s.cash : 0);
 
-/** Ids de activos de una oferta: el servidor manda objetos `{id, ref, ...}`; nosotros enviamos números. */
+/** Asset ids of an offer: the server sends objects `{id, ref, ...}`; we send numbers. */
 export function assetIdsOf(s: OfferSide | null | undefined): number[] {
   return list(s?.assets).flatMap((a) => (typeof a === "number" ? [a] : a && typeof a === "object" && typeof (a as { id?: unknown }).id === "number" ? [(a as { id: number }).id] : []));
 }
 
-/** Lo que trae una oferta en un lado: cartas (por ref) y cuántas cosas que no son cartas (sobres, tipos desconocidos). */
+/** What an offer carries on one side: cards (by ref) and how many non-card things (packs, unknown types). */
 export function goodsOf(s: OfferSide | null | undefined): { cards: string[]; other: number } {
   const cards: string[] = [];
   let other = 0;
@@ -60,9 +60,9 @@ export function goodsOf(s: OfferSide | null | undefined): { cards: string[]; oth
 const hasGoods = (s: OfferSide | null | undefined) => list(s?.assets).length + list(s?.cards).length + list(s?.types).length > 0;
 
 /**
- * Comprueba la forma de una oferta del dealer. Sin `accept`, se toleran huecos (aún no ha dicho qué carta da, o no
- * repite nuestros activos) y solo se rechaza lo que contradice el hilo (p. ej. nos vende algo en una venta).
- * Con `accept`, se exige la forma completa y, en compra, que su precio quepa en `maxCash`.
+ * Checks the shape of a dealer offer. Without `accept`, gaps are tolerated (it hasn't said yet which card it gives, or hasn't
+ * repeated our assets) and only what contradicts the thread is rejected (e.g. it sells us something in a sale).
+ * With `accept`, the full shape is required and, in a purchase, its price must fit `maxCash`.
  */
 export function checkStructure(offer: StandingOffer, exp: Expectation, opts: { accept?: boolean; maxCash?: number } = {}): StructureCheck {
   const { give, want } = offer;
@@ -89,7 +89,7 @@ export function checkStructure(offer: StandingOffer, exp: Expectation, opts: { a
   return { ok: true };
 }
 
-/** Ofertas del dealer en el hilo (vigentes y de los mensajes), sin repetir, en orden de id. */
+/** Dealer offers in the thread (standing and from messages), without repeats, in id order. */
 export function dealerOffers(thread: Thread, dealer: DealerRef): StandingOffer[] {
   const seen = new Map<number, StandingOffer>();
   const fromMessages = thread.messages.map((m) => StandingOfferSchema.safeParse(m.offer)).flatMap((r) => (r.success ? [r.data] : []));
@@ -97,7 +97,7 @@ export function dealerOffers(thread: Thread, dealer: DealerRef): StandingOffer[]
   return [...seen.values()].sort((a, b) => a.id - b.id);
 }
 
-/** Primera oferta del dealer que contradice el hilo (p. ej. nos vende un sobre en una venta), si la hay. */
+/** First dealer offer that contradicts the thread (e.g. it sells us a pack in a sale), if any. */
 export function firstMismatch(thread: Thread, dealer: DealerRef, exp: Expectation): { offer: StandingOffer; reason: MismatchReason } | undefined {
   for (const offer of dealerOffers(thread, dealer)) {
     const c = checkStructure(offer, exp);
@@ -106,7 +106,7 @@ export function firstMismatch(thread: Thread, dealer: DealerRef, exp: Expectatio
   return undefined;
 }
 
-/** Lo que esperamos de un hilo según su topic; `undefined` si el topic no se reconoce (entonces no se acepta nada). */
+/** What we expect from a thread according to its topic; `undefined` if the topic is not recognized (then nothing is accepted). */
 export function expectationOf(topic: unknown, side: Side, matches?: (ref: string) => boolean): Expectation | undefined {
   const t = topic as { buy?: { card?: string; rarity?: string }; sell?: { assets?: unknown[] } } | undefined;
   if (side === "sell") {

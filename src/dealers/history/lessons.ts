@@ -2,9 +2,9 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import type { ThreadSummary } from "./thread-log.js";
 
 /**
- * `docs/bazaar/lessons.json` (schema "bazaar-lessons/v1"): una entrada por conversación cerrada con lo medido
- * y lecciones derivadas automáticamente. Se añade sin reescribir las entradas existentes (inserción en el
- * texto, validado con JSON.parse) y con rename atómico. Solo nuestros valores; nunca claves ni nada privado ajeno.
+ * `docs/bazaar/lessons.json` (schema "bazaar-lessons/v1"): one entry per closed conversation with what was measured
+ * and automatically derived lessons. Appended without rewriting existing entries (insertion in the
+ * text, validated with JSON.parse) and with atomic rename. Only our values; never keys or anything private of others.
  */
 
 export const LESSONS_SCHEMA = "bazaar-lessons/v1";
@@ -18,7 +18,7 @@ export interface LessonEntry {
   our_limit: number | null;
   her_opening: number | null;
   her_final: number | null;
-  /** `welcome_first_deal`: su apertura aceptada, medida como su límite para este dealer y esta banda (`item`). */
+  /** `welcome_first_deal`: its accepted opening, measured as its limit for this dealer and this band (`item`). */
   measured_limit?: number;
   final_flag: boolean;
   our_prices: number[];
@@ -44,7 +44,7 @@ export interface LessonEntry {
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
-/** Lecciones que se deducen solo de lo medido (sin interpretar su texto). */
+/** Lessons deduced only from what was measured (without interpreting its text). */
 export function deriveLessons(s: ThreadSummary, lowballFrac = 0.7): string[] {
   const L: string[] = [];
   const her = s.herPrices;
@@ -112,7 +112,7 @@ function emptyFile(): string {
   return `${JSON.stringify({ schema: LESSONS_SCHEMA, description: "Lessons learned per Bazaar conversation.", updated: "", conversations: [], global_lessons: [], open_hypotheses: [] }, null, 2)}\n`;
 }
 
-/** Índice del `]` que cierra el array que empieza en `open` (respeta cadenas y escapes). */
+/** Index of the `]` that closes the array starting at `open` (respects strings and escapes). */
 function closingBracket(text: string, open: number): number {
   let depth = 0;
   let inStr = false;
@@ -134,8 +134,8 @@ function closingBracket(text: string, open: number): number {
 }
 
 /**
- * Añade la entrada al final de `conversations` sin tocar el texto de las existentes. No hace nada si ya hay
- * una entrada de ese hilo y dealer. Devuelve si escribió. Lanza si el fichero no es JSON válido.
+ * Appends the entry at the end of `conversations` without touching the text of existing ones. Does nothing if there is already
+ * an entry for that thread and dealer. Returns whether it wrote. Throws if the file is not valid JSON.
  */
 export function appendLesson(file: string, entry: LessonEntry, today: string = new Date().toISOString().slice(0, 10)): boolean {
   let text = existsSync(file) ? readFileSync(file, "utf8") : emptyFile();
@@ -165,8 +165,8 @@ interface Pending {
 }
 
 /**
- * Las lecciones de un trato esperan a que su efecto en la cifra se asiente (neg_points puede llegar unos tics
- * después): se escriben cuando neg_points cambia respecto a la apertura o tras `settleTicks`. Sin trato, al momento.
+ * Lessons for a deal wait for its effect on the figure to settle (neg_points may arrive a few ticks
+ * later): they are written when neg_points changes relative to the opening or after `settleTicks`. Without a deal, immediately.
  */
 export class PendingLessons {
   private readonly pending: Pending[] = [];
@@ -180,7 +180,7 @@ export class PendingLessons {
     else this.pending.push({ summary, closedTick: summary.tick });
   }
 
-  /** Cada tick con la cifra pública (`me.score`): escribe las que ya se asentaron. */
+  /** Each tick with the public figure (`me.score`): writes those that have already settled. */
   observe(score: { neg_points?: unknown; ladder_points?: unknown } | undefined, tick: number): void {
     const neg = typeof score?.neg_points === "number" ? score.neg_points : undefined;
     const ladder = typeof score?.ladder_points === "number" ? score.ladder_points : undefined;

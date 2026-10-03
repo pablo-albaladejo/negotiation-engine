@@ -3,41 +3,41 @@ import { dirname, join } from "node:path";
 import { mirrorVerdict, stepResponses, type MirrorVerdict } from "../negotiation/negotiator.js";
 
 /**
- * Ajuste de la curva del dealer a nivel de PERSONA (personas.md § 3.2–3.3). Todas las personas usan la misma fórmula:
+ * Fit of the dealer curve at PERSONA level (personas.md § 3.2–3.3). All personas use the same formula:
  *
- *   target(r) = open + (limit − open) · min(1, r / max_rounds)^(1/β)        r = contraofertas del dealer hasta ahora
- *   dice(r)   = vende ? max(ceil(target), ceil(limit)) : min(floor(target), floor(limit))
- *   tras walk_after_rounds ± jitter: final = su límite de ESA conversación (± limit_jitter, 5 escalones secretos)
+ *   target(r) = open + (limit − open) · min(1, r / max_rounds)^(1/β)        r = dealer counteroffers so far
+ *   says(r)   = sells ? max(ceil(target), ceil(limit)) : min(floor(target), floor(limit))
+ *   after walk_after_rounds ± jitter: final = its limit for THAT conversation (± limit_jitter, 5 secret steps)
  *
- * `opening_markup`, β, `max_rounds`, `accept_margin`, `walk_after_rounds` y el espejo son de la estrategia de la persona
- * (compartidos por todas sus conversaciones y bandas); solo el límite es por banda y conversación. Se parte de priors
- * (valores por defecto del editor y lo medido en Abuela y El Chato) y se actualiza con cada precio observado,
- * teniendo en cuenta el redondeo (ceil al vender, floor al comprar). Puro salvo `loadPosterior` / `savePosterior`.
- * Solo estructura (precios), nunca texto. Privado: nunca sale en un mensaje.
+ * `opening_markup`, β, `max_rounds`, `accept_margin`, `walk_after_rounds` and the mirror belong to the persona's strategy
+ * (shared by all its conversations and bands); only the limit is per band and conversation. It starts from priors
+ * (editor defaults and what was measured on Abuela and El Chato) and is updated with each observed price,
+ * accounting for rounding (ceil when selling, floor when buying). Pure except `loadPosterior` / `savePosterior`.
+ * Structure only (prices), never text. Private: never appears in a message.
  */
 
-/** Book por rareza (site-map § 8.2). */
+/** Book value per rarity (site-map § 8.2). */
 export const RARITY_BOOK: Readonly<Record<string, number>> = { common: 10, uncommon: 25, rare: 70, epic: 180, legendary: 450 };
 
-/** Una conversación observada con una persona (solo estructura). */
+/** A conversation observed with a persona (structure only). */
 export interface ConvObs {
   id: string;
   persona: string;
-  /** Banda: `sells:<rareza o item>` (el dealer vende) o `buys:<rareza>` (el dealer compra). */
+  /** Band: `sells:<rarity or item>` (the dealer sells) or `buys:<rarity>` (the dealer buys). */
   band: string;
   dealerSells: boolean;
   book: number;
-  /** Sus precios por ronda (0 = apertura). */
+  /** Its prices per round (0 = opening). */
   her: number[];
   ours: number[];
-  /** Su último precio es su oferta final (= su límite de esta conversación). */
+  /** Its last price is its final offer (= its limit in this conversation). */
   final: boolean;
-  /** Se retiró (walked / no_progress) tras `ours.length` contraofertas nuestras. */
+  /** It walked away (walked / no_progress) after `ours.length` counteroffers of ours. */
   walked?: boolean;
   tick?: number;
   /**
-   * Primera conversación del equipo con ese dealer (*welcome_first_deal*): su apertura ES su límite y se mantiene plana,
-   * así que mide el límite de bienvenida pero NO entra en el ajuste de la curva (β, max_rounds, markup, espejo ni bandas).
+   * The team's first conversation with that dealer (*welcome_first_deal*): its opening IS its limit and stays flat,
+   * so it measures the welcome limit but does NOT enter the curve fit (β, max_rounds, markup, mirror or bands).
    */
   welcome?: boolean;
 }
@@ -50,11 +50,11 @@ export interface Range {
 
 export interface BandEstimate {
   limit: Range;
-  /** Conversaciones con al menos una contraoferta suya o su final. */
+  /** Conversations with at least one counteroffer from it or its final. */
   samples: number;
-  /** Menos de 3 muestras: el límite aún puede estar en otro escalón del jitter (abrir más conversaciones, baja prioridad). */
+  /** Fewer than 3 samples: the limit may still sit on another jitter step (open more conversations, low priority). */
   fewSamples: boolean;
-  /** La muestra más favorable para nosotros (el suelo más bajo cuando vende; el techo más alto cuando compra). */
+  /** The sample most favorable to us (the lowest floor when it sells; the highest ceiling when it buys). */
   best: number;
 }
 
@@ -62,67 +62,67 @@ export interface PersonaEstimates {
   opening_markup: Range;
   beta: Range;
   max_rounds: Range;
-  /** Sin dato que lo identifique: prior (fracción del book). */
+  /** No data identifies it: prior (fraction of the book). */
   accept_margin: number;
   walk_after_rounds: Range;
   mirror: boolean | "unknown";
-  /** Markup de apertura cuando ELLA COMPRA, si difiere del de vender (Chato: ~0,14 frente a 0,25); si no, vale `opening_markup`. */
+  /** Opening markup when SHE BUYS, if it differs from selling (Chato: ~0.14 vs 0.25); otherwise `opening_markup` applies. */
   opening_markup_buy?: Range;
-  /** Dispersión del límite entre conversaciones (fracción del book); prior, no se reajusta. */
+  /** Spread of the limit across conversations (fraction of the book); prior, not refit. */
   limit_jitter?: number;
-  /** Límite de bienvenida medido en la primera conversación (su apertura, en P y como fracción del book); `n` = 0 es el prior. */
+  /** Welcome limit measured in the first conversation (its opening, in P and as a fraction of the book); `n` = 0 is the prior. */
   welcome?: { limit: Range; frac_of_book: Range; n: number; side?: "buys" | "sells" };
-  /** Prior de `patience_jitter` (rondas); no se reajusta. */
+  /** Prior for `patience_jitter` (rounds); not refit. */
   patience_jitter?: number;
-  /** `welcome_first_deal`: prior offline (true/false) o medido (true) si hay una conversación de bienvenida. */
+  /** `welcome_first_deal`: offline prior (true/false) or measured (true) if there is a welcome conversation. */
   welcome_first_deal?: boolean;
   bands: Record<string, BandEstimate>;
-  /** Conversaciones usadas en el ajuste. */
+  /** Conversations used in the fit. */
   fittedFrom: number;
-  /** Cómo converge cada estimación: un punto cada vez que cambia su media. */
+  /** How each estimate converges: one point each time its mean changes. */
   history: { tick: number; param: string; value: number }[];
 }
 
 export interface Prediction {
   herNext?: number;
   herLimit: Range;
-  /** Su camino previsto hasta `max_rounds`. */
+  /** Its expected path up to `max_rounds`. */
   curve: { round: number; price: number; lo: number; hi: number }[];
   walkRound: Range;
   mirror: boolean | "unknown";
-  /** Precios suyos de esta conversación usados (apertura incluida). */
+  /** Its prices from this conversation that were used (opening included). */
   fittedFrom: number;
 }
 
 export interface PriorBand {
-  /** Fracciones del book (el barrio, de su lista). */
+  /** Fractions of the book (the neighborhood, of its list). */
   mean: number;
   lo: number;
   hi: number;
-  /** Conversaciones del ajuste offline que lo respaldan. */
+  /** Conversations of the offline fit that back it. */
   n: number;
 }
 
 export interface PersonaPrior {
   openingMarkup: number;
-  /** Markup cuando ella compra, si difiere del de vender. */
+  /** Markup when she buys, if it differs from selling. */
   openingMarkupBuy?: number;
-  /** Espejo medido offline (`mirror_concessions`); manda sobre "unknown" y sobre datos poco decisivos. */
+  /** Mirror measured offline (`mirror_concessions`); overrides "unknown" and indecisive data. */
   mirror?: boolean;
-  /** false: el espejo no es identificable (Abuela: su curva ya explica los pasos); el veredicto de los datos no cuenta y sale "unknown". */
+  /** false: the mirror is not identifiable (Abuela: her curve already explains the steps); the data verdict doesn't count and yields "unknown". */
   mirrorIdentifiable?: boolean;
-  /** Seudo-observaciones del ajuste offline (0 = prior débil de siempre). Cuánto pesa frente a los datos nuevos. */
+  /** Pseudo-observations from the offline fit (0 = the usual weak prior). How much it weighs against new data. */
   priorWeight: number;
   limitJitter?: number;
-  /** `welcome_first_deal`: su apertura de bienvenida como fracción del book (Abuela compra una común a 13 = 1,3 × book; `welcome_price_frac` ≈ 0,7). */
+  /** `welcome_first_deal`: its welcome opening as a fraction of the book (Abuela buys a common at 13 = 1.3 × book; `welcome_price_frac` ≈ 0.7). */
   welcomeFracOfBook?: number;
-  /** Lado de la bienvenida: `buys` = ella compra a su techo de bienvenida (Abuela), `sells` = ella vende a su suelo. */
+  /** Welcome side: `buys` = she buys at her welcome ceiling (Abuela), `sells` = she sells at her floor. */
   welcomeSide?: "buys" | "sells";
-  /** `welcome_first_deal` medido offline (Chato: probablemente no). Si falta y hay `welcomeFracOfBook`, vale true. */
+  /** `welcome_first_deal` measured offline (Chato: probably not). If missing and `welcomeFracOfBook` is set, it is true. */
   welcomeFirstDeal?: boolean;
-  /** `patience_jitter` medido offline (rondas); cota baja en Abuela. */
+  /** `patience_jitter` measured offline (rounds); lower bound on Abuela. */
   patienceJitter?: number;
-  /** Límite medido offline por banda (`sells:<rareza>` / `buys:<rareza>`). */
+  /** Limit measured offline per band (`sells:<rarity>` / `buys:<rarity>`). */
   bands?: Record<string, PriorBand>;
   beta: number;
   maxRounds: number;
@@ -133,11 +133,11 @@ export interface PersonaPrior {
   listFrac: number;
 }
 
-/** Valores por defecto del editor (floor 0,85, ceiling 0,75, list 1) y markups medidos (site-map § 8.4). */
+/** Editor defaults (floor 0.85, ceiling 0.75, list 1) and measured markups (site-map § 8.4). */
 export const DEFAULT_PRIOR: PersonaPrior = { openingMarkup: 0.15, priorWeight: 0, beta: 1, maxRounds: 8, walkAfterRounds: 8, acceptMargin: 0.02, floorFrac: 0.85, ceilingFrac: 0.75, listFrac: 1 };
 /**
- * Priors medidos offline (3 oct, con nuestros hilos y el feed público: Abuela 29 conversaciones, Chato 13; ver
- * docs/bazaar/dealer-fit-2026-10-03.md). El ajuste en vivo parte de aquí y se actualiza con cada dato nuevo.
+ * Priors measured offline (3 Oct, with our threads and the public feed: Abuela 29 conversations, Chato 13; see
+ * docs/bazaar/dealer-fit-2026-10-03.md). The live fit starts here and is updated with each new data point.
  */
 export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
   abuela: {
@@ -155,7 +155,7 @@ export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
     bands: {
       "sells:common": { mean: 0.86, lo: 0.7, hi: 1, n: 5 },
       "sells:uncommon": { mean: 0.86, lo: 0.74, hi: 0.99, n: 4 },
-      // El sobre de barrio no tiene rareza (no entra en `bands`): 0,75 de su lista [0,70, 0,81], n = 2.
+      // The neighborhood pack has no rarity (not in `bands`): 0.75 of its list [0.70, 0.81], n = 2.
       "buys:common": { mean: 0.58, lo: 0.5, hi: 0.69, n: 6 },
       "buys:uncommon": { mean: 0.58, lo: 0.52, hi: 0.64, n: 2 },
     },
@@ -175,7 +175,7 @@ export const PERSONA_PRIORS: Readonly<Record<string, Partial<PersonaPrior>>> = {
       "buys:uncommon": { mean: 0.61, lo: 0.52, hi: 0.68, n: 3 },
       "sells:uncommon": { mean: 1.14, lo: 1.12, hi: 1.16, n: 1 },
       "sells:rare": { mean: 1.1, lo: 0.94, hi: 1.24, n: 3 },
-      // Sobre de plata (sin rareza, no entra en `bands`): 1,13 de su lista [1,10, 1,16], n = 1. Nunca vende por debajo de la lista.
+      // Silver pack (no rarity, not in `bands`): 1.13 of its list [1.10, 1.16], n = 1. Never sells below the list.
     },
   },
 };
@@ -193,17 +193,17 @@ const range = (xs: readonly number[], fallback: number): Range => (xs.length ? {
 const round2 = (x: number) => Math.round(x * 100) / 100;
 const r2 = (r: Range): Range => ({ mean: round2(r.mean), lo: round2(r.lo), hi: round2(r.hi) });
 
-/** Espejo de la persona: mayoría de `mirrorVerdict` entre sus conversaciones con pasos grandes contestados. */
+/** Persona's mirror: majority of `mirrorVerdict` across its conversations with answered big steps. */
 export function personaMirror(obs: readonly ConvObs[], priorMirror?: boolean): boolean | "unknown" {
   const v = obs.map((o): MirrorVerdict => mirrorVerdict(stepResponses({ side: o.dealerSells ? "buy" : "sell", ourPrices: o.ours, herPrices: o.her, herCurrent: { offerId: 0, price: o.her.at(-1) ?? 0, final: o.final } })));
   const yes = v.filter((x) => x === "mirror").length;
   const no = v.filter((x) => x === "not-mirror").length;
-  // Con un prior medido offline, los datos propios solo lo cambian si son decisivos (diferencia ≥ 3 conversaciones).
+  // With an offline-measured prior, our own data only changes it if decisive (difference ≥ 3 conversations).
   if (priorMirror !== undefined && Math.abs(yes - no) < 3) return priorMirror;
   return yes === no ? "unknown" : yes > no;
 }
 
-/** Markup de apertura: cuando vende, apertura ÷ (book × list_frac) − 1; cuando compra y se vio su final, 1 − apertura ÷ final. */
+/** Opening markup: when it sells, opening ÷ (book × list_frac) − 1; when it buys and its final was seen, 1 − opening ÷ final. */
 export function markupSamples(obs: readonly ConvObs[], prior: PersonaPrior): { sell: number[]; buy: number[] } {
   const sell: number[] = [];
   const buy: number[] = [];
@@ -216,27 +216,27 @@ export function markupSamples(obs: readonly ConvObs[], prior: PersonaPrior): { s
   return { sell: sell.filter(ok), buy: buy.filter(ok) };
 }
 
-/** Estimación que parte del prior con `w` seudo-observaciones y se mueve con las muestras nuevas (w = 0: solo las muestras). */
+/** Estimate that starts from the prior with `w` pseudo-observations and moves with new samples (w = 0: samples only). */
 function blendRange(samples: readonly number[], priorMean: number, w: number): Range {
   if (!samples.length) return { mean: priorMean, lo: priorMean, hi: priorMean };
   const m = w > 0 ? (w * priorMean + samples.reduce((a, b) => a + b, 0)) / (w + samples.length) : mean(samples);
   return { mean: m, lo: Math.min(...samples, ...(w > 0 ? [priorMean] : [])), hi: Math.max(...samples, ...(w > 0 ? [priorMean] : [])) };
 }
 
-/** Puntos (r, precio) de una conversación que informan de la curva: sin los pasos que el espejo recortó. */
+/** Points (r, price) of a conversation that inform the curve: without the steps the mirror trimmed. */
 function fitPoints(o: ConvObs, mirror: boolean | "unknown"): { r: number; price: number }[] {
   const pts: { r: number; price: number }[] = [];
   for (let r = 1; r < o.her.length; r++) {
-    if (o.final && r === o.her.length - 1) continue; // la final es el límite, no un punto de la curva
+    if (o.final && r === o.her.length - 1) continue; // the final is the limit, not a point on the curve
     const step = Math.abs(o.her[r]! - o.her[r - 1]!);
     const ourStep = r - 1 < o.ours.length && r >= 2 ? Math.abs((o.ours[r - 1] ?? 0) - (o.ours[r - 2] ?? 0)) : Infinity;
-    if (mirror === true && step > 0 && step <= Math.max(ourStep, 0.02 * o.book) + 1e-9) continue; // recortado por el espejo
+    if (mirror === true && step > 0 && step <= Math.max(ourStep, 0.02 * o.book) + 1e-9) continue; // trimmed by the mirror
     pts.push({ r, price: o.her[r]! });
   }
   return pts;
 }
 
-/** Candidatos de límite de una conversación (su final lo fija; si no, el rango que permiten sus precios). */
+/** Limit candidates for a conversation (its final fixes it; otherwise, the range its prices allow). */
 function limitCandidates(o: ConvObs, markup: number, prior: PersonaPrior): number[] {
   if (o.final && o.her.length) return [o.her.at(-1)!];
   const open = o.her[0]!;
@@ -264,7 +264,7 @@ function fitAll(obs: readonly ConvObs[], markupOf: (o: ConvObs) => number, mirro
   const fits: Fit[] = [];
   for (const beta of BETAS) {
     for (const maxRounds of MAX_ROUNDS) {
-      // Prior débil: β cerca del prior (en log) y max_rounds cerca del prior.
+      // Weak prior: β near the prior (in log) and max_rounds near the prior.
       let cost = (1 + prior.priorWeight) * (0.5 * Math.log(beta / prior.beta) ** 2 + 0.5 * ((maxRounds - prior.maxRounds) / prior.maxRounds) ** 2);
       const limits = new Map<string, number>();
       for (const o of obs) {
@@ -285,7 +285,7 @@ function fitAll(obs: readonly ConvObs[], markupOf: (o: ConvObs) => number, mirro
   return fits.sort((a, b) => a.cost - b.cost);
 }
 
-/** Ajustes casi tan buenos como el mejor: dan los rangos (lo/hi). */
+/** Fits almost as good as the best: they give the ranges (lo/hi). */
 const nearBest = (fits: readonly Fit[]) => fits.filter((f) => f.cost <= fits[0]!.cost + Math.max(1, 0.1 * fits[0]!.cost));
 
 export interface PersonaFit {
@@ -294,13 +294,13 @@ export interface PersonaFit {
 }
 
 /**
- * Ajusta una persona con todas sus conversaciones observadas y predice cada una. `previous` aporta la historia (cómo
- * converge cada estimación) y se le añade un punto por parámetro cuya media cambió.
+ * Fits a persona with all its observed conversations and predicts each one. `previous` supplies the history (how
+ * each estimate converges) and a point is added for each parameter whose mean changed.
  */
 export function fitPersona(persona: string, obs: readonly ConvObs[], tick: number, previous?: PersonaEstimates): PersonaFit {
   const prior: PersonaPrior = { ...DEFAULT_PRIOR, ...PERSONA_PRIORS[persona] };
   const all = obs.filter((o) => o.persona === persona && o.her.length > 0);
-  // Las conversaciones de bienvenida miden el límite de bienvenida, no la curva: fuera del ajuste.
+  // Welcome conversations measure the welcome limit, not the curve: left out of the fit.
   const mine = all.filter((o) => !o.welcome);
   const welcomes = all.filter((o) => o.welcome);
   const mirror = prior.mirrorIdentifiable === false ? "unknown" : personaMirror(mine, prior.mirror);
@@ -314,7 +314,7 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
   const walks = mine.flatMap((o) => (o.final ? [o.her.length - 1] : o.walked ? [o.ours.length] : []));
   const walk = walks.length ? (prior.priorWeight > 0 ? blendRange(walks, prior.walkAfterRounds, prior.priorWeight) : range(walks, prior.walkAfterRounds)) : { mean: prior.walkAfterRounds, lo: prior.walkAfterRounds - 2, hi: prior.walkAfterRounds + 2 };
 
-  // Límite por conversación (mejor ajuste y rango entre los casi mejores) y por banda.
+  // Limit per conversation (best fit and range among the near-best) and per band.
   const convLimit = new Map<string, Range>();
   for (const o of mine) {
     const ls = near.map((f) => f.limits.get(o.id)).filter((x): x is number => x !== undefined);
@@ -371,7 +371,7 @@ export function fitPersona(persona: string, obs: readonly ConvObs[], tick: numbe
   return { estimates: { ...est, history: history.slice(-500) }, predictions };
 }
 
-/** Límite de bienvenida: su apertura en las conversaciones de bienvenida; sin ninguna, el prior (n = 0). */
+/** Welcome limit: its opening in welcome conversations; with none, the prior (n = 0). */
 function welcomeEstimate(welcomes: readonly ConvObs[], prior: PersonaPrior): { welcome?: NonNullable<PersonaEstimates["welcome"]> } {
   if (welcomes.length) {
     const lim = welcomes.map((o) => o.her[0]!);
@@ -381,15 +381,15 @@ function welcomeEstimate(welcomes: readonly ConvObs[], prior: PersonaPrior): { w
   return prior.welcomeFracOfBook !== undefined ? { welcome: { limit: { mean: 0, lo: 0, hi: 0 }, frac_of_book: r2({ mean: prior.welcomeFracOfBook, lo: prior.welcomeFracOfBook, hi: prior.welcomeFracOfBook }), n: 0, ...(prior.welcomeSide ? { side: prior.welcomeSide } : {}) } } : {};
 }
 
-/** Predicción de una conversación: su próximo precio, su límite y su camino hasta `max_rounds`. */
+/** Prediction for a conversation: its next price, its limit and its path up to `max_rounds`. */
 function predict(o: ConvObs, est: Omit<PersonaEstimates, "history">, own: Range | undefined, near: readonly Fit[], prior: PersonaPrior, markup: number): Prediction {
   const open = o.her[0]!;
   const band = est.bands[o.band];
   const hasOwn = !!own && (o.final || o.her.length > 1);
-  // Sin datos propios: el límite de su banda (media y rango); si no hay, la apertura (comprando: techo = apertura ÷ (1 − markup)) o el prior.
+  // Without own data: its band's limit (mean and range); if none, the opening (buying: ceiling = opening ÷ (1 − markup)) or the prior.
   const fallback = o.dealerSells ? Math.min(open, o.book * prior.floorFrac) : Math.max(open, open / Math.max(0.05, 1 - markup));
   const raw: Range = hasOwn ? own! : band ? band.limit : { mean: fallback, lo: fallback, hi: fallback };
-  // Su límite nunca está peor para ella que su precio actual: comprando, ≥ lo que ya da; vendiendo, ≤ lo que ya pide.
+  // Its limit is never worse for her than its current price: when buying, ≥ what it already gives; when selling, ≤ what it already asks.
   const cur = o.dealerSells ? Math.min(...o.her) : Math.max(...o.her);
   const clamp = (x: number) => (o.dealerSells ? Math.min(x, cur) : Math.max(x, cur));
   const herLimit: Range = { mean: clamp(raw.mean), lo: clamp(raw.lo), hi: clamp(raw.hi) };
@@ -410,17 +410,17 @@ function predict(o: ConvObs, est: Omit<PersonaEstimates, "history">, own: Range 
 }
 
 /**
- * Tope de nuestras ofertas: nunca más allá de su límite previsto más un margen (2 % del book, mínimo 1 P). Comprando
- * (vende ella), no ofrecer por encima de lim.hi + margen; vendiendo (compra ella), no pedir por debajo de lim.lo − margen.
+ * Cap on our offers: never beyond its expected limit plus a margin (2 % of the book, min 1 P). When buying
+ * (she sells), don't offer above lim.hi + margin; when selling (she buys), don't ask below lim.lo − margin.
  */
 export function offerCap(p: Prediction, dealerSells: boolean, book: number): number {
   const margin = Math.max(1, Math.round(0.02 * book));
   return dealerSells ? Math.ceil(p.herLimit.hi) + margin : Math.max(1, Math.floor(p.herLimit.lo) - margin);
 }
 
-// ---------------------------------------------------------------- desde el GameState
+// ---------------------------------------------------------------- from the GameState
 
-/** Lo que el ajuste lee de una conversación del GameState (solo estructura). */
+/** What the fit reads from a GameState conversation (structure only). */
 export interface ConversationLike {
   id: string;
   kind: string;
@@ -431,7 +431,7 @@ export interface ConversationLike {
   result?: { outcome?: string };
 }
 
-/** Observación de una conversación con un dealer; `undefined` sin rareza conocida (sin book) o sin precios suyos. */
+/** Observation of a conversation with a dealer; `undefined` without a known rarity (no book) or without its prices. */
 export function observationOf(c: ConversationLike, tick: number): ConvObs | undefined {
   const book = RARITY_BOOK[c.asset.rarity ?? ""];
   if (c.kind !== "dealer" || book === undefined || !c.history.herPrices.length) return undefined;
@@ -453,8 +453,8 @@ export function observationOf(c: ConversationLike, tick: number): ConvObs | unde
 const threadNo = (id: string) => Number(id.split(":")[1]) || Infinity;
 
 /**
- * Suma las conversaciones del tick al posterior (una final vista antes se conserva aunque la oferta ya no esté abierta)
- * y reajusta cada persona con observaciones. Devuelve el posterior nuevo y la predicción por conversación.
+ * Adds the tick's conversations to the posterior (a final seen earlier is kept even if the offer is no longer open)
+ * and refits each persona with observations. Returns the new posterior and the prediction per conversation.
  */
 export function updatePosterior(prev: Posterior, conversations: readonly ConversationLike[], tick: number): { posterior: Posterior; predictions: Map<string, Prediction> } {
   const observations = { ...prev.observations };
@@ -466,8 +466,8 @@ export function updatePosterior(prev: Posterior, conversations: readonly Convers
     const { welcome: _w, ...rest } = o;
     observations[o.id] = { ...rest, final: o.final || keepFinal, tick: old?.tick ?? tick };
   }
-  // Bienvenida: la primera conversación del equipo con la persona (menor id), solo si su prior tiene bienvenida o su precio
-  // se mantuvo plano desde la apertura hasta el final (≥ 3 rondas sin moverse). Se recalcula en cada tick.
+  // Welcome: the team's first conversation with the persona (lowest id), only if its prior has a welcome or its price
+  // stayed flat from the opening to the end (≥ 3 rounds without moving). Recomputed every tick.
   const firstOf = new Map<string, ConvObs>();
   for (const o of Object.values(observations)) {
     const cur = firstOf.get(o.persona);
@@ -489,12 +489,12 @@ export function updatePosterior(prev: Posterior, conversations: readonly Convers
   return { posterior: { observations, estimates }, predictions };
 }
 
-// ---------------------------------------------------------------- posterior persistido
+// ---------------------------------------------------------------- persisted posterior
 
 const SCHEMA = "bazaar-persona-posterior/v1";
 
 export interface Posterior {
-  /** Conversaciones observadas por id (para que una conversación nueva parta de lo ya aprendido, también entre días). */
+  /** Observed conversations by id (so a new conversation starts from what was already learned, also across days). */
   observations: Record<string, ConvObs>;
   estimates: Record<string, PersonaEstimates>;
 }
@@ -503,7 +503,7 @@ export function defaultPosteriorFile(root: string): string {
   return join(root, "results", "bazaar-live", "persona-posterior.json");
 }
 
-/** Posterior guardado; vacío si no existe o no es válido (nunca lanza). */
+/** Saved posterior; empty if it doesn't exist or is invalid (never throws). */
 export function loadPosterior(file: string): Posterior {
   try {
     if (!existsSync(file)) return { observations: {}, estimates: {} };

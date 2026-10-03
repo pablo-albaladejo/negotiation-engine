@@ -3,9 +3,9 @@ import { StandingOfferSchema, type Me, type Thread } from "../../shared/schemas.
 import { isDealer, type DealerRef } from "../negotiation/view.js";
 
 /**
- * Resumen por conversación con un dealer (lo pide nuestro analista de datos): cartas, copias antes y después,
- * tratos con ese dealer en la última hora, tick/ts, su apertura y su final, y paciencia. Solo campos
- * estructurados y nuestros valores privados; nunca la clave ni el texto del dealer.
+ * Per-conversation summary with a dealer (requested by our data analyst): cards, copies before and after,
+ * deals with that dealer in the last hour, tick/ts, its opening and its final, and patience. Only structured
+ * fields and our private values; never the key or the dealer's text.
  */
 
 export type ThreadOutcome = "deal" | "closed_no_deal" | "walked" | "cooloff";
@@ -15,14 +15,14 @@ export interface ThreadSummary {
   dealer: string;
   kind: Side;
   target: string;
-  /** Cartas de la conversación: la pedida o la que ella ofrece (rareza+set), o la que vendemos. */
+  /** Cards of the conversation: the one asked for or the one she offers (rarity+set), or the one we sell. */
   cards: string[];
-  /** Compra cerrada: cartas que nos llegaron (por diferencia de activos). */
+  /** Closed purchase: cards that reached us (by asset difference). */
   received?: string[];
   copiesBefore: Record<string, number>;
   copiesAfter: Record<string, number>;
   dealsWithDealerLastHour: number;
-  /** `welcome-first-deal`: precio aceptado, medido como su límite para este dealer y esta banda (`target`). */
+  /** `welcome-first-deal`: accepted price, measured as its limit for this dealer and this band (`target`). */
   measuredLimit?: number;
   openTick?: number;
   openTs?: string;
@@ -42,12 +42,12 @@ export interface ThreadSummary {
   ourValue?: number;
   ourLimit?: number;
   valueCreated?: number;
-  /** Nuestros puntos de la cifra al abrir (para medir el efecto del trato cuando se asiente). */
+  /** Our points of the figure at opening (to measure the deal's effect once it settles). */
   negPointsBefore?: number;
   ladderPointsBefore?: number;
 }
 
-/** Cartas que el dealer ofrece en su oferta más reciente (`give.types` = "card:SAL-05"); vacío si no lo dice. */
+/** Cards the dealer offers in its most recent offer (`give.types` = "card:SAL-05"); empty if it doesn't say. */
 export function revealedCards(thread: Thread, dealer: DealerRef): string[] {
   const offers = [...thread.standing_offers, ...thread.messages.map((m) => StandingOfferSchema.safeParse(m.offer)).flatMap((r) => (r.success ? [r.data] : []))];
   const hers = offers.filter((o) => isDealer(dealer, o.maker)).sort((a, b) => b.id - a.id);
@@ -58,7 +58,7 @@ export function revealedCards(thread: Thread, dealer: DealerRef): string[] {
   return [];
 }
 
-/** Copias que tenemos de cada carta. */
+/** Copies we hold of each card. */
 export function copiesOf(me: Me, refs: readonly string[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const r of refs) out[r] = me.assets.filter((a) => a.ref === r && (a.kind ?? "card") === "card").length;

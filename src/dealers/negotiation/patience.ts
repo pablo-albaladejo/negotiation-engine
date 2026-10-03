@@ -1,18 +1,18 @@
 import type { Side } from "./negotiator.js";
 
 /**
- * Registro de paciencia por conversación: cuántos mensajes le mandamos, cuántas veces contestó, cuántos tics
- * hasta su oferta final (o el cierre) y qué respondió a cada paso nuestro. En vivo (hilos 56 y 125) su
- * paciencia se gasta por intercambio (~6–7 mensajes nuestros), no por tic. Puro: lo alimenta el agente.
+ * Patience log per conversation: how many messages we sent it, how many times it answered, how many ticks
+ * until its final offer (or the close) and what it answered to each of our steps. Live (threads 56 and 125) its
+ * patience is spent per exchange (~6–7 of our messages), not per tick. Pure: the agent feeds it.
  */
 
 export interface PatienceStep {
   tick: number;
   kind: "counter" | "hold";
   ourPrice: number;
-  /** Tamaño de nuestro paso respecto a nuestro precio anterior (sin él en el ancla y en los aguantes). */
+  /** Size of our step relative to our previous price (absent on the anchor and on holds). */
   step?: number;
-  /** Su precio vigente al enviar y el siguiente que vimos; `herMove` = lo que se movió hacia nosotros. */
+  /** Its standing price when sending and the next one we saw; `herMove` = how much it moved towards us. */
   herBefore?: number;
   herAfter?: number;
   herMove?: number;
@@ -21,7 +21,7 @@ export interface PatienceStep {
 export interface PatienceSummary {
   ourMsgs: number;
   herReplies: number;
-  /** Tics desde que se abrió hasta su oferta final (si la dio) o hasta el cierre. */
+  /** Ticks from when it opened until its final offer (if it gave one) or until the close. */
   ticks: number;
   untilFinal: boolean;
   steps: PatienceStep[];
@@ -37,7 +37,7 @@ export class PatienceLog {
     readonly openTick: number,
   ) {}
 
-  /** Cada tic con el hilo a la vista: su precio vigente, si es final y cuántos mensajes suyos hay en el hilo. */
+  /** Each tick with the thread in view: its standing price, whether it is final and how many messages of its own are in the thread. */
   observe(tick: number, herPrice: number | undefined, herFinal: boolean, herMessages?: number): void {
     if (herMessages !== undefined) this.herReplies = Math.max(this.herReplies, herMessages);
     if (herFinal && this.finalTick === undefined) this.finalTick = tick;
@@ -59,7 +59,7 @@ export class PatienceLog {
     });
   }
 
-  /** Su precio al enviar cada una de nuestras contraofertas (para medir su respuesta por paso), si se conoce en todas. */
+  /** Its price when each of our counteroffers was sent (to measure its response per step), if known for all. */
   herAtCounters(): number[] | undefined {
     const at = this.steps.filter((s) => s.kind === "counter").map((s) => s.herBefore);
     return at.every((x): x is number => x !== undefined) ? at : undefined;
