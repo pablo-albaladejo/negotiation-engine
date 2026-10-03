@@ -19,6 +19,7 @@ En primer plano, **Ctrl-C para todos los procesos**. El doctor sale con 1 si alg
 | `viewer` | `pnpm viewer` en http://127.0.0.1:5199/#bazaar. Si ya hay un visor en 5199 se reutiliza; si otro proceso ocupa el puerto, usa el siguiente libre. | — |
 | `play` | `pnpm bazaar:play` en bucle, **dry-run**: estado, agenda, disparadores, intenciones y arbitraje cada tick. En dry-run espera con las puertas cerradas o el reloj en pausa (`--no-gate` para correrlo igual). | corpus de pistas, caché de valores y posterior por persona en `results/bazaar-live/` |
 | `broker` | `pnpm bazaar:broker --shadow --poll-ms 5000` en bucle: **broker en sombra** del Market Test. `--shadow` = `--dry-run --no-announce`; siempre, también con `--live`. | — |
+| `news` | `pnpm bazaar:news`: noticias de Radio Rastro (stream del recorder y `GET /api/news` cada 30 s) y un resumen (LLM o reglas) para el panel «Radio Rastro» de Now. Solo mostrar. | `results/bazaar-live/<fecha>/news.jsonl` y `news-summary.json` |
 
 - **Logs:** `results/logs/<fecha>/<proceso>.log` (con hora) y `up-events.log` (arranques, caídas, reinicios). Con `--detach`, la salida de up va a `up.log`.
 - **Latido:** `results/logs/up-status.json` cada 10 s: pid, modo, visor, estado y reinicios de cada proceso, último tick visto, reloj.

@@ -5,6 +5,7 @@
 //   viewer   → pnpm viewer (if the port already serves the viewer, it is reused and no other is started)
 //   play     → pnpm bazaar:play in a loop, in DRY RUN by default
 //   broker   → pnpm bazaar:broker --shadow in a loop (Market Test shadow; always dry-run; not started without .env.broker)
+//   news     → pnpm bazaar:news (Radio Rastro watcher for the viewer; display only, read-only GETs)
 // Live only with `--live --confirm` and typing LIVE in the terminal. Ctrl-C stops all. A child that dies is
 // restarted with growing backoff (at most 5 times in 10 min). Heartbeat in results/logs/up-status.json.
 // In dry-run, play waits while doors are closed or the clock is paused (--no-gate to run it anyway).
@@ -134,6 +135,8 @@ const specs = [
   // Shadow broker: ALWAYS --shadow (dry-run without announcing; also with --live), watches the bench to compare against auto in the Market Test.
   // Loads .env.broker itself (loadBrokerEnv). Reads every 5 s (not every 1 s) so as not to spend API quota.
   ...(noBroker ? [] : [{ name: "broker", color: 34, cmd: "pnpm", args: ["bazaar:broker", "--shadow", "--poll-ms", "5000"] }]),
+  // News watcher (display only): up already logs it to news.log, so it does not write its own copy.
+  { name: "news", color: 92, cmd: "pnpm", args: ["bazaar:news", "--no-file-log"] },
 ];
 const children = new Map(
   specs.map((s) => [s.name, { spec: s, proc: undefined, status: "starting", pid: undefined, startedAt: undefined, restarts: [], restartsTotal: 0, lastExit: undefined, timer: undefined, log: join(logDir, `${s.name}.log`) }]),

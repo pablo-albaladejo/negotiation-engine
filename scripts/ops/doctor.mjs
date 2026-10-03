@@ -106,8 +106,8 @@ else bad(`port ${viewerPort}`, "taken by another process (bazaar:up will look fo
 if (env.key) {
   const RESULTS = join(ROOT, "results");
   const LIVE = join(RESULTS, "bazaar-live");
-  // The recorder and bazaar:up write at the same time: their files stay out of the snapshot and are never touched.
-  const foreign = (rel) => rel.startsWith("logs/") || /(^|\/)(stream-[^/]*\.jsonl|feed-poll\.jsonl)$/.test(rel);
+  // The recorder, the news watcher and bazaar:up write at the same time: their files stay out of the snapshot and are never touched.
+  const foreign = (rel) => rel.startsWith("logs/") || /(^|\/)(stream-[^/]*\.jsonl|feed-poll\.jsonl|news\.jsonl|news-summary\.json(\.tmp)?)$/.test(rel);
   const manifest = () => {
     const m = new Map();
     const walk = (dir) => {
