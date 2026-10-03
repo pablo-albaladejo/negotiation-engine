@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, GREETINGS, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
-import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter, type PageImpact } from "./planning/plan.js";
+import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type Candidate, type OnlyFilter, type PageImpact } from "./planning/plan.js";
 import { readValueRules } from "../trades/trades.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
@@ -82,6 +82,11 @@ export interface AgentOptions {
   onProbe?: (thread: number, phrase: string) => void;
   /** Cap on our offers by her predicted limit (per-persona adjustment, `offerCap`); `undefined` without a prediction. */
   herLimitCap?: (thread: number) => number | undefined;
+  /**
+   * Her measured limit for a band (`buys:<rarity>` she buys, `sells:<rarity>` she sells) from her persona model, or
+   * `undefined` while unmeasured. With it, a target her band can never meet is not opened (`HOPELESS_MIN_SAMPLES`).
+   */
+  herBand?: (band: string) => { lo: number; hi: number; n: number } | undefined;
   /**
    * `firstStepFrac` of this tick for this dealer (see `NegotiatorParams`): the coordinator enables it only if the mirror of
    * her persona holds. Without it, the one from `negotiator`/defaults applies (0: off).
@@ -505,6 +510,21 @@ export class BazaarAgent {
     return p && !(me.unlocked ?? me.unlocked_dealers ?? []).includes(p) ? p : undefined;
   }
 
+  /**
+   * Why a target can never close, or `undefined`: once her band is measured (≥ `HOPELESS_MIN_SAMPLES` conversations, the
+   * range includes her jitter), a sale whose minimum is above her highest ceiling, or a buy whose maximum is below her
+   * lowest floor, only spends a thread, messages and an asset lock (3 Oct: Abuela common ceiling 5–6.9 vs our 7).
+   */
+  private hopeless(c: Candidate): string | undefined {
+    if (c.kind === "buy-pack" || !c.rarity) return undefined;
+    const band = `${c.side === "sell" ? "buys" : "sells"}:${c.rarity}`;
+    const b = this.o.herBand?.(band);
+    if (!b || b.n < HOPELESS_MIN_SAMPLES) return undefined;
+    if (c.side === "sell" && b.hi + HOPELESS_MARGIN_P < c.reservation) return `${band} ceiling ≤ ${b.hi} (n ${b.n}) < our min ${c.reservation}`;
+    if (c.side === "buy" && b.lo - HOPELESS_MARGIN_P > c.reservation) return `${band} floor ≥ ${b.lo} (n ${b.n}) > our max ${c.reservation}`;
+    return undefined;
+  }
+
   private async nextTarget(me: Me, tick: number): Promise<(Target & { chase?: string }) | undefined> {
     const free = (t: Target) => (this.skip.get(t.key) ?? -1) <= tick;
     if (this.o.menu) {
@@ -516,11 +536,14 @@ export class BazaarAgent {
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
       const elsewhere = (c: Target) => { const card = buyCardOf(c); return card !== undefined && this.team.buyingElsewhere(this.o.dealer.id, card); };
       const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c) && !elsewhere(c));
-      const picked = selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only })[0]?.candidate;
+      const hopeless = cands.filter((c) => this.hopeless(c));
+      for (const c of hopeless.filter((h) => h.room)) this.log(`skip ${c.label}: hopeless (${this.hopeless(c)})`);
+      const viable = cands.filter((c) => !hopeless.includes(c));
+      const picked = selectCandidates(viable.filter(free), { maxThreads: 1, maxSpend: budget, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only })[0]?.candidate;
       const chase = this.o.only ? undefined : this.chasePersona(me);
       if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
       if (!chase || picked) return picked;
-      const c = chaseCandidates(cands.filter(free), { tolerance: UNLOCK_CHASE_TOLERANCE, maxSpend: budget })[0];
+      const c = chaseCandidates(viable.filter(free), { tolerance: UNLOCK_CHASE_TOLERANCE, maxSpend: budget })[0];
       if (!c) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: no deal within ${UNLOCK_CHASE_TOLERANCE} P of our value (duplicates to sell or cards to buy at ≤ value + ${UNLOCK_CHASE_TOLERANCE})`);
       return c ? { ...c, chase } : undefined;
     }
@@ -851,6 +874,11 @@ export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): 
   }
   return n;
 }
+
+/** Conversations measured in a band before her range is trusted to rule a target out. */
+export const HOPELESS_MIN_SAMPLES = 3;
+/** Slack over her measured range (P) before a target counts as hopeless. */
+export const HOPELESS_MARGIN_P = 1;
 
 const NOT_A_TOPIC_PROBLEM = new Set(["insufficient_cash", "persona_quota", "cooloff", "sold_out", "wait_for_tick", "rate_limited", "locked", "bad_key"]);
 

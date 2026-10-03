@@ -251,6 +251,12 @@ export class DealersRoute {
           packValueOf: (pack) => this.state?.packs.types.find((t) => t.id === pack)?.ourValue,
           pageTargets: this.o.pageTargets,
           pageBonusScored: this.o.pageBonusScored ?? false,
+          // A pending one-shot greeting needs a thread to ride on, so it suspends the hopeless filter for this dealer.
+          herBand: (band) => {
+            if (this.state && greetingFor(this.state, id)) return undefined;
+            const l = this.state?.personas.find((p) => p.id === id)?.model?.bands[band]?.limit;
+            return l && l.source === "measured" && l.lo !== null && l.hi !== null ? { lo: l.lo, hi: l.hi, n: l.n } : undefined;
+          },
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -284,7 +290,7 @@ export class DealersRoute {
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;
       await agent.step(clock);
-      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue")).map((l) => `dealer ${id}: ${l}`));
+      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue") || l.includes(": hopeless (")).map((l) => `dealer ${id}: ${l}`));
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }
