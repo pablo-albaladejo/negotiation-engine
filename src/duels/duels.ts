@@ -348,7 +348,9 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   if (previous && previous.price === offer.price && state.rivalMovedSinceOurLast) {
     const step: StructuredOffer = { ...offer, price: previous.price - sign(state.role) };
     const guarded = enforceGuardrails({ role: state.role, reservation: state.limit }, step.price, previous.price);
-    if (guarded === step.price && withinLimit(state, step) && surplusOf(state, step) >= params.minSurplus) {
+    // Never step past the rival's own price: that would leave value on the table.
+    const pastRival = rival !== undefined && sign(state.role) * (step.price - rival.price) < 0;
+    if (!pastRival && guarded === step.price && withinLimit(state, step) && surplusOf(state, step) >= params.minSurplus) {
       offer = step;
       same = false;
     }
