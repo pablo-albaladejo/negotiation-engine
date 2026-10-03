@@ -330,7 +330,7 @@ export function duelText(kind: "open" | "counter" | "hold", round: number, offer
 }
 
 /**
- * Day deadlock: the rival's last two offers ask for the same day, which is not our best, their last offer there is
+ * Day deadlock: the rival's last two offers do not move towards our best day (and the last is not on it), their last offer there is
  * below our minimum surplus, and their price on our best day would already reach it. Returns our best day, its value
  * to us and the surplus their price would give us on it; undefined otherwise.
  */
@@ -339,10 +339,11 @@ export function dayStand(state: DuelState, params: DuelParams): { days: number; 
   const withDays = state.rivalOffers.filter((o) => o.days !== undefined);
   const last = withDays.at(-1);
   const before = withDays.at(-2);
-  if (!last || !before || last.days !== before.days) return undefined;
+  if (!last || !before) return undefined;
   const best = Math.max(...state.daysValue);
   const days = DAYS_MIN + state.daysValue.indexOf(best);
-  if (last.days === days) return undefined;
+  // Not converging on the day: their last ask is no closer to our best day than the one before (6113: day 8 → 9).
+  if (last.days === days || Math.abs(last.days! - days) < Math.abs(before.days! - days)) return undefined;
   // Only a day that matters to us: when it weighs little, the deck's tip is to give it up and win on price.
   if (best - daysAt(state.daysValue, last.days) < params.dayStandShare * referenceSurplus(state, params)) return undefined;
   if (surplusOf(state, last) >= params.minSurplus) return undefined;
