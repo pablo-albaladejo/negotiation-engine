@@ -1,3 +1,4 @@
+import { FOREX_MIN_MARGIN } from "../../forex/chains.js";
 import type { Me } from "../../shared/schemas.js";
 
 /**
@@ -25,13 +26,20 @@ export interface ForexRoute {
   fees: number;
 }
 
-export const FOREX_ROUTES: readonly ForexRoute[] = [
+/** Seed routes (measured by hand on 3 Oct) until the coordinator hands over the chains found this tick. */
+export const FOREX_SEED_ROUTES: readonly ForexRoute[] = [
   { card: "SAL-09", from: "picaros", maxBuy: 56, to: "pilar", minSell: 70, plausibleBid: 75, fees: 0 },
   { card: "SAL-10", from: "picaros", maxBuy: 56, to: "pilar", minSell: 70, plausibleBid: 76, fees: 0 },
 ];
 
-/** Smallest net margin (P) a route must leave after fees. */
-export const FOREX_MIN_MARGIN = 8;
+let routes: readonly ForexRoute[] = FOREX_SEED_ROUTES;
+
+/** The coordinator sets the automated chains found this tick (`src/forex/chains.ts`, `GameState.forex`). */
+export function setForexRoutes(next: readonly ForexRoute[]): void {
+  routes = next;
+}
+
+export const forexRoutes = (): readonly ForexRoute[] => routes;
 
 export const forexMargin = (r: ForexRoute): number => r.minSell - r.maxBuy - r.fees;
 
@@ -39,8 +47,8 @@ export const forexMargin = (r: ForexRoute): number => r.minSell - r.maxBuy - r.f
 export const FOREX_MAX_LOTS = 1;
 
 const live = (r: ForexRoute) => forexMargin(r) >= FOREX_MIN_MARGIN;
-export const forexBuyRoute = (dealer: string, card: string): ForexRoute | undefined => FOREX_ROUTES.find((r) => live(r) && r.from === dealer && r.card === card);
-export const forexSellRoute = (dealer: string, card: string): ForexRoute | undefined => FOREX_ROUTES.find((r) => r.to === dealer && r.card === card);
+export const forexBuyRoute = (dealer: string, card: string): ForexRoute | undefined => routes.find((r) => live(r) && r.from === dealer && r.card === card);
+export const forexSellRoute = (dealer: string, card: string): ForexRoute | undefined => routes.find((r) => r.to === dealer && r.card === card);
 
 /**
  * Forex copies we hold: every copy of a routed card beyond the first. Our own copy (the first) is never resold;
@@ -48,6 +56,6 @@ export const forexSellRoute = (dealer: string, card: string): ForexRoute | undef
  */
 export function forexLots(me: Me): number {
   let lots = 0;
-  for (const r of FOREX_ROUTES) lots += Math.max(0, me.assets.filter((a) => a.kind === "card" && a.ref === r.card).length - 1);
+  for (const r of routes) lots += Math.max(0, me.assets.filter((a) => a.kind === "card" && a.ref === r.card).length - 1);
   return lots;
 }

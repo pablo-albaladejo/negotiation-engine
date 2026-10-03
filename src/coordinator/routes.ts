@@ -8,7 +8,7 @@ import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from
 import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
 import { appendLesson, PendingLessons, type LessonEntry } from "../dealers/history/lessons.js";
-import { forexBuyRoute, forexSellRoute } from "../dealers/planning/forex.js";
+import { forexBuyRoute, forexRoutes, forexSellRoute, setForexRoutes } from "../dealers/planning/forex.js";
 import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
@@ -307,6 +307,13 @@ export class DealersRoute {
     this.mode = "propose";
     this.collected = [];
     this.ladderNow = this.ladderOf(state);
+    // Forex: the dealer-to-dealer chains found this tick replace the seed routes (none found, none run).
+    // A route whose copy we still hold stays until it is sold, even if the chain is no longer found.
+    if (state.forex) {
+      const found = state.forex.chains.filter((c) => c.automated).map((c) => ({ card: c.card, from: c.buy.at, maxBuy: c.maxBuy, to: c.sell.at, minSell: c.minSell, plausibleBid: c.sell.price, fees: c.buy.fee + c.sell.fee }));
+      const held = forexRoutes().filter((r) => (state.ours.holdings.byRef[r.card] ?? 0) > 1 && !found.some((f) => f.card === r.card));
+      setForexRoutes([...found, ...held]);
+    }
     this.trace.muted = true;
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;

@@ -20,6 +20,8 @@ import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, enrichLine, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { applyLabels, type HintLabel } from "../hints/labels.js";
 import { buildPersonas, mergeWorldEvents, parseFeed, recordedWorldEvents, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FeedEvent, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { findChains, writeForex, type ForexState } from "../forex/chains.js";
+import { updateDealerLedger } from "../forex/ledger.js";
 import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
 
 /**
@@ -120,6 +122,8 @@ export interface GameState {
   venue?: { mechanismDecision: MechanismDecision };
   /** Other teams: cards seen with them, cards they asked for, leaderboard bounds (see `rivals.ts`). Absent if it failed. */
   rivals?: RivalsState;
+  /** Forex chains A → B → C (buy cheap, hold, sell dear) with the step we are on (`src/forex/`). Absent if it failed. */
+  forex?: ForexState;
 }
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -390,6 +394,14 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (v !== undefined) valueCache.set(ref, v);
   }
   const prices = buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) });
+  // Forex chains: the day's dealer deals (any team) and the live venue quotes; never takes the tick down.
+  let forex: ForexState | undefined;
+  try {
+    forex = findChains({ tick: clock.tick, trades: updateDealerLedger(dayDir, events, clock.tick), prices, venues: venueInfo, ...(me?.id ? { team: me.id } : {}), holdings: ours.holdings.byRef, conversations });
+    writeForex(dayDir, forex);
+  } catch (e) {
+    missing.push(`forex: ${e instanceof Error ? e.message : "error"}`);
+  }
   // Other teams' collections: never takes the tick down (a failure goes to `missing`).
   let rivals: RivalsState | undefined;
   try {
@@ -436,6 +448,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       ...world.ours,
     },
     markets: { prices, venues: venueInfo },
+    ...(forex ? { forex } : {}),
     events,
     packs: buildPacks({ ...(me ? { me } : {}), ...(catalog ? { catalog } : {}), dealers: rawDealers, rastro: offers, ...(me?.id ? { team: me.id } : {}), events, values: Object.fromEntries(valueCache) }),
     hints: { all: hintsAll, fresh },
