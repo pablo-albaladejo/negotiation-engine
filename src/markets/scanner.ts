@@ -2,7 +2,9 @@ import { buyGain, pageRisk, valueDelta, type ValueModel } from "../trades/trades
 
 /**
  * Dispersion scanner (markets route): buy asks below our MARGINAL private value and sell into bids above it.
- * neg_points score value gained at private value uncapped (buy: v − p, sell: p − v), so each leg scores on its own.
+ * neg_points score value gained at private value (buy: v − p, sell: p − v), so each leg scores on its own.
+ * ASSUMPTION: no per-deal cap is modelled, but the admin UI says the surplus is "capped per trade and per counterparty"
+ * (cap size unknown; docs/bazaar/site-map.md § 6.12), so a single huge edge may score less than this ranks it.
  * Pure: margin, marginal value, per-deal decision and the hourly ledger. The figure is always the price on display.
  */
 export const SCANNER_PARAMS = {
