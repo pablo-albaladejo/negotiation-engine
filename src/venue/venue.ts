@@ -1,9 +1,9 @@
 import type { Clock, Me } from "../shared/schemas.js";
 
 /**
- * Preparar nuestro mercado (venue). Puro: decide nombre, comisiones, mecanismo y comprueba requisitos.
- * RULES.md: desde nivel 2; fianza reembolsable de 250 P más 20 P; comisión ≤ 10 % y ≤ 5 P por carta;
- * nombre ≤ 40 caracteres; los mercados de equipo empiezan a operar a las +3 h.
+ * Prepare our market (venue). Pure: decides name, fees, mechanism and checks requirements.
+ * RULES.md: from level 2; refundable bond of 250 P plus 20 P; fee ≤ 10 % and ≤ 5 P per card;
+ * name ≤ 40 characters; team markets start operating at +3 h.
  */
 
 export const VENUE_BOND = 250;
@@ -28,7 +28,7 @@ export interface VenueCheck {
   name: string;
   ok: boolean;
   detail: string;
-  /** Informativa: no bloquea la apertura. */
+  /** Informational: does not block opening. */
   info?: boolean;
 }
 
@@ -36,7 +36,7 @@ export interface VenuePlan {
   body: VenueBody;
   cost: number;
   checks: VenueCheck[];
-  /** Todas las comprobaciones bloqueantes en verde. */
+  /** All blocking checks green. */
   ok: boolean;
   why: string[];
 }

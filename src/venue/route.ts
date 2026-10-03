@@ -2,10 +2,10 @@ import type { Intent } from "../coordinator/coordinator.js";
 import { DEFAULT_MECHANISM_THRESHOLDS, VENUE_SWITCH_BOND, VENUE_SWITCH_FEE, type MechanismDecision, type MechanismThresholds } from "./mechanism.js";
 
 /**
- * Ruta `venue-mechanism` del coordinador: propone `venue:switch-to-board` (cerrar v04 + abrir un venue board + arrancar
- * el broker en vivo) cuando la regla lo recomienda, y `venue:back-to-auto` como red de seguridad si estamos en board sin
- * broker vivo antes de un bench. Nunca propone pasar a board a menos de `noSwitchWithinTicks` de un bench.
- * Ejecutar exige `--confirm` Y `--allow-venue-switch` (aprobación expresa del usuario); aun así solo imprime los pasos.
+ * `venue-mechanism` coordinator route: proposes `venue:switch-to-board` (close v04 + open a board venue + start
+ * the live broker) when the rule recommends it, and `venue:back-to-auto` as a safety net if we are on board without a
+ * live broker before a bench. Never proposes moving to board less than `noSwitchWithinTicks` from a bench.
+ * Executing requires `--confirm` AND `--allow-venue-switch` (express user approval); even so it only prints the steps.
  */
 
 export const SWITCH_TO_BOARD_ID = "venue:switch-to-board";
@@ -19,7 +19,7 @@ export function proposeVenueMechanism(
   const notes: string[] = [];
   const v = venueId ?? "our venue";
   if (d.recommendation === "switch-to-board") {
-    // Guardarraíl repetido aquí a propósito: aunque la regla cambie, nunca se propone cerca de un bench.
+    // Guardrail repeated here on purpose: even if the rule changes, it is never proposed near a bench.
     if (d.ticksToBench !== undefined && d.ticksToBench < t.noSwitchWithinTicks) {
       notes.push(`switch-to-board not proposed: ${d.ticksToBench} ticks to the bench < ${t.noSwitchWithinTicks}`);
       return { intents: [], notes };
@@ -52,7 +52,7 @@ export interface VenueSwitchFlags {
   allowVenueSwitch: boolean;
 }
 
-/** Puerta de ejecución: en vivo solo sin --dry-run, con --confirm Y con --allow-venue-switch. */
+/** Execution gate: live only without --dry-run, with --confirm AND with --allow-venue-switch. */
 export function venueSwitchGate(f: VenueSwitchFlags): { execute: boolean; reason: string } {
   if (f.dryRun) return { execute: false, reason: "dry-run" };
   if (!f.confirm) return { execute: false, reason: "needs --confirm" };
@@ -61,8 +61,8 @@ export function venueSwitchGate(f: VenueSwitchFlags): { execute: boolean; reason
 }
 
 /**
- * Lo seleccionado de esta ruta. Con la puerta cerrada solo dice que no sale; con la puerta abierta imprime los pasos
- * para el operador (el cierre `POST /api/venues/{id}/close` del kit no se ha probado: no se envía desde aquí).
+ * What this route selected. With the gate closed it only says it does not go out; with the gate open it prints the steps
+ * for the operator (the kit's close `POST /api/venues/{id}/close` has not been tested: it is not sent from here).
  */
 export function executeVenueMechanism(selected: readonly Intent[], venueId: string | undefined, f: VenueSwitchFlags): string[] {
   const mine = selected.filter((i) => i.route === "venue");

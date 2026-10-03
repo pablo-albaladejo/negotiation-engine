@@ -6,9 +6,9 @@ import { loadBazaarEnv } from "../shared/env.js";
 import { formatVenuePlan, planVenue, type Mechanism } from "./venue.js";
 
 /**
- * `pnpm bazaar:venue --dry-run`: imprime qué mercado abriría (solo GET). Abrir de verdad exige quitar
- * `--dry-run` Y pasar `--confirm`, y que se cumplan nivel ≥ 2 y caja ≥ 270. La broker key se guarda en
- * `.env.broker` (ignorado por git, permisos 600) y nunca se imprime.
+ * `pnpm bazaar:venue --dry-run`: prints which venue it would open (GET only). Actually opening requires dropping
+ * `--dry-run` AND passing `--confirm`, and meeting level ≥ 2 and cash ≥ 270. The broker key is saved in
+ * `.env.broker` (git-ignored, mode 600) and never printed.
  */
 export type VenueApi = Pick<BazaarClient, "me" | "venues" | "clock" | "openVenue">;
 
@@ -23,12 +23,12 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
     },
   });
   const mechanism = values.mechanism as Mechanism;
-  if (mechanism !== "auto" && mechanism !== "board") throw new Error("--mechanism debe ser auto o board");
+  if (mechanism !== "auto" && mechanism !== "board") throw new Error("--mechanism must be auto or board");
   let client = api;
   if (!client) {
     const env = loadBazaarEnv();
     if (!env.key) {
-      log("Falta BAZAAR_KEY (ponla en .env o en el entorno).");
+      log("Missing BAZAAR_KEY (set it in .env or in the environment).");
       return 2;
     }
     client = new BazaarClient({ url: env.url, key: env.key });

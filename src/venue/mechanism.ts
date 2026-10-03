@@ -1,34 +1,34 @@
 /**
- * ¿Pasamos nuestro venue de `auto` a `board`? Puro, sin E/S. Lo decide el código con sesiones medidas del Market Test:
- * en cada bench el broker corre en sombra (`pnpm bazaar:broker --shadow`, solo GET) y apunta qué habría casado nuestro
- * planificador frente a lo que cruzó el motor auto. El excedente es por cotizaciones (proxy: los límites ocultos no se ven).
- * RULES.md: auto gana la mitad de los puntos sin proceso; un board solo casa lo que case el broker (sin broker, ~0).
+ * Do we move our venue from `auto` to `board`? Pure, no I/O. The code decides it from measured Market Test sessions:
+ * at each bench the broker runs in shadow (`pnpm bazaar:broker --shadow`, GET only) and records what our planner would
+ * have matched against what the auto engine crossed. Surplus is by quotes (proxy: hidden limits are not visible).
+ * RULES.md: auto earns half the points with no process; a board only matches what the broker matches (no broker, ~0).
  */
 
 import type { Schedule } from "../duels/schemas.js";
 
 export type VenueMechanism = "auto" | "board";
 
-/** Una sesión del Market Test medida en sombra (se persiste en `results/bazaar-live/bench-sessions.json`). */
+/** A Market Test session measured in shadow (persisted in `results/bazaar-live/bench-sessions.json`). */
 export interface BenchSession {
-  /** Hora de juego del bench (`at_hours` de `/api/schedule`). */
+  /** Game hour of the bench (`at_hours` of `/api/schedule`). */
   benchAt: number;
   hard: boolean;
-  /** Excedente por cotizaciones (bid − ask) de lo que habría casado nuestro planificador. */
+  /** Surplus by quotes (bid − ask) of what our planner would have matched. */
   shadowSurplus: number;
-  /** Excedente por cotizaciones de lo que cruzó el motor auto (de `recent` del libro). */
+  /** Surplus by quotes of what the auto engine crossed (from `recent` of the book). */
   autoSurplus: number;
-  /** shadow / auto; ausente si auto no dio excedente medible (la sesión no cuenta como medida). */
+  /** shadow / auto; absent if auto gave no measurable surplus (the session does not count as measured). */
   ratio?: number;
   pairsShadow: number;
   pairsAuto: number;
-  /** Cruces de auto sin cotización conocida (no suman excedente). */
+  /** Auto crossings with no known quote (they add no surplus). */
   autoUnknown: number;
   ticks: number;
 }
 
 export interface Heartbeat {
-  /** ISO del último paso del proceso del broker. */
+  /** ISO time of the broker process's last step. */
   ts: string;
   tick?: number;
   mode: "shadow" | "dry-run" | "live";
@@ -36,25 +36,25 @@ export interface Heartbeat {
   mechanism?: string;
 }
 
-/** Umbrales con nombre; todos configurables. */
+/** Named thresholds; all configurable. */
 export interface MechanismThresholds {
-  /** Sesiones medidas mínimas (con `ratio`). */
+  /** Minimum measured sessions (with `ratio`). */
   minSessions: number;
-  /** Sesiones «hard» medidas mínimas, solo si ya ha pasado un bench hard. */
+  /** Minimum measured "hard" sessions, only if a hard bench has already passed. */
   minHardSessions: number;
-  /** Media de shadow/auto mínima para pasar a board. */
+  /** Minimum mean shadow/auto to move to board. */
   minMeanRatio: number;
-  /** En ninguna sesión la sombra puede quedar por debajo de auto más de esta fracción (0,05 = 5 %). */
+  /** In no session may the shadow fall below auto by more than this fraction (0.05 = 5 %). */
   maxShortfall: number;
-  /** Caja que debe quedar tras pagar fianza y apertura. */
+  /** Cash that must remain after paying bond and opening fee. */
   cashFloor: number;
-  /** Nunca se recomienda cambiar a menos de N ticks de un bench. */
+  /** Never recommend switching less than N ticks from a bench. */
   noSwitchWithinTicks: number;
-  /** Ticks para cerrar, abrir y arrancar el broker en vivo. */
+  /** Ticks to close, open and start the broker live. */
   switchLeadTicks: number;
-  /** Edad máxima del latido del broker (s) para darlo por sano. */
+  /** Maximum age of the broker heartbeat (s) to consider it healthy. */
   maxHeartbeatAgeSec: number;
-  /** Duración de una sesión de bench en ticks (calendario: `params.ticks`, 16). */
+  /** Duration of a bench session in ticks (calendar: `params.ticks`, 16). */
   benchTicks: number;
 }
 
@@ -80,14 +80,14 @@ export interface MechanismDecision {
   sessions: BenchSession[];
   recommendation: MechanismRecommendation;
   reason: string;
-  /** 0–1: más sesiones medidas y más sesiones con la sombra ≥ auto, más confianza. */
+  /** 0–1: the more measured sessions and the more sessions with shadow ≥ auto, the more confidence. */
   confidence: number;
   costs: { bond: number; fee: number; cashAvailable?: number };
   nextBenchAt?: number;
   nextBenchHard?: boolean;
   ticksToBench?: number;
   meanRatio?: number;
-  /** Benches hard ya pasados según el calendario. */
+  /** Hard benches already passed according to the calendar. */
   hardPassed: number;
   heartbeat?: { ageSec: number; mode: Heartbeat["mode"] };
 }
@@ -106,7 +106,7 @@ export interface MechanismInputs {
 const isHardBench = (u: { note?: string | undefined; params?: Record<string, unknown> | undefined }) =>
   /hard/i.test(`${typeof u.params?.name === "string" ? u.params.name : ""} ${u.note ?? ""}`);
 
-/** Benches del calendario (`action: bench`), ordenados por hora. */
+/** Calendar benches (`action: bench`), ordered by hour. */
 export function benchSlots(schedule: Pick<Schedule, "upcoming"> | undefined): { atHours: number; hard: boolean; ticks?: number }[] {
   return (schedule?.upcoming ?? [])
     .filter((u) => u.action === "bench")
@@ -114,12 +114,12 @@ export function benchSlots(schedule: Pick<Schedule, "upcoming"> | undefined): { 
     .sort((a, b) => a.atHours - b.atHours);
 }
 
-/** Ticks de juego por hora: tick / t_hours si hay ambos (hoy 60), si no 60. */
+/** Game ticks per hour: tick / t_hours if both are present (today 60), otherwise 60. */
 export function ticksPerHourOf(tick: number | undefined, tHours: number | undefined): number {
   return tick && tHours && tHours > 0 ? tick / tHours : 60;
 }
 
-/** Bench en curso a `nowHours` (dentro de su ventana de `benchTicks`), si lo hay. */
+/** Bench in progress at `nowHours` (within its `benchTicks` window), if any. */
 export function activeBench(
   schedule: Pick<Schedule, "upcoming"> | undefined,
   nowHours: number,
@@ -129,7 +129,7 @@ export function activeBench(
   return benchSlots(schedule).find((b) => nowHours >= b.atHours && nowHours < b.atHours + (b.ticks ?? t.benchTicks) / ticksPerHour);
 }
 
-/** La regla. Pura: misma entrada, misma recomendación. */
+/** The rule. Pure: same input, same recommendation. */
 export function decideMechanism(i: MechanismInputs, t: MechanismThresholds = DEFAULT_MECHANISM_THRESHOLDS): MechanismDecision {
   const current: MechanismDecision["current"] = i.current === "auto" || i.current === "board" ? i.current : "none";
   const now = i.nowHours;
@@ -160,7 +160,7 @@ export function decideMechanism(i: MechanismInputs, t: MechanismThresholds = DEF
   const out = (recommendation: MechanismRecommendation, reason: string): MechanismDecision => ({ ...base, recommendation, reason });
 
   if (current === "board") {
-    // Red de seguridad: en board sin broker vivo la sesión puntúa ~0; mejor volver a auto antes del bench.
+    // Safety net: on board without a live broker the session scores ~0; better to go back to auto before the bench.
     const liveOk = hbOk && i.heartbeat?.mode === "live";
     if (!liveOk && next) return out("back-to-auto", `on board without a healthy live broker (${hbAge === undefined ? "no heartbeat" : `heartbeat ${Math.round(hbAge)} s, ${i.heartbeat?.mode}`}) before the bench at ${next.atHours} h: a board session without broker scores ~0`);
     return out("stay-board", liveOk ? "on board with a healthy live broker" : "on board; no bench ahead");
@@ -180,7 +180,7 @@ export function decideMechanism(i: MechanismInputs, t: MechanismThresholds = DEF
   return out("switch-to-board", `${measured.length} sessions measured (${hardMeasured} hard), mean shadow/auto ${meanRatio!.toFixed(2)} ≥ ${t.minMeanRatio}, worst ${worst!.toFixed(2)}, cash ${i.cash} P ≥ ${need} P, ${ticksToBench ?? "?"} ticks to the next bench, broker heartbeat ${Math.round(hbAge!)} s`);
 }
 
-/** Una línea: «venue: auto · bench 2/2 measured · shadow/auto 1.14 → recommend board (needs approval)». */
+/** One line: "venue: auto · bench 2/2 measured · shadow/auto 1.14 → recommend board (needs approval)". */
 export function formatMechanismLine(d: MechanismDecision, t: MechanismThresholds = DEFAULT_MECHANISM_THRESHOLDS): string {
   const measured = d.sessions.filter((s) => s.ratio !== undefined).length;
   const verdict: Record<MechanismRecommendation, string> = {
