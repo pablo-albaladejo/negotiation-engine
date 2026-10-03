@@ -234,6 +234,8 @@ export interface VenueInfo {
   status?: string;
   /** Open offers in its book (all cards). */
   depth: number;
+  /** Trades it has hosted between other teams (`trades` in /api/venues): its owner's organic market-making grows with √ of their value. */
+  trades?: number;
   /** Ours: we cannot trade in it with our key. */
   canTrade: boolean;
 }
@@ -245,6 +247,7 @@ export function buildVenues(raw: readonly unknown[], boards: readonly { venue: s
     const owner = typeof v.owner === "string" ? v.owner : undefined;
     const r = owner ? ranks.get(owner) : undefined;
     const mech = obj(v.rules).mechanism;
+    const hosted = num(v.trades);
     return [
       {
         id,
@@ -259,6 +262,7 @@ export function buildVenues(raw: readonly unknown[], boards: readonly { venue: s
         ...(typeof mech === "string" ? { mechanism: mech } : {}),
         ...(typeof v.status === "string" ? { status: v.status } : {}),
         depth: boards.find((b) => b.venue === id)?.offers.filter((o) => (o.status ?? "open") === "open").length ?? 0,
+        ...(hosted !== undefined ? { trades: hosted } : {}),
         canTrade: !owner || owner !== team,
       },
     ];
@@ -266,5 +270,5 @@ export function buildVenues(raw: readonly unknown[], boards: readonly { venue: s
 }
 
 export function formatVenues(vs: readonly VenueInfo[]): string[] {
-  return vs.map((v) => `  ${v.id} ${v.name ?? ""} · owner ${v.house ? "house" : `${v.ownerName ?? v.owner ?? "?"} (rank ${v.ownerRank ?? "?"}, ${v.ownerScore ?? "?"})`} · fee ${v.feeBps / 100}% + ${v.feePerCard} P/card · ${v.mechanism ?? "?"} · ${v.status ?? "?"} · depth ${v.depth}${v.canTrade ? "" : " · OURS: can't trade"}`);
+  return vs.map((v) => `  ${v.id} ${v.name ?? ""} · owner ${v.house ? "house" : `${v.ownerName ?? v.owner ?? "?"} (rank ${v.ownerRank ?? "?"}, ${v.ownerScore ?? "?"})`} · fee ${v.feeBps / 100}% + ${v.feePerCard} P/card · ${v.mechanism ?? "?"} · ${v.status ?? "?"} · depth ${v.depth}${v.trades !== undefined ? ` · hosted ${v.trades}` : ""}${v.canTrade ? "" : " · OURS: can't trade"}`);
 }

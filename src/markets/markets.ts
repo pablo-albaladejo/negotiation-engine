@@ -19,17 +19,23 @@ import { gameHourOf, marginalValue, SCANNER_PARAMS, ScannerLedger, scanDecision,
  * Rival penalty (P per deal): trading in another team's venue raises its Market-making score, and the
  * figure is relative to the leader. El Rastro (the house) does not penalize; top-3 venues penalize heavily; those in the
  * bottom half, little; the rest, in between.
+ * Organic market-making is √ of the value hosted between other teams, normalised to the top three (frontend Teams.js), so
+ * while a venue has hosted fewer than `organicCapTrades` trades each one is worth a lot to its owner: Team 14's first
+ * hosted trade lifted its market score by ≈ 1.9 points, while ours on v21 (tick 715) earned us 2.2 neg_points.
+ * Below that count the penalty is at least `organicGrowing` (docs/bazaar/site-map.md § 6.11).
  */
-export const RIVAL_PENALTY = { house: 0, top3: 12, middle: 4, bottomHalf: 1 };
+export const RIVAL_PENALTY = { house: 0, top3: 12, middle: 4, bottomHalf: 1, organicGrowing: 20, organicCapTrades: 6 };
 
 /** Minimum net gap to propose a deal, and to propose a thread with the team in its venue (structure only). */
 export const MARKET_PARAMS = { minNetEdge: 1, teamThreadEdge: 15 };
 
 export function rivalPenalty(v: VenueInfo, teams: number): number {
   if (v.house) return RIVAL_PENALTY.house;
-  if (v.ownerRank === undefined) return RIVAL_PENALTY.middle;
-  if (v.ownerRank <= 3) return RIVAL_PENALTY.top3;
-  return v.ownerRank > teams / 2 ? RIVAL_PENALTY.bottomHalf : RIVAL_PENALTY.middle;
+  const byRank =
+    v.ownerRank === undefined ? RIVAL_PENALTY.middle : v.ownerRank <= 3 ? RIVAL_PENALTY.top3 : v.ownerRank > teams / 2 ? RIVAL_PENALTY.bottomHalf : RIVAL_PENALTY.middle;
+  // Unknown hosted count = still growing (the safe side).
+  const growing = (v.trades ?? 0) < RIVAL_PENALTY.organicCapTrades;
+  return growing ? Math.max(byRank, RIVAL_PENALTY.organicGrowing) : byRank;
 }
 
 /** Fee of a one-card deal at `price` (fee_bps on the price + fee_per_card). We accept, so we pay it (verified: El Rastro charges the side that accepts). */
@@ -182,7 +188,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   const targetSets = new Set((ctx.pageTargets ?? []).map(setOfRef));
   const scoredSets = ctx.pageBonusScored ? targetSets : new Set<string>();
   const notes: string[] = [
-    `RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf}`,
+    `RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf} · organic growing (< ${RIVAL_PENALTY.organicCapTrades} hosted) ${RIVAL_PENALTY.organicGrowing}`,
     `[scanner] game hour ${hour} · spent ${ledger.spentIn(hour)}/${spendPerHour} P (in memory since start) · margin max(${params.minEdge} P, ${params.minEdgeFrac * 100} %) · ≤ ${params.dealsPerCounterpartyPerHour} deals/counterparty/h · cash floor ${cashFloor} · values: ${trade ? "marginal (El Rastro model)" : "first copy only (no El Rastro model this tick)"}`,
   ];
   const teams = teamsOf(state);
@@ -274,7 +280,7 @@ function legacyMarketSale(state: GameState, ref: string): MarketChoice | undefin
 /** Without `--scanner`: buy what we lack or what completes a page, sell duplicates; first-copy value, net ≥ `minNetEdge`. */
 function legacyProposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string, number[]>): { intents: Intent[]; notes: string[] } {
   const intents: Intent[] = [];
-  const notes: string[] = [`RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf}`, "[scanner] off (opt-in --scanner)"];
+  const notes: string[] = [`RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf} · organic growing (< ${RIVAL_PENALTY.organicCapTrades} hosted) ${RIVAL_PENALTY.organicGrowing}`, "[scanner] off (opt-in --scanner)"];
   const teams = teamsOf(state);
   for (const e of state.markets.prices) {
     if (e.value === undefined) continue;
