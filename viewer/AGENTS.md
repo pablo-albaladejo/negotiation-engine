@@ -8,6 +8,7 @@ Paquete independiente (React + servidor Node) con una sola pestaña, `#bazaar`: 
 
 - **[`server/`](server/AGENTS.md)** — `/api/bazaar/*` sobre la API del Bazaar y `results/bazaar-live/`.
 - **[`src/`](src/AGENTS.md)** — la app React (`BazaarScreen`).
+- **[`test/`](test/AGENTS.md)** — guardarraíles del modelo (`pnpm viewer:test`).
 - Sistema de diseño por alias a [`design-system/`](../design-system/AGENTS.md) (sin build).
 
 ## Invariantes

@@ -15,4 +15,5 @@ Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del h
 ## Links
 
 - ↑ [`viewer/`](../AGENTS.md)
+- ↓ [`model/`](model/AGENTS.md) · [`screens/`](screens/AGENTS.md) · [`ui/`](ui/AGENTS.md)
 - → Design system: [`design-system/`](../../design-system/AGENTS.md)
