@@ -8,10 +8,10 @@ function BannerBody({ children }: { children: ReactNode }) {
 }
 
 /**
- * P8: carga en curso. Sin un conteo real de líneas/partidas leídas (la API no lo reporta hoy),
- * la barra es indeterminada: sin `aria-valuenow`, con `aria-busy`, una franja del 30% que se
- * desliza (quieta si `prefers-reduced-motion`). Solo se ve un porcentaje real cuando se pasan
- * `current`/`total`.
+ * P8: loading in progress. Without a real count of lines/games read (the API does not report it today),
+ * the bar is indeterminate: no `aria-valuenow`, with `aria-busy`, a 30% strip that
+ * slides (still under `prefers-reduced-motion`). A real percentage only shows when
+ * `current`/`total` are passed.
  */
 export function LoadingCard({ label, current, total }: { label: string; current?: number; total?: number }) {
   const isDeterminate = current !== undefined && total !== undefined && total > 0;
@@ -41,7 +41,7 @@ export function LoadingCard({ label, current, total }: { label: string; current?
   );
 }
 
-/** P8: log inválido. Muestra fichero, línea y campo del primer error, y cuántas líneas válidas se cargaron. */
+/** P8: invalid log. Shows file, line and field of the first error, and how many valid lines were loaded. */
 export function InvalidLogBanner({ errors, validCount, skippedMatchId }: { errors: readonly ApiError[]; validCount: number; skippedMatchId?: string }) {
   const first = errors[0];
   if (!first) return null;
@@ -59,9 +59,9 @@ export function InvalidLogBanner({ errors, validCount, skippedMatchId }: { error
 }
 
 /**
- * P8: run o partida sin registros: el estado vacío va directo en la Card, sin caja interior.
- * `body`/`command` son opcionales (p. ej. "sin resultados para estos filtros" solo necesita un
- * título y una acción); `action` añade un control debajo (botón "Clear filters", etc.).
+ * P8: run or game without records: the empty state goes straight in the Card, no inner box.
+ * `body`/`command` are optional (e.g. "no results for these filters" only needs a
+ * title and an action); `action` adds a control below ("Clear filters" button, etc.).
  */
 export function EmptyStateCard({
   title,
@@ -93,11 +93,11 @@ export function EmptyStateCard({
 }
 
 /**
- * P8: el rival rompió el protocolo. El título de la Card ya dice "Opponent breaks protocol"; el
- * título de este banner lleva el detalle técnico (sesión, modo, ronda), no repite la frase.
- * `rivalText`: registro local `rivalText` de esa ronda (nunca el registro `protocol`, que solo
- * trae rutas y códigos de Zod). `decision`: lo que el motor decidió según el log, o `null` si no
- * está registrado.
+ * P8: the rival broke the protocol. The Card title already says "Opponent breaks protocol"; the
+ * title of this banner carries the technical detail (session, mode, round), not a repeat of the phrase.
+ * `rivalText`: local `rivalText` record of that round (never the `protocol` record, which only
+ * carries Zod paths and codes). `decision`: what the engine decided per the log, or `null` if
+ * not recorded.
  */
 export function ProtocolBreakBanner({
   detail,
@@ -131,7 +131,7 @@ export function ProtocolBreakBanner({
   );
 }
 
-/** P8: LLM caído. Solo conteos registrados ("N of M via template"); sin hora ni porcentaje. */
+/** P8: LLM down. Only recorded counts ("N of M via template"); no time or percentage. */
 export function TemplateBanner({ templateCount, ourMessageCount, provider }: { templateCount: number; ourMessageCount: number; provider: string | null }) {
   const all = ourMessageCount > 0 && templateCount === ourMessageCount;
   return (
@@ -147,9 +147,9 @@ export function TemplateBanner({ templateCount, ourMessageCount, provider }: { t
 }
 
 /**
- * P8: ZOPA vacía (arena): reservas registradas y la bandera `zopaEmpty` de las métricas. El
- * título lleva el detalle técnico ("Reserves 80 / 76"), no repite el título de la Card que lo
- * envuelve. `tone="warn"` solo si además se retiró; si la partida sigue, es solo informativo.
+ * P8: empty ZOPA (arena): recorded reserves and the metrics' `zopaEmpty` flag. The
+ * title carries the technical detail ("Reserves 80 / 76"), not a repeat of the Card title that
+ * wraps it. `tone="warn"` only if it also walked away; if the game continues, it is informational only.
  */
 export function EmptyZopaBanner({ ours, rival, walked }: { ours: string; rival: string; walked: boolean }) {
   return (

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Sección plegable: lo secundario (historial, mercado, lo descartado) no compite con lo que hay que decidir ahora. */
+/** Collapsible section: secondary content (history, market, discarded items) does not compete with what must be decided now. */
 export function Fold({ title, open = false, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
     <details className="nr-card" open={open} style={{ padding: "var(--space-3) var(--space-4)" }}>

@@ -1,4 +1,4 @@
-/** Línea mínima de una serie (cómo converge una estimación): un punto por valor, el último marcado. */
+/** Minimal line for a series (how an estimate converges): one point per value, the last one marked. */
 export function Sparkline({ values, label, width = 96, height = 22 }: { values: number[]; label: string; width?: number; height?: number }) {
   if (values.length === 0) return <span className="nr-muted">—</span>;
   const pad = 3;

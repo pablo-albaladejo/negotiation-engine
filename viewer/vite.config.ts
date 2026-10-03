@@ -6,8 +6,8 @@ const designSystem = fileURLToPath(new URL("../design-system/src/", import.meta.
 const viewerRoot = fileURLToPath(new URL("./", import.meta.url));
 
 /**
- * El sistema de diseño entra por alias a su código fuente (sin build ni `file:`), y `dedupe` hace
- * que su `import "react"` resuelva a la copia del visor: una sola React en la app y en los tests.
+ * The design system comes in via alias to its source (no build, no `file:`), and `dedupe` makes
+ * its `import "react"` resolve to the viewer's copy: a single React in the app and in the tests.
  */
 export default defineConfig({
   root: viewerRoot,

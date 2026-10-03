@@ -8,13 +8,13 @@ import { BazaarModel, ModelPostBlocked, ReadOnlyBazaarClient, readOnlyFetch } fr
 import { startViewerServer } from "../server/http.js";
 
 /**
- * Guardarraíles del modelo del visor: `/api/bazaar/model` no puede llegar a un POST del juego y los datos
- * privados (valor privado, `your_limit`, reservas) no salen de 127.0.0.1.
+ * Viewer model guardrails: `/api/bazaar/model` must never reach a game POST, and private data
+ * (private value, `your_limit`, reserves) never leaves 127.0.0.1.
  */
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-/** Bazaar falso: responde GET con un estado mínimo (un duelo vivo, una oferta aceptable) y apunta cada método. */
+/** Fake Bazaar: answers GET with a minimal state (one live duel, one acceptable offer) and records each method. */
 function fakeBazaar() {
   const methods: string[] = [];
   const fetchFn = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {

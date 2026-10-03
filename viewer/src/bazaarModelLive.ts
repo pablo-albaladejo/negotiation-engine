@@ -6,9 +6,9 @@ const MIN_MS = 10_000;
 const MAX_MS = 180_000;
 
 /**
- * `/api/bazaar/model` (nuestro modelo interno, cacheado en el servidor un tick). Solo se pide mientras
- * `enabled` (vista Model abierta o una conversación abierta): el servidor solo construye el modelo cuando
- * alguien lo mira. Se refresca según `next_refresh_ms` y se detiene con la pestaña oculta.
+ * `/api/bazaar/model` (our internal model, cached on the server for one tick). Only requested while
+ * `enabled` (Model view open or a conversation open): the server only builds the model when
+ * someone is looking at it. Refreshes following `next_refresh_ms` and stops while the tab is hidden.
  */
 export function useBazaarModel(enabled: boolean): { model: GameModel | null; loading: boolean } {
   const [model, setModel] = useState<GameModel | null>(null);
@@ -28,7 +28,7 @@ export function useBazaarModel(enabled: boolean): { model: GameModel | null; loa
         next = gameModelOf(res.data);
         if (!cancelled && next) setModel(next);
       } catch {
-        // deja el último valor conocido
+        // keep the last known value
       }
       if (!cancelled) {
         setLoading(false);

@@ -5,15 +5,15 @@ import { bazaarModel, boardModel, EMPTY_BOARD, type Board, type BazaarModel, typ
 const MIN_MS = 3_000;
 const MAX_MS = 120_000;
 
-/** Delay hasta el siguiente refresco: el que pide el servidor (siguiente tick del juego + margen), acotado. */
+/** Delay until the next refresh: the one the server asks for (next game tick + margin), clamped. */
 export function nextDelay(board: Board | null): number {
   const ms = board?.next_refresh_ms ?? 30_000;
   return Math.min(MAX_MS, Math.max(MIN_MS, ms));
 }
 
-/** `/api/bazaar/board` (vista unificada, cacheada en el servidor hasta el siguiente tick) +
- * `/api/bazaar/score` (nuestros snapshots locales). Se refresca una vez por tick del juego, según
- * `next_refresh_ms` (nunca un sondeo apretado); se detiene con la pestaña oculta y recarga al volver. */
+/** `/api/bazaar/board` (unified view, cached on the server until the next tick) +
+ * `/api/bazaar/score` (our local snapshots). Refreshes once per game tick, following
+ * `next_refresh_ms` (never a tight poll); stops while the tab is hidden and reloads on return. */
 export function useBazaarBoard(): { board: Board; model: BazaarModel } {
   const [board, setBoard] = useState<Board>(EMPTY_BOARD);
   const [snapshots, setSnapshots] = useState<ScoreSnapshot[]>([]);
@@ -30,13 +30,13 @@ export function useBazaarBoard(): { board: Board; model: BazaarModel } {
         next = boardModel(res.data);
         if (!cancelled) setBoard(next);
       } catch {
-        // deja el último valor conocido
+        // keep the last known value
       }
       try {
         const score = await fetchApi<ScoreSnapshot[]>("bazaar/score");
         if (!cancelled) setSnapshots(score.data ?? []);
       } catch {
-        // deja el último valor conocido
+        // keep the last known value
       }
       if (!cancelled) timer = setTimeout(() => void load(), nextDelay(next));
     };

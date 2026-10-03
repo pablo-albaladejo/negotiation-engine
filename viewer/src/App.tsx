@@ -14,8 +14,8 @@ function useHashRoute(): { route: Route; replaceRoute: (hash: string) => void } 
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  /** `history.replaceState` (filtros sin entrada nueva en el historial) no dispara `hashchange`:
-   * se actualiza el estado local en la misma llamada para que la ruta siga a la barra de direcciones. */
+  /** `history.replaceState` (filters without a new history entry) does not fire `hashchange`:
+   * local state is updated in the same call so the route follows the address bar. */
   const replaceRoute = (next: string) => {
     window.history.replaceState(null, "", next);
     setHash(next);
@@ -34,12 +34,12 @@ function AppContent() {
   useEffect(() => {
     document.title = "Bazaar · Viewer";
   }, []);
-  /** Mantiene <html data-theme> (puesto antes del primer pintado en index.html) igual que el estado. */
+  /** Keeps <html data-theme> (set before first paint in index.html) in sync with the state. */
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   useEffect(() => watchSystemTheme(setTheme), []);
-  /** La altura real de la cabecera fija alimenta `--header-height` (scroll-padding del sistema de diseño). */
+  /** The real height of the fixed header feeds `--header-height` (design-system scroll-padding). */
   const headerRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const header = headerRef.current;

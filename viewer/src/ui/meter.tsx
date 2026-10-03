@@ -1,4 +1,4 @@
-/** Barra de uso de un cupo (`used/of`): llena en aviso al tocar el tope. */
+/** Usage bar for a quota (`used/of`): turns to warning when it hits the cap. */
 export function Meter({ label, used, of }: { label: string; used: number; of: number }) {
   const pct = of > 0 ? Math.min(100, Math.round((100 * used) / of)) : 100;
   return (
