@@ -351,7 +351,7 @@ export class EggsRoute {
         out.notes.push(`${p.id}: probe cap reached this window`);
         continue;
       }
-      const hint = [...p.hints].reverse().find((h) => h.keyword);
+      const hint = p.hints.find((h) => h.candidate && h.keyword);
       if (!hint) continue;
       const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.phase !== "done" && c.patience?.probeCostNow === 0 && c.mood.warnings === 0 && c.mood.strikes === 0 && c.mood.cooloffUntil === undefined);
       if (!conv) {
@@ -371,7 +371,7 @@ export class EggsRoute {
     const lines: string[] = [];
     for (const p of state.personas) {
       if (!selected.has(`eggs:probe:${p.id}`)) continue;
-      const hint = [...p.hints].reverse().find((h) => h.keyword);
+      const hint = p.hints.find((h) => h.candidate && h.keyword);
       const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.patience?.probeCostNow === 0 && c.phase !== "done");
       if (!hint || !conv) continue;
       const phrase = EGG_PARAMS.template.replace("{hint}", hint.keyword!);

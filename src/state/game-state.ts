@@ -8,6 +8,7 @@ import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
+import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 
 /**
@@ -72,6 +73,8 @@ export interface GameState {
     /** Campos de strikes que traiga `/api/me`, si alguno (hoy no aparece ninguno). */
     strikes?: Record<string, unknown>;
   } & OursWorld;
+  /** Corpus de pistas completo (lo ya guardado + lo nuevo de este tick) y lo nuevo para añadir a `hints.jsonl`. */
+  hints: { all: HintLine[]; fresh: HintLine[] };
   /** Personas (dealers y las que aparezcan por `/api/levels` o el feed), con estado y progreso de desbloqueo. */
   personas: Persona[];
   world: { eggs: WorldEggs };
@@ -173,6 +176,10 @@ export interface BuildOptions {
   flags?: readonly FlagRecord[];
   /** Tiempo del tick anterior: huella del calendario y peso de la ronda si el leaderboard no se leyó. */
   prevTime?: TimeState;
+  /** Corpus de pistas ya guardado (`hints.jsonl`). */
+  hintCorpus?: readonly HintLine[];
+  /** Semilla del corpus desde `results/` (solo la primera vez, sin `hints.jsonl`). */
+  hintSeed?: readonly Raw[];
 }
 
 /** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
@@ -228,14 +235,22 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     ...(catalog ? { catalog: indexCatalog(catalog) } : {}),
     flagsFromFirstMessage: new Set(rawDealers.filter((d) => personaTypeOf(d) === "trickster").map((d) => (d as { id: string }).id)),
   });
+  const known = new Set([...rawDealers.map((d) => (d as { id: string }).id), ...((levels as { levels?: { id?: string }[] } | undefined)?.levels ?? []).flatMap((l) => (l.id ? [l.id] : []))]);
+  const ctx = candidateContext([...known].map((id) => {
+    const d = rawDealers.find((x) => (x as { id: string }).id === id) as { name?: string } | undefined;
+    return { id, ...(d?.name ? { name: d.name } : {}) };
+  }), catalog);
+  const corpus = opts.hintCorpus ?? [];
+  const fresh = newLines([...(opts.hintSeed ?? []), ...collectRaw([allThreads, feed])], new Set(corpus.map((h) => h.key)), ctx);
+  const hintsAll = [...corpus, ...fresh];
   const personas = buildPersonas({
     dealers: rawDealers,
     levels,
     events,
     ...(me?.id ? { team: me.id } : {}),
     unlocked: ours.unlocked,
-    threads: allThreads,
     conversations,
+    hints: hintsByPersona(hintsAll),
     memos: opts.personaMemos ?? new Map(),
   });
   const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
@@ -265,6 +280,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       cooloffs,
       ...world.ours,
     },
+    hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
     env: {
@@ -328,6 +344,7 @@ export function formatGameState(g: GameState): string[] {
   const lb = g.env.leaderboard;
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
+  lines.push(...formatHints(g.hints.all));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
 }

@@ -4,6 +4,7 @@ import { traitsOf, type DealerTraits } from "../dealers/dealer-profile.js";
 import { liveTraceDir } from "../shared/trace.js";
 import type { Catalog } from "../shared/schemas.js";
 import type { Conversation } from "./conversation.js";
+import type { HintLine } from "../hints/corpus.js";
 
 /**
  * Mundo alrededor de las negociaciones: personas (dealers y las que vayan apareciendo), easter eggs, badges,
@@ -13,21 +14,14 @@ import type { Conversation } from "./conversation.js";
  * Las personas NO son una lista fija: hoy hay dos, RULES habla de cinco y las nuevas llegan por `/api/levels` y
  * el feed (`level.announced`, `level.activated`, `level.unlocked`). Aquí no hay ningún id de persona escrito a mano.
  *
- * Pistas: segunda excepción estrecha a «del rival solo se lee la estructura». Se guarda el texto del dealer que
- * suena a pista para un egg (consejo, secreto, rumor); nunca da una cifra ni cambia una decisión de precio.
+ * Pistas: vienen del corpus (`src/hints/corpus.ts`), segunda excepción estrecha a «del rival solo se lee la
+ * estructura»; nunca dan una cifra ni cambian una decisión de precio.
  */
 
 export type PersonaType = "dealer" | "collector" | "trickster" | "banker";
 export type PersonaStatus = "announced" | "active" | "unlocked-for-us" | "closed";
 const PERSONA_TYPES: readonly PersonaType[] = ["dealer", "collector", "trickster", "banker"];
 
-export interface Hint {
-  text: string;
-  tick: number;
-  keyword?: string;
-  /** Ventana en la que vale la pista, si se puede inferir (hoy nunca). */
-  window?: string;
-}
 
 export interface EggProbe {
   phrase: string;
@@ -51,7 +45,8 @@ export interface Persona {
   /** Rasgos públicos; para una persona nueva, el negociador deriva sus parámetros de aquí (`negotiatorForDealer`). */
   traits: DealerTraits;
   teaser?: string;
-  hints: Hint[];
+  /** Líneas del dealer del corpus de pistas (`src/hints/`), las más recientes primero, con su marca de candidata. */
+  hints: HintLine[];
   eggProbes: EggProbe[];
   /** Trickster: el detector de flags mira desde el primer mensaje (en el resto se salta la apertura). */
   flagsFromFirstMessage: boolean;
@@ -175,27 +170,7 @@ export function personaTypeOf(raw: unknown): PersonaType {
   return PERSONA_TYPES.includes(k as PersonaType) ? (k as PersonaType) : "dealer";
 }
 
-/** Un mensaje del dealer que suena a pista de egg (palabras fijas, nunca una cifra). */
-const HINT_RE = /\b(secret|psst|rumou?r|legend|hidden|easter|between you and me|they say|have you heard|ask me about)\b/i;
-
-export function hintsFromConversations(personaId: string, threads: readonly unknown[]): Hint[] {
-  const out: Hint[] = [];
-  for (const t of threads) {
-    const th = obj(t);
-    if (th.with !== personaId || !Array.isArray(th.messages)) continue;
-    for (const m of th.messages) {
-      const mm = obj(m);
-      const text = str(mm.text);
-      if (!text || mm.sender !== personaId || !HINT_RE.test(text)) continue;
-      const kw = /\babout ([a-z][\w' -]{2,30}?)(?:[.,!?]|$)/i.exec(text)?.[1];
-      out.push({ text: text.slice(0, 200), tick: num(mm.tick) ?? 0, ...(kw ? { keyword: kw.trim() } : {}) });
-    }
-  }
-  return out;
-}
-
 export interface PersonaMemo {
-  hints?: Hint[];
   eggProbes?: EggProbe[];
 }
 
@@ -205,8 +180,9 @@ export interface PersonaInputs {
   events: readonly FeedEvent[];
   team?: string;
   unlocked: readonly string[];
-  threads: readonly unknown[];
   conversations: readonly Conversation[];
+  /** Corpus de pistas por persona (más recientes primero). */
+  hints: ReadonlyMap<string, HintLine[]>;
   memos: ReadonlyMap<string, PersonaMemo>;
 }
 
@@ -251,9 +227,7 @@ export function buildPersonas(i: PersonaInputs): Persona[] {
     const earlyWith = str(u.early_deals_with);
     const earlyMin = num(u.early_min_deals);
     const memo = i.memos.get(id);
-    const heard = hintsFromConversations(id, i.threads);
-    const hints = [...(memo?.hints ?? [])];
-    for (const h of heard) if (!hints.some((x) => x.text === h.text)) hints.push(h);
+    const hints = i.hints.get(id) ?? [];
     const type = personaTypeOf(d);
     const name = str(d.name) ?? str(l.name) ?? announced.get(id);
     const prize = str(d.unlock_reward_pack) ?? str(u.unlock_reward_pack) ?? str(l.unlock_reward_pack);
@@ -313,7 +287,7 @@ export function loadPersonaMemos(file: string): Map<string, PersonaMemo> {
 }
 
 export function savePersonaMemos(file: string, personas: readonly Persona[]): void {
-  writeJson(file, { schema: PERSONAS_SCHEMA, updated: new Date().toISOString(), personas: Object.fromEntries(personas.map((p) => [p.id, { hints: p.hints, eggProbes: p.eggProbes }])) });
+  writeJson(file, { schema: PERSONAS_SCHEMA, updated: new Date().toISOString(), personas: Object.fromEntries(personas.map((p) => [p.id, { eggProbes: p.eggProbes }])) });
 }
 
 export function loadFlags(file: string): FlagRecord[] {
@@ -330,7 +304,7 @@ export function saveFlags(file: string, flags: readonly FlagRecord[]): void {
 /** «chato: unlocked-for-us · abuela deals 3/3». */
 export function formatPersona(p: Persona): string {
   const progress = p.progress ? ` · ${p.progress.dealer} deals ${p.progress.deals}/${p.progress.needed}` : p.unlock.always ? " · always open" : "";
-  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length}`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined].filter(Boolean);
+  const extra = [p.type !== "dealer" ? `type ${p.type}` : undefined, p.level !== undefined ? `L${p.level}` : undefined, p.unlock.openToAllAt ? `open to all ${p.unlock.openToAllAt}` : undefined, p.unlockPrize ? `prize ${p.unlockPrize}` : undefined, `hints ${p.hints.length} (${p.hints.filter((h) => h.candidate).length} cand.)`, `probes ${p.eggProbes.length}`, p.flagsFromFirstMessage ? "flags from 1st msg" : undefined].filter(Boolean);
   return `${p.id}: ${p.status}${progress} · ${extra.join(" · ")}`;
 }
 

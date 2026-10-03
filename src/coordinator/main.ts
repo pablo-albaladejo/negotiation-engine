@@ -14,6 +14,7 @@ import { duelsApi } from "../duels/schemas.js";
 import { agendaEffects, agendaItems, formatAgendaItem } from "../agenda/agenda.js";
 import { defaultTriggersFile, loadTriggerMemo, personaFiles, runTriggers, saveTriggerMemo } from "../agenda/triggers.js";
 import type { TimeState } from "../state/time.js";
+import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
 /**
@@ -73,6 +74,7 @@ async function main() {
   const flagsFile = defaultFlagsFile(root);
   const triggersFile = defaultTriggersFile(root);
   let prevTime: TimeState | undefined;
+  const hintsFile = defaultHintsFile(root);
   // En dry-run el cursor vive solo en memoria (un bucle sin --once no repite disparadores); en vivo, en disco.
   let dryMemo = loadTriggerMemo(triggersFile);
   console.log(
@@ -100,7 +102,19 @@ async function main() {
     }
     lastTick = clock.tick;
     const withLb = clock.tick - lastLeaderboard >= leaderboardEvery;
-    const state = await buildGameState(client, { leaderboard: withLb, pageTargets, memos, personaMemos, flags, ...(prevTime ? { prevTime } : {}) });
+    const state = await buildGameState(client, {
+      leaderboard: withLb,
+      pageTargets,
+      memos,
+      personaMemos,
+      flags,
+      ...(prevTime ? { prevTime } : {}),
+      hintCorpus: loadHints(hintsFile),
+      // Primera vez sin corpus: semilla con lo ya guardado en results/ (volcados, escaneos, streams).
+      ...(existsSync(hintsFile) ? {} : { hintSeed: seedRaw(join(root, "results")) }),
+    });
+    // El corpus de pistas es solo lectura del juego (GET): se añade también en dry-run. Nunca entra en una cifra.
+    appendHints(hintsFile, state.hints.fresh);
     prevTime = state.time;
     if (withLb) lastLeaderboard = state.tick;
     const budget = budgetFrom(state);
