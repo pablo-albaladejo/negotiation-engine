@@ -66,8 +66,8 @@ function num(x: unknown, fallback: number): number {
 
 /**
  * Trades loop with teams: one step per tick. Reads clock, `/api/me`, our offers, the El Rastro
- * board and the feed; decides with `planTick` (pure) and, if not dry-run, executes: at most one
- * acceptance, then cancellations and new listings. Tracks the run's spend (`spent`: accepted purchases and
+ * board and the feed; decides with `planTick` (pure) and, if not dry-run, executes: cancellations,
+ * then at most one acceptance (skipped if a cancellation failed), then new listings. Tracks the run's spend (`spent`: accepted purchases and
  * our bids that disappear without being cancelled before expiring) against `maxSpend`.
  */
 export class TradesAgent {
@@ -144,6 +144,10 @@ export class TradesAgent {
     this.trackFilledBids(mine, clock.tick);
     for (const [id, until] of this.reservedUntil) if (until < clock.tick) this.reservedUntil.delete(id);
     const heldIds = new Set(held.map((a) => a.id));
+    for (const [id, until] of this.listBackoff) {
+      // A backoff further ahead than one rest period comes from another tick count (server reset): drop it.
+      if (until > clock.tick + this.params.relistBackoffTicks) this.listBackoff.delete(id);
+    }
     for (const id of new Set([...this.listPosts.keys(), ...this.listBackoff.keys()])) {
       if (heldIds.has(id)) continue;
       this.listPosts.delete(id);
@@ -204,8 +208,8 @@ export class TradesAgent {
   }
 
   /**
-   * Executes a plan (possibly trimmed by the coordinator: no acceptance, fewer listings): at most one acceptance,
-   * then cancellations and new listings. In dry-run it sends nothing.
+   * Executes a plan (possibly trimmed by the coordinator: no acceptance, fewer listings): cancellations, then
+   * at most one acceptance (skipped if a cancellation failed), then new listings. In dry-run it sends nothing.
    */
   async execute(state: TradeState, plan: TickPlan): Promise<StepResult> {
     const sent: string[] = [];
@@ -224,15 +228,20 @@ export class TradesAgent {
         return false;
       }
     };
-    if (plan.accept) {
+    // Cancels go first: paying with one copy can leave a listed copy as the last one, and its cancel is in this plan.
+    let cancelFailed = false;
+    for (const c of plan.cancels) {
+      if (await attempt(`cancel #${c.id}`, () => this.api.cancelOffer(c.id))) this.cancelled.add(c.id);
+      else cancelFailed = true;
+    }
+    if (plan.accept && cancelFailed) {
+      errors.push(`accept #${plan.accept.offer.id}: skipped, a cancel did not go through (the last copy could still be listed)`);
+    } else if (plan.accept) {
       const a = plan.accept;
       if (await attempt(`accept #${a.offer.id}`, () => this.api.acceptOffer(a.offer.id, a.payAssets))) {
         this.spent += a.spend;
         for (const id of a.payAssets) this.reservedUntil.set(id, state.tick + (this.opts.reserveTicks ?? 2));
       }
-    }
-    for (const c of plan.cancels) {
-      if (await attempt(`cancel #${c.id}`, () => this.api.cancelOffer(c.id))) this.cancelled.add(c.id);
     }
     let backoffChanged = false;
     for (const p of plan.posts) {
