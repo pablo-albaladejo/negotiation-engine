@@ -19,6 +19,8 @@ export interface Target {
   value?: number;
   /** Her published list for that rarity (cap on the sell anchor, `sellAnchorCapMult`); without it, no cap. */
   herList?: number | undefined;
+  /** Buy of the card that completes a page: limit from cash above the floor, not from the hourly/run spend caps. */
+  pageCompleting?: boolean;
 }
 
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);

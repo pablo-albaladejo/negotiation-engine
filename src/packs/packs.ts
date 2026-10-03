@@ -226,8 +226,8 @@ export function proposePacks(i: PacksRouteInput): PacksProposal {
       }
       const params = { ...DEFAULT_NEGOTIATOR_PARAMS, ...negotiatorForDealer(traitsOf(i.dealers.find((x) => obj(x).id === d.persona)), d.persona) };
       const path = plannedSchedule({ side: "buy", reservation, ...(d.opening !== undefined ? { herOpening: d.opening } : {}), ...(d.list !== undefined ? { herList: d.list } : {}) }, params).map((x) => enforceGuardrails({ role: "buyer", reservation }, x));
-      // The dealer agent negotiates it (`{buy: {pack}}`, dealers route): here it is only a note, it takes no thread quota.
-      out.notes.push(`buy ${t.id} from ${d.persona}: our value ~${value} > expected deal ${price} (< opening ${d.opening ?? "?"}), path [${path.join(", ")}] (negotiated by the dealer agent: see dealers:open:${d.persona}:buy:pack:${t.id})`);
+      // Only a note: pack buys are blind buys, off in the dealer agent by default (`RankInput.blindBuys`).
+      out.notes.push(`buy ${t.id} from ${d.persona}: PAUSED (blind buy: pack contents score as luck, RULES.md:122) · our value ~${value} > expected deal ${price} (< opening ${d.opening ?? "?"}), path [${path.join(", ")}]`);
     }
   }
   return out;

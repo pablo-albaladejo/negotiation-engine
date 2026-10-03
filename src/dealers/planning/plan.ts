@@ -50,7 +50,7 @@ const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
  * creates at least `ONLY_COPY_MIN_SURPLUS` P (selling the only copy of a nearly empty set for peanuts isn't
  * worth it either) — since only one copy is offered at a time, the page always ends at most at `have − 1`.
  */
-export const ONLY_COPY_PAGE_COMPLETE_BLOCK = 0.7;
+export const ONLY_COPY_PAGE_COMPLETE_BLOCK = 0.5;
 export const ONLY_COPY_MIN_SURPLUS = 5;
 
 export type CandidateKind = "buy-card" | "buy-rarity-set" | "buy-pack" | "sell";
@@ -60,6 +60,13 @@ export type CandidateKind = "buy-card" | "buy-rarity-set" | "buy-pack" | "sell";
  * value × `PACK_SAFETY`; there is room only if it clears her list (her expected deal, never her opening).
  */
 export const PACK_SAFETY = 0.97;
+
+/**
+ * The card that completes a page carries the whole page bonus in its `your_value` (SAL-09: 91 base + 86 bonus = 177.1),
+ * so it is the best single buy there is. Its limit is value × this, capped by cash above the floor only: the hourly
+ * spend cap (60 P) sat below every rare list (77) and left El Chato idle with SAL-09 on his menu.
+ */
+export const PAGE_COMPLETING_SAFETY = 0.9;
 
 export interface PageImpact {
   set: string;
@@ -113,6 +120,13 @@ export interface RankInput {
   cardTopic?: boolean;
   /** Our estimated value of a pack type (`GameState.packs`); without it (or `undefined`) packs are skipped. */
   packValueOf?: (pack: string) => number | undefined;
+  /**
+   * Blind buys: rarity+set (she picks the card) and packs (their contents score as luck, never as value). Off by
+   * default: on 3 Oct they bought duplicates (threads 519+523: SAL-06 at 24 and SAL-08 at 32, both held, neg_points −39.8).
+   */
+  blindBuys?: boolean;
+  /** Spend available to a page-completing buy (cash above the floor); without it, `budget`. */
+  pageBudget?: number;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -152,12 +166,14 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   const { me, catalog, dealer, valueOf } = input;
   const safety = input.safety ?? 0.9;
   const cap = Math.floor(Math.max(0, Math.min(input.budget, me.cash)));
+  const pageCap = Math.floor(Math.max(0, Math.min(input.pageBudget ?? input.budget, me.cash)));
   const pages = pagesOf(me);
   const held = new Set(me.assets.filter((a) => a.kind === "card").map((a) => a.ref));
   const buys: Candidate[] = [];
 
   for (const entry of dealer.menu.sells) {
     if (entry.pack) {
+      if (!input.blindBuys) continue;
       const value = input.packValueOf?.(entry.pack);
       const list = entry.list_price ?? undefined;
       if (value === undefined || list === undefined) continue;
@@ -193,11 +209,14 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const openingSource = entry.opening_ask ? "menu opening_ask" : `opening assumed list × ${ASSUMED_OPENING_MARKUP}`;
     const ref = list ?? opening;
     const finish = (c: Omit<Candidate, "room" | "why" | "reservation" | "side" | "herList" | "herOpening" | "herOpeningSource" | "surplus">, extra: string): Candidate => {
-      const reservation = Math.min(cap, Math.floor(c.value * safety));
+      const completing = c.kind === "buy-card" && c.page !== undefined && c.page.after >= c.page.of;
+      const s = completing ? Math.min(safety, PAGE_COMPLETING_SAFETY) : safety;
+      const reservation = Math.min(completing ? pageCap : cap, Math.floor(c.value * s));
       const room = reservation > ref;
-      const capped = reservation < Math.floor(c.value * safety) ? " (capped by spend/cash)" : "";
-      const why = room ? `value ${round1(c.value)} × ${safety} = ${reservation} > list ${ref}: ${reservation - ref} P of room${capped}${extra}` : `value ${round1(c.value)} × ${safety} = ${reservation} ≤ list ${ref}: no room${capped}${extra}`;
-      return { ...c, side: "buy", reservation, herList: list, herOpening: opening, herOpeningSource: openingSource, surplus: round1(c.value - ref), room, why };
+      const capped = reservation < Math.floor(c.value * s) ? ` (capped by ${completing ? "cash above the floor" : "spend/cash"})` : "";
+      const tag = completing ? `; COMPLETES the ${c.page!.set} page (bonus in its value)` : "";
+      const why = room ? `value ${round1(c.value)} × ${s} = ${reservation} > list ${ref}: ${reservation - ref} P of room${capped}${extra}${tag}` : `value ${round1(c.value)} × ${s} = ${reservation} ≤ list ${ref}: no room${capped}${extra}${tag}`;
+      return { ...c, side: "buy", reservation, herList: list, herOpening: opening, herOpeningSource: openingSource, surplus: round1(c.value - ref), room, why, ...(completing ? { pageCompleting: true } : {}) };
     };
     if (entry.card) {
       const set = setOfCard(entry.card);
@@ -225,12 +244,29 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       const value = vals.reduce((s, v) => s + v.value, 0) / vals.length;
       const fresh = vals.filter((v) => !v.held).length;
       const page = pages.get(setId);
+      // Specific cards on her rarity+set entry: the only way to fill a page without risking a duplicate.
+      const pushCards = () => {
+        if (input.cardTopic === false) return;
+        for (const v of vals) {
+          if (v.held) continue;
+          buys.push(
+            finish(
+              { kind: "buy-card", key: `buy:${v.id}`, topic: { buy: { card: v.id } }, label: `buy ${v.id}`, rarity, set: setId, card: v.id, value: v.value, cardTopicUntested: true, ...(page ? { page: { set: setId, ...page, after: page.have + 1 } } : {}) },
+              `; new for us; specific card on her ${rarity} entry (topic {buy:{card}}; if she refuses it, no blind fallback unless blind buys are on)`,
+            ),
+          );
+        }
+      };
       const heldVals = vals.filter((v) => v.held).map((v) => v.value);
       const duplicateP = round2(heldVals.length / vals.length);
       const limit = Math.min(cap, Math.floor(value * safety));
       const worstCaseLoss = heldVals.length ? round1(Math.max(0, limit - Math.min(...heldVals))) : 0;
       const margin = Math.max(RARITY_SET_MARGIN.min, Math.ceil(ref * RARITY_SET_MARGIN.frac));
       const risky = duplicateP > MAX_DUPLICATE_P && worstCaseLoss > MAX_WORST_CASE_LOSS;
+      if (!input.blindBuys) {
+        pushCards();
+        continue;
+      }
       const c = finish(
         {
           kind: "buy-rarity-set",
@@ -250,16 +286,7 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       if (c.room && risky) buys.push({ ...c, room: false, why: `${c.why}; SKIP: duplicate risk (P ${duplicateP} > ${MAX_DUPLICATE_P} and worst case −${worstCaseLoss} P > ${MAX_WORST_CASE_LOSS} P)` });
       else if (c.room && c.reservation < ref + margin) buys.push({ ...c, room: false, why: `${c.why}; SKIP: expected value does not clear her list by the ${margin} P margin a random card needs` });
       else buys.push(c);
-      if (input.cardTopic === false) continue;
-      for (const v of vals) {
-        if (v.held) continue;
-        buys.push(
-          finish(
-            { kind: "buy-card", key: `buy:${v.id}`, topic: { buy: { card: v.id } }, label: `buy ${v.id}`, rarity, set: setId, card: v.id, value: v.value, cardTopicUntested: true, ...(page ? { page: { set: setId, ...page, after: page.have + 1 } } : {}) },
-            `; new for us; specific card on her ${rarity} entry (topic {buy:{card}} untested: if she refuses it, the agent falls back to rarity+set)`,
-          ),
-        );
-      }
+      pushCards();
     }
   }
   buys.sort((a, b) => Number(b.room) - Number(a.room) || b.surplus - a.surplus || b.value - a.value);
@@ -374,7 +401,7 @@ export function applyOnly(cands: readonly Candidate[], filters: readonly OnlyFil
  * it), capped by the remaining spend; if short, sells with room (duplicates first, then
  * lowest album impact).
  */
-export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: number; maxSpend: number; only?: boolean }): Selection[] {
+export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: number; maxSpend: number; pageSpend?: number; only?: boolean }): Selection[] {
   const out: Selection[] = [];
   let committed = 0;
   if (o.only) {
@@ -392,7 +419,7 @@ export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: n
   }
   const tryBuy = (c: Candidate, reason: string) => {
     if (out.length >= o.maxThreads || out.some((s) => s.candidate.key === c.key)) return;
-    const reservation = Math.min(c.reservation, Math.floor(o.maxSpend - committed));
+    const reservation = Math.min(c.reservation, Math.floor((c.pageCompleting ? (o.pageSpend ?? o.maxSpend) : o.maxSpend) - committed));
     if (reservation <= (c.herList ?? c.herOpening)) return;
     committed += reservation;
     out.push({ candidate: { ...c, reservation }, reason });

@@ -146,6 +146,8 @@ export class DealersRoute {
   private readonly logs: string[] = [];
   /** Tick state (conversations and personas) to pick the egg probe that goes with a counteroffer. */
   private state: GameState | undefined;
+  /** Last `neg_points` seen (score audit). */
+  private lastNeg: number | undefined;
   /** Lesson lines of the tick (dumped into notes or into the execution). */
   private readonly lessonLines: string[] = [];
   private readonly lessonsSeen = new Set<string>();
@@ -236,6 +238,12 @@ export class DealersRoute {
     const me = await this.client.me();
     await this.ensureAgents(me);
     this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
+    // Score audit: each deal scores your_value − price at our private values; log every move to check it against the settlements.
+    const neg = (me.score as { neg_points?: unknown } | undefined)?.neg_points;
+    if (typeof neg === "number") {
+      if (this.lastNeg !== undefined && Math.round((neg - this.lastNeg) * 10) !== 0) out.notes.push(`score audit: neg_points ${this.lastNeg} → ${neg} (Δ ${Math.round((neg - this.lastNeg) * 10) / 10}) at tick ${clock.tick}: check against this tick's settlements (your_value − price)`);
+      this.lastNeg = neg;
+    }
     this.mode = "propose";
     this.collected = [];
     this.trace.muted = true;

@@ -97,7 +97,12 @@ export interface AgentOptions {
   unlockChase?: () => string | undefined;
   /** Our estimated value of a pack type (coordinator: `GameState.packs`); with it the planner also proposes `{buy: {pack}}`. */
   packValueOf?: (pack: string) => number | undefined;
+  /** Allow blind buys (rarity+set and packs); off by default (`RankInput.blindBuys`). */
+  blindBuys?: boolean;
 }
+
+/** Card a buy target asks for by name (`{buy: {card}}`), if any. */
+const buyCardOf = (t: Target): string | undefined => (t.side === "buy" ? (t.topic as { buy?: { card?: unknown } }).buy?.card : undefined) as string | undefined;
 
 interface Active {
   id: number;
@@ -226,7 +231,7 @@ export class BazaarAgent {
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput() });
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me) });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
     const menu = this.o.menu;
@@ -236,7 +241,7 @@ export class BazaarAgent {
       if (why) blocked.push(`not opened: ${c.label} (${why})`);
       return !why;
     });
-    const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend, only: !!this.o.only });
+    const chosen = selectCandidates(cands, { maxThreads: Math.min(caps.maxThreads, 10), maxSpend: caps.maxSpend, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only });
     const lines = [...formatPlan(me, this.o.menu, cands, chosen, caps, this.negotiatorParams), ...blocked];
     return this.o.only ? [`--only ${this.o.only.map((f) => f.raw).join(",")}: ${cands.length} matching candidate(s), opened in that order`, ...lines] : lines;
   }
@@ -260,11 +265,13 @@ export class BazaarAgent {
       if (this.active) {
         const thread = await this.api.thread(this.active.id);
         if (thread.status === "open") {
+          this.team.claimBuy(this.o.dealer.id, buyCardOf(this.active.target));
           await this.negotiate(thread, tick, me, ticksPerHour, emit);
           return out;
         }
         this.finish(thread, tick, ticksPerHour, emit, me);
       }
+      this.team.claimBuy(this.o.dealer.id, undefined);
       if (this.done()) {
         emit({ action: "idle", rule: this.dealsDone >= (this.o.maxDeals ?? Infinity) ? "max-deals" : "max-threads" });
         return out;
@@ -292,6 +299,7 @@ export class BazaarAgent {
         const welcome = await this.isFirstConversation();
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
         this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...(target.chase ? { chase: target.chase } : {}), ...this.openSnapshot(me, target, tick) };
+        this.team.claimBuy(this.o.dealer.id, buyCardOf(target));
         this.threadsOpened += 1;
         const p = threadPrices(thread, target.side, this.o.dealer);
         emit({
@@ -474,6 +482,11 @@ export class BazaarAgent {
   }
 
   /** Pack value source for the planner, unless the dealer refused the pack topic. */
+  /** Planner inputs for page-completing buys (cash above the floor) and blind buys. */
+  private pageInput(me: Me): { pageBudget: number; blindBuys: boolean } {
+    return { pageBudget: Math.max(0, Math.floor(this.team.pageLeft(me.cash))), blindBuys: this.o.blindBuys ?? false };
+  }
+
   private packInput(): { packValueOf?: (pack: string) => number | undefined } {
     return this.packTopicOk && this.o.packValueOf ? { packValueOf: this.o.packValueOf } : {};
   }
@@ -495,12 +508,13 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput() });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me) });
       // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
-      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c));
-      const picked = selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
+      const elsewhere = (c: Target) => { const card = buyCardOf(c); return card !== undefined && this.team.buyingElsewhere(this.o.dealer.id, card); };
+      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c) && !elsewhere(c));
+      const picked = selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only })[0]?.candidate;
       const chase = this.o.only ? undefined : this.chasePersona(me);
       if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
       if (!chase || picked) return picked;
@@ -537,7 +551,8 @@ export class BazaarAgent {
     const chasing = active.chase !== undefined && this.chasePersona(me) === active.chase;
     const chaseOver = active.chase !== undefined && !chasing && target.value !== undefined;
     const ownRes = chaseOver ? (target.side === "buy" ? Math.min(target.reservation, Math.floor(target.value!)) : Math.max(target.reservation, Math.ceil(target.value!))) : target.reservation;
-    const reservation = target.side === "buy" ? Math.max(0, Math.min(ownRes, me.cash, Math.floor(this.budgetLeft(me.cash)))) : ownRes;
+    const spendable = target.pageCompleting ? this.team.pageLeft(me.cash) : this.budgetLeft(me.cash);
+    const reservation = target.side === "buy" ? Math.max(0, Math.min(ownRes, me.cash, Math.floor(spendable))) : ownRes;
     const acceptValue = chasing && target.value !== undefined ? target.value + (target.side === "buy" ? UNLOCK_CHASE_TOLERANCE : -UNLOCK_CHASE_TOLERANCE) : target.value;
     const herAt = active.patience.herAtCounters();
     const cap = this.o.herLimitCap?.(thread.id);

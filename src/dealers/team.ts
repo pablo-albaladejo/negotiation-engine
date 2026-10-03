@@ -59,4 +59,24 @@ export class TeamBudget {
   markAccept(tick: number): void {
     this.lastAcceptTick = tick;
   }
+
+  /** Card each dealer is buying right now (its open conversation), so two dealers never buy the same card (threads 407+408: RET-07 twice). */
+  private readonly buying = new Map<string, string>();
+
+  /** Sets (or clears, with `undefined`) the card this dealer is buying. */
+  claimBuy(dealer: string, card: string | undefined): void {
+    if (card === undefined) this.buying.delete(dealer);
+    else this.buying.set(dealer, card);
+  }
+
+  /** Another dealer is already buying this card. */
+  buyingElsewhere(dealer: string, card: string): boolean {
+    for (const [d, c] of this.buying) if (d !== dealer && c === card) return true;
+    return false;
+  }
+
+  /** Cash a page-completing buy may use: above the floor only (no hourly or run cap). */
+  pageLeft(cash: number): number {
+    return cash - this.cashFloor;
+  }
 }
