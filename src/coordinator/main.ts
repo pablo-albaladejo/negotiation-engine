@@ -7,6 +7,7 @@ import { FileTrace, liveTraceDir } from "../shared/trace.js";
 import { clockGate } from "../dealers/serious.js";
 import { defaultDuelsStateFile } from "../duels/agent.js";
 import { buildGameState, formatGameState } from "../state/game-state.js";
+import { defaultRivalsFile, loadRivalLedger, saveRivalLedger } from "../state/rivals.js";
 import { defaultConversationsFile, formatConversation, loadConversationMemos, saveConversationMemos } from "../state/conversation.js";
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
 import { arbitrageLines, personaArbitrage } from "./arbitrage.js";
@@ -93,6 +94,9 @@ async function main() {
   const posteriorFile = defaultPosteriorFile(root);
   const personaModelFile = defaultPersonaModelFile(root);
   const personaModels = loadPersonaModels(personaModelFile);
+  // Other teams' holdings and wants: kept in memory, seeded from the recorder the first time.
+  const rivalsFile = defaultRivalsFile(root);
+  const rivalLedger = loadRivalLedger(rivalsFile, join(root, "results", "bazaar-live"));
   const valueCache = loadValueCache(valuesFile);
   let prevRanks = new Map<string, { rank?: number; score?: number }>();
   // In dry-run the cursor lives only in memory (a loop without --once does not repeat triggers); live, on disk.
@@ -131,6 +135,7 @@ async function main() {
       flags,
       posterior,
       personaModels,
+      rivals: rivalLedger,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
       valueCache: valueCache.values,
@@ -146,6 +151,12 @@ async function main() {
     // Per-persona fit posterior: comes only from reads (GET), also saved in dry-run. It never enters a message.
     savePosterior(posteriorFile, posterior);
     savePersonaModels(personaModelFile, personaModels);
+    // Rivals ledger: public structure only (GET), also saved in dry-run. A failed write never stops the loop.
+    try {
+      saveRivalLedger(rivalsFile, rivalLedger);
+    } catch (e) {
+      console.log(`  rivals: not saved (${e instanceof Error ? e.message : "error"})`);
+    }
     prevTime = state.time;
     prevRanks = new Map(state.markets.venues.flatMap((v) => (v.owner ? [[v.owner, { ...(v.ownerRank !== undefined ? { rank: v.ownerRank } : {}), ...(v.ownerScore !== undefined ? { score: v.ownerScore } : {}) }] as const] : [])));
     if (withLb) lastLeaderboard = state.tick;
@@ -202,7 +213,7 @@ async function main() {
           sessions: loadBenchSessions(defaultSessionsFile(root)).map(publicSession),
           ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}),
           ...(nowHours !== undefined ? { nowHours } : {}),
-          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours),
+          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours, state.clock.tickSeconds),
           ...(schedule ? { schedule } : {}),
           ...(() => {
             const hb = loadHeartbeat(defaultHeartbeatFile(root));

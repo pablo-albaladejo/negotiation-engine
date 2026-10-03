@@ -13,6 +13,7 @@ import { indexCatalog } from "../flags/flags.js";
 import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";
 import { buildPriceSheet, buildVenues, formatPriceSheet, formatVenues, valuesWanted, type PriceEntry, type VenueInfo } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
+import { emptyRivalLedger, formatRivals, ingestEvents, ingestLeaderboard, rivalsView, type RivalLedger, type RivalsState } from "./rivals.js";
 import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
@@ -105,6 +106,8 @@ export interface GameState {
    * the coordinator after building the state (reads `bench-sessions.json` and the broker heartbeat from disk).
    */
   venue?: { mechanismDecision: MechanismDecision };
+  /** Other teams: cards seen with them, cards they asked for, leaderboard bounds (see `rivals.ts`). Absent if it failed. */
+  rivals?: RivalsState;
 }
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -210,6 +213,11 @@ export interface BuildOptions {
    * saves them; without them (e.g. the viewer, which does not save) they are rebuilt from the posterior.
    */
   personaModels?: Record<string, PersonaModel>;
+  /**
+   * Ledger of what other teams hold and want (`rivals.json`). Updated IN PLACE with the tick's feed and leaderboard
+   * so that whoever loaded it saves it; without it, built from this tick's feed only.
+   */
+  rivals?: RivalLedger;
   /** Leaderboard ranks from the previous tick (if this tick does not read it). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
@@ -347,6 +355,16 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (v !== undefined) valueCache.set(ref, v);
   }
   const prices = buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) });
+  // Other teams' collections: never takes the tick down (a failure goes to `missing`).
+  let rivals: RivalsState | undefined;
+  try {
+    const ledger = opts.rivals ?? emptyRivalLedger();
+    ingestEvents(ledger, events);
+    if (leaderboard !== undefined) ingestLeaderboard(ledger, leaderboard, clock.tick);
+    rivals = rivalsView(ledger, me?.id ?? undefined, catalog);
+  } catch (e) {
+    missing.push(`rivals: ${e instanceof Error ? e.message : "error"}`);
+  }
   const time = buildTime(clock, schedule, leaderboard, opts.prevTime?.scheduleHash);
   const prevWeight = opts.prevTime?.round?.weight;
   if (time.round && time.round.weight === undefined && prevWeight !== undefined && opts.prevTime?.round?.n === time.round.n) time.round.weight = prevWeight;
@@ -401,6 +419,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     },
     conversations,
     missing,
+    ...(rivals ? { rivals } : {}),
   };
 }
 
@@ -441,6 +460,7 @@ export function formatGameState(g: GameState): string[] {
   lines.push(...formatHints(g.hints.all));
   lines.push("venues:", ...formatVenues(g.markets.venues));
   lines.push(...formatPriceSheet(g.markets.prices));
+  if (g.rivals) lines.push(...formatRivals(g.rivals));
   lines.push(...formatPacks(g.packs));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
