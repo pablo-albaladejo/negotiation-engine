@@ -136,6 +136,32 @@ export interface MechanismDecisionView {
   heartbeat?: { ageSec: number; mode: string };
 }
 
+export interface ModelRivalPage {
+  set: string;
+  have: number;
+  of: number;
+  missing: string[];
+}
+
+export interface ModelRivalTeam {
+  team: string;
+  seen: { assetId: number; ref: string; tick: number; source: string }[];
+  distinct: number;
+  spares: string[];
+  board?: { tick: number; albumFilled?: number; albumSlots?: number; pagesComplete?: number; rarest?: string; deals?: number; score?: number; rank?: number };
+  unseen?: number;
+  pages: ModelRivalPage[];
+  wants: { ref: string; tick: number }[];
+}
+
+/** What other teams hold and want, from public structure only (`src/state/rivals.ts`). */
+export interface ModelRivals {
+  teams: ModelRivalTeam[];
+  byRef: Record<string, { holders: string[]; wantedBy: string[] }>;
+  seenAssets: number;
+  lastEventId: number;
+}
+
 export interface ModelState {
   tick: number;
   builtAt: string;
@@ -167,6 +193,8 @@ export interface ModelState {
     leaderboard?: { tick?: number; ourRank?: number; ourScore?: number; top: { team: string; name?: string; score?: number; rank?: number }[] };
   };
   conversations: ModelConversation[];
+  /** Other teams (optional: an older server does not provide it). */
+  rivals?: ModelRivals;
   missing: string[];
   /** Market Test auto-or-board decision (`src/venue/mechanism.ts`), computed with the sessions measured in shadow. */
   venue?: { mechanismDecision: MechanismDecisionView };

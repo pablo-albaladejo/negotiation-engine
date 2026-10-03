@@ -4,6 +4,7 @@ import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../sr
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
+import { loadRivalLedger, type RivalLedger } from "../../../src/state/rivals.js";
 import { loadPosterior, type PersonaEstimates } from "../../../src/dealers/history/persona-fit.js";
 import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../../src/coordinator/coordinator.js";
 import { parseOffers, readSide } from "../../../src/trades/trades.js";
@@ -326,6 +327,8 @@ export class BazaarModel {
   private client: ReadOnlyBazaarClient | null = null;
   private routes: { duels: DuelsRoute; dealers: DealersRoute; trades: TradesRoute } | null = null;
   private lastLeaderboard = -Infinity;
+  /** Other teams' ledger: read once (play's `rivals.json` or the recorder), then updated in memory; never saved here. */
+  private rivals: RivalLedger | null = null;
 
   constructor(
     private readonly bazaarDir: string,
@@ -386,7 +389,8 @@ export class BazaarModel {
     try {
       const clock = await client.clock();
       const withLb = clock.tick - this.lastLeaderboard >= PLAY_DEFAULTS.leaderboardEvery;
-      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos, posterior });
+      this.rivals ??= loadRivalLedger(join(this.bazaarDir, "rivals.json"), this.bazaarDir);
+      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos, posterior, rivals: this.rivals });
       if (withLb && !state.missing.some((m) => m.startsWith("leaderboard"))) this.lastLeaderboard = state.tick;
     } catch (e) {
       const reason = `GameState failed: ${e instanceof BazaarError ? e.code : e instanceof Error ? e.name : "error"}`;

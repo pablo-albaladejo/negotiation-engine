@@ -5,6 +5,7 @@ import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
 import { DealerEstimates } from "./DealerEstimates.js";
+import { Rivals } from "./Rivals.js";
 import { PersonaStrategy } from "./DealerFitStrip.js";
 import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
@@ -990,6 +991,7 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       </Card>
       <Markets model={model} onOpen={onOpen} />
       <Venues model={model} board={board} />
+      <Rivals model={model} board={board} />
       <Prices model={model} />
       <Packs model={model} />
       <EggsAndFlags model={model} />
