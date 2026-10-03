@@ -6,7 +6,7 @@ import { ScheduleSchema } from "../duels/schemas.js";
 import { activeBench, ticksPerHourOf, type Heartbeat } from "../venue/mechanism.js";
 import { boardShadowLine, type BenchShadow } from "./shadow.js";
 import {
-  ANNOUNCEMENT,
+  announcementFor,
   DEFAULT_BENCH_PARAMS,
   MAX_PUBLIC_MATCHES_PER_TICK,
   bookStateKey,
@@ -102,6 +102,11 @@ export class BrokerAgent {
   private readonly used = new Set<string>();
   private readonly seenErrors = new Set<string>();
   private announced = false;
+  /** Pairs refused this tick (sell×buy → count): retried once on the next read, then left for the next tick. */
+  private refusedPairs = new Map<string, number>();
+  private refusedTick: number | undefined;
+  /** Consecutive reads refused with `bad_key` (the venue key changed): the CLI exits so a supervisor relaunches it. */
+  badKeyStreak = 0;
   private venueChecked = false;
   mechanism: string | undefined;
   private schedule: { tick: number; value: ReturnType<typeof ScheduleSchema.parse> | undefined } | undefined;
@@ -129,8 +134,14 @@ export class BrokerAgent {
       tickSeconds = clock.tick_seconds;
       raw = await this.api.book();
     } catch (e) {
+      this.badKeyStreak = errText(e) === "bad_key" ? this.badKeyStreak + 1 : 0;
       this.log(`broker: cannot read clock/book (${errText(e)}), trying again`);
       return { status: "error", ...empty };
+    }
+    this.badKeyStreak = 0;
+    if (tick !== this.refusedTick) {
+      this.refusedPairs = new Map();
+      this.refusedTick = tick;
     }
     const book = parseBrokerBook(raw);
     for (const err of book.errors) {
@@ -139,7 +150,7 @@ export class BrokerAgent {
       this.log(`broker: skipped ${err}`);
     }
     if (!this.venueChecked) await this.checkVenue(book.venue);
-    await this.maybeAnnounce();
+    await this.maybeAnnounce(book.venue);
 
     observeBench(this.tracks, book.bench, tick);
     const hbNow = (this.opts.now ?? (() => new Date()))();
@@ -164,7 +175,8 @@ export class BrokerAgent {
 
     const bench = planBench(book, this.tracks, tick, this.params);
     const pub = planPublic(book, this.opts.maxPublic ?? MAX_PUBLIC_MATCHES_PER_TICK);
-    const matches = [...bench.matches, ...pub].filter((m) => !this.used.has(String(m.sell)) && !this.used.has(String(m.buy)));
+    const pairKey = (m: { sell: string | number; buy: string | number }) => `${m.sell}x${m.buy}`;
+    const matches = [...bench.matches, ...pub].filter((m) => !this.used.has(String(m.sell)) && !this.used.has(String(m.buy)) && (this.refusedPairs.get(pairKey(m)) ?? 0) < 2);
     const ts = (this.opts.now ?? (() => new Date()))().toISOString();
     if (book.bench.length && this.opts.sink) {
       this.opts.sink.write({
@@ -194,12 +206,15 @@ export class BrokerAgent {
           rec.status = "refused";
           rec.error = e.code;
           refused += 1;
+          this.refusedPairs.set(pairKey(m), (this.refusedPairs.get(pairKey(m)) ?? 0) + 1);
           this.log(`tick ${tick}: ${m.sell} x ${m.buy} at ${m.price} refused (${e.code})`);
         }
       }
       this.opts.sink?.write(rec);
     }
 
+    // A refusal (rate limit, a quote that moved) is retried on the next read instead of waiting for the next tick.
+    if (refused) this.lastKey = undefined;
     const runs = new Set(book.bench.map((b) => b.run)).size;
     const surplus = matches.reduce((s, m) => s + m.surplus, 0);
     const verb = this.opts.dryRun ? "would match" : "matched";
@@ -260,15 +275,19 @@ export class BrokerAgent {
     }
   }
 
-  private async maybeAnnounce(): Promise<void> {
+  private async maybeAnnounce(venue: string | undefined): Promise<void> {
     if (this.announced || this.opts.announce === false) return;
+    if (!venue) {
+      this.log("broker: announce skipped (venue id unknown in the book)");
+      return;
+    }
     this.announced = true;
     if (this.opts.dryRun) {
-      this.log(`broker: would announce: ${ANNOUNCEMENT}`);
+      this.log(`broker: would announce: ${announcementFor(venue, this.mechanism)}`);
       return;
     }
     try {
-      await this.api.announce(ANNOUNCEMENT);
+      await this.api.announce(announcementFor(venue, this.mechanism));
       this.log("broker: announced the venue");
     } catch (e) {
       this.log(`broker: announce refused (${errText(e)})`);

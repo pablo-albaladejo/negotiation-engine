@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
-import { ANNOUNCEMENT } from "./broker.js";
+import { announcementFor } from "./broker.js";
 
 /**
  * Matchmaker announcement (Payday deck, slide 9: "it finds the missing card"): cross each team's want-list with the
  * teams seen holding a duplicate of that card, from the rivals ledger (`results/bazaar-live/rivals.json`, structure
- * only: offers, feed and `/api/cards`), and name the pairs in the v04 announcement. Pure except `loadLedgerFile`.
+ * only: offers, feed and `/api/cards`), and name the pairs in the announcement of our current venue. Pure except `loadLedgerFile`.
  * Our own team is left out on both sides: we cannot trade on our own venue.
  */
 
@@ -56,21 +56,20 @@ export function matchPairs(ledger: LedgerLike, us: string, now: number, params =
   return [...byRef.values()].sort((a, b) => b.wanters.length - a.wanters.length || a.ref.localeCompare(b.ref));
 }
 
-/** The announcement naming the pairs; the plain `ANNOUNCEMENT` when there are none. */
-export function matchmakerAnnouncement(pairs: readonly MatchPair[], params = MATCHMAKER_PARAMS): string {
-  if (!pairs.length) return ANNOUNCEMENT;
+/** The announcement naming the pairs for `venue`; the plain `announcementFor(venue)` when there are none. */
+export function matchmakerAnnouncement(pairs: readonly MatchPair[], venue: string, mechanism?: string, params = MATCHMAKER_PARAMS): string {
+  if (!pairs.length) return announcementFor(venue, mechanism);
   // game text
-  const head = "Team 2 · El Rastro Express (v04) found your missing cards. Want-lists matched with duplicates (spare → wanted by): ";
+  const head = `Team 2 · El Rastro Express (${venue}) found your missing cards. Want-lists matched with duplicates (spare → wanted by): `;
   // game text
-  const tail =
-    '. Holders: post the spare with venue "v04" (give {"assets": [id]}, want cash or a card). Buyers: bid with venue "v04" (give cash, want {"cards": ["RET-01"]}). Card-for-card swaps welcome, no cash needed. 0 % fee and 0 P per card (El Rastro: 5 % + 1 P a card); best bid and ask cross every tick.';
+  const tail = `. Holders: post the spare with venue "${venue}" (give {"assets": [id]}, want cash or a card). Buyers: bid with venue "${venue}" (give cash, want {"cards": ["RET-01"]}). Card-for-card swaps welcome, no cash needed. 0 % fee and 0 P per card (El Rastro: 5 % + 1 P a card); best bid and ask cross every tick.`;
   const items: string[] = [];
   for (const p of pairs) {
     const item = `${p.ref} ${p.holders.join("/")} → ${p.wanters.join(",")}`;
     if ((head + [...items, item].join(" · ") + tail).length > params.maxChars) break;
     items.push(item);
   }
-  return items.length ? head + items.join(" · ") + tail : ANNOUNCEMENT;
+  return items.length ? head + items.join(" · ") + tail : announcementFor(venue, mechanism);
 }
 
 /** Reads the rivals ledger; undefined when it is missing or unreadable. */

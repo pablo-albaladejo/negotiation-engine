@@ -71,6 +71,11 @@ export async function runVenueCli(argv: string[], log: (line: string) => void = 
 }
 
 /** Close our venue, check the close took effect, then open the new one. Each step stops the run if it fails. */
+/** Close notice: about 10 ticks (5 min at 30 s); polled every 15 s for up to 10 min. */
+const CLOSE_WAIT_MS = 15_000;
+const CLOSE_WAIT_POLLS = 40;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function replaceVenue(client: VenueApi, mechanism: Mechanism, values: { "dry-run"?: boolean; confirm?: boolean; name?: string }, log: (line: string) => void): Promise<number> {
   const [me, venues, clock, schedule] = await Promise.all([client.me(), client.venues(), client.clock(), client.request("GET", "/api/schedule", ScheduleSchema).catch(() => undefined)]);
   const plan = planVenueSwitch(me, venues.venues, clock, schedule, { mechanism, ...(values.name ? { name: values.name } : {}) });
@@ -89,9 +94,15 @@ async function replaceVenue(client: VenueApi, mechanism: Mechanism, values: { "d
     return 2;
   }
   log(`closed: ${JSON.stringify(await client.closeVenue(plan.from.id))}`);
-  const after = currentVenueOf(await client.me());
-  if (after && after.id === plan.from.id && (after.status ?? "open") === "open") {
-    log(`STOPPED: ${plan.from.id} still shows as open after the close; not opening a new venue.`);
+  // The close takes effect after a notice (v04: "closing" at t1313, closed with the refund at t1323): wait for it.
+  let after = currentVenueOf(await client.me());
+  for (let i = 0; after && after.id === plan.from.id && after.status !== "closed" && i < CLOSE_WAIT_POLLS; i++) {
+    log(`waiting: ${plan.from.id} is ${after.status ?? "open"} (${i + 1}/${CLOSE_WAIT_POLLS})`);
+    await sleep(CLOSE_WAIT_MS);
+    after = currentVenueOf(await client.me());
+  }
+  if (after && after.id === plan.from.id && after.status !== "closed") {
+    log(`STOPPED: ${plan.from.id} is still ${after.status ?? "open"} after the wait; open the new one later with plain --mechanism ${mechanism} --confirm.`);
     return 2;
   }
   const rest = saveBrokerKey((await client.openVenue(plan.open.body)) as Record<string, unknown>, log);

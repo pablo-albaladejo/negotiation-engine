@@ -1,8 +1,8 @@
 import { parseArgs } from "node:util";
 import { BrokerAgent, FileBrokerSink, brokerLogDir, type BrokerApi, type BrokerSink } from "./agent.js";
 import { BrokerClient, loadBrokerEnv } from "./client.js";
-import { ANNOUNCEMENT, DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
-import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, saveHeartbeat } from "./shadow.js";
+import { announcementFor, DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK, parseBrokerBook } from "./broker.js";
+import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, loadHeartbeat, saveHeartbeat } from "./shadow.js";
 import { ledgerNow, loadLedgerFile, matchmakerAnnouncement, matchPairs } from "./matchmaker.js";
 
 /**
@@ -52,18 +52,6 @@ export async function runBrokerCli(
     log("REFUSED: the live broker sends matches and an announcement; run with --dry-run, or without it AND with --confirm (only with the user's approval).");
     return 2;
   }
-  let announcement = ANNOUNCEMENT;
-  if (values.matchmaker) {
-    const ledger = loadLedgerFile(values["rivals-file"]!);
-    const pairs = ledger ? matchPairs(ledger, "t02", ledgerNow(ledger)) : [];
-    log(`broker: matchmaker ${ledger ? `${pairs.length} card(s) with a want × duplicate pair at tick ${ledgerNow(ledger)}` : `no rivals ledger at ${values["rivals-file"]}`}`);
-    announcement = matchmakerAnnouncement(pairs);
-  }
-  if (values["announce-only"] && dryRun) {
-    log(`broker: would announce (${announcement.length} chars): ${announcement}`);
-    log("DRY-RUN: nothing sent.");
-    return 0;
-  }
   let client = api;
   if (!client) {
     const env = loadBrokerEnv();
@@ -73,8 +61,29 @@ export async function runBrokerCli(
     }
     client = new BrokerClient({ url: env.url, key: env.key });
   }
+  // The announcement names our CURRENT venue (from the broker book, GET only), never a fixed id.
+  let announcement = "";
   if (values["announce-only"]) {
-    // One venue announcement and exit: no book read, no matches.
+    const venue = parseBrokerBook(await client.book()).venue;
+    if (!venue) {
+      log("broker: venue id unknown in the book; not announcing.");
+      return 1;
+    }
+    const raw = (await client.venues()) as { venues?: { venue?: string; rules?: { mechanism?: string } }[] } | undefined;
+    const mechanism = raw?.venues?.find((v) => v.venue === venue)?.rules?.mechanism;
+    announcement = announcementFor(venue, mechanism);
+    if (values.matchmaker) {
+      const ledger = loadLedgerFile(values["rivals-file"]!);
+      const pairs = ledger ? matchPairs(ledger, "t02", ledgerNow(ledger)) : [];
+      log(`broker: matchmaker ${ledger ? `${pairs.length} card(s) with a want × duplicate pair at tick ${ledgerNow(ledger)}` : `no rivals ledger at ${values["rivals-file"]}`}`);
+      announcement = matchmakerAnnouncement(pairs, venue, mechanism);
+    }
+    if (dryRun) {
+      log(`broker: would announce (${announcement.length} chars): ${announcement}`);
+      log("DRY-RUN: nothing sent.");
+      return 0;
+    }
+    // One venue announcement and exit: no matches.
     try {
       await client.announce(announcement);
       log(`broker: announced the venue (${announcement.length} chars)`);
@@ -96,11 +105,21 @@ export async function runBrokerCli(
     `broker: ${dryRun ? "DRY-RUN" : "LIVE"} · hold ${bench.holdTicks} ticks · firm shade ${bench.firmShade} · max age ${bench.maxAgeTicks} ticks · max public ${maxPublic}/tick · poll ${pollMs} ms`,
   );
   // Shadow and heartbeat only with real I/O (no injected sink). The shadow never sends anything: dry-run only.
-  const files = sink ? {} : { ...(dryRun ? { shadow: new BenchShadow(defaultSessionsFile(), bench) } : {}), heartbeat: (hb: Parameters<typeof saveHeartbeat>[1]) => saveHeartbeat(defaultHeartbeatFile(), hb) };
+  // A shadow never overwrites the heartbeat of a live broker that beat in the last minute (one file, read by the coordinator).
+  const beat = (hb: Parameters<typeof saveHeartbeat>[1]) => {
+    const cur = dryRun ? loadHeartbeat(defaultHeartbeatFile()) : undefined;
+    if (cur?.mode === "live" && Date.now() - Date.parse(cur.ts) < 60_000) return;
+    saveHeartbeat(defaultHeartbeatFile(), hb);
+  };
+  const files = sink ? {} : { ...(dryRun ? { shadow: new BenchShadow(defaultSessionsFile(), bench) } : {}), heartbeat: beat };
   const agent = new BrokerAgent(client, { dryRun, log, sink: out, bench, maxPublic, announce: !values["no-announce"] && !values.shadow, ...files });
   const maxSteps = values.once ? 1 : values.steps !== undefined ? n("steps", values.steps, 1) : Infinity;
   for (let i = 0; i < maxSteps; i++) {
     await agent.step();
+    if (agent.badKeyStreak >= 3) {
+      log("broker: bad_key 3 times in a row (the venue key changed?): exiting so the supervisor relaunches it with the current .env.broker");
+      return 3;
+    }
     if (i + 1 >= maxSteps) break;
     await sleep(pollMs);
   }
