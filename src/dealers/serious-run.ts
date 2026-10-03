@@ -1,8 +1,8 @@
 import { BazaarAgent, type BazaarApi } from "./agent.js";
 import type { BazaarClient } from "../shared/client.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "./dealer-profile.js";
-import { appendLesson, PendingLessons } from "./lessons.js";
-import type { NegotiatorParams } from "./negotiator.js";
+import { appendLesson, PendingLessons } from "./history/lessons.js";
+import type { NegotiatorParams } from "./negotiation/negotiator.js";
 import type { Clock, DealerInfo, Me } from "../shared/schemas.js";
 import { formatScoreSummary, type ScoreTracker } from "../shared/score.js";
 import { Backoff, classifyThrown, clockGate, dealerState, statusLine, worstError } from "./serious.js";

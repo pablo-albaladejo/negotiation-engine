@@ -1,7 +1,7 @@
-import { counterText } from "./messages.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, decide, plannedSchedule, type NegotiatorParams, type Rule, type Side } from "./negotiator.js";
+import { counterText } from "../negotiation/messages.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, decide, plannedSchedule, type NegotiatorParams, type Rule, type Side } from "../negotiation/negotiator.js";
 import { rarityOf, type Target } from "./planner.js";
-import type { Catalog, DealerInfo, Me } from "../shared/schemas.js";
+import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
 
 /**
  * Planificador por menú: a partir de `/api/me`, `/api/catalog` y la ficha del dealer, ordena qué

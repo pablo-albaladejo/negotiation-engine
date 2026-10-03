@@ -1,4 +1,4 @@
-import type { NegotiatorParams } from "./negotiator.js";
+import type { NegotiatorParams } from "./negotiation/negotiator.js";
 import type { DealerInfo, Me } from "../shared/schemas.js";
 
 /**

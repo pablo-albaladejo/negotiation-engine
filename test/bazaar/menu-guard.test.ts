@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
-import { menuBlocks } from "../../src/dealers/plan.js";
+import { menuBlocks } from "../../src/dealers/planning/plan.js";
 import { CatalogSchema, DealerInfoSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 

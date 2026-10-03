@@ -1,6 +1,6 @@
-import type { Side } from "./negotiator.js";
-import { StandingOfferSchema, type Me, type Thread } from "../shared/schemas.js";
-import { isDealer, type DealerRef } from "./view.js";
+import type { Side } from "../negotiation/negotiator.js";
+import { StandingOfferSchema, type Me, type Thread } from "../../shared/schemas.js";
+import { isDealer, type DealerRef } from "../negotiation/view.js";
 
 /**
  * Resumen por conversación con un dealer (lo pide nuestro analista de datos): cartas, copias antes y después,

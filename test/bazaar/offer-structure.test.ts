@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
-import { checkStructure, expectationOf, firstMismatch } from "../../src/dealers/offer-structure.js";
+import { checkStructure, expectationOf, firstMismatch } from "../../src/dealers/negotiation/offer-structure.js";
 import { DealerInfoSchema, StandingOfferSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 

@@ -4,7 +4,7 @@ import type { Clock, Me } from "../shared/schemas.js";
 import { extractScoreFields, type ScoreFields } from "../shared/score.js";
 import { duelsApi, type Duel, type Schedule } from "../duels/schemas.js";
 import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
-import { spareTargets } from "../dealers/planner.js";
+import { spareTargets } from "../dealers/planning/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
 import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";

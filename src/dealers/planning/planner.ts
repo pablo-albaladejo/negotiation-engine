@@ -1,6 +1,6 @@
-import type { Topic } from "../shared/client.js";
-import type { Side } from "./negotiator.js";
-import type { Catalog, Me } from "../shared/schemas.js";
+import type { Topic } from "../../shared/client.js";
+import type { Side } from "../negotiation/negotiator.js";
+import type { Catalog, Me } from "../../shared/schemas.js";
 
 /**
  * Qué negociar con el dealer: vender repetidas (reserva = nuestro your_value de esa copia) y comprar

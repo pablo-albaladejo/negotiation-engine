@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
-import { DEFAULT_NEGOTIATOR_PARAMS, plannedSchedule } from "../dealers/negotiator.js";
+import { DEFAULT_NEGOTIATOR_PARAMS, plannedSchedule } from "../dealers/negotiation/negotiator.js";
 import { negotiatorForDealer, traitsOf } from "../dealers/dealer-profile.js";
 import { readSide, type TradeOffer } from "../trades/trades.js";
 import type { Intent } from "../coordinator/coordinator.js";

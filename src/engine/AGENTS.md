@@ -1,6 +1,6 @@
 # src/engine/ — Núcleo numérico
 
-Funciones puras que usa el Bazaar (`../dealers/negotiator.ts` y `../duels/duels.ts`). Sin LLM ni red.
+Funciones puras que usa el Bazaar (`../dealers/negotiation/negotiator.ts` y `../duels/duels.ts`). Sin LLM ni red.
 
 ## Archivos
 
@@ -14,5 +14,5 @@ Funciones puras que usa el Bazaar (`../dealers/negotiator.ts` y `../duels/duels.
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- → [`dealers/` y `duels/`](../AGENTS.md) — quien lo usa
-- → [`test/engine/`](../../test/engine/) — tests y propiedades (fast-check)
+- → [`dealers/`](../dealers/AGENTS.md) y [`duels/`](../duels/AGENTS.md) — quien lo usa
+- → [`test/engine/`](../../test/engine/AGENTS.md) — tests y propiedades (fast-check)

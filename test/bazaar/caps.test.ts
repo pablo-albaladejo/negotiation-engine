@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
 import { DealerInfoSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
-import { parseOnly } from "../../src/dealers/plan.js";
+import { parseOnly } from "../../src/dealers/planning/plan.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 
 const MENU = DealerInfoSchema.parse({

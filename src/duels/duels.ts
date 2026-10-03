@@ -4,7 +4,7 @@ import { enforceGuardrails, type Role } from "../engine/guardrails.js";
 import { utility } from "../engine/issues.js";
 import { concession } from "../engine/offer.js";
 import type { Duel, StructuredOffer } from "./schemas.js";
-import { numbersIn } from "../dealers/messages.js";
+import { numbersIn } from "../dealers/negotiation/messages.js";
 
 /**
  * Decisión pura y determinista de un duelo del Bazaar (1 contra 1, un mensaje por lado y tick).

@@ -1,5 +1,5 @@
 import type { BazaarClient } from "./client.js";
-import { assetIdsOf } from "../dealers/offer-structure.js";
+import { assetIdsOf } from "../dealers/negotiation/offer-structure.js";
 import { StandingOfferSchema } from "./schemas.js";
 
 /**
