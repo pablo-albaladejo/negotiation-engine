@@ -312,7 +312,10 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     // Accept early: each round shrinks the deal (`decay`); an offer that already leaves a reasonable share, or is worth
     // more than our next offer discounted one round, is accepted now.
     if (rivalSurplus >= params.acceptShare * openingSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
-    if (rivalSurplus >= (1 - decay) ** params.acceptLookahead * nextSurplus) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
+    // Compare with the deal we'd expect by going on, not our next offer: the midpoint of theirs and ours, since rivals
+    // meet us halfway. 2558: rival 29, next 32 → we countered and closed 11 P lower.
+    const expected = (rivalSurplus + nextSurplus) / 2;
+    if (rivalSurplus >= (1 - decay) ** params.acceptLookahead * expected) return { action: "accept", rule: "accept-decay", surplus: rivalSurplus, round };
   }
 
   // Engine acceptance (AC_next; on the last move, anything that respects the reservation).
