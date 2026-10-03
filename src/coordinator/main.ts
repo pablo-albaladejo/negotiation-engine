@@ -22,6 +22,7 @@ import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
+import { executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
 import { executeVenueMechanism, proposeVenueMechanism } from "../venue/route.js";
@@ -58,6 +59,7 @@ async function main() {
       "approve-flags": { type: "string", default: "" },
       "flag-pressure": { type: "boolean", default: false },
       "allow-venue-switch": { type: "boolean", default: false },
+      "rival-page": { type: "boolean", default: false },
       "plan-log": { type: "string", default: "" },
     },
   });
@@ -234,6 +236,7 @@ async function main() {
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
 
     const proposals: { route: string; p: RouteProposal }[] = [];
+    let rivalPlan: RivalPagePlan = { posts: [], cancels: [] };
     const routeErrors: string[] = [];
     const me = await client.me().catch(() => undefined);
     for (const [route, run] of [
@@ -258,7 +261,17 @@ async function main() {
         async () => {
           const byRef = new Map<string, number[]>();
           for (const a of me?.assets ?? []) if ((a.kind ?? "card") === "card") byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a.id]);
-          return { ...proposeMarkets(state, byRef), strategies: new Map(), decisions: new Map() };
+          const m = proposeMarkets(state, byRef);
+          // Directed listings to a rival that lacks one page card (never throws: off with a note on bad data).
+          try {
+            const r = proposeRivalPage({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, pageTargets, cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            rivalPlan = r.plan;
+            m.intents.push(...r.intents);
+            m.notes.push(...r.notes);
+          } catch (e) {
+            m.notes.push(`[rival-page] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
+          }
+          return { ...m, strategies: new Map(), decisions: new Map() };
         },
       ],
       ["agenda", async () => ({ intents: effects.intents, notes: [], strategies: new Map(), decisions: new Map() })],
@@ -321,6 +334,8 @@ async function main() {
     };
     report("duels", await duels.execute(selected));
     report("markets", await executeMarkets(client, selectedIntents, dryRun));
+    // Rival-page listings go out only live AND with the opt-in --rival-page; otherwise "would" lines.
+    report("markets", await executeRivalPage(client, selectedIntents, rivalPlan, dryRun || !values["rival-page"], undefined, undefined, state.tick));
     report("packs", await executePacks(client, selectedIntents, dryRun));
     report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);

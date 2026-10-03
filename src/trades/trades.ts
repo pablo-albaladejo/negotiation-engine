@@ -570,6 +570,9 @@ function settledByRarity(settlements: Quote[], model: ValueModel): TickPlan["set
  */
 export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const notes: string[] = [];
+  // Directed offers of ours (`to` set: rival-page listings) belong to the markets route: their assets are busy here.
+  const directed = state.mine.filter((o) => o.to && (o.status ?? "open") === "open").flatMap((o) => readSide(o.give).assets.map((a) => a.id));
+  if (directed.length) state = { ...state, reserved: new Set([...state.reserved, ...directed]) };
   const mineIds = new Set(state.mine.map((o) => o.id));
   let counts = countHoldings(state.held);
   const seen = new Set<number>();
@@ -606,10 +609,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const { asks, bids } = boardQuotes(state.board, mineIds, state.model, state.tick);
   const fees = params.fees;
 
-  // Our El Rastro offers (those in dealer threads are left alone).
-  const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !(o.venue === "rastro" && o.thread == null)).length;
+  // Our El Rastro offers (those in dealer threads and directed ones, `to` set, are left alone but still count as open).
+  const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !(o.venue === "rastro" && o.thread == null && !o.to)).length;
   const existing = state.mine
-    .filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && (o.expires_tick == null || o.expires_tick > state.tick))
+    .filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && !o.to && (o.expires_tick == null || o.expires_tick > state.tick))
     .flatMap((o) => {
       const c = classifyMine(o, state.held);
       return c ? [c] : [];

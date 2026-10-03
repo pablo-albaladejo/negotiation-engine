@@ -131,7 +131,7 @@ export class TradesAgent {
   private trackFilledBids(mine: TradeState["mine"], tick: number): void {
     const now = new Map<number, { cash: number; expires: number }>();
     for (const o of mine) {
-      if (o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open") continue;
+      if (o.venue !== "rastro" || o.thread != null || o.to || (o.status ?? "open") !== "open") continue;
       const g = readSide(o.give);
       const w = readSide(o.want);
       if (g.cash > 0 && w.cards.length === 1) now.set(o.id, { cash: g.cash, expires: o.expires_tick ?? Infinity });

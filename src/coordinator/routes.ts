@@ -299,8 +299,17 @@ export class TradesRoute {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {} });
   }
 
+  /** El Rastro state and plan of the last proposal (the rival-page listings reuse them; `undefined` before the first). */
+  get lastState(): TradeState | undefined {
+    return this.last?.state;
+  }
+  get lastPlan(): TickPlan | undefined {
+    return this.last?.plan;
+  }
+
   async propose(state: GameState, me: Me | undefined, pageTargets: readonly string[]): Promise<RouteProposal> {
     const out = empty();
+    this.last = undefined;
     this.last = await this.agent.propose();
     const { plan } = this.last;
     if (plan.accept) {
