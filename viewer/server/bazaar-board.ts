@@ -199,6 +199,16 @@ export class BazaarBoard {
     return ok(await this.inflight);
   }
 
+  /** Último cuerpo bueno de `/api/feed` (lo reutiliza `/api/bazaar/model` para eggs y disparadores). */
+  recentFeed(): unknown {
+    return this.last.get(`/api/feed?limit=${this.deps.feedLimit ?? 200}`) ?? null;
+  }
+
+  /** Catálogo, libro de El Rastro y `/api/me` ya leídos (sin GET nuevo) y valores privados de cartas que faltan. Solo local. */
+  marketInputs(): { catalog: unknown; rastro: unknown; values: Record<string, number>; me: unknown } {
+    return { catalog: this.catalog?.raw ?? null, rastro: this.last.get("/api/venues/rastro/offers") ?? null, values: Object.fromEntries(this.missingValues), me: this.last.get("/api/me") ?? null };
+  }
+
   /** GET al Bazaar (cubo compartido). La clave solo va en rutas privadas; un fallo devuelve el último
    * cuerpo bueno de esa ruta (o `null`), sin volcar nada de la respuesta. */
   private async getJson(url: string, key: string | undefined, path: string): Promise<unknown> {

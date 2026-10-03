@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "tsx server/main.ts",
-    "typecheck": "tsc --noEmit --project tsconfig.json"
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^18.3.1",
