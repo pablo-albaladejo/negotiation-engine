@@ -4,8 +4,8 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * Per-tick coordinator, pure: each route (duels, dealers, El Rastro) proposes its intents without sending them; here
  * the tick budget read from `clock.limits` (never hardcoded) is split and what goes out is decided.
  *
- * ASSUMPTION (to verify live): accepting a duel shares the `accepts_per_team_per_tick` quota with
- * the dealers and El Rastro. If it turns out not to, it is enough to take the "duel" class out of the quota in `arbitrate`.
+ * Duel accepts do not use the `accepts_per_team_per_tick` quota: per the official Duels deck, "duel messages and
+ * accepts have their own limits: they never block your trading". `arbitrate` selects them apart, one per duel.
  */
 
 export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs" | "markets" | "venue";
@@ -27,7 +27,7 @@ export const ACCEPT_PRIORITY: Record<AcceptClass, { rank: number; why: string }>
   other: { rank: 5, why: "the rest" },
 };
 
-export const DUEL_ACCEPT_QUOTA_ASSUMPTION = "ASSUMPTION: a duel accept shares the team accept quota (accepts_per_team_per_tick) with dealers and El Rastro";
+export const DUEL_ACCEPT_QUOTA_ASSUMPTION = "duel accepts have their own limits (Duels deck): outside the team accept quota, one per duel per tick";
 
 export interface Intent {
   /** Unique within the tick: `duels:accept:177`, `dealers:counter:abuela:56`, `trades:post:3`... */
@@ -119,6 +119,17 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     const busy = clash(i);
     if (busy) {
       verdicts.set(i.id, { intent: i, selected: false, reason: `asset lock: ${busy}` });
+      return;
+    }
+    // Duels have their own accept limits: never counted against the team quota, one per duel (conversation).
+    if (i.acceptClass === "duel") {
+      if (i.conversation && acceptedConversations.has(i.conversation)) {
+        verdicts.set(i.id, { intent: i, selected: false, reason: `accept already selected in ${i.conversation}` });
+        return;
+      }
+      take(i);
+      if (i.conversation) acceptedConversations.add(i.conversation);
+      verdicts.set(i.id, { intent: i, selected: true, reason: `duel accept: own limit, outside the team quota${i.ev !== undefined ? `, EV ${i.ev.toFixed(1)}` : ""}` });
       return;
     }
     if (acceptsUsed < b.accepts) {

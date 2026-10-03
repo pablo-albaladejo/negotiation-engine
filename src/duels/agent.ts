@@ -8,8 +8,8 @@ import { liveTraceDir } from "../shared/trace.js";
 
 /**
  * Duel loop: one step per tick. Reads `/api/duels`, decides each duel with `decideDuel` and sends
- * at most one message per duel per tick and one acceptance per team per tick (the one with the most surplus;
- * the others wait for the next tick). Per-duel memory (our offers and the rival's) lives
+ * at most one message and one acceptance per duel per tick (duel accepts have their own limits, outside the team
+ * accept quota). Per-duel memory (our offers and the rival's) lives
  * in the process and, if `stateFile` is given, on disk too (atomic write after each tick with POSTs)
  * so a restart recovers it instead of reopening or conceding again from scratch. The rival's
  * offer is read from `rival_offer` or, if missing, from their last message (`rivalOfferFrom`); ours,
@@ -200,7 +200,7 @@ export class DuelsAgent {
     return { clock, planned };
   }
 
-  /** Autonomous step (`pnpm bazaar:duels`): one acceptance per tick, the one with the most surplus; the rest wait. */
+  /** Autonomous step (`pnpm bazaar:duels`): every accepting duel accepts this tick (duels have their own accept limits). */
   async step(): Promise<DuelStepReport> {
     const proposal = await this.propose();
     const accepts = proposal.planned
@@ -211,14 +211,14 @@ export class DuelsAgent {
   }
 
   /**
-   * Executes a proposal. `accepts`: duels whose acceptance is attempted, in order; at most one goes through (if it fails,
-   * e.g. no_offer, the next is tried). The other acceptances are deferred. `messages`: if given, only
+   * Executes a proposal. `accepts`: duels whose acceptance is attempted, in order, one per duel (duel accepts have their
+   * own limits and do not use the team quota; on no_offer, the rival's offer is matched instead). Accepting duels not in
+   * `accepts` are deferred. `messages`: if given, only
    * those duels send their message (the coordinator allocates the quota); the rest are `skipped`.
    */
   async execute(proposal: DuelProposal, choice: { accepts: readonly (number | string)[]; messages?: ReadonlySet<string> }): Promise<DuelStepReport> {
     const { clock, planned } = proposal;
     const byId = new Map(planned.map((p) => [this.key(p.duel.id), p]));
-    let acceptDone = false;
 
     const entries: DuelStepEntry[] = [];
     for (const p of planned) {
@@ -249,17 +249,15 @@ export class DuelsAgent {
     for (const id of choice.accepts) {
       const p = byId.get(this.key(id));
       const entry = entries.find((e) => this.key(e.duelId) === this.key(id));
-      if (!p || !entry || p.already || p.decision.action !== "accept" || acceptDone) continue;
+      if (!p || !entry || p.already || p.decision.action !== "accept" || entry.outcome !== "deferred") continue;
       if (this.options.dryRun) {
         entry.outcome = "dry-run";
-        acceptDone = true;
         continue;
       }
       entry.outcome = await this.act(p.duel.id, p.decision, p.state, clock.tick);
-      if (entry.outcome === "sent") acceptDone = true;
       // no_offer: our later counteroffer voided the rival's offer (rival_offer is stale).
       // We can't accept it, but we can match it: we propose exactly their price/days and the rival closes it.
-      else if (entry.outcome === "error:no_offer" && p.rival && !sameOffer(p.rival, p.state.ourOffers.at(-1))) {
+      if (entry.outcome === "error:no_offer" && p.rival && !sameOffer(p.rival, p.state.ourOffers.at(-1))) {
         const offer: StructuredOffer = { ...p.rival };
         // With days, the message always carries `days` (otherwise missing_days): if their offer has none, our best day.
         if (p.state.withDays && offer.days === undefined) offer.days = DAYS_MIN + p.state.daysValue.indexOf(Math.max(...p.state.daysValue));

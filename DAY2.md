@@ -88,7 +88,7 @@ Por qué (tick 479, `GET /api/leaderboard` y `/api/venues`): el mercado por enci
 
 ## Supuestos que verificar en vivo
 
-- La aceptación de un duelo comparte el cupo de una aceptación por tick del equipo (`DUEL_ACCEPT_QUOTA_ASSUMPTION`).
+- La aceptación de un duelo **no** gasta el cupo de aceptaciones del equipo (PDF oficial de duelos); una por duelo y tick (`DUEL_ACCEPT_QUOTA_ASSUMPTION`).
 - neg_points suma el valor ganado a valor privado, sin tope y sin restar la comisión (medido el sábado, un solo agregado; verificar con un Δ aislado tras el próximo trato): [`docs/bazaar/neg-points-formula.md`](docs/bazaar/neg-points-formula.md). Sustituye al supuesto `dealerCap = min(valor, book)`.
 - En dry-run `play` espera con puertas cerradas; en vivo espera `bazaar:play` por su cuenta (`clockGate`). Comprobar al abrir (09:00) que `play` arranca solo (`up-events.log`: «puertas abiertas»).
 - Recorder + `bazaar:play` + broker en sombra + visor no superan el límite de peticiones: vigilar `rate_limited` en `play.log` y `broker.log` (en la prueba salió `board v04: rate_limited` con el doctor y el bucle a la vez).

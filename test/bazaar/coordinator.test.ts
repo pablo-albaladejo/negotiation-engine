@@ -40,16 +40,16 @@ describe("coordinator arbitration", () => {
     const v = arbitrate([listing, market], budget());
     expect(v.find((x) => x.intent.id === "trades:post:0")).toMatchObject({ selected: false, reason: expect.stringContaining("sell:RET-06") });
     // If the market accept does not get the quota, the listing is the only sale and goes out.
-    const busy = arbitrate([accept("duel", "duel", 5), listing, market], budget());
+    const busy = arbitrate([accept("page", "page-completing", 60), listing, market], budget());
     expect(busy.find((x) => x.intent.id === "trades:post:0")?.selected).toBe(true);
   });
 
-  it("never selects more accepts than accepts_per_team_per_tick, across all routes, duel first", () => {
+  it("never selects more team accepts than accepts_per_team_per_tick; duel accepts have their own limit (one per duel)", () => {
     const intents = [accept("trade", "other", 90), accept("ladder", "dealer-ladder", 50), accept("duel", "duel", 5), accept("page", "page-completing", 60)];
-    const v = arbitrate(intents, budget());
-    expect(v.filter((x) => x.selected).map((x) => x.intent.id)).toEqual(["duel"]);
-    expect(arbitrate(intents, budget({ accepts: 2 })).filter((x) => x.selected).map((x) => x.intent.id).sort()).toEqual(["duel", "page"]);
-    expect(arbitrate(intents, budget({ accepts: 0 })).some((x) => x.selected)).toBe(false);
+    const sel = (b: ReturnType<typeof budget>) => arbitrate(intents, b).filter((x) => x.selected).map((x) => x.intent.id).sort();
+    expect(sel(budget())).toEqual(["duel", "page"]);
+    expect(sel(budget({ accepts: 2 }))).toEqual(["duel", "ladder", "page"]);
+    expect(sel(budget({ accepts: 0 }))).toEqual(["duel"]);
   });
 
   it("never sends more messages per conversation than messages_per_side_per_tick, nor next to a selected accept", () => {
