@@ -335,6 +335,66 @@ Cada persona tiene también `hints`: *"Plant rumours about other stalls, point t
 - Encontrarlos exige meter la frase en el `text` de nuestros mensajes. Hoy son plantillas con la cifra, así que haría falta un canal de charla que pregunte por rumores y siga las pistas, sin caer en spam o injection.
 - Señal de que alguien encontró uno: `egg.found` en el feed o el SSE; después, su carta oculta aparece en `/api/catalog`.
 
+## 8. Modelo de precio de los dealers (leído del frontend)
+
+Sale del editor de personas de la consola de admin, que viene en el bundle público: `PersonaEditor-*.js` (vista previa de la curva) y `util-*.js` (rasgos y curva). Copia en [`bundles/`](bundles/) (capturada el 3 oct). Es lo que **pinta** el editor; el servidor puede diferir en detalles. Los parámetros de cada dealer (`strategy`, bandas de `trades`) **no son públicos**: `/api/dealers/{id}` solo da `traits` y `menu`.
+
+### 8.1 Niveles y rasgos
+
+- **Escalera de 5 niveles** (`useEvents-*.js`): 1 *Friendly* (Abuela), 2 *Sharp* (El Chato), 3 *Collector* (*"Pays for what she loves, looks down on the rest"*), 4 *Tricksters* (*"Fake deadlines, switched cards — read the offer, flag the trick"*), 5 *Banker* (*"Endless patience, gold packs, never in a hurry"*; `sobre_oro`, book esperado 410,5). Sin nombres propios hasta que se anuncien.
+- **Los rasgos son prompt, no cifra.** Cada rasgo en [0, 1] se convierte en una frase por tramos (< 0,34 bajo, < 0,67 medio, resto alto) que entra en el prompt del dealer: p. ej. strictness alto = *"You stop dealing with anyone who tries to trick you"*. `chattiness` limita la respuesta a ⌊18 + 42·c⌋ palabras (Abuela ≈ 49, Chato ≈ 30). Y el editor avisa: *"An LLM line that names any other number is thrown away for the template line"*.
+
+| Rasgo | Abuela | El Chato |
+|---|---|---|
+| patience | 0,85 | 0,35 |
+| generosity | 0,80 | 0,25 |
+| shrewdness | 0,20 | 0,85 |
+| memory | 0,15 | 0,90 |
+| strictness | 0,10 | 0,85 |
+| chattiness | 0,75 | 0,30 |
+
+### 8.2 Límite y apertura (por banda de `trades`)
+
+Cada fila del menú es una banda con `book` (lista del sobre, o book de la rareza: común 10, poco común 25, rara 70, épica 180, legendaria 450), `list_frac`, `floor_frac`, `ceiling_frac` y la `opening_markup` de la estrategia:
+
+- **Dealer vende:** apertura = book × `list_frac` × (1 + `opening_markup`); suelo = min(book × `floor_frac`, apertura).
+- **Dealer compra:** techo = book × `ceiling_frac`; apertura = techo × (1 − `opening_markup`).
+- Defaults del editor al crear una banda: `list_frac` 1, `floor_frac` 0,85, `ceiling_frac` 0,75.
+- *"Its limit (floor when selling, ceiling when buying) is the same for every team"*. Lo mueven solo:
+  - `limit_jitter`: ± fracción del book por conversación.
+  - `demand_markup`: el límite sube conforme se agota el stock de la hora.
+  - `politeness_discount`: la amabilidad puede rebajar el límite (encaja con *"Abuela likes kindness"*).
+  - `welcome_first_deal` (+ `welcome_price_frac`): la **primera conversación de cada equipo abre en el límite**.
+
+### 8.3 Curva, aceptación y retirada
+
+- **Objetivo en la ronda r:** apertura + (límite − apertura) · min(1, r / `max_rounds`)^(1/`beta`), con `beta` ≥ 0,05. Las rondas son intercambios, no tics.
+- **Acepta** nuestra oferta si queda a `accept_margin` × book o menos de su objetivo.
+- **Se retira** tras `walk_after_rounds` ± `patience_jitter` rondas: *"past its patience: only a price at its limit, else it walks"* (la oferta `final`).
+- `mirror_concessions`: *"never moves faster than the team's last step (at least 2% of book)"*.
+
+### 8.4 Contraste con lo medido
+
+Estimaciones a partir del menú y del feed; no son los parámetros reales.
+
+| Observación | Lectura con el modelo |
+|---|---|
+| Abuela: sobre de barrio lista 26, pide 30; El Chato: plata lista 150, pide 188 | `opening_markup` ≈ 0,15 (Abuela) y ≈ 0,25 (Chato) |
+| Abuela vendió sobres de barrio a 21 (t07) y 19 (t12) en el feed | suelo ≤ 19 ⇒ `floor_frac` ≤ 0,73 en esa banda, o descuento por amabilidad / jitter |
+| Abuela compra comunes a 5 P sin moverse en 7 rondas (hilo 302 de t13) | techo 5 = 0,5 × book 10, y apertura = techo (sin margen de apertura en compras) |
+| El Chato compra poco comunes: abre a 13, mejor puja 16, nunca 17 (src/dealers/dealer-profile.ts) | techo ≈ 16 ⇒ `ceiling_frac` ≈ 0,64; `opening_markup` ≈ 0,19 |
+| El Chato cede ~1 P por mensaje | con `mirror_concessions`, su paso ≤ el nuestro (mín. 2 % del book = 0,5 P): **puede ser eco de nuestros pasos de 1 P** |
+
+### 8.5 Frente a nuestro motor (`src/engine/`, `src/dealers/`)
+
+- **Misma curva.** `concession(t, β)` en `src/engine/offer.ts` es t^(1/β) (Faratin), la misma que la del dealer. El dealer mide t en rondas (r / `max_rounds`), igual que `PatienceLog` (`src/dealers/negotiation/patience.ts`), que ya concluyó que la paciencia se gasta por intercambio y no por tic.
+- **Aceptación.** Su `accept_margin` es nuestro AC_next con margen (`decideAcceptance`, `src/engine/acceptance.ts`).
+- **Paciencia desde rasgos: heurística sin base en el servidor.** `patienceBudgetFor` = ⌊1 + 6·patience⌉ da 3 para El Chato; lo medido fueron ~8 (`DEALER_OVERRIDES`). Encaja con el modelo: `patience` es una frase del prompt y la retirada la decide `walk_after_rounds`. **Para los dealers de los niveles 3–5, el rasgo no predice su paciencia; hay que medirla.**
+- **Su `final` es su límite de esa conversación.** Nuestra regla `final-above-reservation` es correcta: después no hay más margen. El precio final observado sirve como medida directa del límite (± `limit_jitter`).
+- **Pasos con `mirror_concessions`.** `maxStep` 1 de El Chato le permite ceder como mucho max(1, 0,5) P por ronda. Un paso nuestro mayor mientras su objetivo de curva aún esté lejos podría sacarle más por ronda. Hipótesis por probar: el hilo 257 (caída de 3 P) no lo descarta.
+- **`welcome_first_deal` choca con `effectiveReservation`.** Si la primera conversación abre en el límite, el dealer no puede mejorar, y nuestra reserva efectiva (no cerrar a su apertura, que no cuenta para la escalera) deja esa conversación sin trato. Con un dealer nuevo, la primera conversación vale como medida del límite. Si además queremos el trato, hay que decidirlo aparte.
+- **Amabilidad con valor numérico.** `politeness_discount` rebaja el límite: el tono de las plantillas (`src/dealers/negotiation/messages.ts`) cuenta para la cifra, no solo para los regalos.
+
 ## Cómo reproducirlo
 
 ```bash
