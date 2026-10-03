@@ -209,6 +209,8 @@ export interface BuildOptions {
   /** Private values cache on disk (`values.json`) and its timestamp; seeds the client's if still fresh. */
   valueCache?: ReadonlyMap<string, number>;
   valueCacheAt?: number;
+  /** Hand the disk cache was saved with: without it the disk cache is ignored. */
+  valueCacheHand?: Readonly<Record<string, number>>;
   /** Maximum `/api/me/value` calls per tick (default 4). */
   valueFetchesPerTick?: number;
   /**
@@ -346,9 +348,13 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     if (opts.personaModels) opts.personaModels[p.id] = p.model;
   }
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
-  // Values cache in the client: the new hand forgets what changed; `/api/me` seeds what we hold.
+  // Values cache in the client: the disk cache enters under the hand it was saved with, then the new hand forgets every
+  // set that changed; `/api/me` seeds what we hold. Seeding the disk cache after `noteHand` revived stale values.
+  if (opts.valueCache?.size && opts.valueCacheHand) {
+    client.noteHand(opts.valueCacheHand);
+    client.seedValues(Object.fromEntries(opts.valueCache), opts.valueCacheAt ?? 0);
+  }
   client.noteHand(ours.holdings.byRef);
-  if (opts.valueCache) client.seedValues(Object.fromEntries(opts.valueCache), opts.valueCacheAt ?? 0);
   client.seedValues(ours.values);
   const valueCache = new Map(Object.entries(client.cachedValues()));
   const ranks = lb?.success ? new Map(lb.data.teams.map((t) => [t.team, { ...(t.rank != null ? { rank: t.rank } : {}), ...(t.score != null ? { score: t.score } : {}) }])) : opts.prevRanks ?? new Map();

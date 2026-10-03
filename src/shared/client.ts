@@ -89,6 +89,9 @@ export function zodIssues(error: z.ZodError): string {
 
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Set of a card ref ("SAL-09" → "SAL"). */
+const setOf = (ref: string): string => ref.split("-")[0] ?? ref;
+
 /** Bazaar HTTP client (team). The key only travels in the header; it never appears in errors or logs. */
 export class BazaarClient {
   private readonly fetchFn: typeof fetch;
@@ -239,12 +242,21 @@ export class BazaarClient {
     const now = Date.now();
     return Object.fromEntries([...this.valueCache].filter(([, x]) => now - x.at < BazaarClient.VALUE_TTL_MS).map(([k, x]) => [k, x.v]));
   }
-  /** Current hand (copies per card): forgets the value of cards whose count changed since last time. */
+  /**
+   * Current hand (copies per card): forgets the values of every set where some count changed since last time. A value
+   * depends on the rest of its set (page bonus): SAL-09 was 91 with the page at 8/10 and 177.1 at 9/10.
+   */
   noteHand(byRef: Readonly<Record<string, number>>): void {
     if (this.lastHand) {
-      for (const ref of new Set([...Object.keys(byRef), ...Object.keys(this.lastHand)])) if ((byRef[ref] ?? 0) !== (this.lastHand[ref] ?? 0)) this.valueCache.delete(ref);
+      const changed = new Set<string>();
+      for (const ref of new Set([...Object.keys(byRef), ...Object.keys(this.lastHand)])) if ((byRef[ref] ?? 0) !== (this.lastHand[ref] ?? 0)) changed.add(setOf(ref));
+      for (const ref of [...this.valueCache.keys()]) if (changed.has(setOf(ref))) this.valueCache.delete(ref);
     }
     this.lastHand = { ...byRef };
+  }
+  /** Hand last seen by `noteHand` (saved with the disk cache). */
+  hand(): Readonly<Record<string, number>> | undefined {
+    return this.lastHand;
   }
   myThreads(status?: string) {
     return this.request("GET", `/api/me/threads${status ? `?status=${encodeURIComponent(status)}` : ""}`, ThreadListSchema);

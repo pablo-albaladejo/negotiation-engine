@@ -182,22 +182,26 @@ export function valuesWanted(sheet: readonly PriceEntry[], max: number): string[
 /** `results/bazaar-live/values.json`: values already requested from `/api/me/value` (private, outside git). */
 export const defaultValuesFile = (root: string) => join(root, "results", "bazaar-live", "values.json");
 
-export function loadValueCache(file: string): { values: Map<string, number>; at: number } {
+/** Without the saved `hand` (older files) the values are dropped: there is no way to tell which sets changed since. */
+export function loadValueCache(file: string): { values: Map<string, number>; at: number; hand?: Record<string, number> } {
   if (!existsSync(file)) return { values: new Map(), at: 0 };
   try {
     const d = obj(JSON.parse(readFileSync(file, "utf8")));
     const at = typeof d.updated === "string" ? Date.parse(d.updated) : 0;
-    return { values: new Map(Object.entries(obj(d.values)).flatMap(([k, v]) => (num(v) !== undefined ? [[k, num(v)!] as const] : []))), at: Number.isFinite(at) ? at : 0 };
+    if (!d.hand || typeof d.hand !== "object") return { values: new Map(), at: 0 };
+    const hand = Object.fromEntries(Object.entries(obj(d.hand)).flatMap(([k, v]) => (num(v) !== undefined ? [[k, num(v)!] as const] : [])));
+    return {
+      hand, values: new Map(Object.entries(obj(d.values)).flatMap(([k, v]) => (num(v) !== undefined ? [[k, num(v)!] as const] : []))), at: Number.isFinite(at) ? at : 0 };
   } catch {
     // Corrupt cache: values are requested again little by little.
     return { values: new Map(), at: 0 };
   }
 }
 
-export function saveValueCache(file: string, values: ReadonlyMap<string, number>): void {
+export function saveValueCache(file: string, values: ReadonlyMap<string, number>, hand?: Readonly<Record<string, number>>): void {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp-${process.pid}`;
-  writeFileSync(tmp, `${JSON.stringify({ updated: new Date().toISOString(), values: Object.fromEntries(values) }, null, 2)}\n`);
+  writeFileSync(tmp, `${JSON.stringify({ updated: new Date().toISOString(), ...(hand ? { hand } : {}), values: Object.fromEntries(values) }, null, 2)}\n`);
   renameSync(tmp, file);
 }
 

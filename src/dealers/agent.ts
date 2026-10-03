@@ -154,7 +154,6 @@ export class BazaarAgent {
   private lastCash: number | undefined;
   /** Cash at the previous step: if a deal closes with no visible price, the cash drop is what was spent. */
   private prevCash: number | undefined;
-  private readonly values = new Map<string, number>();
   private catalog: Catalog | undefined;
   /** If the dealer rejects `{buy: {card}}`, we buy by rarity and set. */
   private cardTopicOk = true;
@@ -469,11 +468,8 @@ export class BazaarAgent {
 
   /** Our value of buying one more copy of `card`: for a card we already hold, the next copy's marginal (`nextCopyValue`). */
   private async valueOf(card: string, me: Me): Promise<number> {
-    let v = this.values.get(card);
-    if (v === undefined) {
-      v = await this.api.value(card);
-      this.values.set(card, v);
-    }
+    // No cache here: the client's forgets a set's values when the hand changes (page bonus), whichever route bought.
+    const v = await this.api.value(card);
     const held = me.assets.filter((a) => a.ref === card && (a.kind ?? "card") === "card");
     if (!held.length) return v;
     const vals = held.flatMap((a) => (typeof a.your_value === "number" ? [a.your_value] : []));
@@ -734,7 +730,6 @@ export class BazaarAgent {
         this.spentRun += settled;
         this.log(`  thread ${thread.id}: deal, ${settled} P counted against the budgets (${source})`);
       }
-      this.values.clear();
     }
     const summary = this.summarize(thread, me, tick, outcomeOf(thread.status, thread.closed_reason), thread.status === "deal" ? settled : undefined, target.reservation);
     this.applyReason(thread.closed_reason ?? undefined, thread.until_tick ?? undefined, tick);
