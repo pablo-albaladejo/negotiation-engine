@@ -40,6 +40,19 @@ import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFl
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+const TRANSIENT = new Set(["rate_limited", "too_many_failures", "network"]);
+
+/** A transient API error (rate limit, network) while reading skips the tick instead of ending the live loop. */
+async function orSkip<T>(p: Promise<T>, what: string): Promise<T | undefined> {
+  try {
+    return await p;
+  } catch (e) {
+    if (!(e instanceof BazaarError) || !TRANSIENT.has(e.code)) throw e;
+    console.log(`  ${what}: ${e.code}, tick skipped`);
+    return undefined;
+  }
+}
+
 function num(raw: string, name: string): number {
   const n = Number(raw);
     if (!Number.isFinite(n) || n < 0) throw new Error(`${name} must be a number ≥ 0`);
@@ -120,7 +133,11 @@ async function main() {
     const personaMemos = loadPersonaMemos(personasFile);
     const flags = loadFlags(flagsFile);
     const posterior = loadPosterior(posteriorFile);
-    const clock = await client.clock();
+    const clock = await orSkip(client.clock(), "clock");
+    if (!clock) {
+      await sleep(5_000);
+      continue;
+    }
     if (live) {
       const gate = clockGate(clock);
       if (!gate.run) {
@@ -135,7 +152,7 @@ async function main() {
     }
     lastTick = clock.tick;
     const withLb = clock.tick - lastLeaderboard >= leaderboardEvery;
-    const state = await buildGameState(client, {
+    const state = await orSkip(buildGameState(client, {
       leaderboard: withLb,
       pageTargets,
       memos,
@@ -152,7 +169,11 @@ async function main() {
       prevRanks,
       // First time without a corpus: seed it with what is already saved in results/ (dumps, scans, streams).
       ...(existsSync(hintsFile) ? {} : { hintSeed: seedRaw(join(root, "results")) }),
-    });
+    }), "GameState");
+    if (!state) {
+      await sleep(5_000);
+      continue;
+    }
     // The hint corpus is read-only game data (GET): it is also added in dry-run. It never enters a figure.
     appendHints(hintsFile, state.hints.fresh);
     // Private values already requested (GET): also saved in dry-run so the query is not repeated.
