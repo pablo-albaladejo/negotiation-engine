@@ -533,7 +533,7 @@ export class BazaarAgent {
    * so we only take a price near her limit, where the ladder share is high. Only copies and page cards keep price ≥ value.
    */
   private ladderReservation(c: Candidate): number | undefined {
-    if (c.side !== "sell" || c.copy !== "duplicate" || !c.rarity) return undefined;
+    if (c.side !== "sell" || c.copy !== "duplicate" || !c.rarity || c.forex) return undefined;
     const gain = this.o.ladderSellDiscount?.() ?? 0;
     const b = this.o.herBand?.(`buys:${c.rarity}`);
     if (gain <= 0 || !b || b.n < HOPELESS_MIN_SAMPLES) return undefined;
@@ -548,7 +548,8 @@ export class BazaarAgent {
     if (past && past.n >= HOPELESS_MIN_REPEATS && (c.side === "sell" ? past.best < c.reservation : past.best > c.reservation)) {
       return `${past.n} no-deal threads today, her best ${past.best} vs our ${c.side === "sell" ? "min" : "max"} ${c.reservation}`;
     }
-    if (c.kind === "buy-pack" || !c.rarity) return undefined;
+    // Her band is per rarity across sets; a forex route is per card (Pilar pays SAL rares ~75, other rares ~54).
+    if (c.kind === "buy-pack" || !c.rarity || c.forex) return undefined;
     const band = `${c.side === "sell" ? "buys" : "sells"}:${c.rarity}`;
     const b = this.o.herBand?.(band);
     if (!b || b.n < HOPELESS_MIN_SAMPLES) return undefined;

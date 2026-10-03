@@ -8,6 +8,7 @@ import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from
 import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
 import { appendLesson, PendingLessons, type LessonEntry } from "../dealers/history/lessons.js";
+import { forexBuyRoute, forexSellRoute } from "../dealers/planning/forex.js";
 import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
@@ -345,7 +346,9 @@ export class DealersRoute {
         // top three) or we really want the card (a buy of a card we don't hold). Abuela L1 and Chato L2 are 3/3 at ~1.0.
         // Exception: a pending one-shot greeting (Abuela's saint's day) needs a thread to ride on.
         const wanted = i.side === "buy" && i.cards.some((c) => !me.assets.some((a) => a.ref === c && (a.kind ?? "card") === "card"));
-        if (bonus <= 0 && !wanted && !greetingFor(state, i.dealer)) {
+        // Pablo, 3 Oct: a forex leg (Picaros -> Pilar, `forex.ts`) opens on its margin even without ladder gain.
+        const forex = i.cards.some((c) => (i.side === "buy" ? forexBuyRoute(i.dealer, c) : forexSellRoute(i.dealer, c)) !== undefined);
+        if (bonus <= 0 && !wanted && !forex && !greetingFor(state, i.dealer)) {
           out.notes.push(`dealer ${i.dealer}: ${i.target} skipped (no ladder gain at L${lvl ?? "?"} and not a card we want)`);
           continue;
         }

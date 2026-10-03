@@ -4,6 +4,7 @@ import { rarityOf, type Target } from "./planner.js";
 import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
 import { buildValueModel, heldAssets } from "../../trades/trades.js";
 import { isKeepsake } from "../../shared/asset-locks.js";
+import { FOREX_MAX_LOTS, forexBuyRoute, forexLots, forexSellRoute } from "./forex.js";
 
 /**
  * Menu planner: from `/api/me`, `/api/catalog` and the dealer record, ranks what to
@@ -116,6 +117,8 @@ export interface Candidate extends Target {
   /** Pack buy: pack type (`sobre_barrio`) and her cap per team and game hour (`per_team_per_hour`). */
   pack?: string;
   perHour?: number;
+  /** Dealer-to-dealer arbitrage leg (`forex.ts`): a copy bought to resell, or its resale. */
+  forex?: true;
 }
 
 export interface RankInput {
@@ -277,6 +280,14 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
       const pushCards = () => {
         if (input.cardTopic === false) return;
         for (const v of vals) {
+          const fx = forexBuyRoute(dealer.id, v.id);
+          if (fx && forexLots(me) < FOREX_MAX_LOTS) {
+            // Forex buy: valued at her rival's plausible bid; our max is the route's, so the resale clears the margin.
+            const reservation = Math.min(cap, fx.maxBuy);
+            const room = cap >= fx.maxBuy;
+            buys.push({ kind: "buy-card", key: `buy:${v.id}`, side: "buy", topic: { buy: { card: v.id } }, label: `buy ${v.id} (forex → ${fx.to})`, rarity, set: setId, card: v.id, value: fx.plausibleBid, reservation, herList: list, herOpening: opening, herOpeningSource: openingSource, surplus: round1(fx.plausibleBid - ref), room, cardTopicUntested: true, forex: true, why: `forex: buy ≤ ${fx.maxBuy} here, resell to ${fx.to} ≥ ${fx.minSell} (plausible ${fx.plausibleBid}, fees ${fx.fees})${room ? "" : `; no room (cap ${cap})`}` });
+            continue;
+          }
           if (v.held) continue;
           buys.push(
             finish(
@@ -345,6 +356,15 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
         ? { price: Math.max(1, Math.floor(sellList * PLAUSIBLE_BID_FRAC)), source: `unknown until her first bid; plausible ceiling her ${rarity} list ${sellList} × ${PLAUSIBLE_BID_FRAC}` }
         : { price: measured!, source: `unknown until her first bid; no ${rarity} sell list, plausible ceiling = highest ${rarity} bid measured in public settlements, else its book (${measured})` };
     const offered = sorted.length > 1 ? sorted.slice(1).map((a) => ({ a, copy: "duplicate" as const })) : [{ a: top, copy: "only" as const }];
+    const fx = forexSellRoute(dealer.id, ref);
+    if (fx) {
+      // Forex resale: only a copy beyond our first, at the route's minimum (dealer deals never score at private values).
+      for (const a of sorted.slice(1)) {
+        const room = fx.plausibleBid >= fx.minSell;
+        sells.push({ kind: "sell", key: `sell:${a.id}`, side: "sell", topic: { sell: { assets: [a.id] } }, label: `sell ${ref} (forex)`, rarity, set, card: ref, value: fx.minSell, reservation: fx.minSell, herList: sellList, herOpening: fx.plausibleBid, herOpeningSource: `forex route: her measured median for ${ref}`, surplus: round1(fx.plausibleBid - fx.minSell), room, bidUnknown: true, copy: "duplicate", forex: true, why: `forex resale: min ${fx.minSell} (bought ≤ ${fx.maxBuy}, fees ${fx.fees}), plausible ${fx.plausibleBid}; our first copy stays` });
+      }
+      continue;
+    }
     for (const { a, copy } of offered) {
       // A value of 0 is unknown, not worthless (3 Oct: egg prize LAT-13, legendary print run 1, came with your_value 0 and
       // was offered to banco at a minimum of 1 P): never sold until it has a real value.
@@ -461,7 +481,8 @@ export function selectCandidates(cands: readonly Candidate[], o: { maxThreads: n
   const tryBuy = (c: Candidate, reason: string) => {
     if (out.length >= o.maxThreads || out.some((s) => s.candidate.key === c.key)) return;
     const reservation = Math.min(c.reservation, Math.floor((c.pageCompleting ? (o.pageSpend ?? o.maxSpend) : o.maxSpend) - committed));
-    if (reservation <= (c.herList ?? c.herOpening)) return;
+    // A forex buy sits below her list on purpose (Picaros list 63, public deals 48–56): she comes down or we close.
+    if (!c.forex && reservation <= (c.herList ?? c.herOpening)) return;
     committed += reservation;
     out.push({ candidate: { ...c, reservation }, reason });
   };
