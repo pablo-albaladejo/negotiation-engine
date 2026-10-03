@@ -110,7 +110,7 @@ function loadSourceFiles() {
 
         // Find interface/type property/method names: "name: Type" or "method(...)"
         // Match lines like: narrate(input: NarratorInput, signal: AbortSignal): Promise<...>;
-        const propertyRegex = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*[:(]/gm;
+        const propertyRegex = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\??\s*[:(]/gm;
         while ((match = propertyRegex.exec(content)) !== null) {
           const identifier = match[1];
           if (isCapsName(identifier)) {
