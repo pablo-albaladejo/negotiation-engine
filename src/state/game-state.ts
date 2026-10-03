@@ -11,6 +11,7 @@ import { indexCatalog } from "../flags/flags.js";
 import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";
 import { buildPriceSheet, buildVenues, formatPriceSheet, formatVenues, valuesWanted, type PriceEntry, type VenueInfo } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
+import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 
@@ -97,6 +98,11 @@ export interface GameState {
   conversations: Conversation[];
   /** Lecturas que fallaron (endpoint: código); el estado es parcial pero usable. */
   missing: string[];
+  /**
+   * ¿auto o board? Sesiones del Market Test medidas en sombra y la recomendación (`src/venue/mechanism.ts`). La rellena
+   * el coordinador tras construir el estado (lee `bench-sessions.json` y el latido del broker de disco).
+   */
+  venue?: { mechanismDecision: MechanismDecision };
 }
 
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);

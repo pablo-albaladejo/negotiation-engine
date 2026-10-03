@@ -20,6 +20,9 @@ import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/pric
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
+import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
+import { executeVenueMechanism, proposeVenueMechanism } from "../venue/route.js";
+import { defaultHeartbeatFile, defaultSessionsFile, loadBenchSessions, loadHeartbeat, publicSession } from "../broker/shadow.js";
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
 /**
@@ -51,6 +54,7 @@ async function main() {
       "leaderboard-every": { type: "string", default: "5" },
       "approve-flags": { type: "string", default: "" },
       "flag-pressure": { type: "boolean", default: false },
+      "allow-venue-switch": { type: "boolean", default: false },
     },
   });
   const live = !values["dry-run"] && values.confirm;
@@ -181,6 +185,28 @@ async function main() {
         }
       }
     }
+    // ¿auto o board? Sesiones medidas por el broker en sombra y su latido (disco), calendario y caja: regla pura.
+    const nowHours = state.time.gameHour ?? state.clock.tHours;
+    state.venue = {
+      mechanismDecision: decideMechanism(
+        {
+          ...(state.ours.venue?.mechanism ? { current: state.ours.venue.mechanism } : {}),
+          sessions: loadBenchSessions(defaultSessionsFile(root)).map(publicSession),
+          ...(state.ours.cash !== undefined ? { cash: state.ours.cash } : {}),
+          ...(nowHours !== undefined ? { nowHours } : {}),
+          ticksPerHour: ticksPerHourOf(state.tick, state.clock.tHours),
+          ...(schedule ? { schedule } : {}),
+          ...(() => {
+            const hb = loadHeartbeat(defaultHeartbeatFile(root));
+            return hb ? { heartbeat: hb } : {};
+          })(),
+          now: new Date(),
+        },
+        { ...DEFAULT_MECHANISM_THRESHOLDS, cashFloor: num(values["cash-floor"], "--cash-floor") },
+      ),
+    };
+    console.log("== venue mechanism ==");
+    console.log(`  ${formatMechanismLine(state.venue.mechanismDecision)}`);
     console.log("== budget (clock.limits) ==");
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
 
@@ -212,6 +238,7 @@ async function main() {
         },
       ],
       ["agenda", async () => ({ intents: effects.intents, notes: [], strategies: new Map(), decisions: new Map() })],
+      ["venue-mechanism", async () => ({ ...proposeVenueMechanism(state.venue!.mechanismDecision, state.ours.venue?.id), strategies: new Map(), decisions: new Map() })],
     ] as const) {
       try {
         proposals.push({ route, p: await run() });
@@ -262,6 +289,7 @@ async function main() {
     for (const l of lines) console.log(`  ${l}`);
     for (const l of await executeMarkets(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     for (const l of await executePacks(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
+    for (const l of executeVenueMechanism(verdicts.filter((v) => v.selected).map((v) => v.intent), state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] })) console.log(`  ${l}`);
     const flagged = await flagsRoute.execute(state, selected);
     for (const l of flagged.lines) console.log(`  ${l}`);
     if (live) {
