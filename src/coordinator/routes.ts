@@ -314,11 +314,13 @@ export class DealersRoute {
         const lvl = levelOf(i.dealer);
         const share = expectedShare(ladder, i.dealer);
         const bonus = ev !== undefined && lvl !== undefined ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
-        // A cheap spare (value < CHEAP_SPARE_P) only goes to a dealer whose ladder it can still raise; otherwise it is
-        // kept (Workshop set or a later ladder gap). Abuela at L1 3/3 bought three commons at 5–6 P for 0 score.
-        // Exception: a pending one-shot greeting (Abuela's saint's day) needs a thread to ride on; the cheap spare opens it.
-        if (i.side === "sell" && bonus <= 0 && (i.value === undefined || i.value < CHEAP_SPARE_P) && !greetingFor(state, i.dealer)) {
-          out.notes.push(`dealer ${i.dealer}: ${i.target} kept (value ${i.value ?? "unknown"} < ${CHEAP_SPARE_P} P and no ladder gain at L${lvl ?? "?"})`);
+        // Dealer deals score only through the ladder (RULES: best three per level by share of her range), never neg_points.
+        // Pablo, 3 Oct: open with a dealer only if it raises her level's ladder (empty slot, or beats the weakest of the
+        // top three) or we really want the card (a buy of a card we don't hold). Abuela L1 and Chato L2 are 3/3 at ~1.0.
+        // Exception: a pending one-shot greeting (Abuela's saint's day) needs a thread to ride on.
+        const wanted = i.side === "buy" && i.cards.some((c) => !me.assets.some((a) => a.ref === c && (a.kind ?? "card") === "card"));
+        if (bonus <= 0 && !wanted && !greetingFor(state, i.dealer)) {
+          out.notes.push(`dealer ${i.dealer}: ${i.target} skipped (no ladder gain at L${lvl ?? "?"} and not a card we want)`);
           continue;
         }
         const notes = [...(w !== 1 ? [`demand ×${w.toFixed(2)}`] : []), ...(bonus > 0 ? [`ladder +${bonus.toFixed(1)} P (L${lvl}, expected share ${share.toFixed(2)})`] : [])];
@@ -384,9 +386,6 @@ export async function pageTargetCaps(client: BazaarClient, me: Me | undefined, p
  * page-card buys stay above it, so a cheap El Rastro accept never takes its cash. A target with no cap keeps the last
  * dealer ask (none asked, nothing kept).
  */
-/** Below this private value, a spare is sold to a dealer only for ladder gain. */
-export const CHEAP_SPARE_P = 8;
-
 export function pageReserveOf(state: GameState, me: Me | undefined, pageTargets: readonly string[], caps: ReadonlyMap<string, number> = new Map()): { refs: string[]; amount: number; why: string } {
   const refs = pageTargets.filter((t) => !me?.assets.some((a) => a.ref === t && (a.kind ?? "card") === "card"));
   let amount = 0;
