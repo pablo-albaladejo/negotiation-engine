@@ -17,7 +17,8 @@ import type { FlagRecord } from "../state/world.js";
 import type { FlagCandidate } from "../flags/flags.js";
 import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
-import { marketSale } from "../markets/markets.js";
+import { marketSale, proposeMarkets, type MarketsContext } from "../markets/markets.js";
+import { directedListings } from "../markets/rival-page.js";
 
 /**
  * Coordinator routes. Each proposes its tick intents WITHOUT sending them (GET only) and, live, executes
@@ -304,6 +305,8 @@ export class TradesRoute {
   private last: { state: TradeState; plan: TickPlan } | undefined;
   /** `--scanner`: listings are held back by a sale at our marginal value (otherwise by a duplicate sale at first-copy value). */
   scanner = false;
+  /** Scanner settings shared with the markets route (ledger, cash floor, hourly cap) so the hold-back matches its decision. */
+  scannerContext: Pick<MarketsContext, "ledger" | "cashFloor" | "spendPerHour"> = {};
 
   /** `params`: the coordinator's `--max-spend` and `--cash-floor` (otherwise the El Rastro defaults). */
   constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor">> = {}) {
@@ -339,9 +342,14 @@ export class TradesRoute {
       });
     }
     for (const c of plan.cancels) out.intents.push({ id: `trades:cancel:${c.id}`, route: "trades", kind: "cancel", summary: `El Rastro: CANCEL #${c.id} (${c.reason})` });
+    // Scanner on: the same context the markets route gets this tick (directed listings from this El Rastro state, page targets).
+    const trade = this.scanner ? this.last.state : undefined;
+    const saleCtx: MarketsContext = trade ? { ...this.scannerContext, directedRefs: new Set(directedListings(trade).map((d) => d.ref)), pageTargets } : {};
+    // The scanner's sales this tick, computed once (marketSale would rerun proposeMarkets per listing).
+    const scannerSales = trade ? proposeMarkets(state, new Map(), { ...saleCtx, scanner: true, trade }).sales : undefined;
     plan.posts.forEach((p, k) => {
       // Never list a card below a better bid the markets route would take this tick (v02 bid 22 vs our El Rastro listing at 14).
-      const sale = p.kind === "list" ? marketSale(state, p.ref, this.scanner ? this.last?.state : undefined) : undefined;
+      const sale = p.kind === "list" ? (scannerSales ? scannerSales.get(p.ref) : marketSale(state, p.ref)) : undefined;
       if (sale && sale.quote.price > p.price) {
         out.notes.push(`El Rastro: list ${p.ref} @ ${p.price} P held back: bid ${sale.quote.price} P on ${sale.venue.id} (#${sale.quote.offer}, net ${sale.net}) goes through the markets route`);
         return;

@@ -31,6 +31,8 @@ interface World {
   feeBps: number;
   feePerCard: number;
   cash: number;
+  /** Copies per card locked in our own offers (the first ones). */
+  locked?: number[];
 }
 
 function build(w: World, tick: number, offerBase = 0) {
@@ -38,7 +40,7 @@ function build(w: World, tick: number, offerBase = 0) {
   let id = 1;
   const held: HeldAsset[] = [];
   CARDS.forEach((r, k) => {
-    for (let n = 0; n < w.holdings[k]!; n++) held.push({ id: id++, ref: r, value: 0, locked: false });
+    for (let n = 0; n < w.holdings[k]!; n++) held.push({ id: id++, ref: r, value: 0, locked: n < (w.locked?.[k] ?? 0) });
   });
   const counts = countHoldings(held);
   const prices: PriceEntry[] = CARDS.map((r, k) => {
@@ -145,6 +147,26 @@ describe("dispersion scanner", () => {
         const { state, trade } = build(w, 600);
         const { intents } = proposeMarkets(state, new Map(), { scanner: true, trade, ledger: new ScannerLedger(), cashFloor: 0, directedRefs: new Set(CARDS) });
         expect(intents.filter((x) => x.locks?.some((l) => l.startsWith("sell:")))).toEqual([]);
+      }),
+    );
+  });
+
+  it("deterministic: a clear ask below marginal value is bought and a clear bid above it is sold", () => {
+    const w: World = { bases: [40], holdings: [0, 3, 0, 0], asks: [10, undefined, undefined, undefined], bids: [undefined, 18, undefined, undefined], feeBps: 0, feePerCard: 0, cash: 200 };
+    const { state, trade } = build(w, 600);
+    const { intents } = proposeMarkets(state, new Map(), { scanner: true, trade, ledger: new ScannerLedger(), cashFloor: 20 });
+    const scanner = intents.filter((x) => x.acceptClass === "scanner");
+    expect(scanner.some((x) => x.ref === "AAA-01" && x.locks!.includes("buy:AAA-01"))).toBe(true);
+    expect(scanner.some((x) => x.ref === "AAA-02" && x.locks!.includes("sell:AAA-02"))).toBe(true);
+  });
+
+  it("copies locked in our own offers never make the last free copy of a page-target set look like a duplicate", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 3 }), fc.integer({ min: 0, max: 1 }), fc.integer({ min: 5, max: 80 }), fc.integer({ min: 1, max: 90 }), (lockedN, free, bid, base) => {
+        const w: World = { bases: [base], holdings: [0, lockedN + free, 0, 0], locked: [0, lockedN, 0, 0], asks: [undefined, undefined, undefined, undefined], bids: [undefined, bid, undefined, undefined], feeBps: 0, feePerCard: 0, cash: 200 };
+        const { state, trade } = build(w, 600);
+        const { intents } = proposeMarkets(state, new Map(), { scanner: true, trade, ledger: new ScannerLedger(), cashFloor: 0, pageTargets: ["AAA-09"] });
+        expect(intents.filter((x) => x.locks?.includes("sell:AAA-02"))).toEqual([]);
       }),
     );
   });

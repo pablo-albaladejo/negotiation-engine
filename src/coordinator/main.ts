@@ -110,6 +110,7 @@ async function main() {
   // Dispersion scanner (markets route): executed deals per game hour, in memory for the run (a restart counts from zero).
   const scannerLedger = new ScannerLedger();
   const scannerSpendPerHour = num(values["scanner-spend-per-hour"], "--scanner-spend-per-hour");
+  trades.scannerContext = { ledger: scannerLedger, cashFloor: num(values["cash-floor"], "--cash-floor"), spendPerHour: scannerSpendPerHour };
   // plan.jsonl: by default only live (like decisions.jsonl, same date); --plan-log forces a path, also in dry-run.
   const planFile = values["plan-log"] || (live ? defaultPlanLogFile(root) : undefined);
   const convFile = defaultConversationsFile(root);
@@ -173,6 +174,7 @@ async function main() {
       hintCorpus: loadHints(hintsFile),
       valueCache: valueCache.values,
       valueCacheAt: valueCache.at,
+      ...(valueCache.hand ? { valueCacheHand: valueCache.hand } : {}),
       prevRanks,
       // First time without a corpus: seed it with what is already saved in results/ (dumps, scans, streams).
       ...(existsSync(hintsFile) ? {} : { hintSeed: seedRaw(join(root, "results")) }),
@@ -184,7 +186,9 @@ async function main() {
     // The hint corpus is read-only game data (GET): it is also added in dry-run. It never enters a figure.
     appendHints(hintsFile, state.hints.fresh);
     // Private values already requested (GET): also saved in dry-run so the query is not repeated.
-    saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())));
+    // The disk cache seeds the client on the first tick only: later ticks would revive values the hand already forgot.
+    valueCache.values.clear();
+    saveValueCache(valuesFile, new Map(Object.entries(client.cachedValues())), client.hand());
     // Per-persona fit posterior: comes only from reads (GET), also saved in dry-run. It never enters a message.
     savePosterior(posteriorFile, posterior);
     savePersonaModels(personaModelFile, personaModels);

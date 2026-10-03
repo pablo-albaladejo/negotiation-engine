@@ -3,7 +3,7 @@ import type { Intent } from "../coordinator/coordinator.js";
 import type { GameState } from "../state/game-state.js";
 import type { PriceEntry, Quote, VenueInfo } from "../state/prices.js";
 import { countHoldings, type TradeState } from "../trades/trades.js";
-import { gameHourOf, marginalValue, SCANNER_PARAMS, ScannerLedger, scannerMargin, scanDecision, type ScannerParams } from "./scanner.js";
+import { gameHourOf, marginalValue, SCANNER_PARAMS, ScannerLedger, scanDecision, type ScannerParams } from "./scanner.js";
 
 /**
  * Markets route: the same card can be in El Rastro and in other teams' venues. For each possible purchase or
@@ -111,8 +111,10 @@ function valueFor(e: PriceEntry, side: "buy" | "sell", counts: Map<string, numbe
     return { value: Math.round(marginalValue(counts, e.ref, side, trade.model) * 10) / 10, src: `${held} held` };
   }
   if (e.value === undefined) return undefined;
-  if (side === "buy" && e.holdings === 0) return { value: e.value, src: "first copy (no model)" };
-  if (side === "sell" && e.holdings > 1) return { value: e.value, src: "first copy (no model, conservative)" };
+  // With El Rastro state, `counts` (free copies when selling) beats the sheet's count, which includes locked copies.
+  const n = counts ? held : e.holdings;
+  if (side === "buy" && n === 0) return { value: e.value, src: "first copy (no model)" };
+  if (side === "sell" && n > 1) return { value: e.value, src: "first copy (no model, conservative)" };
   return undefined;
 }
 
@@ -134,14 +136,14 @@ function freeAsset(ref: string, trade: TradeState | undefined, assetsByRef: Read
 const teamsOf = (state: GameState) => Math.max(1, ...state.markets.venues.map((v) => v.ownerRank ?? 0));
 const setOfRef = (ref: string) => ref.split("-")[0] ?? ref;
 
-/** The sale of `ref` the markets route would propose this tick (net ≥ scanner margin at our marginal value), if any. */
-export function marketSale(state: GameState, ref: string, trade?: TradeState, params: ScannerParams = SCANNER_PARAMS): MarketChoice | undefined {
+/**
+ * The sale of `ref` the markets route would propose this tick, if any. With `trade` (scanner on): exactly the scanner's
+ * own decision (one source of truth: `proposeMarkets` with `ctx`, so directed listings, page-target last copies, free
+ * copies, caps and cash all apply). Its pending ledger entries are replaced by the coordinator's own `proposeMarkets` call.
+ */
+export function marketSale(state: GameState, ref: string, trade?: TradeState, ctx: MarketsContext = {}): MarketChoice | undefined {
   if (!trade) return legacyMarketSale(state, ref);
-  const e = state.markets?.prices.find((x) => x.ref === ref);
-  if (!e || e.holdings < 1) return undefined;
-  const v = valueFor(e, "sell", trade ? countHoldings(trade.held) : undefined, trade);
-  const c = v && bestVenue(e, "sell", state.markets.venues, teamsOf(state), v.value);
-  return c && c.net >= scannerMargin(c.quote.price, params) ? c : undefined;
+  return proposeMarkets(state, new Map(), { ...ctx, scanner: true, trade }).sales.get(ref);
 }
 
 interface Candidate {
@@ -151,14 +153,18 @@ interface Candidate {
   asset?: number;
 }
 
-export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string, number[]>, ctx: MarketsContext = {}): { intents: Intent[]; notes: string[] } {
-  if (!ctx.scanner) return legacyProposeMarkets(state, assetsByRef);
+export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string, number[]>, ctx: MarketsContext = {}): { intents: Intent[]; notes: string[]; sales: Map<string, MarketChoice> } {
+  if (!ctx.scanner) return { ...legacyProposeMarkets(state, assetsByRef), sales: new Map() };
   const intents: Intent[] = [];
   const params = ctx.params ?? SCANNER_PARAMS;
   const ledger = ctx.ledger ?? defaultLedger;
   ledger.resetPending();
   const trade = ctx.trade;
   const counts = trade ? countHoldings(trade.held) : undefined;
+  // Sell side: copies locked in our own offers or reserved are already gone (the real last copy is never sold as a duplicate).
+  const freeCounts = trade ? countHoldings(trade.held.filter((a) => !a.locked && !trade.reserved.has(a.id))) : undefined;
+  // Cash committed by this route's buys this tick (page-completing first, then scanner). Other routes' spend is not seen here.
+  let committed = 0;
   const cash = state.ours.cash ?? 0;
   const cashFloor = ctx.cashFloor ?? 0;
   const spendPerHour = ctx.spendPerHour ?? params.spendPerHour;
@@ -175,8 +181,10 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
     const bv = valueFor(e, "buy", counts, trade);
     const buy = bv && bestVenue(e, "buy", state.markets.venues, teams, bv.value);
     if (buy && e.completesPage) {
-      if (buy.net >= MARKET_PARAMS.minNetEdge && cash >= buy.quote.price + buy.fee) intents.push(intent(buy, e, undefined, "page-completing", bv));
-      else if (buy.net > 0) notes.push(`${e.ref}: best buy on ${buy.venue.id} net ${buy.net} (< ${MARKET_PARAMS.minNetEdge} or no cash)`);
+      if (buy.net >= MARKET_PARAMS.minNetEdge && cash >= buy.quote.price + buy.fee) {
+        intents.push(intent(buy, e, undefined, "page-completing", bv));
+        committed += buy.quote.price + buy.fee;
+      } else if (buy.net > 0) notes.push(`${e.ref}: best buy on ${buy.venue.id} net ${buy.net} (< ${MARKET_PARAMS.minNetEdge} or no cash)`);
       if (buy.net >= MARKET_PARAMS.teamThreadEdge && !buy.venue.house && buy.venue.owner) {
         intents.push({ id: `markets:thread:${buy.venue.owner}:${e.ref}`, route: "markets", kind: "open", conversation: `team:${buy.venue.owner}:${e.ref}`, ev: buy.net, summary: `team thread with ${buy.venue.owner} on ${buy.venue.id} for ${e.ref} (net edge ${buy.net}; structure only; proposal only)` });
       }
@@ -189,10 +197,10 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
       notes.push(`[scanner] ${e.ref}: sale skipped (active rival-page directed listing)`);
       continue;
     }
-    const sv = valueFor(e, "sell", counts, trade);
+    const sv = valueFor(e, "sell", freeCounts, trade);
     const sell = sv && bestVenue(e, "sell", state.markets.venues, teams, sv.value);
     if (!sell || !sv || sell.net <= 0) continue;
-    const last = (counts?.get(e.ref) ?? e.holdings) <= 1;
+    const last = (freeCounts ? (freeCounts.get(e.ref) ?? 0) : e.holdings) <= 1;
     if (last && targetSets.has(setOfRef(e.ref))) {
       notes.push(`[scanner] ${e.ref}: last copy of a page-target set, not sold (bid ${sell.quote.price} on ${sell.venue.id})`);
       continue;
@@ -203,7 +211,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   }
   // Best net first, so the hourly cap, cash floor and counterparty cap go to the best deals of the tick.
   candidates.sort((a, b) => b.c.net - a.c.net);
-  let committed = 0;
+  const sales = new Map<string, MarketChoice>();
   const tickDeals = new Map<string, number>();
   for (const { e, c, v, asset } of candidates) {
     const cp = counterpartyOf(c, trade);
@@ -221,8 +229,9 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
     committed += spend;
     tickDeals.set(cp, (tickDeals.get(cp) ?? 0) + 1);
     ledger.propose(i.id, { hour, counterparty: cp, spend });
+    if (c.side === "sell") sales.set(e.ref, c);
   }
-  return { intents, notes };
+  return { intents, notes, sales };
 }
 
 function intent(c: MarketChoice, e: PriceEntry, asset: number | undefined, acceptClass: "page-completing" | "scanner" | "other", v: Valued, reason?: string): Intent {
