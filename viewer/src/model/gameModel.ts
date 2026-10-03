@@ -714,7 +714,6 @@ export interface PriceRow {
   holdings: number;
   buyEdge: number | null;
   sellEdge: number | null;
-  dealerCap: number | null;
   completesPage: boolean;
 }
 
@@ -766,7 +765,6 @@ export function priceRows(model: GameModel): PriceRow[] {
         holdings,
         buyEdge: n(o, "buyEdge", "buy_edge") ?? (value !== null && ask !== null ? Math.round((value - ask) * 10) / 10 : null),
         sellEdge: n(o, "sellEdge", "sell_edge") ?? (value !== null && bid !== null && holdings > 0 ? Math.round((bid - value) * 10) / 10 : null),
-        dealerCap: n(o, "dealerCap", "dealer_cap"),
         completesPage: pick(o, "completesPage", "completes_page") === true,
       },
     ];

@@ -42,11 +42,6 @@ export interface PriceEntry {
   buyEdge?: number;
   /** bestBid − value: what we gain by selling at the best bid. */
   sellEdge?: number;
-  /**
-   * ASSUMPTION (neg_points anomaly): with a dealer, going above the book gains nothing more, so the useful cap
-   * of a dealer deal is min(value, book).
-   */
-  dealerCap?: number;
   completesPage: boolean;
 }
 
@@ -166,7 +161,6 @@ export function buildPriceSheet(i: PriceInputs): PriceEntry[] {
         holdings: held,
         ...(value !== undefined && ask ? { buyEdge: Math.round((value - ask.price) * 10) / 10 } : {}),
         ...(value !== undefined && bid ? { sellEdge: Math.round((bid.price - value) * 10) / 10 } : {}),
-        ...(value !== undefined && book !== undefined ? { dealerCap: Math.min(value, book) } : {}),
         completesPage: i.pageTargets.includes(c.id) || (!!page && held === 0 && page.have === page.of - 1),
       });
     }

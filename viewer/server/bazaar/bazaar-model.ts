@@ -155,8 +155,8 @@ export interface ModelOut {
 
 /**
  * Prices per card when the `GameState` does not carry them yet: book, rarity and print run from the catalog; best
- * sell offer (ask) and buy offer (bid) in El Rastro; our private value (local only); copies; margins; `dealerCap`
- * = min(value, book) (ASSUMPTION about how a dealer deal is scored) and whether it completes a page.
+ * sell offer (ask) and buy offer (bid) in El Rastro; our private value (local only); copies; margins and whether it
+ * completes a page. A deal scores the value gained at our private value, uncapped (measured 3 Oct).
  */
 export function fallbackPrices(input: { catalog: unknown; rastro: unknown; values: Record<string, number> }, state: GameState, pageTargets: readonly string[]): Record<string, unknown>[] {
   const sets = Array.isArray(record(input.catalog).sets) ? (record(input.catalog).sets as unknown[]) : [];
@@ -205,7 +205,6 @@ export function fallbackPrices(input: { catalog: unknown; rastro: unknown; value
         holdings: held,
         buy_edge: value !== null && ask !== null ? Math.round((value - ask) * 10) / 10 : null,
         sell_edge: value !== null && bid !== null && held > 0 ? Math.round((bid - value) * 10) / 10 : null,
-        dealer_cap: value !== null && book !== null ? Math.min(value, book) : null,
         completes_page: pageTargets.includes(ref) || (!!page && page.have === page.of - 1 && held === 0),
       });
     }

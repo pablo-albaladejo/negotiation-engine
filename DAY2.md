@@ -72,7 +72,7 @@ Sin `--live --confirm` nunca es en vivo. Con `--detach` se confirma en la termin
 ## Supuestos que verificar en vivo
 
 - La aceptación de un duelo comparte el cupo de una aceptación por tick del equipo (`DUEL_ACCEPT_QUOTA_ASSUMPTION`).
-- `dealerCap = min(valor, book)` en neg_points (anomalía del día 1).
+- neg_points suma el valor ganado a valor privado, sin tope y sin restar la comisión (medido el sábado, un solo agregado; verificar con un Δ aislado tras el próximo trato): [`docs/bazaar/neg-points-formula.md`](docs/bazaar/neg-points-formula.md). Sustituye al supuesto `dealerCap = min(valor, book)`.
 - En dry-run `play` espera con puertas cerradas; en vivo espera `bazaar:play` por su cuenta (`clockGate`). Comprobar al abrir (09:00) que `play` arranca solo (`up-events.log`: «puertas abiertas»).
 - Recorder + `bazaar:play` + broker en sombra + visor no superan el límite de peticiones: vigilar `rate_limited` en `play.log` y `broker.log` (en la prueba salió `board v04: rate_limited` con el doctor y el bucle a la vez).
 - Con `--detach`, `pnpm bazaar:down` encuentra el pid en el latido; si se borra `results/logs/`, hay que parar a mano.

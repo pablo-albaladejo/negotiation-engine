@@ -836,7 +836,7 @@ function Prices({ model }: { model: GameModel }) {
     <Card title={`Prices (${rows.length} cards · ${model.prices?.source === "state" ? "from GameState" : "rebuilt by the viewer"})`}>
       <div style={col}>
         <Muted>
-          Book = catalogue price · Value = our private value from the server (includes the +25 % page bonus; local only) · Market = best ask / bid in El Rastro and other venues. Buy edge = value − ask, sell edge = bid − value. Dealer cap = min(value, book): ASSUMPTION on how a dealer deal scores. ★ = completes a page.
+          Book = catalogue price · Value = our private value from the server (includes the +25 % page bonus; local only) · Market = best ask / bid in El Rastro and other venues. Buy edge = value − ask, sell edge = bid − value. Score = value gained at private value (uncapped, measured 3 Oct). ★ = completes a page.
         </Muted>
         <div className="nr-filters" role="group" aria-label="Price filters">
           <SelectBox label="Set" value={f.set} onChange={(set) => setF({ ...f, set })} options={[{ value: "", label: "All" }, ...sets.map((x) => ({ value: x, label: x }))]} />
@@ -861,7 +861,6 @@ function Prices({ model }: { model: GameModel }) {
             { key: "held", label: "Held", numeric: true },
             { key: "buy", label: "Buy edge", numeric: true },
             { key: "sell", label: "Sell edge", numeric: true },
-            { key: "cap", label: "Dealer cap*", numeric: true },
             { key: "dealers", label: "Dealers" },
           ]}
           rows={shown.slice(0, 150).map((r) => ({
@@ -880,7 +879,6 @@ function Prices({ model }: { model: GameModel }) {
             held: r.holdings,
             buy: edge(r.buyEdge),
             sell: edge(r.sellEdge),
-            cap: fmt(r.dealerCap),
             dealers: r.dealers.join(", ") || "—",
           }))}
         />
