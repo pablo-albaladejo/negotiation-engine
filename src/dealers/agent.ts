@@ -95,6 +95,11 @@ export interface AgentOptions {
   /** Today's no-deal threads with this dealer on a target key and her best price in them (`pastNoDeals` in the coordinator). */
   pastNoDeals?: (key: string) => { n: number; best: number } | undefined;
   /**
+   * One-shot egg open (Pablo, 3 Oct, `--egg-open`): with no target, open the pack she sells at our budget so the queued
+   * egg probe rides on the counter or the farewell; never above our budget, and her ask far above it means no deal.
+   */
+  eggOpen?: () => boolean;
+  /**
    * `firstStepFrac` of this tick for this dealer (see `NegotiatorParams`): the coordinator enables it only if the mirror of
    * her persona holds. Without it, the one from `negotiator`/defaults applies (0: off).
    */
@@ -576,6 +581,16 @@ export class BazaarAgent {
       const picked = selectCandidates(viable.filter(free), { maxThreads: 1, maxSpend: budget, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only })[0]?.candidate;
       const chase = this.o.only ? undefined : this.chasePersona(me);
       if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
+      if (!chase && !picked && this.o.eggOpen?.()) {
+        // Her pack, else one of her epic/legendary cards: their book (≥ 140) is far above our budget, so any deal at
+        // ≤ budget creates value even while our private value of the card is still unknown.
+        const pick = cands.find((c) => c.kind === "buy-pack" && free(c)) ?? cands.find((c) => c.kind === "buy-card" && EGG_OPEN_RARITIES.has(c.rarity ?? "") && free(c));
+        if (pick && budget >= 1) {
+          const reservation = pick.kind === "buy-pack" ? Math.min(pick.reservation, budget) : budget;
+          this.log(`egg-open ${this.o.dealer.id}: ${pick.label} at our budget ${reservation} (one shot, carries the queued egg probe)`);
+          return { ...pick, reservation };
+        }
+      }
       if (!chase || picked) return picked;
       const c = chaseCandidates(viable.filter(free), { tolerance: UNLOCK_CHASE_TOLERANCE, maxSpend: budget })[0];
       if (!c) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: no deal within ${UNLOCK_CHASE_TOLERANCE} P of our value (duplicates to sell or cards to buy at ≤ value + ${UNLOCK_CHASE_TOLERANCE})`);
@@ -911,6 +926,8 @@ export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): 
 
 /** Conversations measured in a band before her range is trusted to rule a target out. */
 export const HOPELESS_MIN_SAMPLES = 3;
+/** Rarities whose book is far above any budget we hold: a buy of one at ≤ budget creates value (`eggOpen`). */
+const EGG_OPEN_RARITIES = new Set(["epic", "legendary"]);
 /** No-deal threads on the same target with the same dealer (today) before it counts as hopeless. */
 export const HOPELESS_MIN_REPEATS = 2;
 /** Slack over her measured range (P) before a target counts as hopeless. */

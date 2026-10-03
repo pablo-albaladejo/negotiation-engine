@@ -108,6 +108,8 @@ export interface DealersRouteOptions {
   pageTargets: readonly string[];
   /** `--page-bonus-scored`: a page target's bonus counts (cap 0.9 × value); otherwise it is capped at its base. */
   pageBonusScored?: boolean;
+  /** `--egg-open <dealer>`: one thread with this dealer only to carry the queued egg probe (once a day, no earlier thread). */
+  eggOpen?: string;
   trace?: TraceSink;
   /** `docs/bazaar/lessons.json`: only written live; in dry-run what would be added is printed (`docs/` is never touched). */
   lessonsFile?: string;
@@ -267,6 +269,12 @@ export class DealersRoute {
             const lvl = this.state?.personas.find((p) => p.id === id)?.model?.public.level;
             return lvl === undefined ? 0 : ladderGain(this.ladderNow, lvl, expectedShare(this.ladderNow, id)) * LADDER_P_PER_POINT;
           },
+          eggOpen: () =>
+            this.o.eggOpen === id &&
+            !!this.state &&
+            nextProbeFor(this.state, id) !== undefined &&
+            !this.state.conversations.some((c) => c.counterparty === id) &&
+            !this.lessonEntries.some((e) => e.dealer === id && (e.ts ?? "").startsWith(new Date().toISOString().slice(0, 10))),
           pastNoDeals: (key) => pastNoDeals(this.lessonEntries, id, key, new Date().toISOString().slice(0, 10)),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
@@ -302,7 +310,7 @@ export class DealersRoute {
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;
       await agent.step(clock);
-      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue") || l.includes(": hopeless (") || l.startsWith("ladder-floor ")).map((l) => `dealer ${id}: ${l}`));
+      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue") || l.includes(": hopeless (") || l.startsWith("ladder-floor ") || l.startsWith("egg-open ")).map((l) => `dealer ${id}: ${l}`));
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }

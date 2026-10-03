@@ -78,6 +78,7 @@ async function main() {
       "cash-floor": { type: "string", default: "20" },
       "page-targets": { type: "string", default: "SAL-09" },
       "page-bonus-scored": { type: "boolean", default: false },
+      "egg-open": { type: "string" },
       "leaderboard-every": { type: "string", default: "5" },
       "approve-flags": { type: "string", default: "" },
       "flag-pressure": { type: "boolean", default: false },
@@ -115,6 +116,7 @@ async function main() {
     cashFloor: num(values["cash-floor"], "--cash-floor"),
     pageTargets,
     pageBonusScored,
+    ...(values["egg-open"] ? { eggOpen: values["egg-open"] } : {}),
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
   const rastroBids = values["rastro-bids"] === true;
