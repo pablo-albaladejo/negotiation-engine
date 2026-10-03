@@ -1,7 +1,7 @@
 import { DEFAULT_DUEL_PARAMS } from "../duels/duels.js";
 import { isKeepsake } from "../shared/asset-locks.js";
 import { alert, NOT_A_FAILURE, type Alert } from "./detectors.js";
-import type { DealerEvent, DuelMemory, DuelSend, StreamEvent } from "./sources.js";
+import { duelSurplus, type DealerEvent, type DuelMemory, type DuelSend, type DuelTerms, type StreamEvent } from "./sources.js";
 
 /**
  * Conduct detectors from the official Day-2 hints (hint 3: answer your duels; hint 5: dealers notice spam, the same price
@@ -36,6 +36,8 @@ export interface ConductInput {
   events: StreamEvent[];
   dealerEvents: DealerEvent[];
   duelSends: DuelSend[];
+  /** Role, limit and weight per day per duel (play.log): a rival offer below our limit was rightly left unanswered. */
+  duelTerms?: Map<number, DuelTerms>;
   duelMemory: Map<number, DuelMemory>;
   date: string;
   clock: number;
@@ -165,7 +167,7 @@ export function repeatedPrice(input: ConductInput): Alert[] {
  * it counts (from DUEL_SCORING_FROM local, not a practice session), low before.
  */
 export function duelUnanswered(input: ConductInput): Alert[] {
-  interface Duel { id: number; rival: number[]; ours: number[]; deadline?: number; session?: number; result?: { tick: number; status: string }; firstRecv?: string; rivalName?: string; role?: string }
+  interface Duel { id: number; rival: number[]; ours: number[]; deadline?: number; session?: number; result?: { tick: number; status: string }; firstRecv?: string; rivalName?: string; role?: string; lastOffer?: { price: number; days?: number } }
   const duels = new Map<number, Duel>();
   const get = (id: number): Duel => duels.get(id) ?? (duels.set(id, { id, rival: [], ours: [] }).get(id) as Duel);
   const practice = new Set<number>();
@@ -184,6 +186,8 @@ export function duelUnanswered(input: ConductInput): Alert[] {
     } else if (e.type === "duel.message") {
       d.rival.push(e.tick);
       if (asStr(p.from)) d.rivalName = asStr(p.from)!;
+      const price = asNum(p.price);
+      if (price !== undefined) d.lastOffer = { price, ...(asNum(p.days) !== undefined ? { days: asNum(p.days)! } : {}) };
     } else if (e.type === "duel.result") d.result = { tick: e.tick, status: asStr(p.status) ?? "?" };
   }
   for (const s of input.duelSends) if (duels.has(s.duel)) get(s.duel).ours.push(s.tick);
@@ -202,6 +206,9 @@ export function duelUnanswered(input: ConductInput): Alert[] {
       if (d.result?.status === "deal") continue;
       const silent = lastOur === undefined;
       if (!silent && (lastRival === undefined || lastRival <= lastOur!)) continue;
+      // Price + days: a rival offer under our limit (real surplus < 0) was rightly left unanswered.
+      const surplus = d.lastOffer ? duelSurplus(input.duelTerms?.get(d.id), d.lastOffer.price, d.lastOffer.days) : undefined;
+      if (!silent && surplus !== undefined && surplus < 0) continue;
       out.push(
         alert({
           tick: d.result?.tick ?? d.deadline ?? input.clock,

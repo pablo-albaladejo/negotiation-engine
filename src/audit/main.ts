@@ -236,7 +236,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     if (dealers.ok) return { ok: true, why: `dealers only (${dealers.why}); duels unmeasured: ${duels.why}` };
     return { ok: false, why: `${dealers.why}; ${duels.why}` };
   };
-  const conduct: ConductInput = { team, events: [...events.values()], dealerEvents, duelSends: duelSends(), duelMemory: readDuelsState(duelsStateFile), date, clock };
+  const conduct: ConductInput = { team, events: [...events.values()], dealerEvents, duelSends: duelSends(), duelTerms: play.duels.terms, duelMemory: readDuelsState(duelsStateFile), date, clock };
   const requirements: Record<Detector, { ok: boolean; why: string }> = {
     "dup-buy": need("stream-team", "baseline", "values"),
     "round-trip-loss": need("stream-team"),

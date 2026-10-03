@@ -132,6 +132,24 @@ export interface DuelSend {
   line: string;
 }
 
+export interface DuelTerms {
+  role?: "seller" | "buyer";
+  limit?: number;
+  /** P per delivery day as logged: a seller gains it per later day, a buyer pays it (a negative one flips that). */
+  perDay?: number;
+}
+
+/**
+ * Our real surplus on an offer: buyer limit − price − w·days, seller price − limit + w·days. Undefined when the limit
+ * is unknown, or the offer has days and our weight is unknown.
+ */
+export function duelSurplus(terms: DuelTerms | undefined, price: number, days: number | undefined): number | undefined {
+  if (!terms?.role || terms.limit === undefined) return undefined;
+  if (days !== undefined && days !== 0 && terms.perDay === undefined) return undefined;
+  const w = (terms.perDay ?? 0) * (days ?? 0);
+  return terms.role === "buyer" ? terms.limit - price - w : price - terms.limit + w;
+}
+
 /**
  * `formatDuelEntry` prints `duel 300 · buyer · price · limit … · ticks left 10` and then
  * `→ COUNTER 92 P (surplus 24.0, round 1, concede) "…" [sent]` (or `→ ACCEPT rival 109 P (surplus 12.0, accept-share) [sent]`).
@@ -139,14 +157,19 @@ export interface DuelSend {
  */
 export class DuelSendParser {
   readonly sends: DuelSend[] = [];
+  /** Per duel: our role, our limit and our weight per delivery day (`[duels] duel N (…): … X P per day`). */
+  readonly terms = new Map<number, DuelTerms>();
   private duel: number | undefined;
   private head: { role: "seller" | "buyer"; limit?: number } | undefined;
 
   push(line: string, tick: number): void {
+    const weight = /^\[duels\] duel (\d+) \((seller|buyer),.*?(-?\d+(?:\.\d+)?) P per day/.exec(line);
+    if (weight) this.terms.set(Number(weight[1]), { ...this.terms.get(Number(weight[1])), role: weight[2] as "seller" | "buyer", perDay: Number(weight[3]) });
     const head = /^duel (\d+) · (seller|buyer) · (?:.*?\blimit (\d+(?:\.\d+)?))?/.exec(line);
     if (head) {
       this.duel = Number(head[1]);
       this.head = { role: head[2] as "seller" | "buyer", ...(head[3] !== undefined ? { limit: Number(head[3]) } : {}) };
+      this.terms.set(this.duel, { ...this.terms.get(this.duel), ...this.head });
       return;
     }
     const sent = /^→ (COUNTER|ACCEPT) (?:rival )?(\d+(?:\.\d+)?) P\b.*?\(([^()]*)\).*\[sent\]/.exec(line);
