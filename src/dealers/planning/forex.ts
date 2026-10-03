@@ -1,4 +1,4 @@
-import { FOREX_MIN_MARGIN } from "../../forex/chains.js";
+import { FOREX_AUTOMATED, FOREX_MIN_MARGIN } from "../../forex/chains.js";
 import type { Me } from "../../shared/schemas.js";
 
 /**
@@ -47,7 +47,8 @@ export const forexMargin = (r: ForexRoute): number => r.minSell - r.maxBuy - r.f
 export const FOREX_MAX_LOTS = 1;
 
 const live = (r: ForexRoute) => forexMargin(r) >= FOREX_MIN_MARGIN;
-export const forexBuyRoute = (dealer: string, card: string): ForexRoute | undefined => routes.find((r) => live(r) && r.from === dealer && r.card === card);
+/** The buy leg is off (`FOREX_AUTOMATED`, Payday deck): only a spare copy we already hold is still resold above its value. */
+export const forexBuyRoute = (dealer: string, card: string): ForexRoute | undefined => (FOREX_AUTOMATED ? routes.find((r) => live(r) && r.from === dealer && r.card === card) : undefined);
 export const forexSellRoute = (dealer: string, card: string): ForexRoute | undefined => routes.find((r) => r.to === dealer && r.card === card);
 
 /**

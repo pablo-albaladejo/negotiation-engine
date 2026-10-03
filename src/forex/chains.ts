@@ -17,6 +17,8 @@ export const FOREX_WINDOW_TICKS = 240;
 export const FOREX_MIN_SAMPLES = 3;
 /** Smallest expected net margin (P, after fees) a chain must leave. */
 export const FOREX_MIN_MARGIN = 8;
+/** The planner runs no chain (Pablo, 3 Oct): the detector and the viewer keep showing them. */
+export const FOREX_AUTOMATED = false;
 /** El Rastro fee (measured today: 2 P at 3–20, 4 at 44–55, 5 at 65–76, 6 at 82–88, 9 at 160), rounded up. */
 export const rastroFee = (price: number): number => Math.ceil(2 + 0.04 * price);
 
@@ -151,13 +153,16 @@ export function findChains(input: ForexInput): ForexState {
         const fees = b.fee + s.fee;
         const margin = r1(s.price - b.price - fees);
         if (margin < FOREX_MIN_MARGIN) continue;
-        // Run only between dealers and on a card we hold: a bought copy of a card we lack would stay in the album unsold.
+        // Pablo, 3 Oct (Payday deck, slide 7): a dealer loss counts in full and a dealer gain only on the ladder, so the
+        // buy leg (a spare copy adds ~1/4 of its value, slide 8) costs neg and the resale wins ~nothing. Shown, never run.
         const lacking = !(input.holdings[ref] ?? 0);
-        const automated = b.kind === "dealer" && s.kind === "dealer" && !lacking;
+        const automated = FOREX_AUTOMATED && b.kind === "dealer" && s.kind === "dealer" && !lacking;
         const maxBuy = Math.floor(Math.min(b.hi, s.lo - fees - FOREX_MIN_MARGIN));
         const minSell = Math.ceil(Math.max(maxBuy + fees + FOREX_MIN_MARGIN, s.lo));
         const base = { card: ref, buy: b, sell: s };
-        const step = automated ? stepOf(base, input) : { current: -1, status: lacking ? "shown only: we lack the card, a bought copy would stay in the album" : "shown only: a venue leg is not automated" };
+        const step = automated
+          ? stepOf(base, input)
+          : { current: -1, status: !FOREX_AUTOMATED ? "shown only: buying is off (a dealer loss counts in full, Payday deck)" : lacking ? "shown only: we lack the card, a bought copy would stay in the album" : "shown only: a venue leg is not automated" };
         const mine = input.team ? input.trades.filter((t) => t.team === input.team && t.ref === ref) : [];
         const doneToday = Math.min(mine.filter((t) => t.dealer === b.at && t.side === "sells").length, mine.filter((t) => t.dealer === s.at && t.side === "buys").length);
         chains.push({

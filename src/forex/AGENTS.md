@@ -9,6 +9,8 @@ Busca cada tick ineficiencias entre dealers y venues (decisión de Pablo, 3 oct)
 
 Solo las cadenas con los dos lados en dealers y de una carta que ya tenemos (`automated`; una copia comprada de una carta que nos falta se quedaría en el álbum sin vender) las ejecuta el agente de dealers ([`dealers/planning/`](../dealers/planning/AGENTS.md) (forex.ts)): el coordinador se las pasa cada tick con `setForexRoutes`. Las que tienen un lado en un venue solo se muestran.
 
+**Compra apagada (Pablo, 3 oct):** `FOREX_AUTOMATED = false`. Según el deck «Payday» (diapositiva 7), con un dealer una pérdida cuenta entera y una ganancia solo en la escalera; comprar una copia de sobra (vale ~¼, diapositiva 8) resta neg y revenderla apenas suma. El detector y el visor siguen mostrando las cadenas; `forexBuyRoute` no devuelve ninguna ruta, y solo se revende por encima de su valor una copia de sobra que ya tengamos.
+
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
