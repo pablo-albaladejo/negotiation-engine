@@ -193,7 +193,7 @@ export class PendingLessons {
     }
   }
 
-  /** Al parar: escribe lo pendiente tal cual. */
+  /** On stop: write whatever is pending as is. */
   flush(): void {
     for (const p of this.pending.splice(0)) this.write(lessonFromSummary(p.summary, {}));
   }

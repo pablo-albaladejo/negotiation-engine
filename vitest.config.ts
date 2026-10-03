@@ -1,9 +1,9 @@
 import { configDefaults, defineConfig } from "vitest/config";
 
 /**
- * `viewer/` y `design-system/` son paquetes propios, cada uno con sus dependencias, su lockfile y su
- * vitest (`pnpm ds:test`). Si no se excluyen, un clon nuevo con solo
- * `pnpm install` en la raíz falla al importar react/jsdom en sus tests.
+ * `viewer/` and `design-system/` are separate packages, each with its own dependencies, lockfile and
+ * vitest (`pnpm ds:test`). If they are not excluded, a fresh clone with only
+ * `pnpm install` at the root fails to import react/jsdom in their tests.
  */
 export default defineConfig({
   test: {
