@@ -4,7 +4,7 @@
 //   recorder → pnpm bazaar:record (graba el stream; lo único que conserva la historia completa del feed)
 //   viewer   → pnpm viewer (si el puerto ya sirve el visor, se reutiliza y no se arranca otro)
 //   play     → pnpm bazaar:play en bucle, en DRY RUN por defecto
-//   broker   → pnpm bazaar:broker --dry-run en bucle (sombra del Market Test; siempre dry-run; sin .env.broker no se arranca)
+//   broker   → pnpm bazaar:broker --shadow en bucle (sombra del Market Test; siempre dry-run; sin .env.broker no se arranca)
 // En vivo solo con `--live --confirm` y escribiendo LIVE en la terminal. Ctrl-C para todos. Un hijo que cae se
 // reinicia con espera creciente (como mucho 5 veces en 10 min). Latido en results/logs/up-status.json.
 // En dry-run, play espera con las puertas cerradas o el reloj en pausa (--no-gate para correrlo igual).
@@ -131,9 +131,9 @@ const specs = [
   { name: "recorder", color: 36, cmd: "pnpm", args: ["bazaar:record"] },
   ...(reuseViewer ? [] : [{ name: "viewer", color: 35, cmd: "pnpm", args: ["viewer"], env: { VIEWER_PORT: String(viewerPort) } }]),
   { name: "play", color: live ? 31 : 33, cmd: "pnpm", args: ["bazaar:play", ...playArgs], gated: !live && !values["no-gate"] },
-  // Broker en sombra: SIEMPRE dry-run (también con --live), observa el bench para comparar con auto en el Market Test.
+  // Broker en sombra: SIEMPRE --shadow (dry-run sin anunciar; también con --live), observa el bench para comparar con auto en el Market Test.
   // Carga .env.broker él mismo (loadBrokerEnv). Lee cada 5 s (no cada 1 s) para no gastar cupo de la API.
-  ...(noBroker ? [] : [{ name: "broker", color: 34, cmd: "pnpm", args: ["bazaar:broker", "--dry-run", "--poll-ms", "5000"] }]),
+  ...(noBroker ? [] : [{ name: "broker", color: 34, cmd: "pnpm", args: ["bazaar:broker", "--shadow", "--poll-ms", "5000"] }]),
 ];
 const children = new Map(
   specs.map((s) => [s.name, { spec: s, proc: undefined, status: "starting", pid: undefined, startedAt: undefined, restarts: [], restartsTotal: 0, lastExit: undefined, timer: undefined, log: join(logDir, `${s.name}.log`) }]),
