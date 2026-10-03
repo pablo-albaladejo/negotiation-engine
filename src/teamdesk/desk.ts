@@ -26,6 +26,8 @@ export interface DeskEvent {
   status?: DeskStatus;
   negDelta?: number | null;
   reason?: string;
+  /** Server-side expiry of a sent counter (it caps `expires_in_ticks`). */
+  expiresTick?: number;
 }
 
 interface SentCounter {
@@ -62,7 +64,7 @@ export function loadDeskLedger(file = defaultDeskLogFile()): DeskLedger {
       if (e.event === "incoming" && e.incoming) ledger.loggedIncoming.add(e.incoming.id);
       const c = e.counter;
       if ((e.event === "counter" || e.event === "step") && e.status === "sent" && c?.offerId != null)
-        ledger.sent.set(c.offerId, { team: e.team, venue: e.venue, ref: c.ref, assetId: c.assetId, price: c.price, value: c.serverValue, fee: Math.round((c.price - c.serverValue - c.negIfFilled) * 10) / 10, expiresTick: e.tick + TEAM_DESK_PARAMS.expiresInTicks });
+        ledger.sent.set(c.offerId, { team: e.team, venue: e.venue, ref: c.ref, assetId: c.assetId, price: c.price, value: c.serverValue, fee: Math.round((c.price - c.serverValue - c.negIfFilled) * 10) / 10, expiresTick: e.expiresTick ?? e.tick + TEAM_DESK_PARAMS.expiresInTicks });
       if (e.event === "outcome" && c?.offerId != null) ledger.sent.delete(c.offerId);
     } catch {
       // A torn line (written while play crashed) is skipped.
@@ -114,6 +116,13 @@ const offerIdOf = (res: unknown): number | null => {
   return typeof id === "number" ? id : null;
 };
 
+/** The server caps `expires_in_ticks` (15 seen for 30): its `expires_tick` tells expired from cancelled. */
+const expiresTickOf = (res: unknown): number | null => {
+  const r = res as { expires_tick?: unknown; offer?: { expires_tick?: unknown } } | null;
+  const t = r?.expires_tick ?? r?.offer?.expires_tick;
+  return typeof t === "number" ? t : null;
+};
+
 export async function executeTeamDesk(
   client: Pick<BazaarClient, "postOffer" | "cancelOffer" | "value" | "myThreads" | "myOffers">,
   selected: readonly Intent[],
@@ -145,7 +154,7 @@ export async function executeTeamDesk(
   const busy = !dryRun && posts.length ? await busyAssets(client, ctx.myId) : undefined;
   for (const p of posts) {
     const what = `POST ${p.venue} to=${p.team} ${p.ref} (asset ${p.assetId}) @ ${p.price} P exp ${p.body.expires_in_ticks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
-    const log = (status: DeskStatus, serverValue: number, offerId: number | null, reason?: string) =>
+    const log = (status: DeskStatus, serverValue: number, offerId: number | null, reason?: string, expiresTick?: number | null) =>
       write(ledger, {
         tick,
         event: p.event,
@@ -155,6 +164,7 @@ export async function executeTeamDesk(
         counter: { offerId, ref: p.ref, assetId: p.assetId, price: p.price, floor: p.floor, anchor: p.anchor, serverValue, negIfFilled: r1(p.price - p.fee - serverValue), replaces: p.replaces ?? null },
         status,
         ...(reason ? { reason } : {}),
+        ...(expiresTick != null ? { expiresTick } : {}),
       });
     if (dryRun) {
       lines.push(`${TAG} would ${what}`);
@@ -191,10 +201,11 @@ export async function executeTeamDesk(
       continue;
     }
     try {
-      const offerId = offerIdOf(await client.postOffer(p.body));
-      if (offerId !== null) ledger.sent.set(offerId, { team: p.team, venue: p.venue, ref: p.ref, assetId: p.assetId, price: p.price, value: serverValue, fee: p.fee, expiresTick: tick + p.body.expires_in_ticks });
+      const res = await client.postOffer(p.body);
+      const offerId = offerIdOf(res);
+      if (offerId !== null) ledger.sent.set(offerId, { team: p.team, venue: p.venue, ref: p.ref, assetId: p.assetId, price: p.price, value: serverValue, fee: p.fee, expiresTick: expiresTickOf(res) ?? tick + p.body.expires_in_ticks });
       lines.push(`${TAG} sent ${what}${offerId !== null ? ` → #${offerId}` : ""}`);
-      log("sent", serverValue, offerId, `answers #${p.incomingId}`);
+      log("sent", serverValue, offerId, `answers #${p.incomingId}`, expiresTickOf(res));
     } catch (e) {
       const code = e instanceof BazaarError ? e.code : String(e);
       lines.push(`${TAG} ${what} failed: ${code}`);
