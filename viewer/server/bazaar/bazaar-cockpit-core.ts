@@ -256,7 +256,7 @@ export interface TeamDeskTeam {
 }
 
 /** Expiry tick of every listed offer (`offer.listed` events of the public stream and feed), by offer id. */
-export function offerExpiriesOf(events: readonly { type?: string | null; payload?: unknown }[]): Map<number, number> {
+export function offerExpiriesOf(events: readonly { type?: string | null | undefined; payload?: unknown }[]): Map<number, number> {
   const out = new Map<number, number>();
   for (const e of events) {
     if (e.type !== "offer.listed") continue;
