@@ -38,6 +38,8 @@ export interface DuelParams {
   endgameTicks: number;
   /** P per delivery day if the duel has no `your_days_weight` (assumption; 0 = indifferent). */
   assumedDaysWeight: number;
+  /** A two-issue duel whose `your_days_weight` cannot be read waits (no message, no accept) instead of assuming `assumedDaysWeight`. */
+  pauseOnUnreadableDays: boolean;
   /** Multiplier for `your_days_weight` (in case it arrives on a scale other than P per day). */
   daysWeightScale: number;
   /** Decay per round if the duel has no `decay_per_round` (the deal's value shrinks each round: 0.06–0.1). */
@@ -68,6 +70,7 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   lastMoveTicks: 1,
   endgameTicks: 3,
   assumedDaysWeight: 0,
+  pauseOnUnreadableDays: true,
   daysWeightScale: 1,
   decay: 0.08,
   // Replay of the 27 practice duels: 0.5 accepted too early (89, 200); with 0.65 it is neutral (407 vs 415 real P).
@@ -83,19 +86,57 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
 /** Value to us (P) of each delivery day 0..10. */
 export type DaysValue = readonly number[];
 
-/** Per-day value table from `your_days_weight` (number = P per day; array or object = per day). */
-export function daysValueFrom(raw: Duel["your_days_weight"], params: DuelParams): { table: DaysValue; assumption?: string } {
+/** Keys under which an object may carry a single P-per-day weight (`{ weight: 2 }`). */
+const WEIGHT_KEYS = ["weight", "per_day", "p_per_day", "value", "value_per_day"] as const;
+
+/**
+ * Direction read from `days_meaning`: "fewer" when a later day costs us (earlier is better), "more" when a
+ * later day is worth more, undefined when the text says neither or both (then the weight's own sign decides).
+ */
+export function daysDirection(meaning: unknown): "fewer" | "more" | undefined {
+  const text = typeof meaning === "string" ? meaning : meaning && typeof meaning === "object" ? JSON.stringify(meaning) : "";
+  const fewer = /\b(cost|costs|penalt|lose|loses|loss|earl|soon|fewer|quick|fast|delay)/i.test(text);
+  const more = /\b(later is better|more days|longer|gain|worth more)/i.test(text);
+  return fewer === more ? undefined : fewer ? "fewer" : "more";
+}
+
+/**
+ * Per-day value table from `your_days_weight` (number = P per day; array or object "0".."10" = per day;
+ * `{ weight: n }` = P per day). With a single number, `days_meaning` sets the direction when it is clear
+ * (fewer: |w| × (10 − d); more: |w| × d). `unreadable` when the duel negotiates days but the weight cannot be
+ * read: the caller pauses that duel instead of playing as if days were worth nothing.
+ */
+export function daysValueFrom(
+  raw: unknown,
+  params: DuelParams,
+  meaning?: unknown,
+): { table: DaysValue; assumption?: string; unreadable?: boolean } {
   const days = Array.from({ length: DAYS_MAX - DAYS_MIN + 1 }, (_, k) => DAYS_MIN + k);
   const scale = params.daysWeightScale;
-  if (typeof raw === "number" && Number.isFinite(raw)) return { table: days.map((d) => raw * scale * d) };
-  if (Array.isArray(raw) && raw.length === days.length && raw.every(Number.isFinite)) return { table: raw.map((v) => v * scale) };
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const rec = raw as Record<string, number>;
-    if (days.every((d) => Number.isFinite(rec[String(d)]))) return { table: days.map((d) => rec[String(d)]! * scale) };
+  const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  const note = meaning != null ? ` · days_meaning ${JSON.stringify(meaning).slice(0, 120)}` : "";
+  let perDay: number | undefined;
+  if (finite(raw)) perDay = raw;
+  else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const rec = raw as Record<string, unknown>;
+    if (days.every((d) => finite(rec[String(d)]))) return { table: days.map((d) => (rec[String(d)] as number) * scale), ...(note ? { assumption: `days table${note}` } : {}) };
+    const key = WEIGHT_KEYS.find((k) => finite(rec[k]));
+    if (key) perDay = rec[key] as number;
+  } else if (Array.isArray(raw) && raw.length === days.length && raw.every(finite)) {
+    return { table: raw.map((v) => v * scale), ...(note ? { assumption: `days table${note}` } : {}) };
   }
+  if (perDay !== undefined) {
+    const dir = daysDirection(meaning);
+    const w = perDay * scale;
+    if (dir === "fewer") return { table: days.map((d) => Math.abs(w) * (DAYS_MAX - d)), assumption: `${perDay} P per day, earlier is better${note}` };
+    if (dir === "more") return { table: days.map((d) => Math.abs(w) * d), assumption: `${perDay} P per day, later is better${note}` };
+    return { table: days.map((d) => w * d), ...(note ? { assumption: `${perDay} P per day, direction from its sign${note}` } : {}) };
+  }
+  const shape = raw === undefined ? "missing" : `unreadable ${JSON.stringify(raw).slice(0, 120)}`;
   return {
     table: days.map((d) => params.assumedDaysWeight * d),
-    assumption: `your_days_weight missing or unreadable: assuming ${params.assumedDaysWeight} P per day`,
+    assumption: `your_days_weight ${shape}: assuming ${params.assumedDaysWeight} P per day${note}`,
+    unreadable: true,
   };
 }
 
@@ -125,7 +166,7 @@ export interface DuelDecision {
   action: DuelAction;
   offer?: StructuredOffer;
   text?: string;
-  rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "waiting-for-rival" | "match-stale";
+  rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "waiting-for-rival" | "match-stale" | "days-unreadable";
   /** Target surplus of the offer (or that of the rival's offer being accepted). */
   surplus: number;
   round: number;

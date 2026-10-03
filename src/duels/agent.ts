@@ -146,10 +146,12 @@ export class DuelsAgent {
   }
 
   /** Pure state of a duel from the server response and memory (without mutating it in dry-run). */
-  stateOf(duel: Duel, clock: Clock): { state: DuelState; rival?: StructuredOffer; assumption?: string } {
+  stateOf(duel: Duel, clock: Clock): { state: DuelState; rival?: StructuredOffer; assumption?: string; paused?: boolean } {
     const mem = this.memory.get(this.key(duel.id)) ?? { ourOffers: [], rivalOffers: [], rivalMovedSinceOurLast: false };
-    const withDays = duel.issues.includes("days");
-    const days = withDays ? daysValueFrom(duel.your_days_weight, this.params) : { table: [] as number[] };
+    // A days weight or meaning means the duel negotiates days even if `issues` is missing (it defaults to price).
+    const withDays = duel.issues.includes("days") || duel.your_days_weight != null || duel.days_meaning != null;
+    const days: ReturnType<typeof daysValueFrom> = withDays ? daysValueFrom(duel.your_days_weight, this.params, duel.days_meaning) : { table: [] };
+    const paused = withDays && days.unreadable === true && this.params.pauseOnUnreadableDays;
     const rival = rivalOfferFrom(duel);
     const rivalOffers = [...mem.rivalOffers];
     let moved = mem.rivalMovedSinceOurLast;
@@ -175,7 +177,8 @@ export class DuelsAgent {
       ...(lastOurTick !== undefined ? { ticksSinceOurLast: clock.tick - lastOurTick } : {}),
       ...(left !== undefined ? { ticksLeft: left } : {}),
     };
-    return { state, ...(rival ? { rival } : {}), ...("assumption" in days && days.assumption ? { assumption: days.assumption } : {}) };
+    const assumption = paused ? `PAUSED (no message, no accept): ${days.assumption}; rerun with --assumed-days-weight to play` : days.assumption;
+    return { state, ...(rival ? { rival } : {}), ...(assumption ? { assumption } : {}), ...(paused ? { paused } : {}) };
   }
 
   /** Tick proposal without sending anything: clock and decision for each live duel (GET only). */
@@ -187,10 +190,12 @@ export class DuelsAgent {
       .slice()
       .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }))
       .map((duel) => {
-        const { state, rival, assumption } = this.stateOf(duel, clock);
+        const { state, rival, assumption, paused } = this.stateOf(duel, clock);
         const mem = this.memory.get(this.key(duel.id));
         const already = mem?.lastActionTick === clock.tick;
-        return { duel, state, ...(rival ? { rival } : {}), ...(assumption ? { assumption } : {}), decision: decideDuel(state, this.params), already };
+        if (paused) console.error(`duel ${duel.id}: ${assumption}`);
+        const decision: DuelDecision = paused ? { action: "wait", rule: "days-unreadable", surplus: 0, round: state.ourOffers.length } : decideDuel(state, this.params);
+        return { duel, state, ...(rival ? { rival } : {}), ...(assumption ? { assumption } : {}), decision, already };
       });
     return { clock, planned };
   }

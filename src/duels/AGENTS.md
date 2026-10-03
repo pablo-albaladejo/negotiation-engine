@@ -23,7 +23,7 @@ Medido en Duelos I (sesión 2): 30 duelos, 24 tratos, 355 P; 15 de los 18 sin tr
 - **Ancla más baja** (pista 3: *open with an offer the other side can take*): `anchorMargin` 0,5 → 0,35. El suelo y `acceptShare` se miden contra `referenceMargin` (0,5) para que abrir más bajo no baje también el suelo ni el umbral de aceptación.
 - **`--restart-check`** (`pnpm bazaar:duels --restart-check [--restart-ticks 5]`, solo GET): sale con 1 si un duelo vivo acaba en ≤ 5 ticks. Antes de reiniciar el coordinador: el 2402 perdió ~11 P al estar caído 5 ticks en su final.
 
-**Supuesto**: `your_days_weight` se lee como P por día (número) o tabla por día; si falta, `assumedDaysWeight` (0, indiferente) y la entrada lo registra.
+**Supuesto**: `your_days_weight` se lee como P por día (número o `{ weight }`) o tabla por día (array u objeto "0".."10"); con un número, `days_meaning` fija la dirección si es clara (*cost*, *delay*, *earlier* → menos días; *later is better* → más), si no la da su signo. Ningún duelo con días se ha visto aún, así que el esquema acepta cualquier forma y un duelo con días cuyo peso no se entiende **se pausa** (regla `days-unreadable`: ni mensaje ni aceptación, aviso en el log con el JSON recibido) en vez de jugar como si los días valieran 0; solo `pnpm bazaar:duels --assumed-days-weight N` lo juega con ese peso. Un duelo con `your_days_weight` o `days_meaning` cuenta como de dos asuntos aunque falte `issues`. Guardarraíl en `test/duels-days.test.ts`.
 
 ## Links
 

@@ -13,8 +13,12 @@ const num = z.number();
 /** Rival's offer: a number (price only), `{ price, days }` or nothing if they haven't spoken yet. */
 export const RivalOfferSchema = z.union([num, z.looseObject({ price: num.nullish(), days: num.nullish() }), z.null()]).optional();
 
-/** Private weight per delivery day: a number (P per day) or a per-day table (array or object "0".."10"). */
-export const DaysWeightSchema = z.union([num, z.array(num), z.record(z.string(), num), z.null()]).optional();
+/**
+ * Private weight per delivery day. Expected: a number (P per day) or a per-day table (array or object "0".."10"),
+ * but no two-issue duel has been seen yet, so any shape is accepted here (a strict schema would drop the whole
+ * `/api/duels` response) and `daysValueFrom` decides whether it is readable.
+ */
+export const DaysWeightSchema = z.unknown().optional();
 
 /** The real server uses `duel` as id, `deadline_tick` and `rounds`; they are normalized to id/deadline/round. */
 const normalizeDuel = (raw: unknown): unknown => {
@@ -49,6 +53,8 @@ export const DuelSchema = z.preprocess(normalizeDuel, z.looseObject({
   deadline: z.union([num, z.string(), z.null()]).optional(),
   issues: z.array(z.string()).default(["price"]),
   your_days_weight: DaysWeightSchema,
+  /** Server's description of what the days weight means (text or object; read by `daysValueFrom`). */
+  days_meaning: z.unknown().optional(),
   /** Decay per round of the deal (practice: 0.06). */
   decay_per_round: num.nullish(),
   status: z.string().nullish(),

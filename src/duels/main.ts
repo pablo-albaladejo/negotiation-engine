@@ -31,7 +31,7 @@ async function main() {
       beta: { type: "string", default: String(DEFAULT_DUEL_PARAMS.beta) },
       "anchor-margin": { type: "string", default: String(DEFAULT_DUEL_PARAMS.anchorMargin) },
       "floor-share": { type: "string", default: String(DEFAULT_DUEL_PARAMS.floorShare) },
-      "assumed-days-weight": { type: "string", default: String(DEFAULT_DUEL_PARAMS.assumedDaysWeight) },
+      "assumed-days-weight": { type: "string" },
       "state-file": { type: "string" },
       "restart-check": { type: "boolean", default: false },
       "restart-ticks": { type: "string", default: "5" },
@@ -42,9 +42,10 @@ async function main() {
     beta: num(values.beta, "--beta", 0.1),
     anchorMargin: num(values["anchor-margin"], "--anchor-margin", 0),
     floorShare: num(values["floor-share"], "--floor-share", 0),
-    assumedDaysWeight: Number(values["assumed-days-weight"]),
+    // An explicit --assumed-days-weight plays two-issue duels with that weight when theirs is unreadable; without it they pause.
+    ...(values["assumed-days-weight"] !== undefined ? { assumedDaysWeight: Number(values["assumed-days-weight"]), pauseOnUnreadableDays: false } : {}),
   };
-  if (!Number.isFinite(params.assumedDaysWeight)) throw new Error("--assumed-days-weight must be a number");
+  if (params.assumedDaysWeight !== undefined && !Number.isFinite(params.assumedDaysWeight)) throw new Error("--assumed-days-weight must be a number");
   const env = loadBazaarEnv();
   if (!env.key) {
     console.error("Missing BAZAAR_KEY (set it in .env or in the environment).");
