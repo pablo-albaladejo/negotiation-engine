@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { BrokerAgent, FileBrokerSink, brokerLogDir, type BrokerApi, type BrokerSink } from "./agent.js";
 import { BrokerClient, loadBrokerEnv } from "./client.js";
-import { DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
+import { ANNOUNCEMENT, DEFAULT_BENCH_PARAMS, MAX_PUBLIC_MATCHES_PER_TICK } from "./broker.js";
 import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, saveHeartbeat } from "./shadow.js";
 
 /**
@@ -11,6 +11,7 @@ import { BenchShadow, defaultHeartbeatFile, defaultSessionsFile, saveHeartbeat }
  * In dry-run it is the Market Test shadow (`--shadow` = `--dry-run --no-announce`): during each bench it records in
  * `results/bazaar-live/bench-sessions.json` what it would match versus what auto crossed, and in any mode it leaves a
  * heartbeat in `results/bazaar-live/broker-heartbeat.json` (read by the coordinator to decide auto or board).
+ * `--announce-only` posts the venue announcement once and exits (`--dry-run` only prints it; live needs `--confirm`).
  */
 export async function runBrokerCli(
   argv: string[],
@@ -33,6 +34,7 @@ export async function runBrokerCli(
       "max-age-ticks": { type: "string" },
       "max-public": { type: "string" },
       "no-announce": { type: "boolean", default: false },
+      "announce-only": { type: "boolean", default: false },
     },
   });
   const n = (flag: string, v: string | undefined, fallback: number): number => {
@@ -46,6 +48,11 @@ export async function runBrokerCli(
     log("REFUSED: the live broker sends matches and an announcement; run with --dry-run, or without it AND with --confirm (only with the user's approval).");
     return 2;
   }
+  if (values["announce-only"] && dryRun) {
+    log(`broker: would announce (${ANNOUNCEMENT.length} chars): ${ANNOUNCEMENT}`);
+    log("DRY-RUN: nothing sent.");
+    return 0;
+  }
   let client = api;
   if (!client) {
     const env = loadBrokerEnv();
@@ -54,6 +61,17 @@ export async function runBrokerCli(
       return 2;
     }
     client = new BrokerClient({ url: env.url, key: env.key });
+  }
+  if (values["announce-only"]) {
+    // One venue announcement and exit: no book read, no matches.
+    try {
+      await client.announce(ANNOUNCEMENT);
+      log("broker: announced the venue");
+      return 0;
+    } catch (e) {
+      log(`broker: announce refused (${e instanceof Error ? e.message : String(e)})`);
+      return 1;
+    }
   }
   const bench = {
     holdTicks: n("hold-ticks", values["hold-ticks"], DEFAULT_BENCH_PARAMS.holdTicks),

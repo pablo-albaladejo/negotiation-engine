@@ -355,4 +355,4 @@ export function planPublic(book: BrokerBook, max = MAX_PUBLIC_MATCHES_PER_TICK):
 
 // game text: kept in Spanish (ends with a Spanish phrase)
 export const ANNOUNCEMENT =
-  "Welcome to Team 2 · El Rastro Express: zero fees (0 % and 0 P per card). Crossing offers are matched at the fair midpoint. Bienvenidos, sin comisiones.";
+  'Team 2 · El Rastro Express (v04): 0 % fee and 0 P per card (El Rastro takes 5 % + 1 P a card). Post your spare cards and want-to-buy bids with venue "v04" (give cash, want {"cards": ["LAV-03"]}): any team can accept them, both sides keep the whole price, and the best bid and ask cross automatically every tick. Long expiry welcome. ¡Cero comisiones, todas las cartas!';
