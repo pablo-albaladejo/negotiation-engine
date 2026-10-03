@@ -4,6 +4,7 @@ import { gridCols } from "../ui/grid.js";
 import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
+import { DealerEstimates } from "./DealerEstimates.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 import {
   arr,
@@ -932,6 +933,7 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Coordinator model={model} />
       <Goals model={model} board={board} />
       <Personas model={model} />
+      <DealerEstimates model={model} />
       <Hints model={model} />
       <Card title={`Conversations in our model (${active.length} active, ${convs.length - active.length} done)`}>
         {convs.length > 0 ? <ConversationsTable convs={convs} onOpen={onOpen} /> : <Muted>No conversations.</Muted>}

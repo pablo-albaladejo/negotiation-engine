@@ -6,6 +6,7 @@
 - **`grid.ts`** — rejilla.
 - **`fold.tsx`** — sección plegable (`Fold`).
 - **`meter.tsx`** — barra de uso de un cupo (`Meter`).
+- **`sparkline.tsx`** — `Sparkline`: línea mínima de una serie (cómo converge una estimación).
 - **`use-now.ts`** — `useNow`: hora actual que se refresca sola (edades y cuentas atrás).
 
 Lo reutilizable de verdad va en el sistema de diseño.

@@ -171,6 +171,8 @@ export interface LiveConv {
   lastTheirs: number | null;
   turn: "us" | "them" | "—";
   next: number | null;
+  /** Su próximo precio previsto por el ajuste por persona (solo dealers; su lado, nunca nuestra reserva). */
+  herNext: number | null;
   deadlineIn: number | null;
   status: LiveStatus;
   outcome: string | null;
@@ -230,6 +232,7 @@ export function liveConversations(board: Board, model: GameModel | null): { acti
       lastTheirs: lastOf(row, false) ?? c.history.herCurrent?.price ?? c.history.herPrices.at(-1) ?? null,
       turn: done ? "—" : turn,
       next: done ? null : (msg?.figure ?? accept?.figure ?? c.strategy.next.priceIfTheyHold ?? null),
+      herNext: done ? null : (c.prediction?.herNext ?? null),
       deadlineIn: dl !== undefined && !done ? dl - tick : null,
       status,
       outcome: c.result?.outcome ? `${c.result.outcome}${c.result.price !== undefined ? ` @ ${c.result.price}` : ""}` : row && !isOpen(row) ? `${row.status}${row.price !== null ? ` @ ${row.price}` : ""}` : null,
@@ -257,6 +260,7 @@ export function liveConversations(board: Board, model: GameModel | null): { acti
       lastTheirs: lastOf(r, false),
       turn,
       next: null,
+      herNext: null,
       deadlineIn: null,
       status: offer ? "resting offer" : turn === "us" ? "our move" : "waiting for them",
       outcome: null,

@@ -3,6 +3,7 @@ import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../sr
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
+import { loadPosterior, type PersonaEstimates } from "../../../src/dealers/history/persona-fit.js";
 import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../../src/coordinator/coordinator.js";
 import { parseOffers, readSide } from "../../../src/trades/trades.js";
 import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../../../src/coordinator/routes.js";
@@ -136,6 +137,12 @@ export interface ModelOut {
   venues: { state: unknown; api: unknown[] };
   /** Pestaña «Now»: objetivo de cada intención, plazos, nuestras ofertas publicadas y nuestro venue. */
   now: NowOut | null;
+  /**
+   * Ajuste de la curva por persona: estimaciones del lado del dealer (nunca valores nuestros), del posterior guardado
+   * (`persona-posterior.json`, solo lectura) más las conversaciones del tick. También van en `state.personas[].estimates`
+   * y `state.conversations[].prediction`.
+   */
+  fit: { source: "persona-posterior.json" | "this tick only"; estimates: Record<string, PersonaEstimates>; welcome: string[]; bands: Record<string, string> } | null;
 }
 
 /**
@@ -253,6 +260,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     packs: { state: null, catalog: [], held: [] },
     venues: { state: null, api: [] },
     now: null,
+    fit: null,
   };
 }
 
@@ -364,11 +372,17 @@ export class BazaarModel {
     }
     const { client, routes } = this.ensure(env.url, env.key);
     const persisted = await this.readPersisted();
+    // Posterior del ajuste por persona: se lee y se reajusta en memoria; el visor nunca lo guarda.
+    const posteriorPath = await resolveInside(this.bazaarDir, "persona-posterior.json");
+    const posterior = posteriorPath ? loadPosterior(posteriorPath) : { observations: {}, estimates: {} };
+    // Primera conversación del equipo con ese dealer (`welcome: true` en la observación guardada); antes del reajuste,
+    // que reescribe las observaciones en memoria.
+    const welcome = Object.values(posterior.observations).flatMap((o) => ((o as unknown as Record<string, unknown>).welcome === true ? [o.id] : []));
     let state: GameState;
     try {
       const clock = await client.clock();
       const withLb = clock.tick - this.lastLeaderboard >= PLAY_DEFAULTS.leaderboardEvery;
-      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos });
+      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos, posterior });
       if (withLb && !state.missing.some((m) => m.startsWith("leaderboard"))) this.lastLeaderboard = state.tick;
     } catch (e) {
       const reason = `GameState failed: ${e instanceof BazaarError ? e.code : e instanceof Error ? e.name : "error"}`;
@@ -485,6 +499,13 @@ export class BazaarModel {
       },
       venues: { state: record(stateAny.markets).venues ?? null, api: Array.isArray(record(venuesRaw).venues) ? (record(venuesRaw).venues as unknown[]) : [] },
       now: nowOut,
+      fit: {
+        source: posteriorPath ? "persona-posterior.json" : "this tick only",
+        estimates: posterior.estimates,
+        welcome,
+        // Banda de cada conversación observada (`sells|buys:<rareza>`), también cuando el GameState no sabe la rareza.
+        bands: Object.fromEntries(Object.values(posterior.observations).map((o) => [o.id, o.band])),
+      },
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;

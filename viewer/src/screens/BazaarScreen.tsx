@@ -38,8 +38,10 @@ import {
   type OfferCurve,
 } from "../model/index.js";
 import { useBazaarModel } from "../bazaarModelLive.js";
-import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type ModelConversation } from "../model/gameModel.js";
+import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type GameModel, type ModelConversation } from "../model/gameModel.js";
+import { predictionCaption, predictionLines, predictionOf, withPrediction, type PredictionOverlay } from "../model/dealerFit.js";
 import { ConversationModelPanel, ModelView } from "./ModelView.js";
+import { DealerFitStrip } from "./DealerFitStrip.js";
 import { NowView } from "./now/NowView.js";
 
 export interface BazaarScreenProps {
@@ -143,7 +145,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
 
 /** Conversación completa: mensajes literales (nunca interpretados) alineados por tick con nuestras
  * decisiones (`decisions.jsonl`), y la línea de tiempo de ofertas. */
-function ConversationDetail({ board, row, conv }: { board: Board; row: BoardRow; conv: ModelConversation | null }) {
+function ConversationDetail({ board, row, conv, model }: { board: Board; row: BoardRow; conv: ModelConversation | null; model: GameModel | null }) {
   const steps = boardTimeline(row);
   const party = partyOf(board, row);
   const maker = (m: string) => (m === board.team ? { value: teamLabel(board, m), tone: "better" as const } : withTeamNames(board, m));
@@ -186,19 +188,24 @@ function ConversationDetail({ board, row, conv }: { board: Board; row: BoardRow;
         ) : (
           <span className="nr-muted">No messages for this entry.</span>
         )}
-        {row.offers.length > 0 ? (
-          <DataTable
-            columns={[
-              { key: "tick", label: "Tick", numeric: true },
-              { key: "maker", label: "Maker" },
-              { key: "give", label: "Gives" },
-              { key: "want", label: "Wants" },
-              { key: "final", label: "Final" },
-              { key: "status", label: "Status" },
-            ]}
-            rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: maker(o.maker), give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
-          />
-        ) : null}
+        <div className="nr-grid" style={gridCols("minmax(0, 2fr) minmax(220px, 1fr)")}>
+          {row.offers.length > 0 ? (
+            <DataTable
+              columns={[
+                { key: "tick", label: "Tick", numeric: true },
+                { key: "maker", label: "Maker" },
+                { key: "give", label: "Gives" },
+                { key: "want", label: "Wants" },
+                { key: "final", label: "Final" },
+                { key: "status", label: "Status" },
+              ]}
+              rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: maker(o.maker), give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
+            />
+          ) : (
+            <span />
+          )}
+          <DealerFitStrip model={model} conv={conv} />
+        </div>
       </div>
     </Card>
   );
@@ -209,7 +216,13 @@ function ConversationDetail({ board, row, conv }: { board: Board; row: BoardRow;
 function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversation | null }) {
   const base = offerCurve(row);
   if (!base) return conv ? <ModelCurve conv={conv} /> : null;
-  const { curve, planned } = withPlannedPath(base, conv);
+  const withPlan = withPlannedPath(base, conv);
+  const { planned } = withPlan;
+  const pred = predictionOf(conv);
+  const herXs = withPlan.curve.theirs.slice(0, conv?.history.herPrices.length ?? withPlan.curve.theirs.length).map((p) => p.round);
+  const fitted = pred ? withPrediction(withPlan.curve, pred, herXs, planned.map((p) => p.value)) : null;
+  const curve = fitted?.curve ?? withPlan.curve;
+  const overlay = fitted?.overlay ?? null;
   const tickOf = (round: number) => (round === 0 ? "" : String(curve.firstTick + round - 1));
   return (
     <figure aria-label="Negotiation curve" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
@@ -219,10 +232,11 @@ function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversatio
         yTicks={curve.yTicks}
         xLabel="tick"
         xTickLabel={tickOf}
-        describeRound={(round) => plannedLines(curve, planned, curveRoundLines(curve, row.counterparty, round), round)}
+        describeRound={(round) => withPredictionLines(overlay, plannedLines(curve, planned, curveRoundLines(curve, row.counterparty, round), round), round, `tick ${curve.firstTick + round - 1}`)}
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
         {...(planned.length > 0 ? { planned } : {})}
+        {...predictionProps(overlay)}
         {...(curve.limit.length > 0 ? { target: curve.limit } : {})}
         {...(curve.reference ? { ourReserve: curve.reference.value } : {})}
         {...(curve.end ? { end: curve.end } : {})}
@@ -233,10 +247,12 @@ function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversatio
           { kind: "them", label: row.counterparty },
           ...(curve.limit.length > 0 ? [{ kind: "target" as const, label: "our limit (reservation) by tick" }] : []),
           ...(planned.length > 0 ? [{ kind: "planned" as const, label: "planned path (our model, next ticks)" }] : []),
+          ...predictionLegend(overlay),
           ...(curve.reference ? [{ kind: "reserve-us" as const, label: curve.reference.label }] : []),
           ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
         ]}
       />
+      {pred ? <span className="nr-muted">{predictionCaption(pred)}</span> : null}
       {curve.capped ? (
         <span className="nr-muted">
           Our limit dropped from {curve.capped.from} to {curve.capped.to} during the turns. The agent lowers it when our cash or the spending budget runs short, or reprices it when the dealer reveals which card it is; the log does not say which.
@@ -244,6 +260,28 @@ function NegotiationCurve({ row, conv }: { row: BoardRow; conv: ModelConversatio
       ) : null}
     </figure>
   );
+}
+
+/** Props del gráfico con la predicción del dealer (su camino con banda, su límite, la retirada); nada si no hay. */
+function predictionProps(o: PredictionOverlay | null) {
+  if (!o) return {};
+  return { predicted: o.predicted, theirLimit: o.theirLimit, ...(o.walkMarker ? { walkMarker: o.walkMarker } : {}) };
+}
+
+function predictionLegend(o: PredictionOverlay | null) {
+  if (!o) return [];
+  return [
+    { kind: "predicted" as const, label: "her predicted path (lo–hi)" },
+    { kind: "their-limit" as const, label: "her estimated limit (lo–hi)" },
+    ...(o.walkMarker ? [{ kind: "walk-marker" as const, label: "predicted walk round" }] : []),
+  ];
+}
+
+/** Añade a la caja del cursor lo previsto del dealer en esa ronda. */
+function withPredictionLines(o: PredictionOverlay | null, lines: string[] | null, round: number, head: string): string[] | null {
+  const extra = o ? predictionLines(o, round) : [];
+  if (extra.length === 0) return lines;
+  return [...(lines ?? [head]), ...extra];
 }
 
 /** Caja del cursor con el paso previsto, si cae en esa ronda. */
@@ -257,7 +295,11 @@ function plannedLines(curve: OfferCurve, planned: { round: number; value: number
 function ModelCurve({ conv }: { conv: ModelConversation }) {
   const out = modelCurve(conv);
   if (!out) return null;
-  const { curve, planned } = out;
+  const { planned } = out;
+  const pred = predictionOf(conv);
+  const fitted = pred ? withPrediction(out.curve, pred, out.curve.theirs.map((p) => p.round), planned.map((p) => p.value)) : null;
+  const curve = fitted?.curve ?? out.curve;
+  const overlay = fitted?.overlay ?? null;
   return (
     <figure aria-label="Negotiation curve (our model)" style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <OfferChart
@@ -268,6 +310,8 @@ function ModelCurve({ conv }: { conv: ModelConversation }) {
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
         {...(planned.length > 0 ? { planned } : {})}
+        {...predictionProps(overlay)}
+        {...(overlay ? { describeRound: (round: number) => withPredictionLines(overlay, null, round, `step ${round}`) } : {})}
         {...(curve.reference ? { ourReserve: curve.reference.value } : {})}
       />
       <Legend
@@ -275,20 +319,23 @@ function ModelCurve({ conv }: { conv: ModelConversation }) {
           { kind: "us", label: "Team 2 (us)" },
           { kind: "them", label: conv.counterparty },
           ...(planned.length > 0 ? [{ kind: "planned" as const, label: "planned path (our model)" }] : []),
+          ...predictionLegend(overlay),
           ...(curve.reference ? [{ kind: "reserve-us" as const, label: `${curve.reference.label} (private, local only)` }] : []),
         ]}
       />
+      {pred ? <span className="nr-muted">{predictionCaption(pred)}</span> : null}
     </figure>
   );
 }
 
 /** Cajón de una conversación que solo está en el modelo (sin fila en el tablero). */
-function ModelOnlyDetail({ conv }: { conv: ModelConversation }) {
+function ModelOnlyDetail({ conv, model }: { conv: ModelConversation; model: GameModel | null }) {
   return (
     <Card title={`Conversation · ${conv.counterparty} (${conv.kind}) · ${conv.id}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <ConversationModelPanel conv={conv} />
         <ModelCurve conv={conv} />
+        <DealerFitStrip model={model} conv={conv} />
         <span className="nr-muted">
           ours [{conv.history.ourPrices.join(", ")}] · theirs [{conv.history.herPrices.join(", ")}]
           {conv.history.herCurrent ? ` · their current ${conv.history.herCurrent.price}${conv.history.herCurrent.final ? " (final)" : ""}` : ""}
@@ -690,11 +737,11 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   const close = () => onFiltersChange({ ...filters, row: "" });
   const drawer = selected ? (
     <Drawer label={`Conversation ${selected.id}`} onClose={close}>
-      <ConversationDetail board={board} row={selected} conv={conv} />
+      <ConversationDetail board={board} row={selected} conv={conv} model={model} />
     </Drawer>
   ) : conv ? (
     <Drawer label={`Conversation ${conv.id}`} onClose={close}>
-      <ModelOnlyDetail conv={conv} />
+      <ModelOnlyDetail conv={conv} model={model} />
     </Drawer>
   ) : null;
   if (view !== "cockpit") {

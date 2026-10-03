@@ -121,6 +121,7 @@ function ConvTable({ rows, onOpen }: { rows: LiveConv[]; onOpen: (id: string) =>
         { key: "rounds", label: "Rounds (used / ~left)" },
         { key: "last", label: "Last: us / them", numeric: true },
         { key: "next", label: "Our next", numeric: true },
+        { key: "herNext", label: "Her next ≈", numeric: true },
         { key: "deadline", label: "Deadline", numeric: true },
         { key: "status", label: "Status" },
       ]}
@@ -135,6 +136,7 @@ function ConvTable({ rows, onOpen }: { rows: LiveConv[]; onOpen: (id: string) =>
         rounds: c.roundsUsed === null ? "—" : `${c.roundsUsed} / ${c.roundsLeft !== null ? `~${c.roundsLeft}` : "?"}`,
         last: `${n(c.lastOurs)} / ${n(c.lastTheirs)}`,
         next: c.next !== null ? `${c.next} P` : "—",
+        herNext: c.herNext !== null ? `≈ ${Math.round(c.herNext * 10) / 10} P` : "—",
         deadline: c.deadlineIn !== null ? `${c.deadlineIn} ticks` : "—",
         status: <Flag kind={STATUS_FLAG[c.status]}>{c.status}</Flag>,
       }))}

@@ -23,6 +23,37 @@ export interface ModelStrategy {
   next: { priceIfTheyHold?: number; walkWhen: string };
 }
 
+/** Intervalo de una estimación (media y extremos). */
+export interface FitRange {
+  mean: number;
+  lo: number;
+  hi: number;
+}
+
+/** Predicción del ajuste por persona para una conversación con dealer (solo su lado: nunca nuestros valores). */
+export interface ModelPrediction {
+  herNext?: number;
+  herLimit: FitRange;
+  /** Su camino previsto por ronda (0 = apertura). */
+  curve: { round: number; price: number; lo: number; hi: number }[];
+  walkRound: FitRange;
+  mirror: boolean | "unknown";
+  fittedFrom: number;
+}
+
+/** Estimaciones del ajuste por persona (`Persona.estimates`). */
+export interface ModelPersonaEstimates {
+  opening_markup: FitRange;
+  beta: FitRange;
+  max_rounds: FitRange;
+  accept_margin: number;
+  walk_after_rounds: FitRange;
+  mirror: boolean | "unknown";
+  bands: Record<string, { limit: FitRange; samples: number; fewSamples: boolean; best: number }>;
+  fittedFrom: number;
+  history: { tick: number; param: string; value: number }[];
+}
+
 export interface ModelConversation {
   id: string;
   kind: string;
@@ -44,6 +75,8 @@ export interface ModelConversation {
   result?: { outcome?: string; price?: number; score?: number };
   strategy: ModelStrategy;
   flagCandidate?: unknown;
+  /** Solo en conversaciones con dealer y si el servidor la trae. */
+  prediction?: ModelPrediction;
 }
 
 export interface ModelIntent {
@@ -202,6 +235,8 @@ export interface GameModel {
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
   venues?: { state: unknown; api: unknown[] };
   now?: NowData | null;
+  /** Ajuste por persona (opcional: un servidor anterior no lo trae). */
+  fit?: { source: string; estimates: Record<string, ModelPersonaEstimates>; welcome?: string[]; bands?: Record<string, string> } | null;
 }
 
 // ---------------------------------------------------------------- lectura tolerante

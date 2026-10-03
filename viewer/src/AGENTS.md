@@ -7,6 +7,7 @@ Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del h
 - **`bazaarBoardLive.ts`** — `useBazaarBoard`: lee `/api/bazaar/board` y `/api/bazaar/score` una vez por tick.
 - **`bazaarModelLive.ts`** — `useBazaarModel`: lee `/api/bazaar/model` con la pestaña Now, la vista Model o un cajón abierto; si el servidor está reconstruyendo, enseña la última construcción y vuelve a pedir a los 10 s.
 - **`model/gameModel.ts`** — tipos tolerantes del modelo y funciones puras: resumen de tiempo, línea de tiempo, personas, pistas (filtros), precios, venues, sobres, flags, camino previsto sobre la curva (`withPlannedPath`, `modelCurve`).
+- **`model/dealerFit.ts`** — ajuste por persona: predicción del dealer sobre la curva y estimaciones por persona.
 - **`screens/ModelView.tsx`** — la vista Model y `ConversationModelPanel` (estado y estrategia en el cajón).
 - **`model/`** — `model/bazaarBoard.ts` (lista unificada, filtros, línea temporal), `model/bazaar.ts` (historia de la cifra), `model/bazaarConversations.ts`, `model/cockpit.ts` (puesto, lo abierto ahora, tratos que movieron la cifra, agentes, calendario, historial y quién es quién: `partyOf`, `teamLabel`, `bookMakerLabel`; curva de la negociación: `offerCurve`, `niceScale`, `curveRoundLines`).
 - **`screens/now/`** — la pestaña «Now» (primera): qué está pasando ahora mismo.
