@@ -220,20 +220,23 @@ export function teamDeskOf(lines: readonly TeamDeskLine[]): TeamDeskTeam[] {
     if (c?.ref) byRef.set(`${l.team}|${c.ref}`, key);
     if (c?.offerId != null) byOffer.set(c.offerId, key);
     if (l.event === "outcome") ch.outcome = { tick: l.tick ?? null, status: l.status ?? null, negDelta: l.negDelta ?? null, reason: l.reason ?? null };
-    else if (l.event !== "incoming" || c)
+    else if (l.event !== "incoming" || c) {
+      // Cancel lines carry 0 for every figure (they don't repeat the price): keep the last real counter for the chip.
+      const fig = (v: number | null | undefined) => (l.event === "cancel" ? null : (v ?? null));
       ch.steps.push({
         tick: l.tick ?? null,
         event: l.event,
         status: l.status ?? null,
         offerId: c?.offerId ?? null,
         ref: c?.ref ?? null,
-        price: c?.price ?? null,
-        anchor: c?.anchor ?? null,
-        floor: c?.floor ?? null,
-        serverValue: c?.serverValue ?? null,
-        negIfFilled: c?.negIfFilled ?? null,
+        price: fig(c?.price),
+        anchor: fig(c?.anchor),
+        floor: fig(c?.floor),
+        serverValue: fig(c?.serverValue),
+        negIfFilled: fig(c?.negIfFilled),
         reason: l.reason ?? null,
       });
+    }
     ch.status = l.status ?? ch.status;
   }
   const teams = new Map<string, TeamDeskTeam>();
