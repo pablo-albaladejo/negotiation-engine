@@ -6,6 +6,8 @@ import { duelsApi, type Duel, type Schedule } from "../duels/schemas.js";
 import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { spareTargets } from "../dealers/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
+import { indexCatalog } from "../flags/flags.js";
+import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
 
 /**
  * Un único `GameState` por tick, construido solo con GET y tolerante: cada lectura que falla se apunta en
@@ -66,7 +68,10 @@ export interface GameState {
     cooloffs: { dealer: string; untilTick: number }[];
     /** Campos de strikes que traiga `/api/me`, si alguno (hoy no aparece ninguno). */
     strikes?: Record<string, unknown>;
-  };
+  } & OursWorld;
+  /** Personas (dealers y las que aparezcan por `/api/levels` o el feed), con estado y progreso de desbloqueo. */
+  personas: Persona[];
+  world: { eggs: WorldEggs };
   env: {
     schedule: { nowHours?: number; next: { atHours: number; action: string; note?: string }[] };
     dealers: { id: string; name?: string; status?: string; level?: number }[];
@@ -159,6 +164,10 @@ export interface BuildOptions {
   pageTargets?: readonly string[];
   /** Parte persistida de cada conversación (`conversations.json`). */
   memos?: ReadonlyMap<string, ConversationMemo>;
+  /** Pistas y probes por persona (`personas.json`). */
+  personaMemos?: ReadonlyMap<string, PersonaMemo>;
+  /** Flags ya enviados (`flags.json`). */
+  flags?: readonly FlagRecord[];
 }
 
 /** Construye el estado del tick con GET en paralelo; nunca lanza por una lectura que falle (salvo `/api/clock`). */
@@ -174,7 +183,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       return undefined;
     }
   };
-  const [me, schedule, dealers, live, threads, board, myOffers, leaderboard] = await Promise.all([
+  const [me, schedule, dealers, live, threads, board, myOffers, leaderboard, feed, levels, catalog] = await Promise.all([
     settle("me", client.me()),
     settle("schedule", duels.schedule()),
     settle("dealers", client.dealers()),
@@ -183,7 +192,12 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     settle("rastro", client.board("rastro")),
     settle("my offers", client.myOffers()),
     opts.leaderboard ? settle("leaderboard", client.raw("GET", "/api/leaderboard")) : Promise.resolve(undefined),
+    settle("feed", client.feed(200)),
+    settle("levels", client.levels()),
+    settle("catalog", client.catalog()),
   ]);
+  const events = parseFeed(feed);
+  const rawDealers = (dealers?.dealers ?? []) as unknown[];
   const c = clock as Clock & Record<string, unknown>;
   const ours = me ? oursFrom(me) : { unlocked: [], album: { pages: [] }, holdings: { cards: 0, packs: 0, byRef: {}, spares: 0 }, values: {} };
   const allThreads = threads?.threads ?? [];
@@ -206,7 +220,20 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     pages: ours.album.pages,
     pageTargets: opts.pageTargets ?? [],
     memos: opts.memos ?? new Map(),
+    ...(catalog ? { catalog: indexCatalog(catalog) } : {}),
+    flagsFromFirstMessage: new Set(rawDealers.filter((d) => personaTypeOf(d) === "trickster").map((d) => (d as { id: string }).id)),
   });
+  const personas = buildPersonas({
+    dealers: rawDealers,
+    levels,
+    events,
+    ...(me?.id ? { team: me.id } : {}),
+    unlocked: ours.unlocked,
+    threads: allThreads,
+    conversations,
+    memos: opts.personaMemos ?? new Map(),
+  });
+  const world = worldFromFeed(events, me?.id ?? undefined, personas.map((p) => p.id), Object.keys(ours.holdings.byRef), catalog, opts.flags ?? []);
   const ourRow = lb?.success ? lb.data.teams.find((t) => t.team === me?.id) : undefined;
   return {
     tick: clock.tick,
@@ -227,7 +254,10 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
       ...ours,
       openThreads: allThreads.filter((t) => (t.status ?? "open") === "open").map((t) => ({ id: t.id, ...(t.with ? { with: t.with } : {}), status: t.status ?? "open" })),
       cooloffs,
+      ...world.ours,
     },
+    personas,
+    world: { eggs: world.eggs },
     env: {
       schedule: scheduleSummary(schedule),
       dealers: (dealers?.dealers ?? []).map((d) => ({ id: d.id, ...(d.name ? { name: d.name } : {}), ...(d.status ? { status: d.status } : {}), ...(typeof d.level === "number" ? { level: d.level } : {}) })),
@@ -287,6 +317,7 @@ export function formatGameState(g: GameState): string[] {
   ];
   const lb = g.env.leaderboard;
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
+  lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
   if (g.missing.length) lines.push(`missing: ${g.missing.join("; ")}`);
   return lines;
 }

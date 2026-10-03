@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ThreadSchema, type Me } from "../shared/schemas.js";
+import { ThreadSchema, type Me, type Thread } from "../shared/schemas.js";
 import { liveTraceDir } from "../shared/trace.js";
 import { negotiatorForDealer, patienceBudgetFor, traitsOf } from "../dealers/dealer-profile.js";
 import { adaptiveStep, DEFAULT_NEGOTIATOR_PARAMS, nextPrice, plannedSchedule, type NegotiatorParams } from "../dealers/negotiator.js";
@@ -9,6 +9,7 @@ import { sideOfTopic, threadPrices } from "../dealers/view.js";
 import { rivalOfferFrom, type Duel } from "../duels/schemas.js";
 import { DAYS_MIN, offerForSurplus, openingSurplus, targetSurplus, type DuelDecision, type DuelParams, type DuelState } from "../duels/duels.js";
 import { readSide, type TradeOffer } from "../trades/trades.js";
+import { detectFlag, type CatalogIndex, type FlagCandidate } from "../flags/flags.js";
 
 /**
  * Una conversación como entidad de primera clase: hilo con un dealer, duelo u oferta nuestra en El Rastro.
@@ -74,6 +75,13 @@ export interface Conversation {
   /** Pistas oídas y eggs probados (paso 3). Su texto nunca da una cifra. */
   hints: string[];
   eggsTried: string[];
+  /**
+   * Paciencia para probes de eggs: `probeCostNow` 0 en la apertura o tras un trato (no gasta paciencia), 1 si no.
+   * ASSUMPTION: ir a caballo de un counter también costaría 0; no se modela aún (el probe sale solo).
+   */
+  patience?: { roundsSpent: number; budget: number; probeCostNow: number };
+  /** Contradicción texto↔estructura en un mensaje del dealer (ver `src/flags/flags.ts`). */
+  flagCandidate?: FlagCandidate;
   /** Lo rellena el coordinador con el presupuesto del tick. */
   turn: { canMessage?: boolean; canAccept?: boolean };
   result?: { outcome?: string; price?: number; ladderShare?: number; negPointsDelta?: number; score?: number };
@@ -134,6 +142,26 @@ export interface ConversationInputs {
   /** Cartas que siempre cuentan como «página» (SAL-09). */
   pageTargets: readonly string[];
   memos: ReadonlyMap<string, ConversationMemo>;
+  /** Catálogo indexado para el detector de flags; sin él, no hay candidatos. */
+  catalog?: CatalogIndex;
+  /** Personas cuyo detector mira desde el primer mensaje (trickster). */
+  flagsFromFirstMessage?: ReadonlySet<string>;
+}
+
+/**
+ * Último candidato a flag del hilo: mensajes del dealer con oferta adjunta, comparando texto con estructura.
+ * Salvo trickster, la apertura se salta. El texto nunca da una cifra (excepción estrecha, ver `flags.ts`).
+ */
+function flagCandidateOf(t: Thread, i: ConversationInputs): FlagCandidate | undefined {
+  if (!i.catalog || !t.with) return undefined;
+  const theirs = t.messages.filter((m) => m.sender === t.with);
+  const from = i.flagsFromFirstMessage?.has(t.with) ? 0 : 1;
+  let found: FlagCandidate | undefined;
+  for (const m of theirs.slice(from)) {
+    const f = detectFlag({ ...(m.id != null ? { id: m.id } : {}), ...(m.text ? { text: m.text } : {}), ...(m.offer && typeof m.offer === "object" ? { offer: m.offer } : {}) }, i.catalog);
+    if (f?.verifiable) found = f;
+  }
+  return found;
 }
 
 const setOfRef = (ref: string) => ref.split("-")[0] ?? ref;
@@ -228,6 +256,7 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
     const price = p.herCurrent?.price ?? p.herPrices.at(-1);
     const ev = privateValue !== undefined && price !== undefined ? (side === "buy" ? privateValue - price : price - privateValue) : undefined;
     const reason = t.closed_reason ?? undefined;
+    const flag = flagCandidateOf(t, i);
     const strategy = done ? undefined : dealerStrategy(side, t.with, dealerInfo, { herPrices: p.herPrices, ourPrices: p.ourPrices, ...(p.herCurrent ? { herCurrent: { price: p.herCurrent.price, final: p.herCurrent.final } } : {}) }, privateValue);
     out.push(
       withMemo(
@@ -244,6 +273,8 @@ function dealerConversations(i: ConversationInputs): Conversation[] {
           herConcession,
           roundsUsed: rounds,
           patienceEstimate: patience,
+          patience: { roundsSpent: rounds, budget: patience, probeCostNow: phase === "opening" || t.status === "deal" ? 0 : 1 },
+          ...(flag ? { flagCandidate: flag } : {}),
           turn: {},
           ...(strategy ? { strategy } : {}),
           ...(done ? { result: { outcome: outcomeOf(t.status, reason), ...(t.status === "deal" && price !== undefined ? { price } : {}) } } : {}),
@@ -385,5 +416,7 @@ export function formatConversation(c: Conversation): string {
   const decision = d ? ` · last ${d.action}${d.price !== undefined ? ` ${d.price}${d.days !== undefined ? `/d${d.days}` : ""}` : ""} (${d.rule}: ${d.reason}, tick ${d.tick})` : "";
   const plan = c.strategy.plan.plannedPath.length ? ` · path [${c.strategy.plan.plannedPath.join(", ")}]` : "";
   const next = c.strategy.next.priceIfTheyHold !== undefined ? ` · next ${c.strategy.next.priceIfTheyHold} if they hold` : "";
-  return `${c.id} · ${c.kind} ${c.counterparty} · ${c.side} ${asset} · ${c.goal.why} · ${c.phase} (${c.roundsUsed}${c.patienceEstimate !== undefined ? `/${c.patienceEstimate}` : ""}) · ours [${lastN(c.history.ourPrices).join(", ")}] her [${lastN(c.history.herPrices).join(", ")}] now ${her} · ${turn}${result}${c.mood.cooloffUntil !== undefined ? ` · cooloff until ${c.mood.cooloffUntil}` : ""}${decision}${plan}${next}`;
+  const flag = c.flagCandidate ? ` · FLAG? msg ${c.flagCandidate.messageId}` : "";
+  const probe = c.patience && c.phase !== "done" ? ` · probe cost ${c.patience.probeCostNow}` : "";
+  return `${c.id} · ${c.kind} ${c.counterparty} · ${c.side} ${asset} · ${c.goal.why} · ${c.phase} (${c.roundsUsed}${c.patienceEstimate !== undefined ? `/${c.patienceEstimate}` : ""}) · ours [${lastN(c.history.ourPrices).join(", ")}] her [${lastN(c.history.herPrices).join(", ")}] now ${her} · ${turn}${result}${c.mood.cooloffUntil !== undefined ? ` · cooloff until ${c.mood.cooloffUntil}` : ""}${decision}${plan}${next}${probe}${flag}`;
 }

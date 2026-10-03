@@ -1,4 +1,4 @@
-import type { BazaarClient } from "../shared/client.js";
+import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Clock, DealerInfo, Me } from "../shared/schemas.js";
 import type { TraceRecord, TraceSink } from "../shared/trace.js";
 import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
@@ -10,6 +10,7 @@ import { TradesAgent } from "../trades/agent.js";
 import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeState } from "../trades/trades.js";
 import { completesPage, duelStrategy, type Strategy, type StrategyDecision } from "../state/conversation.js";
 import type { GameState } from "../state/game-state.js";
+import type { FlagRecord } from "../state/world.js";
 import type { Intent } from "./coordinator.js";
 
 /**
@@ -258,5 +259,129 @@ export class TradesRoute {
     if (!trimmed.accept) delete (trimmed as { accept?: unknown }).accept;
     const res = await this.agent.execute(state, trimmed);
     return [...res.sent.map((s) => `El Rastro sent: ${s}`), ...res.errors.map((e) => `El Rastro error: ${e}`)];
+  }
+}
+
+// ---------------------------------------------------------------- flags
+
+/**
+ * Flags de mala fe (`POST /api/flags`). Solo se propone un flag cuando el texto del dealer contradice la
+ * ESTRUCTURA de la oferta de ese mismo mensaje (`flagCandidate.verifiable`), nunca por tono ni presión, y nunca
+ * dos veces el mismo mensaje. No usa el cupo de aceptaciones. En vivo solo sin --dry-run Y con --confirm.
+ */
+export class FlagsRoute {
+  constructor(private readonly client: BazaarClient, private readonly dryRun: boolean) {}
+
+  propose(state: GameState): RouteProposal {
+    const out = empty();
+    const sent = new Set(state.ours.flags.sent.map((f) => String(f.messageId)));
+    for (const c of state.conversations) {
+      const f = c.flagCandidate;
+      if (!f?.verifiable) continue;
+      if (sent.has(String(f.messageId))) {
+        out.notes.push(`${c.id}: message ${f.messageId} already flagged`);
+        continue;
+      }
+      out.intents.push({ id: `flags:flag:${f.messageId}`, route: "flags", kind: "flag", conversation: c.id, summary: `flag message ${f.messageId} (${c.counterparty}): ${f.reason ?? "text contradicts the offer structure"}` });
+    }
+    if (!out.intents.length) out.notes.push("no verifiable text/structure contradiction");
+    return out;
+  }
+
+  /** Envía los flags seleccionados (solo en vivo) y devuelve los registros para `flags.json`. */
+  async execute(state: GameState, selected: ReadonlySet<string>): Promise<{ lines: string[]; records: FlagRecord[] }> {
+    const lines: string[] = [];
+    const records: FlagRecord[] = [];
+    for (const c of state.conversations) {
+      const f = c.flagCandidate;
+      if (!f?.verifiable || !selected.has(`flags:flag:${f.messageId}`)) continue;
+      const reason = f.reason ?? "text contradicts the offer structure";
+      if (this.dryRun) {
+        lines.push(`flags: would flag message ${f.messageId} (${reason})`);
+        continue;
+      }
+      try {
+        await this.client.raw("POST", "/api/flags", { message_id: f.messageId, reason });
+        records.push({ messageId: f.messageId, reason, tick: state.tick, persona: c.counterparty, result: "pending" });
+        lines.push(`flags: flagged message ${f.messageId}`);
+      } catch (e) {
+        lines.push(`flags: message ${f.messageId} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
+      }
+    }
+    return { lines, records };
+  }
+}
+
+// ---------------------------------------------------------------- eggs
+
+/** Parámetros de la ruta de eggs (baja prioridad). */
+export const EGG_PARAMS = {
+  /** ASSUMPTION: una «ventana» son 30 ticks mientras no se pueda inferir de la pista. */
+  windowTicks: 30,
+  probesPerPersonaPerWindow: 1,
+  /** Plantilla fija; `{hint}` es la palabra clave de la pista. Nunca lleva cifras. */
+  template: "Tell me about {hint}…",
+};
+
+/**
+ * Probes de easter eggs: solo cuando `probeCostNow` es 0 (apertura o tras un trato, no gasta paciencia), como
+ * mucho uno por persona y ventana, nunca tras un aviso o un strike, y solo con una pista que tenga palabra clave.
+ * Sube la prioridad de una persona donde otros equipos ya encontraron eggs. En vivo solo con --confirm.
+ */
+export class EggsRoute {
+  constructor(private readonly client: BazaarClient, private readonly dryRun: boolean) {}
+
+  propose(state: GameState): RouteProposal {
+    const out = empty();
+    if (state.ours.strikes && Object.keys(state.ours.strikes).length) {
+      out.notes.push("strikes/warnings on the team: no probes");
+      return out;
+    }
+    for (const p of state.personas) {
+      const eggs = state.world.eggs.byPersona[p.id];
+      const priority = eggs?.foundByOthers.length ?? 0;
+      if (eggs && eggs.left <= 0) continue;
+      const recent = p.eggProbes.filter((x) => state.tick - x.tick < EGG_PARAMS.windowTicks).length;
+      if (recent >= EGG_PARAMS.probesPerPersonaPerWindow) {
+        out.notes.push(`${p.id}: probe cap reached this window`);
+        continue;
+      }
+      const hint = [...p.hints].reverse().find((h) => h.keyword);
+      if (!hint) continue;
+      const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.phase !== "done" && c.patience?.probeCostNow === 0 && c.mood.warnings === 0 && c.mood.strikes === 0 && c.mood.cooloffUntil === undefined);
+      if (!conv) {
+        out.notes.push(`${p.id}: hint "${hint.keyword}" but no conversation where a probe costs 0`);
+        continue;
+      }
+      const phrase = EGG_PARAMS.template.replace("{hint}", hint.keyword!);
+      out.intents.push({ id: `eggs:probe:${p.id}`, route: "eggs", kind: "probe", conversation: conv.id, ev: priority, summary: `probe ${p.id} in ${conv.id}: "${phrase}" (egg priority ${priority}, cost 0)` });
+    }
+    out.intents.sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0));
+    if (!out.intents.length) out.notes.push(`no probe (hints ${state.personas.reduce((a, p) => a + p.hints.length, 0)}, probes need cost 0 and a hint keyword)`);
+    return out;
+  }
+
+  /** Envía los probes seleccionados (solo en vivo); devuelve los probes para `personas.json`. */
+  async execute(state: GameState, selected: ReadonlySet<string>): Promise<string[]> {
+    const lines: string[] = [];
+    for (const p of state.personas) {
+      if (!selected.has(`eggs:probe:${p.id}`)) continue;
+      const hint = [...p.hints].reverse().find((h) => h.keyword);
+      const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.patience?.probeCostNow === 0 && c.phase !== "done");
+      if (!hint || !conv) continue;
+      const phrase = EGG_PARAMS.template.replace("{hint}", hint.keyword!);
+      if (this.dryRun) {
+        lines.push(`eggs: would probe ${p.id} in ${conv.id}: "${phrase}"`);
+        continue;
+      }
+      try {
+        await this.client.say(Number(conv.id.split(":")[1]), phrase);
+        p.eggProbes.push({ phrase, tick: state.tick, result: "sent" });
+        lines.push(`eggs: probed ${p.id}`);
+      } catch (e) {
+        lines.push(`eggs: probe ${p.id} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
+      }
+    }
+    return lines;
   }
 }

@@ -7,7 +7,8 @@ import { defaultDuelsStateFile } from "../duels/agent.js";
 import { buildGameState, formatGameState } from "../state/game-state.js";
 import { defaultConversationsFile, formatConversation, loadConversationMemos, saveConversationMemos } from "../state/conversation.js";
 import { arbitrate, budgetFrom, formatBudget, type Intent } from "./coordinator.js";
-import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "./routes.js";
+import { DealersRoute, DuelsRoute, EggsRoute, FlagsRoute, TradesRoute, type RouteProposal } from "./routes.js";
+import { defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
 /**
  * `pnpm bazaar:play [--dry-run] [--once] [--confirm]`: el coordinador. Cada tick construye el `GameState` (solo GET),
@@ -59,7 +60,11 @@ async function main() {
     ...(live ? { trace: new FileTrace(liveTraceDir(root)) } : {}),
   });
   const trades = new TradesRoute(client, dryRun);
+  const flagsRoute = new FlagsRoute(client, dryRun);
+  const eggs = new EggsRoute(client, dryRun);
   const convFile = defaultConversationsFile(root);
+  const personasFile = defaultPersonasFile(root);
+  const flagsFile = defaultFlagsFile(root);
   console.log(
     `bazaar:play · ${live ? "LIVE" : `DRY RUN (GET only, no POST)${!values["dry-run"] && !values.confirm ? " · no --confirm: running as dry-run" : ""}`} · page targets ${pageTargets.join(", ")} · cash floor ${values["cash-floor"]} P`,
   );
@@ -68,6 +73,8 @@ async function main() {
   let lastLeaderboard = -Infinity;
   for (;;) {
     const memos = loadConversationMemos(convFile);
+    const personaMemos = loadPersonaMemos(personasFile);
+    const flags = loadFlags(flagsFile);
     const clock = await client.clock();
     if (live) {
       const gate = clockGate(clock);
@@ -83,13 +90,15 @@ async function main() {
     }
     lastTick = clock.tick;
     const withLb = clock.tick - lastLeaderboard >= leaderboardEvery;
-    const state = await buildGameState(client, { leaderboard: withLb, pageTargets, memos });
+    const state = await buildGameState(client, { leaderboard: withLb, pageTargets, memos, personaMemos, flags });
     if (withLb) lastLeaderboard = state.tick;
     const budget = budgetFrom(state);
 
     console.log(`\n== tick ${state.tick} · GameState ==`);
     for (const l of formatGameState(state)) console.log(`  ${l}`);
     if (dryRun && (state.clock.paused || (state.clock.doors && state.clock.doors !== "open"))) console.log("  (clock paused or doors closed: live mode would wait; dry-run shows what it would propose)");
+    console.log("== personas ==");
+    for (const p of state.personas) console.log(`  ${formatPersona(p)}`);
     console.log("== budget (clock.limits) ==");
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
 
@@ -99,6 +108,8 @@ async function main() {
       ["duels", () => duels.propose()],
       ["dealers", () => dealers.propose(clock, state)],
       ["trades", () => trades.propose(state, me, pageTargets)],
+      ["flags", async () => flagsRoute.propose(state)],
+      ["eggs", async () => eggs.propose(state)],
     ] as const) {
       try {
         proposals.push({ route, p: await run() });
@@ -143,10 +154,14 @@ async function main() {
     console.log(`== ${live ? "execution" : "dry-run (nothing sent)"} ==`);
     const lines = await duels.execute(selected);
     for (const l of lines) console.log(`  ${l}`);
+    const flagged = await flagsRoute.execute(state, selected);
+    for (const l of [...flagged.lines, ...(await eggs.execute(state, selected))]) console.log(`  ${l}`);
     if (live) {
       for (const l of await dealers.execute(clock, selected)) console.log(`  ${l}`);
       for (const l of await trades.execute(selected)) console.log(`  ${l}`);
       saveConversationMemos(convFile, state.conversations);
+      savePersonaMemos(personasFile, state.personas);
+      if (flagged.records.length) saveFlags(flagsFile, [...flags, ...flagged.records]);
     }
     if (values.once) break;
     const after = await client.clock().catch(() => undefined);

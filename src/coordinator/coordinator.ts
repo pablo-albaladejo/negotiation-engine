@@ -8,8 +8,9 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * los dealers y El Rastro. Si resulta que no, basta con sacar la clase "duel" del cupo en `arbitrate`.
  */
 
-export type Route = "duels" | "dealers" | "trades";
-export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel";
+export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs";
+/** `flag`: `POST /api/flags`, no usa el cupo de aceptaciones. `probe`: mensaje de egg, cuenta como mensaje y va el último. */
+export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe";
 export type AcceptClass = "duel" | "page-completing" | "dealer-ladder" | "other";
 
 /** Prioridad de las aceptaciones (menor rango, antes); a igual rango, más valor esperado primero. */
@@ -119,7 +120,8 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
   });
 
   const perConversation = new Map<string, number>();
-  for (const i of intents.filter((x) => x.kind === "message")) {
+  // Los probes de eggs son de baja prioridad: solo usan el hueco que dejen los mensajes de negociación.
+  for (const i of [...intents.filter((x) => x.kind === "message"), ...intents.filter((x) => x.kind === "probe")]) {
     const conv = i.conversation ?? i.id;
     if (acceptedConversations.has(conv)) {
       verdicts.set(i.id, { intent: i, selected: false, reason: `accept selected in ${conv}` });
@@ -149,6 +151,8 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     take(i);
     verdicts.set(i.id, { intent: i, selected: true, reason: `open thread ${threads}/${b.maxOpenThreads}` });
   }
+
+  for (const i of intents.filter((x) => x.kind === "flag")) verdicts.set(i.id, { intent: i, selected: true, reason: "flag: structural contradiction, does not use the accept quota" });
 
   const cancels = intents.filter((x) => x.kind === "cancel");
   for (const i of cancels) verdicts.set(i.id, { intent: i, selected: true, reason: "cancel (frees an open offer)" });

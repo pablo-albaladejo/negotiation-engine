@@ -7,7 +7,7 @@ Agente del Equipo 2 para **El Bazaar** (hackathon Causa Prima): un torneo de cro
 ## Reglas no negociables
 
 - **La cifra sale siempre del código** (`src/engine/` + planificadores de `src/dealers/`, `src/duels/`…). Los mensajes son plantillas cuya única cifra es la decidida (`textMatchesPrice`, `textMatchesOffer`).
-- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto.
+- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Dos excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista) y comparar el texto de un dealer con la estructura de su oferta para un flag (`src/flags/flags.ts`). **Nunca para una cifra.**
 - **Nunca se revela la valoración privada** ni el límite (`your_limit`).
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
 - **Guardarraíles antes de aceptar**: forma de la oferta (`checkStructure`) y un activo en un solo sitio (`src/shared/asset-locks.ts`).
@@ -25,7 +25,8 @@ src/
 ├─ broker/    casar ofertas en nuestro venue     (pnpm bazaar:broker)
 ├─ venue/     abrir nuestro mercado              (pnpm bazaar:venue)
 ├─ status/    resumen de solo lectura            (pnpm bazaar:status)
-├─ state/     GameState por tick y Conversation (solo GET)
+├─ state/     GameState por tick, Conversation, personas, eggs y flags (solo GET)
+├─ flags/     detector de mala fe: texto del dealer frente a la estructura de su oferta
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
 test/        solo tests de guardarraíles (fast-check)
 scripts/     escaneo de la API y comprobación de docs
