@@ -264,6 +264,8 @@ export interface Board {
   eggs?: BoardEggs;
   /** Organiser grants to us (admin.grant), oldest first; absent on an older server. */
   grants?: BoardGrant[];
+  /** Market test: bench sessions auto vs board; absent on an older server. */
+  market_test?: BoardMarketTest;
 }
 
 export const EMPTY_BOARD: Board = {
@@ -666,4 +668,49 @@ export function duelEarlierAccept(r: BoardRow): { price: number; tick: number | 
   const earlier = [...ours].reverse().find((m) => m.price === r.price);
   if (!earlier) return null;
   return { price: r.price, tick: earlier.tick, later: last.price!, laterTick: last.tick };
+}
+
+export interface BoardMarketTrader {
+  id: string;
+  side: "ask" | "bid";
+  points: { tick: number; quote: number; temper: string | null }[];
+}
+
+export interface BoardMarketMatch {
+  tick: number;
+  source: string | null;
+  sell: string | null;
+  buy: string | null;
+  price: number | null;
+  ask: number | null;
+  bid: number | null;
+  surplus: number | null;
+  status: string | null;
+  error: string | null;
+}
+
+export interface BoardMarketSession {
+  day: string;
+  session: number;
+  name: string | null;
+  hard: boolean;
+  start_tick: number;
+  ticks: number;
+  hour: number | null;
+  venue: string | null;
+  mode: string;
+  efficiency: number | null;
+  auto_baseline: number | null;
+  delta: number | null;
+  matches: number | null;
+  finished: boolean;
+  dry_run: boolean | null;
+  shadow: { shadow_surplus: number | null; auto_surplus: number | null; pairs_shadow: number | null; pairs_auto: number | null } | null;
+  traders: BoardMarketTrader[] | null;
+  our_matches: BoardMarketMatch[] | null;
+}
+
+export interface BoardMarketTest {
+  sessions: BoardMarketSession[];
+  now: { tick: number | null; hour: number | null; bench: number | null; matched: number | null; line: string } | null;
 }
