@@ -173,6 +173,8 @@ export interface ModelRivals {
   byRef: Record<string, { holders: string[]; wantedBy: string[] }>;
   seenAssets: number;
   lastEventId: number;
+  /** Our leaderboard rows over time (an older server does not provide it). */
+  usHistory?: ModelBoardSnapshot[];
 }
 
 export interface ModelState {

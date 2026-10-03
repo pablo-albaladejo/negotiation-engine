@@ -267,6 +267,8 @@ export interface RivalsState {
   /** Assets with a known team holder (all teams but us). */
   seenAssets: number;
   lastEventId: number;
+  /** Our own leaderboard rows over time (our holdings come from `/api/me`, this is only the trend). */
+  usHistory?: BoardSnapshot[];
 }
 
 /** Page cards per set from the catalog (`page: true`, not hidden). */
@@ -325,7 +327,8 @@ export function rivalsView(ledger: RivalLedger, us: string | undefined, catalog:
       wants,
     });
   }
-  return { teams: out, byRef, seenAssets: out.reduce((n, t) => n + t.seen.length, 0), lastEventId: ledger.lastEventId };
+  const usHistory = us ? ledger.history[us] : undefined;
+  return { teams: out, byRef, seenAssets: out.reduce((n, t) => n + t.seen.length, 0), lastEventId: ledger.lastEventId, ...(usHistory ? { usHistory } : {}) };
 }
 
 /**

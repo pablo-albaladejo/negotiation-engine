@@ -17,6 +17,8 @@ const col = { display: "flex", flexDirection: "column", gap: "var(--space-3)" } 
 /** One leaderboard field over time (rows without it are skipped). */
 const series = (t: ModelRivalTeam, k: "score" | "rank" | "albumFilled"): number[] => (t.history ?? []).flatMap((h) => (typeof h[k] === "number" ? [h[k]] : []));
 
+const US = "us" as const;
+
 const closest = (t: ModelRivalTeam) => t.pages.filter((p) => p.have < p.of).sort((a, b) => a.of - a.have - (b.of - b.have))[0];
 
 interface Opportunity {
@@ -37,6 +39,26 @@ function opportunities(r: ModelRivals, holdings: Record<string, number>): Opport
     if (wantedBy.length || closesFor.length) out.push({ ref, held, wantedBy, closesFor });
   }
   return out.sort((a, b) => b.closesFor.length - a.closesFor.length || b.wantedBy.length - a.wantedBy.length || a.ref.localeCompare(b.ref));
+}
+
+/** Our own row for the teams table: album and pages are exact (`/api/me`), not estimated from public structure. */
+function ourRow(board: Board, r: ModelRivals) {
+  const lb = board.market.leaderboard.find((t) => t.us || t.team === board.team);
+  const pages = (board.album?.pages ?? []).filter((p) => !p.complete).sort((a, b) => a.of - a.have - (b.of - b.have));
+  const held = Object.entries(board.holdings).filter(([, n]) => n > 0);
+  const p = pages[0];
+  return {
+    team: <strong>{teamLabel(board, board.team)}</strong>,
+    rank: lb?.rank ?? board.header?.rank ?? "—",
+    trend: <Sparkline values={(r.usHistory ?? []).flatMap((h) => (typeof h.score === "number" ? [h.score] : []))} label={`${board.team} score`} />,
+    album: board.album ? `${board.album.filled ?? "?"}/${board.album.slots ?? "?"}` : lb ? `${lb.album_filled ?? "?"}/${lb.album_slots ?? "?"}` : "—",
+    seen: held.length,
+    unseen: 0,
+    page: p ? `${p.set} ${p.have}/${p.of}${p.of - p.have <= 3 ? ` · lacks ${p.missing.map((m) => m.ref).join(" ")}` : ""}` : "—",
+    wants: pages.flatMap((pg) => pg.missing.map((m) => m.ref)).slice(0, 5).join(" ") || "—",
+    // Holdings include the copy in the album: a spare is any extra copy.
+    spares: held.filter(([, n]) => n > 1).map(([ref]) => ref).join(" ") || "—",
+  };
 }
 
 function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
@@ -90,6 +112,10 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
   const opps = opportunities(r, board.holdings);
   const teams = [...r.teams].sort((a, b) => (a.board?.rank ?? 99) - (b.board?.rank ?? 99) || a.team.localeCompare(b.team));
   const detail = teams.find((t) => t.team === picked);
+  // Our row goes at our leaderboard rank, among the others.
+  const ourRank = board.market.leaderboard.find((t) => t.us || t.team === board.team)?.rank ?? board.header?.rank ?? 99;
+  const teamRows: (ModelRivalTeam | typeof US)[] = [...teams];
+  teamRows.splice(teams.filter((t) => (t.board?.rank ?? 99) < ourRank).length, 0, US);
   return (
     <Card title={`Other teams · collections (${r.teams.length} teams · ${r.seenAssets} cards located)`}>
       <div style={col}>
@@ -129,7 +155,8 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
             { key: "wants", label: "Wants" },
             { key: "spares", label: "Spares" },
           ]}
-          rows={teams.map((t) => {
+          rows={teamRows.map((t) => {
+            if (t === US) return ourRow(board, r);
             const p = closest(t);
             return {
               team: teamLabel(board, t.team),
@@ -143,8 +170,11 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
               spares: t.spares.join(" ") || "—",
             };
           })}
-          onRowClick={(i) => setPicked(teams[i]?.team === picked ? "" : (teams[i]?.team ?? ""))}
-          {...(detail ? { selectedRowIndex: teams.indexOf(detail) } : {})}
+          onRowClick={(i) => {
+            const t = teamRows[i];
+            if (t && t !== US) setPicked(t.team === picked ? "" : t.team);
+          }}
+          {...(detail ? { selectedRowIndex: teamRows.indexOf(detail) } : {})}
         />
         <div className="nr-filter-field">
           <label className="nr-muted nr-filter-label" htmlFor={pickId}>
