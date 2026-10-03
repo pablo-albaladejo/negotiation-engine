@@ -30,6 +30,7 @@ export async function runTradesCli(
       expires: { type: "string" },
       "cash-floor": { type: "string" },
       "page-targets": { type: "string", default: "SAL-09" },
+      "page-bonus-scored": { type: "boolean", default: false },
     },
   });
   const n = (flag: string, v: string | undefined, fallback: number): number => {
@@ -47,6 +48,7 @@ export async function runTradesCli(
     expiresInTicks: n("expires", values.expires, DEFAULT_TRADE_PARAMS.expiresInTicks),
     cashFloor: n("cash-floor", values["cash-floor"], DEFAULT_TRADE_PARAMS.cashFloor),
     pageTargets: values["page-targets"].split(",").map((s) => s.trim()).filter(Boolean),
+    pageBonusScored: values["page-bonus-scored"] === true,
   };
   const dryRun = values["dry-run"];
   if (!dryRun && !values.confirm) {
@@ -62,7 +64,7 @@ export async function runTradesCli(
     }
     client = new BazaarClient({ url: env.url, key: env.key });
   }
-  log(`trades: ${dryRun ? "DRY-RUN" : "LIVE"} · max-offers ${params.maxOffers} · max-spend ${params.maxSpend} P · max-bids ${params.maxBids} · min-margin ${params.minMargin} P · expires ${params.expiresInTicks} ticks · cash-floor ${params.cashFloor} P · page targets ${params.pageTargets?.join(", ") || "-"}`);
+  log(`trades: ${dryRun ? "DRY-RUN" : "LIVE"} · max-offers ${params.maxOffers} · max-spend ${params.maxSpend} P · max-bids ${params.maxBids} · min-margin ${params.minMargin} P · expires ${params.expiresInTicks} ticks · cash-floor ${params.cashFloor} P · page targets ${params.pageTargets?.join(", ") || "-"}${params.pageBonusScored ? " (page bonus scored)" : ""}`);
   const agent = new TradesAgent(client, params, { dryRun, log, top: n("top", values.top, 10), backoffFile: defaultListBackoffFile(process.cwd()) });
   const maxTicks = values.once ? 1 : values.ticks !== undefined ? n("ticks", values.ticks, 1) : Infinity;
   for (let i = 0; i < maxTicks; i++) {

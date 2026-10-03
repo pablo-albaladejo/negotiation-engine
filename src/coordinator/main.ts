@@ -73,6 +73,7 @@ async function main() {
       "max-spend": { type: "string", default: "150" },
       "cash-floor": { type: "string", default: "20" },
       "page-targets": { type: "string", default: "SAL-09" },
+      "page-bonus-scored": { type: "boolean", default: false },
       "leaderboard-every": { type: "string", default: "5" },
       "approve-flags": { type: "string", default: "" },
       "flag-pressure": { type: "boolean", default: false },
@@ -93,6 +94,8 @@ async function main() {
     process.exit(2);
   }
   const pageTargets = values["page-targets"].split(",").map((s) => s.trim()).filter(Boolean);
+  // Until a page bonus shows in neg_points, a page target is capped at its base (no bonus): the flag lifts it to 0.9 × value.
+  const pageBonusScored = values["page-bonus-scored"] === true;
   const leaderboardEvery = num(values["leaderboard-every"], "--leaderboard-every");
   const client = new BazaarClient({ url: env.url, key: env.key });
   const root = process.cwd();
@@ -103,9 +106,10 @@ async function main() {
     maxSpendTotal: num(values["max-spend"], "--max-spend"),
     cashFloor: num(values["cash-floor"], "--cash-floor"),
     pageTargets,
+    pageBonusScored,
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
-  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets }, defaultListBackoffFile(root));
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
@@ -139,7 +143,7 @@ async function main() {
   // In dry-run the cursor lives only in memory (a loop without --once does not repeat triggers); live, on disk.
   let dryMemo = loadTriggerMemo(triggersFile);
   console.log(
-    `bazaar:play · ${live ? "LIVE" : `DRY RUN (GET only, no POST)${!values["dry-run"] && !values.confirm ? " · no --confirm: running as dry-run" : ""}`} · page targets ${pageTargets.join(", ")} · cash floor ${values["cash-floor"]} P`,
+    `bazaar:play · ${live ? "LIVE" : `DRY RUN (GET only, no POST)${!values["dry-run"] && !values.confirm ? " · no --confirm: running as dry-run" : ""}`} · page targets ${pageTargets.join(", ")} (${pageBonusScored ? "page bonus scored: cap 0.9 × value" : "cap = base, page bonus not counted"}) · cash floor ${values["cash-floor"]} P`,
   );
 
   let lastTick = -1;
@@ -315,6 +319,7 @@ async function main() {
             cashFloor: num(values["cash-floor"], "--cash-floor"),
             spendPerHour: scannerSpendPerHour,
             pageTargets,
+            pageBonusScored,
           });
           // Directed listings to a rival that lacks one page card (never throws: off with a note on bad data).
           try {
@@ -327,7 +332,7 @@ async function main() {
           }
           // Directed bids to a rival seen holding a spare of a page card we lack (same safety: off with a note).
           try {
-            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
             rivalBuyPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);

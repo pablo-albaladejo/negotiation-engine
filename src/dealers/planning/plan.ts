@@ -70,9 +70,10 @@ export type CandidateKind = "buy-card" | "buy-rarity-set" | "buy-pack" | "sell";
 export const PACK_SAFETY = 0.97;
 
 /**
- * The card that completes a page carries the whole page bonus in its `your_value` (SAL-09: 91 base + 86 bonus = 177.1),
- * so it is the best single buy there is. Its limit is value × this, capped by cash above the floor only: the hourly
- * spend cap (60 P) sat below every rare list (77) and left El Chato idle with SAL-09 on his menu.
+ * The card that completes a page carries the whole page bonus in its `your_value` (SAL-09: 91 base + 86 bonus = 177.1).
+ * With `--page-bonus-scored` a page target's limit is value × this; without it, its base (no page bonus seen in
+ * neg_points yet: RET-10 from El Chato at 91 P on tick 530 gave Δ0). Either way capped by cash above the floor only: the
+ * hourly spend cap (60 P) sat below every rare list (77) and left El Chato idle with SAL-09 on his menu.
  */
 export const PAGE_COMPLETING_SAFETY = 0.9;
 
@@ -140,6 +141,11 @@ export interface RankInput {
    * so a card that would complete any other page is valued at its standalone base (`buildValueModel`), like any card.
    */
   pageTargets?: readonly string[];
+  /**
+   * `--page-bonus-scored`: a page target keeps its bonus (reservation value × `PAGE_COMPLETING_SAFETY`). Without it the
+   * target is valued at its base too (no page bonus seen in neg_points yet), still with the page-completing budget.
+   */
+  pageBonusScored?: boolean;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -226,15 +232,16 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
     const finish = (raw: Omit<Candidate, "room" | "why" | "reservation" | "side" | "herList" | "herOpening" | "herOpeningSource" | "surplus">, extra: string): Candidate => {
       const completes = raw.kind === "buy-card" && raw.page !== undefined && raw.page.after >= raw.page.of;
       const completing = completes && raw.card !== undefined && (input.pageTargets ?? []).includes(raw.card);
-      // Completing a page that is not a target: its value without the bonus (no page-completing budget either).
-      const c = completes && !completing && raw.card !== undefined ? { ...raw, value: standaloneBase(raw.card, raw.value) } : raw;
-      const untargeted = completes && !completing ? `; would complete the ${raw.page!.set} page, valued without its bonus (not a page target): ${round1(raw.value)} → ${round1(c.value)}` : "";
-      extra += untargeted;
-      const s = completing ? Math.min(safety, PAGE_COMPLETING_SAFETY) : safety;
+      // Completing a page that is not a target: its value without the bonus (no page-completing budget either). A target
+      // too, until --page-bonus-scored: capped at its base, but it keeps the page-completing budget and the reserve.
+      const bonusOut = completes && raw.card !== undefined && !(completing && input.pageBonusScored);
+      const c = bonusOut ? { ...raw, value: standaloneBase(raw.card!, raw.value) } : raw;
+      if (bonusOut) extra += `; ${completing ? "page target" : `would complete the ${raw.page!.set} page`}, valued without its bonus (${completing ? "--page-bonus-scored lifts it" : "not a page target"}): ${round1(raw.value)} → ${round1(c.value)}`;
+      const s = completing && input.pageBonusScored ? Math.min(safety, PAGE_COMPLETING_SAFETY) : safety;
       const reservation = Math.min(completing ? pageCap : cap, Math.floor(c.value * s));
       const room = reservation > ref;
       const capped = reservation < Math.floor(c.value * s) ? ` (capped by ${completing ? "cash above the floor" : "spend/cash"})` : "";
-      const tag = completing ? `; COMPLETES the ${c.page!.set} page (bonus in its value)` : "";
+      const tag = completing ? `; COMPLETES the ${c.page!.set} page${input.pageBonusScored ? " (bonus in its value)" : ""}` : "";
       const why = room ? `value ${round1(c.value)} × ${s} = ${reservation} > list ${ref}: ${reservation - ref} P of room${capped}${extra}${tag}` : `value ${round1(c.value)} × ${s} = ${reservation} ≤ list ${ref}: no room${capped}${extra}${tag}`;
       return { ...c, side: "buy", reservation, herList: list, herOpening: opening, herOpeningSource: openingSource, surplus: round1(c.value - ref), room, why, ...(completing ? { pageCompleting: true } : {}) };
     };

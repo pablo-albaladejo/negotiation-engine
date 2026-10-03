@@ -43,8 +43,9 @@ export interface RivalBuyInput {
   cashFloor: number;
   /** Agenda freeze: no new bids and open ones are cancelled. */
   opensBlocked?: string;
-  /** `--page-targets`: only their sets' page bonus counts in a bid; any other card is bid at its standalone value. */
+  /** `--page-targets` with `--page-bonus-scored`: only then their sets' page bonus counts in a bid; otherwise every card is bid at its standalone value. */
   pageTargets?: readonly string[];
+  pageBonusScored?: boolean;
 }
 
 export interface RivalBuyPricing {
@@ -128,7 +129,7 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   if (mine.length < 2) return { ok: false, reason: `${team.team} has no spare ${ref} seen` };
   const freshAt = Math.max(...mine.map((s) => s.confirmedTick ?? s.tick));
   if (input.tick - freshAt > params.maxStaleTicks) return { ok: false, reason: `spare seen at tick ${freshAt} (stale)` };
-  const gain = buyGain(counts, ref, model, new Set((input.pageTargets ?? []).map(setOf)));
+  const gain = buyGain(counts, ref, model, new Set(input.pageBonusScored ? (input.pageTargets ?? []).map(setOf) : []));
   const cap = maxBid(gain, MIN_MARGIN, MAKER_FEES);
   const book = model.meta.get(ref)?.book ?? 0;
   const mHat = median([...setMultipliers(model).values()]) ?? 1;

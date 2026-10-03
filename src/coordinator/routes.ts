@@ -1,5 +1,5 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
-import type { Clock, DealerInfo, Me } from "../shared/schemas.js";
+import type { Catalog, Clock, DealerInfo, Me } from "../shared/schemas.js";
 import type { TraceRecord, TraceSink } from "../shared/trace.js";
 import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "../dealers/dealer-profile.js";
@@ -9,7 +9,7 @@ import { appendLesson, PendingLessons } from "../dealers/history/lessons.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
-import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeParams, type TradeState } from "../trades/trades.js";
+import { buildValueModel, countHoldings, DEFAULT_TRADE_PARAMS, heldAssets, pageTargetCap, type TickPlan, type TradeParams, type TradeState } from "../trades/trades.js";
 import { completesPage, duelStrategy, type Strategy, type StrategyDecision } from "../state/conversation.js";
 import type { GameState } from "../state/game-state.js";
 import { tradeSignals } from "../state/rivals.js";
@@ -103,6 +103,8 @@ export interface DealersRouteOptions {
   maxSpendTotal: number;
   cashFloor: number;
   pageTargets: readonly string[];
+  /** `--page-bonus-scored`: a page target's bonus counts (cap 0.9 × value); otherwise it is capped at its base. */
+  pageBonusScored?: boolean;
   trace?: TraceSink;
   /** `docs/bazaar/lessons.json`: only written live; in dry-run what would be added is printed (`docs/` is never touched). */
   lessonsFile?: string;
@@ -226,6 +228,7 @@ export class DealersRoute {
           unlockChase: () => (this.state ? unlockChaseFor(this.state, id) : undefined),
           packValueOf: (pack) => this.state?.packs.types.find((t) => t.id === pack)?.ourValue,
           pageTargets: this.o.pageTargets,
+          pageBonusScored: this.o.pageBonusScored ?? false,
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -245,9 +248,9 @@ export class DealersRoute {
     this.state = state;
     const me = await this.client.me();
     await this.ensureAgents(me);
-    const reserve = pageReserveOf(state, me, this.o.pageTargets);
+    const reserve = pageReserveOf(state, me, this.o.pageTargets, await pageTargetCaps(this.client, me, this.o.pageTargets, this.o.pageBonusScored ?? false));
     this.team.pageReserve = reserve.amount;
-    if (reserve.amount) out.notes.push(`page reserve: ${reserve.amount} P kept for ${reserve.refs.join(", ")} (other buys stay above it)`);
+    if (reserve.amount) out.notes.push(`page reserve: ${reserve.amount} P kept for ${reserve.refs.join(", ")} (${reserve.why}; other page-card buys stay above it)`);
     this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
     // Score audit: each deal should score your_value − price at our private values; every Δ is checked against our settlements.
     const audit = this.scoreAudit.observe({ tick: clock.tick, me, events: state.events ?? [], values: this.client.cachedValues() });
@@ -307,21 +310,54 @@ export class DealersRoute {
   }
 }
 
+/** Catalog for the page-target caps (it does not change within the day): one GET per run. */
+let catalogOnce: Promise<Catalog> | undefined;
+
 /**
- * Cash kept for page-completing cards we still lack: the last price a dealer asked for each (none asked yet, nothing
- * kept). Other buys leave it untouched, so a cheap El Rastro accept never takes the cash of a page bonus.
+ * Cap of each page target we lack (`pageTargetCap`): its base without the page bonus, or 0.9 × its value with
+ * `--page-bonus-scored`. GET only (catalog once, `/api/me/value` from the client's cache); a failed read leaves it out.
  */
-export function pageReserveOf(state: GameState, me: Me | undefined, pageTargets: readonly string[]): { refs: string[]; amount: number } {
+export async function pageTargetCaps(client: BazaarClient, me: Me | undefined, pageTargets: readonly string[], pageBonusScored: boolean): Promise<Map<string, number>> {
+  const caps = new Map<string, number>();
+  const refs = pageTargets.filter((t) => !me?.assets.some((a) => a.ref === t && (a.kind ?? "card") === "card"));
+  if (!me || !refs.length) return caps;
+  try {
+    catalogOnce ??= client.catalog();
+    const catalog = await catalogOnce;
+    const zero = new Map<string, number>();
+    for (const ref of refs) zero.set(ref, await client.value(ref));
+    const held = heldAssets(me.assets);
+    const model = buildValueModel(catalog, held, zero);
+    for (const ref of refs) caps.set(ref, pageTargetCap(ref, model, countHoldings(held), pageBonusScored));
+  } catch (e) {
+    catalogOnce = undefined;
+    if (!(e instanceof BazaarError)) throw e;
+  }
+  return caps;
+}
+
+/**
+ * Cash kept for page-target cards we still lack, up to each one's cap (`pageTargetCaps`: base, or 0.9 × value with
+ * `--page-bonus-scored`); if a dealer already asked less, her last price. Incoming cash goes to SAL-09 first: other
+ * page-card buys stay above it, so a cheap El Rastro accept never takes its cash. A target with no cap keeps the last
+ * dealer ask (none asked, nothing kept).
+ */
+export function pageReserveOf(state: GameState, me: Me | undefined, pageTargets: readonly string[], caps: ReadonlyMap<string, number> = new Map()): { refs: string[]; amount: number; why: string } {
   const refs = pageTargets.filter((t) => !me?.assets.some((a) => a.ref === t && (a.kind ?? "card") === "card"));
   let amount = 0;
+  const why: string[] = [];
   for (const ref of refs) {
     const asked = state.conversations
       .filter((c) => c.kind === "dealer" && c.side === "buy" && c.asset.ref === ref && c.history.herPrices.length)
       .sort((a, b) => Number(a.id.split(":")[1]) - Number(b.id.split(":")[1]))
       .at(-1);
-    if (asked) amount += asked.history.herCurrent?.price ?? asked.history.herPrices.at(-1)!;
+    const ask = asked ? (asked.history.herCurrent?.price ?? asked.history.herPrices.at(-1)!) : undefined;
+    const cap = caps.get(ref);
+    const keep = cap === undefined ? (ask ?? 0) : ask !== undefined ? Math.min(cap, ask) : cap;
+    amount += keep;
+    why.push(`${ref} ${keep} P = ${cap === undefined ? "last dealer ask" : ask !== undefined && ask < cap ? `dealer ask ${ask} < cap ${cap}` : `cap ${cap}`}`);
   }
-  return { refs, amount };
+  return { refs, amount, why: why.join(", ") };
 }
 
 // ---------------------------------------------------------------- El Rastro
@@ -334,8 +370,13 @@ export class TradesRoute {
   /** Scanner settings shared with the markets route (ledger, cash floor, hourly cap) so the hold-back matches its decision. */
   scannerContext: Pick<MarketsContext, "ledger" | "cashFloor" | "spendPerHour"> = {};
 
-  /** `params`: the coordinator's `--max-spend`, `--cash-floor` and `--page-targets` (otherwise the El Rastro defaults). */
-  constructor(client: BazaarClient, dryRun: boolean, params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets">> = {}, backoffFile?: string) {
+  /** `params`: the coordinator's `--max-spend`, `--cash-floor`, `--page-targets` and `--page-bonus-scored` (otherwise the El Rastro defaults). */
+  constructor(
+    private readonly client: BazaarClient,
+    dryRun: boolean,
+    private readonly params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets" | "pageBonusScored">> = {},
+    backoffFile?: string,
+  ) {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });
   }
 
@@ -351,8 +392,8 @@ export class TradesRoute {
     const out = empty();
     this.last = undefined;
     // Other teams' demand and supply lift asks and rank bids (absent rivals: the plan is unchanged).
-    const reserve = pageReserveOf(state, me, pageTargets);
-    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? reserve : undefined);
+    const reserve = pageReserveOf(state, me, pageTargets, await pageTargetCaps(this.client, me, pageTargets, this.params.pageBonusScored ?? false));
+    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? { refs: reserve.refs, amount: reserve.amount } : undefined);
     const { plan } = this.last;
     if (plan.accept) {
       const a = plan.accept;

@@ -250,8 +250,22 @@ export function unscoredPageBonus(before: Map<string, number>, after: Map<string
   return out;
 }
 
-/** Sets whose page bonus counts in a buy: those of `--page-targets`. */
-export const scoredPageSets = (params: Pick<TradeParams, "pageTargets">): Set<string> => new Set((params.pageTargets ?? []).map(setOf));
+/**
+ * Sets whose page bonus counts in a buy: those of `--page-targets`, and only with `--page-bonus-scored`. Until a page
+ * bonus is seen in `neg_points` (RET-10 from El Chato at 91 P on tick 530: Δ0), a target is worth its base too.
+ */
+export const scoredPageSets = (params: Pick<TradeParams, "pageTargets" | "pageBonusScored">): Set<string> => new Set(params.pageBonusScored ? (params.pageTargets ?? []).map(setOf) : []);
+
+/** With `--page-bonus-scored`, a page-target card is paid at most this fraction of what it adds (bonus included). */
+export const PAGE_BONUS_SCORED_FRAC = 0.9;
+
+/**
+ * Cap for a page-target card we lack: its base without the page bonus (SAL-09: 91 of 177.1); with `pageBonusScored`,
+ * `PAGE_BONUS_SCORED_FRAC` × what it adds with the bonus. Both El Rastro and the cash reserve use it.
+ */
+export function pageTargetCap(ref: string, model: ValueModel, counts: Map<string, number>, pageBonusScored: boolean): number {
+  return Math.max(0, Math.floor(pageBonusScored ? PAGE_BONUS_SCORED_FRAC * valueDelta(counts, [], [ref], model) : (model.base.get(ref) ?? 0)));
+}
 
 /** What one more copy of `ref` adds at our values, without the page bonus of a set outside `scoredSets`. */
 export function buyGain(counts: Map<string, number>, ref: string, model: ValueModel, scoredSets: ReadonlySet<string>): number {
@@ -433,8 +447,10 @@ export interface TradeParams {
   demandPremium: number;
   /** Cash kept for page-completing cards we still lack: only buys of `refs` may use it. */
   pageReserve?: { refs: readonly string[]; amount: number };
-  /** `--page-targets` (SAL-09): only their sets' page bonus counts in a buy; any other card is worth its standalone value. */
+  /** `--page-targets` (SAL-09): only their sets' page bonus counts in a buy (with `pageBonusScored`); any other card is worth its standalone value. */
   pageTargets?: readonly string[];
+  /** `--page-bonus-scored`: a page target's bonus counts again (cap 0.9 × its value); without it the target is capped at its base. */
+  pageBonusScored?: boolean;
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -623,7 +639,9 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   const cardDelta = valueDelta(counts, giveCards, getCards, state.model) - unscoredPageBonus(counts, applyCards(counts, giveCards, getCards), state.model, scoredPageSets(params));
   const risk = pageRisk(counts, giveCards, state.model, params.protectPageHave);
   const valueCreated = cardDelta + cashNet - fee - risk;
-  const required = Math.max(params.minMargin, params.marginFrac * (give.cash + want.cash));
+  // A scored page target (--page-bonus-scored) keeps 10 % of what it adds: paid at most 0.9 × its value, as in the bids.
+  const completesScored = !!params.pageBonusScored && getCards.some((r) => (params.pageTargets ?? []).includes(r) && (counts.get(r) ?? 0) === 0);
+  const required = Math.max(params.minMargin, params.marginFrac * (give.cash + want.cash), completesScored ? (1 - PAGE_BONUS_SCORED_FRAC) * cardDelta : 0);
   const spend = Math.max(0, want.cash + fee - give.cash);
   const kind: Evaluation["kind"] = getCards.length && !giveCards.length ? "buy" : giveCards.length && !getCards.length ? "sell" : "swap";
   const base = { offer, source, kind, getCards, giveCards, payAssets, cashNet, cardDelta, fee, risk, valueCreated, required, spend };
@@ -709,10 +727,12 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
 
   const budget = params.maxSpend - state.spent;
   const spendable = state.cash - params.cashFloor;
-  // A buy that is not a reserved page card leaves the page reserve untouched (RET-09 @84 took SAL-09's cash).
+  // A buy of another page card we lack leaves the page reserve untouched (RET-09 @84 took SAL-09's cash); the reserved
+  // cards themselves may use it, and a buy that adds no page card (a copy we hold, an epic) is not held back by it.
   const reserveRefs = new Set(params.pageReserve?.refs ?? []);
   const reserve = params.pageReserve?.amount ?? 0;
-  const spendableFor = (cards: readonly string[]) => spendable - (cards.some((c) => reserveRefs.has(c)) ? 0 : reserve);
+  const newPageCard = (c: string) => (counts.get(c) ?? 0) === 0 && (state.model.pages.get(state.model.meta.get(c)?.set ?? setOf(c)) ?? []).includes(c);
+  const spendableFor = (cards: readonly string[]) => spendable - (cards.some((c) => reserveRefs.has(c)) || !cards.some(newPageCard) ? 0 : reserve);
   let accept: Evaluation | undefined;
   if (state.limits.acceptsPerTick >= 1) {
     accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= spendableFor(e.getCards));
@@ -799,7 +819,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     for (const ref of page) {
       if ((counts.get(ref) ?? 0) > 0) continue;
       const gain = buyGain(counts, ref, state.model, scored);
-      const cap = maxBid(gain, params.minMargin, fees);
+      const isTarget = (params.pageTargets ?? []).includes(ref);
+      // A page target: at most its base, or 0.9 × its value with --page-bonus-scored (`pageTargetCap`).
+      const cap = isTarget ? Math.min(maxBid(gain, params.minMargin, fees), pageTargetCap(ref, state.model, counts, !!params.pageBonusScored)) : maxBid(gain, params.minMargin, fees);
+      if (isTarget) notes.push(`page target ${ref}: bid cap ${cap} P (${params.pageBonusScored ? `${PAGE_BONUS_SCORED_FRAC} × value ${gain.toFixed(1)}, --page-bonus-scored` : `base ${(state.model.base.get(ref) ?? 0).toFixed(1)}, page bonus not counted`})`);
       if (cap < 1) continue;
       const sameBids = bids.filter((q) => q.ref === ref).map((q) => q.price);
       let reference: PriceRef | undefined;

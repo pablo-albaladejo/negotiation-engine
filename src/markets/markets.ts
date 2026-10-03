@@ -92,6 +92,8 @@ export interface MarketsContext {
   directedRefs?: ReadonlySet<string>;
   /** `--page-targets`: the last copy of a card of those sets is never sold. */
   pageTargets?: readonly string[];
+  /** `--page-bonus-scored`: a buy counts the page bonus of the target sets (otherwise no set's bonus counts). */
+  pageBonusScored?: boolean;
   params?: ScannerParams;
 }
 
@@ -175,7 +177,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   const spendPerHour = ctx.spendPerHour ?? params.spendPerHour;
   const hour = gameHourOf(state.tick, state.time.gameHour ?? state.clock.tHours, state.clock.tickSeconds);
   const targetSets = new Set((ctx.pageTargets ?? []).map(setOfRef));
-  const scoredSets = targetSets;
+  const scoredSets = ctx.pageBonusScored ? targetSets : new Set<string>();
   const notes: string[] = [
     `RIVAL_PENALTY house ${RIVAL_PENALTY.house} · top-3 ${RIVAL_PENALTY.top3} · middle ${RIVAL_PENALTY.middle} · bottom half ${RIVAL_PENALTY.bottomHalf}`,
     `[scanner] game hour ${hour} · spent ${ledger.spentIn(hour)}/${spendPerHour} P (in memory since start) · margin max(${params.minEdge} P, ${params.minEdgeFrac * 100} %) · ≤ ${params.dealsPerCounterpartyPerHour} deals/counterparty/h · cash floor ${cashFloor} · values: ${trade ? "marginal (El Rastro model)" : "first copy only (no El Rastro model this tick)"}`,

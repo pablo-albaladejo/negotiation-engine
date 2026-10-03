@@ -101,6 +101,8 @@ export interface AgentOptions {
   blindBuys?: boolean;
   /** `--page-targets`: only these complete a page with its bonus (`RankInput.pageTargets`); without it, none does. */
   pageTargets?: readonly string[];
+  /** `--page-bonus-scored` (`RankInput.pageBonusScored`): without it a page target is valued at its base. */
+  pageBonusScored?: boolean;
 }
 
 /** Card a buy target asks for by name (`{buy: {card}}`), if any. */
@@ -481,8 +483,8 @@ export class BazaarAgent {
 
   /** Pack value source for the planner, unless the dealer refused the pack topic. */
   /** Planner inputs for page-completing buys (cash above the floor) and blind buys. */
-  private pageInput(me: Me): { pageBudget: number; blindBuys: boolean; pageTargets: readonly string[] } {
-    return { pageBudget: Math.max(0, Math.floor(this.team.pageLeft(me.cash))), blindBuys: this.o.blindBuys ?? false, pageTargets: this.o.pageTargets ?? [] };
+  private pageInput(me: Me): { pageBudget: number; blindBuys: boolean; pageTargets: readonly string[]; pageBonusScored: boolean } {
+    return { pageBudget: Math.max(0, Math.floor(this.team.pageLeft(me.cash))), blindBuys: this.o.blindBuys ?? false, pageTargets: this.o.pageTargets ?? [], pageBonusScored: this.o.pageBonusScored ?? false };
   }
 
   private packInput(): { packValueOf?: (pack: string) => number | undefined } {
