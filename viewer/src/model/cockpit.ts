@@ -201,6 +201,7 @@ export interface Party {
 }
 
 const TEAM_ID = /\bt\d{2}\b/g;
+const TEAM_ID_ONLY = /^t\d{2}$/;
 
 /** Name of a team by its id (`t02`), with "(us)" if it is us; the bare id if we do not know it. */
 export function teamLabel(board: Board, id: string): string {
@@ -243,6 +244,8 @@ export function partyOf(board: Board, row: BoardRow): Party {
   if (row.kind === "team-offer") {
     const maker = row.offers[row.offers.length - 1]?.maker;
     if (maker && maker !== board.team) return { label: withTeamNames(board, maker), kind: "team" };
+    // Ours: the server puts the offer's `to` in counterparty when it is directed to one team.
+    if (TEAM_ID_ONLY.test(row.counterparty)) return { label: `${teamLabel(board, row.counterparty)} (directed)`, kind: "team" };
     return { label: "anyone (public offer)", kind: "public" };
   }
   if (row.kind === "other-trade") return { label: withTeamNames(board, row.counterparty), kind: "others" };
