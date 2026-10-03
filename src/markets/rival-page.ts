@@ -115,6 +115,8 @@ export interface RivalPageInput {
   cashFloor: number;
   /** Agenda freeze: no new listings and open ones are cancelled. */
   opensBlocked?: string;
+  /** Directed offers another route posted (team-desk counters): same shape, never repriced or cancelled here. */
+  foreignOfferIds?: ReadonlySet<number>;
 }
 
 export interface RivalPagePricing {
@@ -222,9 +224,10 @@ export function assessRivalPage(team: RivalTeam, ref: string, input: RivalPageIn
   return { ok: true, p: { ...(base as RivalPagePricing), ask, fee } };
 }
 
-/** Our directed one-card-for-cash listings on El Rastro (open, not expired). */
-export function directedListings(trade: TradeState): { offer: TradeOffer; team: string; assetId: number; ref: string; price: number }[] {
+/** Our directed one-card-for-cash listings on El Rastro (open, not expired), minus those another route posted. */
+export function directedListings(trade: TradeState, foreignOfferIds?: ReadonlySet<number>): { offer: TradeOffer; team: string; assetId: number; ref: string; price: number }[] {
   return trade.mine.flatMap((o) => {
+    if (foreignOfferIds?.has(o.id)) return [];
     if (!o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
     const g = readSide(o.give);
     const w = readSide(o.want);
@@ -253,7 +256,7 @@ export function proposeRivalPage(input: RivalPageInput, params: RivalPageParams 
     notes.push(`${TAG} off: no El Rastro state this tick`);
     return { intents, notes, plan };
   }
-  const existing = directedListings(trade);
+  const existing = directedListings(trade, input.foreignOfferIds);
   // A key cancelled or kept this tick is not listed again as new in the same tick.
   const listed = new Set<string>();
   const cancel = (offerId: number, key: string, reason: string, backoff = false) => {

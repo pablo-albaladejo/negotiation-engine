@@ -355,7 +355,7 @@ async function main() {
           });
           // Directed listings to a rival that lacks one page card (never throws: off with a note on bad data).
           try {
-            const r = proposeRivalPage({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, pageTargets, cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const r = proposeRivalPage({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, pageTargets, cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}), foreignOfferIds: deskOfferIds(deskLedger) });
             rivalPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);
