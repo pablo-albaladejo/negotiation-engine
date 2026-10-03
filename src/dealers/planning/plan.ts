@@ -39,7 +39,13 @@ const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);
 export const ONLY_COPY_PAGE_COMPLETE_BLOCK = 0.7;
 export const ONLY_COPY_MIN_SURPLUS = 5;
 
-export type CandidateKind = "buy-card" | "buy-rarity-set" | "sell";
+export type CandidateKind = "buy-card" | "buy-rarity-set" | "buy-pack" | "sell";
+
+/**
+ * Pack buys: our pack value is an ESTIMATE (slots × our mean value per rarity, `src/packs/`), so the reservation is
+ * value × `PACK_SAFETY`; there is room only if it clears her list (her expected deal, never her opening).
+ */
+export const PACK_SAFETY = 0.97;
 
 export interface PageImpact {
   set: string;
@@ -75,6 +81,9 @@ export interface Candidate extends Target {
   bidUnknown?: boolean;
   copy?: "duplicate" | "only";
   page?: PageImpact;
+  /** Pack buy: pack type (`sobre_barrio`) and her cap per team and game hour (`per_team_per_hour`). */
+  pack?: string;
+  perHour?: number;
 }
 
 export interface RankInput {
@@ -88,6 +97,8 @@ export interface RankInput {
   budget: number;
   /** Propose specific cards (`{buy: {card}}`) on rarity+set entries; false if the dealer already refused it. */
   cardTopic?: boolean;
+  /** Our estimated value of a pack type (`GameState.packs`); without it (or `undefined`) packs are skipped. */
+  packValueOf?: (pack: string) => number | undefined;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -113,7 +124,8 @@ const setOfCard = (ref: string, asset?: { set?: unknown }) => (typeof asset?.set
  * Final menu guard (thread 257): sell only what her `menu.buys` buys (rarity and sets) and buy only what
  * her `menu.sells` sells (the card, or its rarity in those sets). Returns the reason if it does not allow it.
  */
-export function menuBlocks(dealer: DealerInfo, catalog: Catalog, c: Pick<Candidate, "side" | "rarity" | "set" | "card">): string | undefined {
+export function menuBlocks(dealer: DealerInfo, catalog: Catalog, c: Pick<Candidate, "side" | "rarity" | "set" | "card"> & { pack?: string | undefined }): string | undefined {
+  if (c.pack !== undefined) return c.side === "buy" && dealer.menu.sells.some((e) => e.pack === c.pack) ? undefined : `${dealer.id} does not sell ${c.pack} (menu.sells)`;
   const rarity = c.rarity?.toLowerCase();
   const set = c.set ?? (c.card ? setOfCard(c.card) : undefined);
   const covers = (e: { rarity?: string | null | undefined; sets?: string | string[] | null | undefined; card?: string | null | undefined }) =>
@@ -131,7 +143,36 @@ export async function rankCandidates(input: RankInput): Promise<Candidate[]> {
   const buys: Candidate[] = [];
 
   for (const entry of dealer.menu.sells) {
-    if (entry.pack) continue;
+    if (entry.pack) {
+      const value = input.packValueOf?.(entry.pack);
+      const list = entry.list_price ?? undefined;
+      if (value === undefined || list === undefined) continue;
+      const opening = entry.opening_ask ?? Math.round(list * ASSUMED_OPENING_MARKUP);
+      const reservation = Math.min(cap, Math.floor(value * PACK_SAFETY));
+      const room = reservation > list && list < opening;
+      const capped = reservation < Math.floor(value * PACK_SAFETY) ? " (capped by spend/cash)" : "";
+      const perHour = entry.per_team_per_hour ?? undefined;
+      buys.push({
+        kind: "buy-pack",
+        key: `buy:pack:${entry.pack}`,
+        side: "buy",
+        topic: { buy: { pack: entry.pack } },
+        label: `buy pack ${entry.pack}`,
+        rarity: undefined,
+        set: undefined,
+        pack: entry.pack,
+        value,
+        reservation,
+        herList: list,
+        herOpening: opening,
+        herOpeningSource: entry.opening_ask ? "menu opening_ask" : `opening assumed list × ${ASSUMED_OPENING_MARKUP}`,
+        surplus: round1(value - list),
+        room,
+        ...(perHour !== undefined ? { perHour } : {}),
+        why: `pack value ~${round1(value)} (estimate) × ${PACK_SAFETY} = ${reservation} ${room ? ">" : "≤"} list ${list}: ${room ? `${reservation - list} P of room` : "no room"}${capped}; opening ${opening}${perHour !== undefined ? `; ${perHour} per team per hour` : ""}`,
+      });
+      continue;
+    }
     const list = entry.list_price ?? undefined;
     const opening = entry.opening_ask ?? (list !== undefined ? Math.round(list * ASSUMED_OPENING_MARKUP) : undefined);
     if (opening === undefined) continue;
@@ -379,7 +420,7 @@ export function chaseCandidates(cands: readonly Candidate[], o: { tolerance: num
       out.push({ ...c, reservation });
       continue;
     }
-    if (c.kind === "buy-rarity-set" && (c.duplicateP ?? 1) > 0) continue;
+    if (c.kind === "buy-pack" || (c.kind === "buy-rarity-set" && (c.duplicateP ?? 1) > 0)) continue;
     const reservation = Math.min(Math.floor(o.maxSpend), Math.floor(c.value + o.tolerance));
     if (reservation < 1 || reservation < (c.herList ?? c.herOpening)) continue;
     out.push({ ...c, reservation });
@@ -453,7 +494,7 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
   L.push("");
   L.push("ranked candidates (values are ours, private; reservation = buy: value × safety, sell: value ÷ safety):");
   cands.forEach((c, i) => {
-    const what = c.kind === "buy-rarity-set" ? `BUY ${c.rarity} ${c.set} (any card of that rarity+set)` : c.kind === "buy-card" ? `BUY ${c.card}` : `SELL ${c.card} (${c.rarity}, ${c.copy === "duplicate" ? "DUPLICATE" : "ONLY copy"})`;
+    const what = c.kind === "buy-pack" ? `BUY pack ${c.pack}` : c.kind === "buy-rarity-set" ? `BUY ${c.rarity} ${c.set} (any card of that rarity+set)` : c.kind === "buy-card" ? `BUY ${c.card}` : `SELL ${c.card} (${c.rarity}, ${c.copy === "duplicate" ? "DUPLICATE" : "ONLY copy"})`;
     L.push(`${String(i + 1).padStart(2)}. [${c.room ? "ROOM" : "no room"}] ${what}`);
     const her = c.side === "buy" ? `her list ${c.herList ?? "?"}, opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ? (${c.herOpeningSource})`;
     L.push(`      value gain ${c.side === "buy" ? round1(c.value) : `${c.surplus >= 0 ? "+" : ""}${c.surplus}`} P · reservation ${c.reservation} · ${her} · value created at her price ${c.surplus >= 0 ? "+" : ""}${c.surplus} P`);
@@ -470,7 +511,7 @@ export function formatPlan(me: Me, dealer: DealerInfo, cands: readonly Candidate
     const c = s.candidate;
     const path = previewPath(c, params);
     const planned = plannedSchedule({ side: c.side, reservation: c.reservation, herOpening: c.herOpening, herList: c.herList }, params);
-    const limitWhy = c.side === "buy" ? `value × ${caps.safety ?? "safety"}, capped by spend/cash` : `value ÷ ${caps.safety ?? "safety"}`;
+    const limitWhy = c.side === "buy" ? `value × ${c.kind === "buy-pack" ? PACK_SAFETY : (caps.safety ?? "safety")}, capped by spend/cash` : `value ÷ ${caps.safety ?? "safety"}`;
     L.push(`  #${i + 1} ${c.label} · topic ${JSON.stringify(c.topic)}`);
     L.push(`      why chosen: ${s.reason}`);
     const her = c.side === "buy" ? `her list ${c.herList ?? "?"} · her opening ${c.herOpening} (${c.herOpeningSource})` : `her bid ? (${c.herOpeningSource})`;

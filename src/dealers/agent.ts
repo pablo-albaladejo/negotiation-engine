@@ -1,7 +1,7 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
-import { applyOnly, chaseCandidates, formatPlan, menuBlocks, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
+import { applyOnly, chaseCandidates, formatPlan, menuBlocks, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
 import { formatPatience, PatienceLog } from "./negotiation/patience.js";
@@ -94,6 +94,8 @@ export interface AgentOptions {
    * then opens the least harmful deal within `UNLOCK_CHASE_TOLERANCE` (`chaseCandidates`), one at a time.
    */
   unlockChase?: () => string | undefined;
+  /** Our estimated value of a pack type (coordinator: `GameState.packs`); with it the planner also proposes `{buy: {pack}}`. */
+  packValueOf?: (pack: string) => number | undefined;
 }
 
 interface Active {
@@ -148,6 +150,10 @@ export class BazaarAgent {
   private catalog: Catalog | undefined;
   /** If the dealer rejects `{buy: {card}}`, we buy by rarity and set. */
   private cardTopicOk = true;
+  /** If the dealer rejects `{buy: {pack}}` (400/422), no more pack buys with it this run. */
+  private packTopicOk = true;
+  /** Game hours of each pack deal, per pack type (`per_team_per_hour`). */
+  private readonly packHours = new Map<string, number[]>();
   private readonly now: () => number;
   private readonly log: (line: string) => void;
   private readonly safety: number;
@@ -217,7 +223,7 @@ export class BazaarAgent {
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk });
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput() });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
     const menu = this.o.menu;
@@ -299,6 +305,10 @@ export class BazaarAgent {
         if (isCardTopicRefusal(e, target)) {
           this.cardTopicOk = false;
           emit({ action: "error", target: target.key, error: (e as BazaarError).code, rule: "card-topic-unsupported" });
+        } else if (isPackTopicRefusal(e, target)) {
+          this.packTopicOk = false;
+          this.log(`  ${this.o.dealer.id} refused the pack topic ${JSON.stringify(target.topic)} (${(e as BazaarError).status} ${(e as BazaarError).code}): no more pack buys with this dealer this run`);
+          emit({ action: "error", target: target.key, error: (e as BazaarError).code, rule: "pack-topic-unsupported" });
         } else {
           this.onError(e, tick, ticksPerHour, target, emit);
         }
@@ -360,6 +370,13 @@ export class BazaarAgent {
       const vals = await Promise.all(cards.map((c) => this.valueOf(c.id)));
       const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
       return { key: `buy:${rs.set}:${rs.rarity}`, side, topic: { buy: { rarity: rs.rarity, set: rs.set } }, reservation: Math.floor(mean * this.safety), label: `buy ${rs.rarity} ${rs.set}`, value: mean };
+    }
+    const pack = (thread.topic as { buy?: { pack?: string } } | undefined)?.buy?.pack;
+    if (side === "buy" && pack) {
+      const value = this.o.packValueOf?.(pack);
+      if (value === undefined) return undefined;
+      const list = this.o.menu?.menu.sells.find((e) => e.pack === pack)?.list_price ?? undefined;
+      return { key: `buy:pack:${pack}`, side, topic: { buy: { pack } }, reservation: Math.floor(value * PACK_SAFETY), label: `buy pack ${pack}`, value, ...(list !== undefined ? { herList: list } : {}) };
     }
     const card = topic?.buy?.card;
     if (side === "buy" && card) {
@@ -447,6 +464,17 @@ export class BazaarAgent {
     return v;
   }
 
+  /** Pack value source for the planner, unless the dealer refused the pack topic. */
+  private packInput(): { packValueOf?: (pack: string) => number | undefined } {
+    return this.packTopicOk && this.o.packValueOf ? { packValueOf: this.o.packValueOf } : {};
+  }
+
+  /** `per_team_per_hour` of a pack already reached with this dealer in the last game hour. */
+  private packQuotaFull(c: { pack?: string; perHour?: number }): boolean {
+    if (c.pack === undefined || c.perHour === undefined) return false;
+    return (this.packHours.get(c.pack) ?? []).filter((h) => h > this.hoursNow - 1).length >= c.perHour;
+  }
+
   /** Persona to chase through this dealer right now: the route's answer, unless `/api/me` already lists her as unlocked. */
   private chasePersona(me: Me): string | undefined {
     const p = this.o.unlockChase?.();
@@ -458,11 +486,11 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput() });
       // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
-      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy));
+      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c));
       const picked = selectCandidates(cands.filter(free), { maxThreads: 1, maxSpend: budget, only: !!this.o.only })[0]?.candidate;
       const chase = this.o.only ? undefined : this.chasePersona(me);
       if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
@@ -667,6 +695,8 @@ export class BazaarAgent {
     if (thread.status === "deal") {
       this.dealsDone += 1;
       this.dealHours.push(this.hoursNow);
+      const pack = (target.topic as { buy?: { pack?: string } }).buy?.pack;
+      if (pack) this.packHours.set(pack, [...(this.packHours.get(pack) ?? []), this.hoursNow]);
       if (target.side === "buy" && acceptedPrice === undefined) {
         // Deal with no visible price ("deal at ?"): cash drop since the previous step; failing that, the limit (conservative).
         const drop = this.prevCash !== undefined && me ? this.prevCash - me.cash : undefined;
@@ -788,6 +818,11 @@ export function isCardTopicRefusal(e: unknown, target: Target): boolean {
     "buy" in target.topic &&
     "card" in target.topic.buy
   );
+}
+
+/** The server refused to open a `{buy: {pack}}` thread because of the topic (400/422 with no other known reason). */
+export function isPackTopicRefusal(e: unknown, target: Target): boolean {
+  return e instanceof BazaarError && (e.status === 400 || e.status === 422) && !NOT_A_TOPIC_PROBLEM.has(e.code) && "buy" in target.topic && "pack" in target.topic.buy;
 }
 
 /** Cards of a target: the requested card, that of the asset we sell, or those of that rarity and set (until she says which). */

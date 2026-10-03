@@ -21,7 +21,7 @@ describe("packs route guardrails", () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 60 }), fc.integer({ min: 0, max: 200 }), (deal, cash) => {
         const p = proposePacks({ ...base, cash, packs: { sealed: [], types: [type({ lastDeal: { price: deal, tick: 1 } })] } });
-        const buys = p.intents.filter((x) => x.id.startsWith("packs:buy"));
+        const buys = [...p.intents.filter((x) => x.id.startsWith("packs:buy")), ...p.notes.filter((n) => n.startsWith("buy "))];
         if (deal >= 30 || cash - 20 <= deal) expect(buys).toEqual([]);
       }),
     );

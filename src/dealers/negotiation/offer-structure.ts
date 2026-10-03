@@ -17,6 +17,8 @@ export type Expectation =
       card?: string;
       /** Rarity+set: the card it gives must be of that rarity and set. */
       matches?: (ref: string) => boolean;
+      /** Pack asked for with `{buy: {pack}}`: it must give exactly one sealed pack of that type and nothing else. */
+      pack?: string;
     };
 
 export type MismatchReason = "dealer-selling" | "dealer-buying" | "no-cash" | "wants-other-assets" | "wrong-goods" | "over-limit";
@@ -57,6 +59,22 @@ export function goodsOf(s: OfferSide | null | undefined): { cards: string[]; oth
   return { cards, other };
 }
 
+/** Packs an offer side carries (`types` "pack:sobre_barrio" or assets of kind pack) and how many other things. */
+export function packsOf(s: OfferSide | null | undefined): { packs: string[]; other: number } {
+  const packs: string[] = [];
+  let other = list(s?.cards).length;
+  for (const a of list(s?.assets)) {
+    const o = a && typeof a === "object" ? (a as { kind?: unknown; ref?: unknown }) : undefined;
+    if (o?.kind === "pack" && typeof o.ref === "string") packs.push(o.ref);
+    else other += 1;
+  }
+  for (const t of list(s?.types)) {
+    if (typeof t === "string" && t.startsWith("pack:")) packs.push(t.slice(5));
+    else other += 1;
+  }
+  return { packs, other };
+}
+
 const hasGoods = (s: OfferSide | null | undefined) => list(s?.assets).length + list(s?.cards).length + list(s?.types).length > 0;
 
 /**
@@ -78,14 +96,26 @@ export function checkStructure(offer: StandingOffer, exp: Expectation, opts: { a
     return { ok: true };
   }
   if (hasGoods(want) || cashOf(give) > 0) return { ok: false, reason: "dealer-buying" };
+  if (exp.pack !== undefined) {
+    const p = packsOf(give);
+    if (p.other > 0 || p.packs.length > 1 || p.packs.some((x) => x !== exp.pack)) return { ok: false, reason: "wrong-goods" };
+    if (!opts.accept) return { ok: true };
+    if (p.packs.length !== 1) return { ok: false, reason: "wrong-goods" };
+    return cashWithin(want, opts.maxCash);
+  }
   const goods = goodsOf(give);
   const wrongCard = (ref: string) => (exp.card !== undefined && ref !== exp.card) || (exp.matches !== undefined && !exp.matches(ref));
   if (goods.other > 0 || goods.cards.length > 1 || goods.cards.some(wrongCard)) return { ok: false, reason: "wrong-goods" };
   if (!opts.accept) return { ok: true };
   if (goods.cards.length !== 1) return { ok: false, reason: "wrong-goods" };
+  return cashWithin(want, opts.maxCash);
+}
+
+/** Buy accept: it asks for cash > 0 and within `maxCash`. */
+function cashWithin(want: OfferSide | null | undefined, maxCash: number | undefined): StructureCheck {
   const price = cashOf(want);
   if (price <= 0) return { ok: false, reason: "no-cash" };
-  if (opts.maxCash !== undefined && price > opts.maxCash) return { ok: false, reason: "over-limit" };
+  if (maxCash !== undefined && price > maxCash) return { ok: false, reason: "over-limit" };
   return { ok: true };
 }
 
@@ -108,11 +138,12 @@ export function firstMismatch(thread: Thread, dealer: DealerRef, exp: Expectatio
 
 /** What we expect from a thread according to its topic; `undefined` if the topic is not recognized (then nothing is accepted). */
 export function expectationOf(topic: unknown, side: Side, matches?: (ref: string) => boolean): Expectation | undefined {
-  const t = topic as { buy?: { card?: string; rarity?: string }; sell?: { assets?: unknown[] } } | undefined;
+  const t = topic as { buy?: { card?: string; rarity?: string; pack?: string }; sell?: { assets?: unknown[] } } | undefined;
   if (side === "sell") {
     const ids = list(t?.sell?.assets).filter((x): x is number => typeof x === "number");
     return ids.length ? { side, assetIds: ids } : undefined;
   }
+  if (t?.buy?.pack) return { side, pack: t.buy.pack };
   if (t?.buy?.card) return { side, card: t.buy.card };
   if (t?.buy?.rarity) return { side, ...(matches ? { matches } : {}) };
   return undefined;

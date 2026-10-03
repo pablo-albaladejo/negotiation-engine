@@ -214,6 +214,7 @@ export class DealersRoute {
           firstStepFrac: () => (this.state?.personas.find((p) => p.id === id)?.model?.strategy.mirror_concessions.value === true ? MIRROR_FIRST_STEP_FRAC : 0),
           herBeta: () => this.state?.personas.find((p) => p.id === id)?.model?.strategy.beta.value ?? undefined,
           unlockChase: () => (this.state ? unlockChaseFor(this.state, id) : undefined),
+          packValueOf: (pack) => this.state?.packs.types.find((t) => t.id === pack)?.ourValue,
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;

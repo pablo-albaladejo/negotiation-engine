@@ -49,6 +49,20 @@ describe("dealer offer shape", () => {
     expect(checkStructure(offer({ give: { types: ["card:LAT-01"] }, want: { cash: 9 } }), exp).reason).toBe("wrong-goods");
   });
 
+  it("buy pack: exactly one pack of the requested type (real shape: give.types pack:sobre_barrio), cash only, within the limit", () => {
+    const exp = expectationOf({ buy: { pack: "sobre_barrio" } }, "buy")!;
+    expect(exp).toEqual({ side: "buy", pack: "sobre_barrio" });
+    const real = offer({ maker: "abuela", give: { cash: 0, assets: [], types: ["pack:sobre_barrio"] }, want: { cash: 30, assets: [], types: [] } });
+    expect(checkStructure(real, exp, { accept: true, maxCash: 30 })).toEqual({ ok: true });
+    expect(checkStructure(real, exp, { accept: true, maxCash: 29 }).reason).toBe("over-limit");
+    expect(checkStructure(offer({ give: { types: ["pack:sobre_plata"] }, want: { cash: 20 } }), exp).reason).toBe("wrong-goods");
+    expect(checkStructure(offer({ give: { types: ["card:SAL-05"] }, want: { cash: 20 } }), exp).reason).toBe("wrong-goods");
+    expect(checkStructure(offer({ give: { types: ["pack:sobre_barrio", "pack:sobre_barrio"] }, want: { cash: 20 } }), exp).reason).toBe("wrong-goods");
+    expect(checkStructure(offer({ want: { cash: 20 } }), exp)).toEqual({ ok: true });
+    expect(checkStructure(offer({ want: { cash: 20 } }), exp, { accept: true, maxCash: 30 }).reason).toBe("wrong-goods");
+    expect(checkStructure(offer({ give: { types: ["pack:sobre_barrio"] }, want: { cash: 0 } }), exp, { accept: true, maxCash: 30 }).reason).toBe("no-cash");
+  });
+
   it("firstMismatch checks all its offers in the thread (messages and current ones)", () => {
     const thread = ThreadSchema.parse({
       id: 1,
