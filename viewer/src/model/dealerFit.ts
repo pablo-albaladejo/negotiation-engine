@@ -54,12 +54,22 @@ export interface PredictionOverlay {
  * (`herXs`); las rondas futuras, una por paso tras lo último pintado. Amplía el eje X y el Y para que quepan el camino,
  * su banda y su límite. `extra`: otros valores ya pintados (p. ej. el camino previsto nuestro).
  */
-export function withPrediction(curve: OfferCurve, pred: ModelPrediction, herXs: readonly number[], extra: readonly number[] = []): { curve: OfferCurve; overlay: PredictionOverlay } {
+export function withPrediction(
+  curve: OfferCurve,
+  pred: ModelPrediction,
+  herXs: readonly number[],
+  extra: readonly number[] = [],
+  /** Cómo se llama en el eje X la posición x (p. ej. «step 6» o «tick 105»); la etiqueta de la retirada la nombra. */
+  xText: (x: number) => string = (x) => `x ${x}`,
+): { curve: OfferCurve; overlay: PredictionOverlay } {
+  // Una sola regla para la curva y la marca: su ronda r (0 = apertura) cae en la x de su r-ésimo precio (en pasos,
+  // x = r + 1); las rondas futuras, una x por ronda tras lo último pintado.
   const lastX = Math.max(0, curve.rounds - 1, ...curve.ours.map((p) => p.round), ...curve.theirs.map((p) => p.round));
   const xFor = (r: number) => (r < herXs.length ? herXs[r]! : lastX + (r - herXs.length + 1));
   const predicted = pred.curve.map((p) => ({ round: xFor(p.round), value: p.price, lo: Math.min(p.lo, p.hi), hi: Math.max(p.lo, p.hi) }));
   const walkR = Math.round(pred.walkRound.mean);
-  const walkMarker = walkR > 0 ? { round: xFor(walkR), label: `walk ≈ r${walkR}${pred.walkRound.lo !== pred.walkRound.hi ? ` (${fmtP(pred.walkRound.lo)}–${fmtP(pred.walkRound.hi)})` : ""}` } : null;
+  const walkX = xFor(walkR);
+  const walkMarker = walkR > 0 ? { round: walkX, label: `walk ≈ round ${walkR}${pred.walkRound.lo !== pred.walkRound.hi ? ` (${fmtP(pred.walkRound.lo)}–${fmtP(pred.walkRound.hi)})` : ""} = ${xText(walkX)}` } : null;
   const theirLimit = { value: pred.herLimit.mean, lo: pred.herLimit.lo, hi: pred.herLimit.hi };
   const maxX = Math.max(lastX, ...predicted.map((p) => p.round), walkMarker?.round ?? 0);
   const values = [...curve.ours, ...curve.theirs, ...curve.limit]

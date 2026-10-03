@@ -221,7 +221,7 @@ function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConv
   const { planned } = withPlan;
   const pred = currentPrediction(model, conv);
   const herXs = withPlan.curve.theirs.slice(0, conv?.history.herPrices.length ?? withPlan.curve.theirs.length).map((p) => p.round);
-  const fitted = pred ? withPrediction(withPlan.curve, pred, herXs, planned.map((p) => p.value)) : null;
+  const fitted = pred ? withPrediction(withPlan.curve, pred, herXs, planned.map((p) => p.value), (x) => `tick ${withPlan.curve.firstTick + x - 1}`) : null;
   const curve = fitted?.curve ?? withPlan.curve;
   const overlay = fitted?.overlay ?? null;
   const tickOf = (round: number) => (round === 0 ? "" : String(curve.firstTick + round - 1));
@@ -298,7 +298,7 @@ function ModelCurve({ conv, model }: { conv: ModelConversation; model: GameModel
   if (!out) return null;
   const { planned } = out;
   const pred = currentPrediction(model, conv);
-  const fitted = pred ? withPrediction(out.curve, pred, out.curve.theirs.map((p) => p.round), planned.map((p) => p.value)) : null;
+  const fitted = pred ? withPrediction(out.curve, pred, out.curve.theirs.map((p) => p.round), planned.map((p) => p.value), (x) => `step ${x}`) : null;
   const curve = fitted?.curve ?? out.curve;
   const overlay = fitted?.overlay ?? null;
   return (
