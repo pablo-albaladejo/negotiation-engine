@@ -44,10 +44,22 @@ function pick(list: readonly string[], round: number): string {
   return list[((round % list.length) + list.length) % list.length]!;
 }
 
-/** Texto para una contraoferta con precio `price` en la ronda `round` (0 = apertura). */
-export function counterText(side: Side, round: number, price: number): string {
+/**
+ * Frase X de un probe de egg («Do you know about X?», la forma del Playground, site-map § 9.3): de 3 a 40 caracteres,
+ * solo letras, espacios, apóstrofos y guiones (NUNCA dígitos: el mensaje lleva una sola cifra, la decidida).
+ */
+export function isProbePhrase(x: string): boolean {
+  return /^[\p{L}][\p{L} '’-]{1,38}[\p{L}]$/u.test(x.trim()) && !/\d/.test(x);
+}
+
+/**
+ * Texto para una contraoferta con precio `price` en la ronda `round` (0 = apertura). Con `probe`, la plantilla añade
+ * una sola pregunta amable de egg; si la frase no es válida (`isProbePhrase`), no se añade.
+ */
+export function counterText(side: Side, round: number, price: number, probe?: string): string {
   const tpl = round === 0 ? pick(side === "buy" ? BUY_OPEN : SELL_OPEN, price) : pick(side === "buy" ? BUY_COUNTER : SELL_COUNTER, round - 1);
-  const text = tpl.replace("{p}", String(Math.round(price)));
+  const ask = probe !== undefined && isProbePhrase(probe) ? ` Do you know about ${probe.trim()}?` : "";
+  const text = tpl.replace("{p}", String(Math.round(price))) + ask;
   if (!textMatchesPrice(text, price)) throw new Error("plantilla con cifra distinta del precio");
   return text;
 }

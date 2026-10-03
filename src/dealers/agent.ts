@@ -72,6 +72,13 @@ export interface AgentOptions {
    * si devuelve false no se envía nada ni cambia el estado del hilo. Sin `gate`, el agente actúa solo (como siempre).
    */
   gate?: (intent: DealerIntent) => boolean;
+  /**
+   * Probe de egg a caballo de una contraoferta (nunca un mensaje aparte): frase X para «Do you know about X?» en este
+   * hilo, o `undefined`. Lo decide el coordinador (uno por conversación, nunca la misma X con la misma persona).
+   */
+  probe?: (thread: number) => string | undefined;
+  /** Se llama tras enviar (en vivo) una contraoferta con probe, para apuntarlo en `eggsTried`. */
+  onProbe?: (thread: number, phrase: string) => void;
 }
 
 interface Active {
@@ -503,7 +510,8 @@ export class BazaarAgent {
     if (d.action.kind !== "wait") {
       const a = d.action;
       const n = p.ourPrices.length;
-      const text = a.kind === "counter" ? counterText(target.side, n, a.price) : a.kind === "hold" ? holdText(n, a.price) : undefined;
+      const probe = a.kind === "counter" ? this.o.probe?.(thread.id) : undefined;
+      const text = a.kind === "counter" ? counterText(target.side, n, a.price, probe) : a.kind === "hold" ? holdText(n, a.price) : undefined;
       const intent: Omit<DealerIntent, "dealer"> = {
         kind: a.kind,
         thread: thread.id,
@@ -533,7 +541,8 @@ export class BazaarAgent {
           emit({ ...base, action: "accept", ourPrice: d.action.price, ...(d.rule === "welcome-first-deal" ? { measuredLimit: d.action.price } : {}), ...(p.ourPrices.length === 0 ? { tookOpening: true } : {}), patience: active.patience.summary(tick) });
           return;
         case "counter": {
-          const text = counterText(target.side, p.ourPrices.length, d.action.price);
+          const probe = this.o.probe?.(thread.id);
+          const text = counterText(target.side, p.ourPrices.length, d.action.price, probe);
           if (!textMatchesPrice(text, d.action.price)) throw new Error("texto y cifra no coinciden");
           if (d.action.price === p.ourPrices[p.ourPrices.length - 1]) throw new Error("precio repetido");
           // Se apunta antes del POST: si falla (o el servidor lo aceptó y la respuesta no valida), no se reenvía.
@@ -541,6 +550,7 @@ export class BazaarAgent {
           active.sent.push(d.action.price);
           active.patience.sent(tick, "counter", d.action.price, p.herCurrent?.price);
           if (!this.o.dryRun) await this.api.say(thread.id, text, d.action.price);
+          if (!this.o.dryRun && probe !== undefined && text.includes(probe)) this.o.onProbe?.(thread.id, probe);
           emit({ ...base, action: "counter", ourPrice: d.action.price, text });
           return;
         }

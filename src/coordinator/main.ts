@@ -75,7 +75,7 @@ async function main() {
   // Frases de presión: solo con aprobación (ids uno a uno o en bloque); las candidatas se listan en dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
   const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });
-  const eggs = new EggsRoute(client, dryRun);
+  const eggs = new EggsRoute();
   const convFile = defaultConversationsFile(root);
   const personasFile = defaultPersonasFile(root);
   const flagsFile = defaultFlagsFile(root);
@@ -252,7 +252,7 @@ async function main() {
     for (const l of await executeMarkets(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     for (const l of await executePacks(client, verdicts.filter((v) => v.selected).map((v) => v.intent), dryRun)) console.log(`  ${l}`);
     const flagged = await flagsRoute.execute(state, selected);
-    for (const l of [...flagged.lines, ...(await eggs.execute(state, selected))]) console.log(`  ${l}`);
+    for (const l of flagged.lines) console.log(`  ${l}`);
     if (live) {
       for (const l of await dealers.execute(clock, selected)) console.log(`  ${l}`);
       for (const l of await trades.execute(selected)) console.log(`  ${l}`);

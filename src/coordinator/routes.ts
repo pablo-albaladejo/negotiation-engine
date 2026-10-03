@@ -12,6 +12,7 @@ import { completesPage, duelStrategy, type Strategy, type StrategyDecision } fro
 import type { GameState } from "../state/game-state.js";
 import type { FlagRecord } from "../state/world.js";
 import type { FlagCandidate } from "../flags/flags.js";
+import { isProbePhrase } from "../dealers/negotiation/messages.js";
 import type { Intent } from "./coordinator.js";
 
 /**
@@ -116,6 +117,8 @@ export class DealersRoute {
   private allowed = new Set<string>();
   private mode: "propose" | "execute" = "propose";
   private readonly logs: string[] = [];
+  /** Estado del tick (conversaciones y personas) para elegir el probe de egg que va con una contraoferta. */
+  private state: GameState | undefined;
 
   constructor(
     private readonly client: BazaarClient,
@@ -157,6 +160,12 @@ export class DealersRoute {
           trace: this.trace,
           log: (line) => this.logs.push(line),
           gate: this.gate,
+          probe: (thread) => (this.state ? eggProbeFor(this.state, `dealer:${thread}`) : undefined),
+          onProbe: (thread, phrase) => {
+            const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
+            conv?.eggsTried.push(phrase);
+            this.state?.personas.find((p) => p.id === id)?.eggProbes.push({ phrase, tick: this.state.tick, result: "sent" });
+          },
         }),
       );
     }
@@ -164,6 +173,7 @@ export class DealersRoute {
 
   async propose(clock: Clock, state: GameState): Promise<RouteProposal> {
     const out = empty();
+    this.state = state;
     const me = await this.client.me();
     await this.ensureAgents(me);
     this.mode = "propose";
@@ -337,79 +347,48 @@ export class FlagsRoute {
 
 // ---------------------------------------------------------------- eggs
 
-/** Parámetros de la ruta de eggs (baja prioridad). */
+/** Parámetros de los probes de eggs (baja prioridad). */
 export const EGG_PARAMS = {
-  /** ASSUMPTION: una «ventana» son 30 ticks mientras no se pueda inferir de la pista. */
-  windowTicks: 30,
-  probesPerPersonaPerWindow: 1,
-  /** Plantilla fija; `{hint}` es la palabra clave de la pista. Nunca lleva cifras. */
-  template: "Tell me about {hint}…",
+  /** Plantilla fija del Playground (site-map § 9.3), añadida a una contraoferta nuestra. Nunca lleva cifras. */
+  template: "Do you know about {hint}?",
 };
 
 /**
- * Probes de easter eggs: solo cuando `probeCostNow` es 0 (apertura o tras un trato, no gasta paciencia), como
- * mucho uno por persona y ventana, nunca tras un aviso o un strike, y solo con una pista que tenga palabra clave.
- * Sube la prioridad de una persona donde otros equipos ya encontraron eggs. En vivo solo con --confirm.
+ * Frase X del probe que puede ir a caballo de la próxima contraoferta en `conversationId` (nunca en un mensaje aparte):
+ * como mucho uno por conversación (`eggsTried` vacío), nunca la misma X con la misma persona (`eggsTried` de todas sus
+ * conversaciones y sus `eggProbes`), nunca con avisos, strikes o cooloff, y solo con una pista candidata con palabra
+ * clave válida (`isProbePhrase`: sin dígitos).
+ */
+export function eggProbeFor(state: GameState, conversationId: string): string | undefined {
+  const conv = state.conversations.find((c) => c.id === conversationId);
+  if (!conv || conv.kind !== "dealer" || conv.eggsTried.length > 0) return undefined;
+  if (conv.mood.warnings > 0 || conv.mood.strikes > 0 || conv.mood.cooloffUntil !== undefined) return undefined;
+  if (state.ours.strikes && Object.keys(state.ours.strikes).length) return undefined;
+  const persona = state.personas.find((p) => p.id === conv.counterparty);
+  if (!persona) return undefined;
+  const eggs = state.world.eggs.byPersona[persona.id];
+  if (eggs && eggs.left <= 0) return undefined;
+  const tried = new Set([...state.conversations.filter((c) => c.counterparty === persona.id).flatMap((c) => c.eggsTried), ...persona.eggProbes.map((x) => x.phrase)].map((x) => x.toLowerCase().trim()));
+  return persona.hints.map((h) => h.keyword?.trim()).find((k): k is string => !!k && isProbePhrase(k) && !tried.has(k.toLowerCase()) && !tried.has(EGG_PARAMS.template.replace("{hint}", k).toLowerCase()));
+}
+
+/**
+ * Probes de easter eggs: ya NO se envían como mensaje aparte (eso es un mensaje sin oferta, riesgo de spam). Solo se
+ * informa de qué probe iría con la próxima contraoferta de cada conversación (`eggProbeFor`, `DealersRoute`).
  */
 export class EggsRoute {
-  constructor(private readonly client: BazaarClient, private readonly dryRun: boolean) {}
-
-  /** `quiet`: personas con aviso, strike o cooloff reciente (disparadores): sin probes hasta ese tick. */
   propose(state: GameState, quiet: Readonly<Record<string, number>> = {}): RouteProposal {
     const out = empty();
-    if (state.ours.strikes && Object.keys(state.ours.strikes).length) {
-      out.notes.push("strikes/warnings on the team: no probes");
-      return out;
+    for (const c of state.conversations) {
+      if (c.kind !== "dealer" || c.phase === "done") continue;
+      if ((quiet[c.counterparty] ?? -1) >= state.tick) {
+        out.notes.push(`${c.id}: ${c.counterparty} quiet until tick ${quiet[c.counterparty]} (warning/strike/cooloff): no probe`);
+        continue;
+      }
+      const x = eggProbeFor(state, c.id);
+      if (x) out.notes.push(`${c.id}: next counter carries "${EGG_PARAMS.template.replace("{hint}", x)}"`);
     }
-    for (const p of state.personas) {
-      if ((quiet[p.id] ?? -1) >= state.tick) {
-        out.notes.push(`${p.id}: quiet until tick ${quiet[p.id]} (warning/strike/cooloff): no probes`);
-        continue;
-      }
-      const eggs = state.world.eggs.byPersona[p.id];
-      const priority = eggs?.foundByOthers.length ?? 0;
-      if (eggs && eggs.left <= 0) continue;
-      const recent = p.eggProbes.filter((x) => state.tick - x.tick < EGG_PARAMS.windowTicks).length;
-      if (recent >= EGG_PARAMS.probesPerPersonaPerWindow) {
-        out.notes.push(`${p.id}: probe cap reached this window`);
-        continue;
-      }
-      const hint = p.hints.find((h) => h.candidate && h.keyword);
-      if (!hint) continue;
-      const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.phase !== "done" && c.patience?.probeCostNow === 0 && c.mood.warnings === 0 && c.mood.strikes === 0 && c.mood.cooloffUntil === undefined);
-      if (!conv) {
-        out.notes.push(`${p.id}: hint "${hint.keyword}" but no conversation where a probe costs 0`);
-        continue;
-      }
-      const phrase = EGG_PARAMS.template.replace("{hint}", hint.keyword!);
-      out.intents.push({ id: `eggs:probe:${p.id}`, route: "eggs", kind: "probe", conversation: conv.id, ev: priority, summary: `probe ${p.id} in ${conv.id}: "${phrase}" (egg priority ${priority}, cost 0)` });
-    }
-    out.intents.sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0));
-    if (!out.intents.length) out.notes.push(`no probe (hints ${state.personas.reduce((a, p) => a + p.hints.length, 0)}, probes need cost 0 and a hint keyword)`);
+    if (!out.notes.length) out.notes.push(`no probe (hints ${state.personas.reduce((a, p) => a + p.hints.length, 0)}; a probe needs a hint keyword and rides only on a counter)`);
     return out;
-  }
-
-  /** Envía los probes seleccionados (solo en vivo); devuelve los probes para `personas.json`. */
-  async execute(state: GameState, selected: ReadonlySet<string>): Promise<string[]> {
-    const lines: string[] = [];
-    for (const p of state.personas) {
-      if (!selected.has(`eggs:probe:${p.id}`)) continue;
-      const hint = p.hints.find((h) => h.candidate && h.keyword);
-      const conv = state.conversations.find((c) => c.kind === "dealer" && c.counterparty === p.id && c.patience?.probeCostNow === 0 && c.phase !== "done");
-      if (!hint || !conv) continue;
-      const phrase = EGG_PARAMS.template.replace("{hint}", hint.keyword!);
-      if (this.dryRun) {
-        lines.push(`eggs: would probe ${p.id} in ${conv.id}: "${phrase}"`);
-        continue;
-      }
-      try {
-        await this.client.say(Number(conv.id.split(":")[1]), phrase);
-        p.eggProbes.push({ phrase, tick: state.tick, result: "sent" });
-        lines.push(`eggs: probed ${p.id}`);
-      } catch (e) {
-        lines.push(`eggs: probe ${p.id} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
-      }
-    }
-    return lines;
   }
 }

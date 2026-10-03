@@ -77,7 +77,7 @@ export interface Conversation {
   eggsTried: string[];
   /**
    * Paciencia para probes de eggs: `probeCostNow` 0 en la apertura o tras un trato (no gasta paciencia), 1 si no.
-   * ASSUMPTION: ir a caballo de un counter también costaría 0; no se modela aún (el probe sale solo).
+   * Los probes van siempre a caballo de una contraoferta (`eggProbeFor` en `src/coordinator/routes.ts`), nunca solos.
    */
   patience?: { roundsSpent: number; budget: number; probeCostNow: number };
   /** Contradicción texto↔estructura en un mensaje del dealer (ver `src/flags/flags.ts`). */

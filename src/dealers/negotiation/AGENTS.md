@@ -8,7 +8,7 @@ La cifra de cada mensaje a un dealer y los guardarraíles antes de aceptar. Puro
 - **`patience.ts`** — `PatienceLog`: por conversación, mensajes nuestros, respuestas suyas, tics hasta su oferta final (o el cierre) y su respuesta a cada paso nuestro; va en la traza (`patience`) al aceptar, cerrar y terminar, y `formatPatience` imprime la línea "patience: 6 msgs / 7 ticks until final · …".
 - **`offer-structure.ts`** — `checkStructure`: **guardarraíl crítico** antes de cualquier aceptación, la forma de su oferta debe ser la del hilo (venta: efectivo > 0 por exactamente nuestros activos; compra: exactamente la carta pedida por solo efectivo ≤ límite). `firstMismatch` revisa todas sus ofertas: si nos vende algo en una venta (sobre, carta) o pide otros activos, el agente cierra educadamente con la regla `structure-mismatch` y nunca acepta.
 - **`view.ts`** — `threadPrices`: lee del hilo solo campos estructurados (precios de mensajes y ofertas vigentes), nunca su texto.
-- **`messages.ts`** — plantillas amables en inglés, rotadas por ronda; `textMatchesPrice` exige que la única cifra del texto sea el precio.
+- **`messages.ts`** — plantillas amables en inglés, rotadas por ronda; `textMatchesPrice` exige que la única cifra del texto sea el precio. `counterText` admite un probe de egg: añade «Do you know about X?» solo si X es válida (`isProbePhrase`: sin dígitos), así que la cifra sigue siendo una.
 
 ## Links
 
