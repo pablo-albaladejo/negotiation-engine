@@ -39,7 +39,7 @@ import {
   type VerdictCache,
 } from "./bazaar-board-core.js";
 import { agentStatuses, playMode, type AgentStatus } from "./bazaar-agents.js";
-import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, type AlbumOut, type ScheduleOut } from "./bazaar-cockpit-core.js";
+import { albumOf, holdingsOf, missingWithoutValue, scheduleOf, scoreNumbers, scorePartsOf, ScorePartsLineSchema, type AlbumOut, type ScheduleOut, type ScorePartsLine, type ScorePartsOut } from "./bazaar-cockpit-core.js";
 import { isSafeId, resolveInside } from "../paths.js";
 import { readJsonl } from "../read.js";
 import { workshopOf, type WorkshopOut } from "./bazaar-workshop.js";
@@ -96,6 +96,8 @@ export interface BoardOut {
   play_mode: "live" | "dry-run" | null;
   /** The Workshop (El Taller): spares by rarity under the sale guardrails and public crafts. Read-only. */
   workshop: WorkshopOut;
+  /** Every score part now, at the day's first snapshot and at the previous tick (Δ day / Δ tick). */
+  score_parts: ScorePartsOut;
 }
 
 export interface BazaarBoardDeps {
@@ -368,6 +370,7 @@ export class BazaarBoard {
       schedule,
       agents,
       play_mode: await playMode(this.bazaarDir),
+      score_parts: await this.scoreParts(scoreNumbers(me?.score), clock?.tick ?? null),
       workshop: workshopOf(meRaw, threadsRaw, offersRaw, this.catalog?.raw ?? null, [...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team),
     };
     this.cache = { refreshAt: now() + refreshIn, data };
@@ -389,6 +392,28 @@ export class BazaarBoard {
       Object.assign(merged.settlements, c.settlements);
     }
     return merged;
+  }
+
+  /** Today's `score-parts.jsonl`: one line per tick with every score part (appended here when the tick is new). */
+  private async scoreParts(now: Record<string, number>, tick: number | null): Promise<ScorePartsOut> {
+    const file = join(this.bazaarDir, this.today(), "score-parts.jsonl");
+    let history: ScorePartsLine[] = [];
+    try {
+      history = (await readJsonl(file, `${this.today()}/score-parts.jsonl`, ScorePartsLineSchema)).data;
+    } catch {
+      // no file yet
+    }
+    if (tick !== null && Object.keys(now).length > 0 && history.at(-1)?.tick !== tick) {
+      const line: ScorePartsLine = { tick, parts: now };
+      try {
+        await mkdir(join(this.bazaarDir, this.today()), { recursive: true });
+        await writeFile(file, `${JSON.stringify(line)}\n`, { flag: "a" });
+        history.push(line);
+      } catch {
+        // no write permission: Δ tick falls back to what is already on disk
+      }
+    }
+    return scorePartsOf(now, tick, history);
   }
 
   private async writeCache(cache: VerdictCache): Promise<void> {

@@ -3,6 +3,9 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
 import { PageTitle } from "../ui/page-title.js";
 import { Workshop } from "./Workshop.js";
+import { ComponentChip, ScoreTree } from "./ScoreTree.js";
+import { componentOf } from "../model/scoreTree.js";
+import type { ModelLadderLevel } from "../model/gameModel.js";
 import { SecondaryButton, TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Fold } from "../ui/fold.js";
@@ -36,7 +39,6 @@ import {
   partyOf,
   scheduleLines,
   scoreMovers,
-  scoreParts,
   standingOf,
   teamLabel,
   withTeamNames,
@@ -128,7 +130,7 @@ function emptyChatNote(row: BoardRow): string {
   return "No messages for this entry.";
 }
 
-function ConversationList({ board, rows, selectedId, onSelect }: { board: Board; rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void }) {
+function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board: Board; rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void; ladder?: ModelLadderLevel[] }) {
   const selectedIndex = rows.findIndex((r) => r.id === selectedId);
   return (
     <DataTable
@@ -141,6 +143,7 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         { key: "price", label: "Price", numeric: true },
         { key: "value", label: "Our value", numeric: true },
         { key: "surplus", label: "Margin vs our value", numeric: true },
+        { key: "feeds", label: "Feeds" },
         { key: "score", label: "Points (Δ on its tick)", numeric: true },
         { key: "ticks", label: "Ticks" },
       ]}
@@ -158,6 +161,15 @@ function ConversationList({ board, rows, selectedId, onSelect }: { board: Board;
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
         // Per-deal Δ from score-audit.jsonl; a dealer deal scores through the ladder, never neg_points.
+        feeds: (() => {
+          const c = componentOf(r, board, ladder);
+          return (
+            <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+              <ComponentChip comp={c.comp} note={c.note} />
+              {c.note && c.comp === "ladder" && c.note.startsWith("L") ? <span className="nr-muted" style={{ fontSize: 11 }}>{c.note}</span> : null}
+            </span>
+          );
+        })(),
         score: pointsLabel(r) ?? (outcomeOf(r) !== "deal" ? "—" : r.d_score !== null ? toned(r.d_score) : "not audited"),
         ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
       }))}
@@ -180,6 +192,15 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
     <Card title={`Conversation · ${party.label} (${party.kind}) · ${KIND_LABEL[row.kind] ?? row.kind}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+          {(() => {
+            const c = componentOf(row, board, model?.ladder);
+            return (
+              <>
+                <ComponentChip comp={c.comp} note={c.note} />
+                {c.note ? <span className="nr-muted">{c.note}</span> : null}
+              </>
+            );
+          })()}
           {(() => {
             const pts = pointsLabel(row);
             if (pts) return <Flag kind={pts.tone === "worse" ? "walk" : "decision"}>{`Points ${pts.value}`}</Flag>;
@@ -517,12 +538,7 @@ function Scoreboard({ board }: { board: Board }) {
           {st.leader && st.leader.name !== st.ahead?.name ? ` · ${fmt(st.gapToLeader)} behind the leader ${st.leader.name}` : ""}
         </span>
         <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap" }}>
-          {scoreParts(board).map((p) => (
-            <span key={p.label}>
-              <span className="nr-muted">{p.label} </span>
-              <strong style={{ color: p.value !== null && p.value < 0 ? "var(--warn)" : undefined }}>{fmt(p.value)}</strong>
-            </span>
-          ))}
+          <ScoreTree board={board} />
         </div>
         <span>
           Cash <strong>{fmt(h?.cash, 0)} P</strong> · level {fmt(h?.level, 0)}
@@ -692,14 +708,14 @@ function Agents({ board }: { board: Board }) {
   );
 }
 
-function History({ board, rows, title, filters, onFiltersChange }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void }) {
+function History({ board, rows, title, filters, onFiltersChange, ladder }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void; ladder?: ModelLadderLevel[] }) {
   // "Whose" only applies where other teams' trades are listed (duels are always ours).
   const shown = filterBoardRows(rows, rows.some((r) => r.kind === "other-trade") ? filters : { ...filters, scope: "all" });
   const select = (id: string) => onFiltersChange({ ...filters, row: id });
   return (
     <Fold title={`${title} (${rows.length})`}>
       <FiltersBar board={board} rows={rows} filters={filters} onChange={onFiltersChange} />
-      {shown.length > 0 ? <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} /> : <span className="nr-muted">Nothing matches these filters.</span>}
+      {shown.length > 0 ? <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} /> : <span className="nr-muted">Nothing matches these filters.</span>}
     </Fold>
   );
 }
@@ -812,8 +828,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <Workshop board={board} />
         </div>
       </div>
-      <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} />
-      <History board={board} rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} />
+      <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
+      <History board={board} rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
       <Fold title="Market · leaderboard, feed, El Rastro, our venue">
         <MarketPanel board={board} />
       </Fold>

@@ -237,6 +237,8 @@ export interface BoardRow {
   d_parts: Record<string, number> | null;
   /** Our deals that settled on that same tick: the Δ is theirs together when > 1. */
   d_shared: number;
+  /** The ladder Δ came on a later tick with no deal of ours (it lands a few ticks after the settlement): not exact. */
+  d_lagged: boolean;
   duel_result: number | null;
   tick_opened: number | null;
   tick_settled: number | null;
@@ -499,6 +501,7 @@ const blankRow = (): Omit<BoardRow, "id" | "kind" | "counterparty" | "item" | "s
   settlement: null,
   d_parts: null,
   d_shared: 0,
+  d_lagged: false,
   duel_result: null,
   tick_opened: null,
   tick_settled: null,
@@ -741,12 +744,29 @@ export type ScoreAuditLine = z.infer<typeof ScoreAuditSchema>;
  * Puts each tick's score Δ on the deals that settled in it. Older lines carry only the neg_points Δ (`delta`); newer
  * ones every part (`parts`). With two deals in one tick the Δ is shared (`d_shared`), never split by guess.
  */
+/** Ticks after a dealer settlement in which a ladder-only Δ is still given to it. */
+export const LADDER_LAG = 6;
+
 export function applyScoreAudit(rows: BoardRow[], audit: readonly ScoreAuditLine[]): void {
   const bySettlement = new Map<number, BoardRow>();
   for (const r of rows) if (r.settlement !== null) bySettlement.set(r.settlement, r);
   for (const a of audit) {
     const deals = a.deals ?? [];
-    if (!deals.length) continue;
+    if (!deals.length) {
+      const ladder = a.parts?.ladder_points;
+      if (ladder === undefined) continue;
+      // The ladder refreshes a few ticks after the settlement: give it to our latest dealer deal of the last LADDER_LAG ticks.
+      const row = rows
+        .filter((r) => r.kind.startsWith("dealer") && r.settlement !== null && r.tick_settled !== null && r.tick_settled <= a.tick && a.tick - r.tick_settled <= LADDER_LAG)
+        .sort((x, y) => (y.tick_settled ?? 0) - (x.tick_settled ?? 0))[0];
+      if (!row) continue;
+      const parts = { ...(row.d_parts ?? { neg_points: 0 }) };
+      parts.ladder_points = Math.round(((parts.ladder_points ?? 0) + ladder) * 1000) / 1000;
+      row.d_parts = parts;
+      row.d_ladder_points = parts.ladder_points;
+      row.d_lagged = true;
+      continue;
+    }
     // `parts` only lists the parts that moved: a missing one is a measured 0.
     const parts: Record<string, number> = a.parts ? { neg_points: 0, ladder_points: 0, ...a.parts } : { neg_points: a.delta ?? 0 };
     for (const d of deals) {

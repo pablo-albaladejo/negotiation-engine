@@ -61,7 +61,7 @@ export function createViewerServer({ repoRoot, bazaarDir, bazaarLiveDeps, bazaar
     ...bazaarBoardDeps,
   });
   // The model reuses the feed, catalog and El Rastro book the board already reads (no repeated GETs).
-  const bazaarModel = new BazaarModel(bazaarRoot, { feed: () => bazaarBoard.recentFeed(), market: () => bazaarBoard.marketInputs(), ...bazaarModelDeps });
+  const bazaarModel = new BazaarModel(bazaarRoot, { feed: () => bazaarBoard.recentFeed(), market: () => bazaarBoard.marketInputs(), lessonsFile: join(repoRoot, "docs", "bazaar", "lessons.json"), ...bazaarModelDeps });
 
   const server = createServer((req, res) => {
     const port = (server.address() as AddressInfo | null)?.port;

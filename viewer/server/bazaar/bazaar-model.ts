@@ -7,6 +7,8 @@ import type { NewsSignals } from "../../../src/news/signals.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
 import { loadRivalLedger, type RivalLedger } from "../../../src/state/rivals.js";
 import { loadPosterior, type PersonaEstimates } from "../../../src/dealers/history/persona-fit.js";
+import { ladderLevels, type LadderLevel } from "../../../src/dealers/history/ladder.js";
+import type { LessonEntry } from "../../../src/dealers/history/lessons.js";
 import { ACCEPT_PRIORITY, arbitrate, budgetFrom, DUEL_ACCEPT_QUOTA_ASSUMPTION, formatBudget, type Budget, type Intent } from "../../../src/coordinator/coordinator.js";
 import { parseOffers, readSide } from "../../../src/trades/trades.js";
 import { DealersRoute, DuelsRoute, TradesRoute, type RouteProposal } from "../../../src/coordinator/routes.js";
@@ -135,6 +137,8 @@ export interface ModelOut {
   persisted: { date: string | null; conversations: boolean; personas: unknown; flags: unknown };
   /** Hints corpus (`hints.jsonl`, append-only), most recent first; dealer text only as plain text. */
   hints: Record<string, unknown>[];
+  /** Today's dealer ladder per level (best three negotiated shares), as `bazaar:play` computes it. */
+  ladder: LadderLevel[];
   /** Prices per card: `state.markets.prices` if present; otherwise rebuilt here (origin in `source`). */
   prices: { source: "state" | "viewer" | "none"; rows: Record<string, unknown>[] };
   /** Packs: whatever the state carries (PACKS route) and, failing that, the catalog (`packs`) and our sealed packs. */
@@ -223,6 +227,8 @@ export interface BazaarModelDeps {
   feed?: () => unknown;
   /** Catalog, El Rastro book and missing-card values the board already has (for `prices`). */
   market?: () => { catalog: unknown; rastro: unknown; values: Record<string, number>; me?: unknown };
+  /** `docs/bazaar/lessons.json`: our closed dealer conversations, for the ladder. */
+  lessonsFile?: string;
 }
 
 /** Default parameters of `pnpm bazaar:play` (src/coordinator/main.ts). */
@@ -263,6 +269,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     eggs_feed: [],
     persisted: { date: null, conversations: false, personas: null, flags: null },
     hints: [],
+    ladder: [],
     prices: { source: "none", rows: [] },
     packs: { state: null, catalog: [], held: [] },
     venues: { state: null, api: [] },
@@ -522,6 +529,7 @@ export class BazaarModel {
       eggs_feed: eggsFeed,
       persisted: { date: persisted.date, conversations: persisted.memos.size > 0, personas: persisted.personas, flags: persisted.flags },
       hints: await this.readHints(),
+      ladder: await this.ladderOf(state),
       prices: pricesOf(state, market),
       packs: {
         state: stateAny.packs ?? record(stateAny.markets).packs ?? null,
@@ -566,6 +574,22 @@ export class BazaarModel {
   }
 
   /** Latest entries of `hints.jsonl` (trace root or the most recent date), reading only the tail. */
+  /** Same ladder as `DealersRoute` (src/coordinator/routes.ts): lessons of today + persona level and band limits. */
+  private async ladderOf(state: GameState): Promise<LadderLevel[]> {
+    let entries: LessonEntry[] = [];
+    try {
+      entries = (JSON.parse(await readFile(this.deps.lessonsFile ?? "", "utf8")) as { conversations?: LessonEntry[] }).conversations ?? [];
+    } catch {
+      // no lessons yet: every slot is empty
+    }
+    const rarity = new Map(state.markets.prices.map((p) => [p.ref, p.rarity]));
+    return ladderLevels(entries, new Date().toISOString().slice(0, 10), (dealer) => {
+      const model = state.personas.find((p) => p.id === dealer)?.model;
+      const level = model?.public.level;
+      return { ...(level !== undefined ? { level } : {}), limit: (band) => model?.bands[band]?.limit.value ?? undefined };
+    }, (card) => rarity.get(card));
+  }
+
   private async readHints(max = 500, bytes = 1_000_000): Promise<Record<string, unknown>[]> {
     let dates: string[] = [];
     try {

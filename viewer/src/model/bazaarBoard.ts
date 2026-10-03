@@ -55,6 +55,8 @@ export interface BoardRow {
   d_parts?: Record<string, number> | null;
   /** Our deals settled on that same tick (the Δ is theirs together when > 1). */
   d_shared?: number;
+  /** The ladder Δ arrived on a later tick and was given to this deal: not an exact attribution. */
+  d_lagged?: boolean;
   duel_result: number | null;
   tick_opened: number | null;
   tick_settled: number | null;
@@ -145,6 +147,13 @@ export interface BoardSchedule {
   upcoming: { at_hours: number; action: string; note: string; wall: string | null }[];
 }
 
+export interface BoardScoreParts {
+  tick: number | null;
+  now: Record<string, number>;
+  day_start: { tick: number; parts: Record<string, number> } | null;
+  prev: { tick: number; parts: Record<string, number> } | null;
+}
+
 /** The Workshop (El Taller): spares we could hand in (sale guardrails applied on the server) and public crafts. */
 export interface BoardWorkshop {
   open: boolean;
@@ -184,6 +193,8 @@ export interface Board {
   play_mode?: "live" | "dry-run" | null;
   /** The Workshop (El Taller); absent on an older server. */
   workshop?: BoardWorkshop;
+  /** Every score part now, at the day's first snapshot and at the previous tick; absent on an older server. */
+  score_parts?: BoardScoreParts;
 }
 
 export const EMPTY_BOARD: Board = {
@@ -256,7 +267,7 @@ export function pointsLabel(r: BoardRow): { value: string; tone?: "better" | "wo
   const text = shown.map(([k, label]) => `${label} ${sign(p[k]!)}`).join(" · ");
   const net = p.score ?? (p.neg_points ?? 0) + (p.ladder_points ?? 0);
   const tone = net > 0 ? "better" : net < 0 ? "worse" : undefined;
-  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} deals)` : ""}`;
+  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} deals)` : ""}${r.d_lagged ? " · ladder lagged (not exact)" : ""}`;
   return tone ? { value, tone } : { value };
 }
 

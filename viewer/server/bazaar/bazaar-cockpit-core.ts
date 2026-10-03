@@ -113,3 +113,29 @@ export function scheduleOf(raw: unknown): ScheduleOut | null {
     .map((u) => ({ at_hours: u.at_hours, action: u.action ?? "?", note: u.note ?? "", wall: u.wall ?? null }));
   return { now_hours: now, upcoming };
 }
+
+/** One snapshot of `/api/me` → score per tick (`score-parts.jsonl`, written by the viewer server). */
+export const ScorePartsLineSchema = z.looseObject({ tick: num, parts: z.record(str, num) });
+export type ScorePartsLine = z.infer<typeof ScorePartsLineSchema>;
+
+export interface ScorePartsOut {
+  tick: number | null;
+  now: Record<string, number>;
+  /** First snapshot of the day (Δ day = now − this). */
+  day_start: ScorePartsLine | null;
+  /** Last snapshot from an earlier tick (Δ tick = now − this). */
+  prev: ScorePartsLine | null;
+}
+
+/** Numeric fields of `/api/me` → score (score, negotiating, market, neg_points, ladder_points, duel_points, mm_points, bench_*). */
+export function scoreNumbers(score: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!score || typeof score !== "object") return out;
+  for (const [k, v] of Object.entries(score as Record<string, unknown>)) if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  return out;
+}
+
+export function scorePartsOf(now: Record<string, number>, tick: number | null, history: readonly ScorePartsLine[]): ScorePartsOut {
+  const earlier = tick === null ? [...history] : history.filter((h) => h.tick < tick);
+  return { tick, now, day_start: history[0] ?? null, prev: earlier.at(-1) ?? null };
+}

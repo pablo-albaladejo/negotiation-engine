@@ -262,6 +262,14 @@ export interface NowData {
   venue: NowVenue | null;
 }
 
+export interface ModelLadderLevel {
+  level: number;
+  dealers: string[];
+  top: number[];
+  weakest: number;
+  deals: { thread: number; dealer: string; level: number; share: number; assumed: boolean }[];
+}
+
 export interface GameModel {
   available: boolean;
   /** The response is the latest build and another is in progress (optional on older servers). */
@@ -292,6 +300,8 @@ export interface GameModel {
   eggs_feed: ModelFeedLine[];
   persisted: { date: string | null; conversations: boolean; personas: unknown; flags: unknown };
   hints: Record<string, unknown>[];
+  /** Today's dealer ladder per level (optional: an older server does not send it). */
+  ladder?: ModelLadderLevel[];
   /** Optional: an older server does not provide it. */
   prices?: { source: string; rows: Record<string, unknown>[] };
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
