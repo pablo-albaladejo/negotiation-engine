@@ -156,6 +156,8 @@ export class DealersRoute {
   private collected: DealerIntent[] = [];
   /** Ladder levels read once per propose (the agents' `ladderSellDiscount` and the open bonus share it). */
   private ladderNow: LadderLevel[] = [];
+  /** Lesson entries read with the ladder (same file, once per propose): the agents' `pastNoDeals` reads them. */
+  private lessonEntries: LessonEntry[] = [];
   private allowed = new Set<string>();
   private mode: "propose" | "execute" = "propose";
   private readonly logs: string[] = [];
@@ -204,6 +206,7 @@ export class DealersRoute {
     } catch {
       // No lessons yet: every slot is empty.
     }
+    this.lessonEntries = entries;
     const rarity = new Map(state.markets.prices.map((p) => [p.ref, p.rarity]));
     return ladderLevels(entries, new Date().toISOString().slice(0, 10), (dealer) => {
       const model = state.personas.find((p) => p.id === dealer)?.model;
@@ -264,6 +267,7 @@ export class DealersRoute {
             const lvl = this.state?.personas.find((p) => p.id === id)?.model?.public.level;
             return lvl === undefined ? 0 : ladderGain(this.ladderNow, lvl, expectedShare(this.ladderNow, id)) * LADDER_P_PER_POINT;
           },
+          pastNoDeals: (key) => pastNoDeals(this.lessonEntries, id, key, new Date().toISOString().slice(0, 10)),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
             return conv?.prediction ? offerCap(conv.prediction, conv.side === "buy", RARITY_BOOK[conv.asset.rarity ?? ""] ?? 10) : undefined;
@@ -366,6 +370,17 @@ export class DealersRoute {
     lines.push(...this.lessonLines.splice(0));
     return lines;
   }
+}
+
+/**
+ * Today's no-deal threads with `dealer` on target `key` (`sell:620`, `buy:SAL-09`…, the suffix of the lesson's `item`)
+ * and her best price across them: the highest she bid when she buys, the lowest she asked when she sells.
+ */
+export function pastNoDeals(entries: readonly LessonEntry[], dealer: string, key: string, day: string): { n: number; best: number } | undefined {
+  const mine = entries.filter((e) => e.dealer === dealer && e.outcome !== "deal" && (e.ts ?? "").startsWith(day) && /\(([^)]+)\)$/.exec(e.item)?.[1] === key && e.her_prices.length);
+  if (!mine.length) return undefined;
+  const prices = mine.flatMap((e) => e.her_prices);
+  return { n: mine.length, best: mine[0]!.kind === "sell" ? Math.max(...prices) : Math.min(...prices) };
 }
 
 /** Catalog for the page-target caps (it does not change within the day): one GET per run. */

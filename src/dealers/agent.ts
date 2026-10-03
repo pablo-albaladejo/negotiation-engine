@@ -92,6 +92,8 @@ export interface AgentOptions {
    * A DUPLICATE sale's minimum drops by it (`ladderReservation`), never below her measured lowest ceiling.
    */
   ladderSellDiscount?: () => number;
+  /** Today's no-deal threads with this dealer on a target key and her best price in them (`pastNoDeals` in the coordinator). */
+  pastNoDeals?: (key: string) => { n: number; best: number } | undefined;
   /**
    * `firstStepFrac` of this tick for this dealer (see `NegotiatorParams`): the coordinator enables it only if the mirror of
    * her persona holds. Without it, the one from `negotiator`/defaults applies (0: off).
@@ -535,6 +537,12 @@ export class BazaarAgent {
   }
 
   private hopeless(c: Candidate): string | undefined {
+    // The same target already failed with her at least twice today and her best price never reached our current limit
+    // (3 Oct: LAT-07 asset 620 opened 9 times; Pilar's final 17 three times vs our 18, Picaros 11 twice).
+    const past = this.o.pastNoDeals?.(c.key);
+    if (past && past.n >= HOPELESS_MIN_REPEATS && (c.side === "sell" ? past.best < c.reservation : past.best > c.reservation)) {
+      return `${past.n} no-deal threads today, her best ${past.best} vs our ${c.side === "sell" ? "min" : "max"} ${c.reservation}`;
+    }
     if (c.kind === "buy-pack" || !c.rarity) return undefined;
     const band = `${c.side === "sell" ? "buys" : "sells"}:${c.rarity}`;
     const b = this.o.herBand?.(band);
@@ -903,6 +911,8 @@ export function herReplies(thread: Thread, dealer: DealerRef, selfId?: string): 
 
 /** Conversations measured in a band before her range is trusted to rule a target out. */
 export const HOPELESS_MIN_SAMPLES = 3;
+/** No-deal threads on the same target with the same dealer (today) before it counts as hopeless. */
+export const HOPELESS_MIN_REPEATS = 2;
 /** Slack over her measured range (P) before a target counts as hopeless. */
 export const HOPELESS_MARGIN_P = 1;
 
