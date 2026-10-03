@@ -22,7 +22,7 @@ import {
 /**
  * Team desk: a structural counter-offer to an offer another team made TO us that play rejects. Only sales: the team
  * asked for a card of ours for cash, so we answer with a directed offer (`to` = that team, same venue) of the same card
- * at a price from code: an anchor above the floor, stepping down monotonically, never below the floor (the card's
+ * (only a spare: never our last free copy) at a price from code: an anchor above the floor, stepping down monotonically, never below the floor (the card's
  * `your_value` plus margin, fee included). A spare (two or more free copies) the team signals demand for is offered too.
  * Never reads the rival's text; never buys.
  */
@@ -37,8 +37,8 @@ export const TEAM_DESK_PARAMS = {
   maxOpen: 3,
   minMargin: 2,
   marginFrac: 0.1,
-  /** Rejections we answer: the offer did not leave margin, or it took our last free copy. */
-  reasons: ["below-margin", "last-free-copy"] as readonly string[],
+  /** Rejections we answer: the offer did not leave margin (a last-free-copy request is never countered). */
+  reasons: ["below-margin"] as readonly string[],
   /** Venues we never operate on (they lift rival markets). */
   forbiddenVenues: ["v01", "v02", "v07", "v14"] as readonly string[],
 };
@@ -241,8 +241,11 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
         notes.push(`${TAG} skip ${ref} → ${r.team}: ${legendary ? `rarity ${rarity ?? "unknown"}` : `your_value ${asset.value}`} (no floor from code; needs a price from Pablo)`);
         continue;
       }
-      // A spare (not the requested card) only if it is not our last free copy.
-      if (ref !== r.ref && isLastFreeCopy(asset.id, trade.held, lockedIds, trade.reserved)) continue;
+      // Never our last free copy (Pablo, 3 Oct: complete pages are not sold): only spares, requested or not.
+      if (isLastFreeCopy(asset.id, trade.held, lockedIds, trade.reserved)) {
+        if (ref === r.ref) notes.push(`${TAG} skip ${ref} → ${r.team}: our last free copy (complete pages are not sold)`);
+        continue;
+      }
       const { floor, anchor, price } = priceFor(key, asset.value, r.venue);
       if (ref === r.ref && r.offered >= price) continue;
       const post = makePost("counter", r.team, r.venue, ref, asset.id, price, floor, anchor, asset.value, fees(r.venue), r.offer.id, params);
