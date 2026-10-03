@@ -620,7 +620,9 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   if ((offer.status ?? "open") !== "open") return blank(offer, source, "not-open");
   if (offer.expires_tick != null && offer.expires_tick <= state.tick) return blank(offer, source, "expired");
   if (offer.to && offer.to !== state.myId) return blank(offer, source, "addressed-to-other");
-  if (!offer.venue || offer.thread != null) return blank(offer, source, "not-a-venue-offer");
+  // A structured offer made to us inside a team thread on a venue (rivals propose swaps that way) is evaluated like a
+  // directed one: same value, margin and last-copy rules, accepted by structure only (never by its text).
+  if (!offer.venue || (offer.thread != null && offer.to !== state.myId)) return blank(offer, source, "not-a-venue-offer");
   const give = readSide(offer.give);
   const want = readSide(offer.want);
   if (give.unsupported.length || want.unsupported.length || give.cards.length || give.assets.some((a) => a.ref === null)) return blank(offer, source, "unsupported");
