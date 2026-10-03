@@ -1,0 +1,290 @@
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { z } from "zod";
+import { CatalogSchema, MeSchema, type Catalog, type Me } from "../shared/schemas.js";
+
+/**
+ * Local sources of the auditor, read-only. JSONL files are tailed by byte offset (a partial last line waits for the
+ * next read), so `--watch` only parses what is new. Every parser is tolerant: an odd line is skipped, never fatal.
+ */
+
+/** Reads only the bytes appended since the previous call; returns complete lines. */
+export class Tail {
+  private offset = 0;
+  private rest = "";
+  constructor(readonly file: string) {}
+
+  read(): string[] {
+    if (!existsSync(this.file)) return [];
+    const size = statSync(this.file).size;
+    if (size < this.offset) {
+      // Truncated or replaced: start again.
+      this.offset = 0;
+      this.rest = "";
+    }
+    if (size === this.offset) return [];
+    const fd = openSync(this.file, "r");
+    try {
+      const buf = Buffer.alloc(size - this.offset);
+      readSync(fd, buf, 0, buf.length, this.offset);
+      this.offset = size;
+      const text = this.rest + buf.toString("utf8");
+      const lines = text.split("\n");
+      this.rest = lines.pop() ?? "";
+      return lines.filter((l) => l.trim() !== "");
+    } finally {
+      closeSync(fd);
+    }
+  }
+}
+
+export function parseJson(line: string): unknown {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+}
+
+// ---------------------------------------------------------------- stream (recorder)
+
+const num = z.number();
+const OfferAssetSchema = z.union([num, z.looseObject({ id: num, ref: z.string().nullish(), kind: z.string().nullish() })]);
+const OfferSideSchema = z.looseObject({ cash: num.nullish(), assets: z.array(OfferAssetSchema).nullish(), types: z.array(z.string()).nullish() });
+export const StreamOfferSchema = z.looseObject({
+  id: num,
+  maker: z.string().nullish(),
+  to: z.string().nullish(),
+  venue: z.string().nullish(),
+  thread: num.nullish(),
+  give: OfferSideSchema.nullish(),
+  want: OfferSideSchema.nullish(),
+  expires_tick: num.nullish(),
+  created_tick: num.nullish(),
+});
+export type StreamOffer = z.infer<typeof StreamOfferSchema>;
+
+const SettlementItemSchema = z.looseObject({ id: num, kind: z.string().nullish(), ref: z.string().nullish(), frm: z.string().nullish(), to: z.string().nullish() });
+export const SettlementSchema = z.looseObject({
+  settlement: num,
+  tick: num.nullish(),
+  parties: z.array(z.string()).nullish(),
+  venue: z.string().nullish(),
+  persona: z.string().nullish(),
+  fee: num.nullish(),
+  price: num.nullish(),
+  items: z.array(SettlementItemSchema).default([]),
+});
+export type Settlement = z.infer<typeof SettlementSchema>;
+
+/** One recorder event, deduplicated across the team and public streams by its server id. */
+export interface StreamEvent {
+  id: number;
+  tick: number;
+  type: string;
+  scope: string;
+  payload: Record<string, unknown>;
+}
+
+const RecordSchema = z.looseObject({
+  event: z.string(),
+  data: z.looseObject({ id: num.optional(), tick: num.optional(), scope: z.string().optional(), payload: z.record(z.string(), z.unknown()).optional() }).optional(),
+});
+
+/** `hello` carries `scope: team:<id>`: our team id without any API call. */
+export function parseStreamLine(line: string): { event?: StreamEvent; team?: string } {
+  const r = RecordSchema.safeParse(parseJson(line));
+  if (!r.success || !r.data.data) return {};
+  const d = r.data.data;
+  if (r.data.event === "hello") {
+    const m = /^team:(\w+)$/.exec(d.scope ?? "");
+    return m?.[1] ? { team: m[1] } : {};
+  }
+  if (d.id === undefined || d.tick === undefined || !d.payload) return {};
+  return { event: { id: d.id, tick: d.tick, type: r.data.event, scope: d.scope ?? "", payload: d.payload } };
+}
+
+// ---------------------------------------------------------------- plan.jsonl (coordinator)
+
+/** Tolerant local copy of the coordinator's `plan.jsonl` line (src/coordinator/plan-log.ts): extra fields allowed. */
+const PlanIntentSchema = z.looseObject({
+  id: z.string(),
+  route: z.string(),
+  kind: z.string().optional(),
+  ref: z.string().optional(),
+  assetIds: z.array(num).optional(),
+  price: num.optional(),
+  summary: z.string().optional(),
+});
+export const PlanLineSchema = z.looseObject({
+  v: num,
+  tick: num,
+  ts: z.string().optional(),
+  mode: z.string().optional(),
+  cash: num.optional(),
+  cashFloor: num.optional(),
+  maxSpend: num.optional(),
+  holdings: z.record(z.string(), num).optional(),
+  intents: z.array(PlanIntentSchema).default([]),
+  arbitration: z.array(z.looseObject({ id: z.string(), verdict: z.string(), reason: z.string().optional() })).default([]),
+  execution: z.array(z.looseObject({ id: z.string(), route: z.string(), ok: z.boolean(), error: z.string().optional(), detail: z.string().optional() })).default([]),
+});
+export type PlanLine = z.infer<typeof PlanLineSchema>;
+
+export function parsePlanLine(line: string): PlanLine | undefined {
+  const r = PlanLineSchema.safeParse(parseJson(line));
+  return r.success ? r.data : undefined;
+}
+
+// ---------------------------------------------------------------- play.log fallback
+
+/** What the auditor needs from one tick of `play.log` when there is no `plan.jsonl`. */
+export interface PlayTick {
+  tick: number;
+  cash?: number;
+  cashFloor?: number;
+  /** Intents that went out: side, ref (or asset id for dealer sells), route and the log line. */
+  acts: { route: string; side: "buy" | "sell"; ref?: string; assetId?: number; line: string }[];
+  /** `route:error` shapes of failed executions. */
+  failures: { shape: string; line: string }[];
+}
+
+/**
+ * Parses `play.log` lines incrementally with tolerant regexes: `== tick N`, `us: … cash N P`, the header
+ * `cash floor N P`, `SELECTED markets:accept:<venue>:<offer>` with its `[markets] accept: SELL|BUY <ref>` proposal,
+ * `El Rastro sent: post list|bid <ref>`, `dealer X: [tick N] · open · thread N · buy:<ref>|sell:<asset>` and failures
+ * (`failed: <code>`, `El Rastro error: … : <code>`, `· error · … error <code>`).
+ */
+export class PlayLogParser {
+  readonly ticks = new Map<number, PlayTick>();
+  private current: PlayTick | undefined;
+  private cashFloor: number | undefined;
+  private marketProposals = new Map<string, { side: "buy" | "sell"; ref: string; line: string }>();
+
+  push(raw: string): void {
+    const line = raw.replace(/^\d\d:\d\d:\d\d\s+/, "").trim();
+    const floor = /cash floor (\d+(?:\.\d+)?) P/.exec(line);
+    if (floor && /^bazaar:play/.test(line)) this.cashFloor = Number(floor[1]);
+    const t = /^== tick (\d+)/.exec(line);
+    if (t) {
+      const tick = Number(t[1]);
+      // A process restart prints the same tick again: keep accumulating on it.
+      this.current = this.ticks.get(tick) ?? { tick, acts: [], failures: [] };
+      if (this.cashFloor !== undefined) this.current.cashFloor = this.cashFloor;
+      this.ticks.set(tick, this.current);
+      this.marketProposals.clear();
+      return;
+    }
+    const cur = this.current;
+    if (!cur) return;
+    const cash = /^us: .*· cash (-?\d+(?:\.\d+)?) P/.exec(line);
+    if (cash) cur.cash = Number(cash[1]);
+    const prop = /^\[markets\] accept: (SELL|BUY) ([A-Z]+-\d+) on (\w+) at \d+(?:\.\d+)? P \(offer #(\d+)\)/.exec(line);
+    if (prop) this.marketProposals.set(`${prop[3]}:${prop[4]}`, { side: prop[1] === "SELL" ? "sell" : "buy", ref: prop[2]!, line });
+    const sel = /^SELECTED markets:accept:(\w+):(\d+)/.exec(line);
+    if (sel) {
+      const p = this.marketProposals.get(`${sel[1]}:${sel[2]}`);
+      if (p) cur.acts.push({ route: "markets", side: p.side, ref: p.ref, line: p.line });
+    }
+    const post = /^El Rastro sent: post (list|bid) ([A-Z]+-\d+) @/.exec(line);
+    if (post) cur.acts.push({ route: "trades", side: post[1] === "list" ? "sell" : "buy", ref: post[2]!, line });
+    const open = /^dealer (\w+): \[tick \d+\] · open · thread \d+ · (buy|sell):([A-Z]+-\d+|\d+)\b/.exec(line);
+    if (open) {
+      const target = open[3]!;
+      cur.acts.push({ route: "dealers", side: open[2] as "buy" | "sell", ...(/^\d+$/.test(target) ? { assetId: Number(target) } : { ref: target }), line });
+    }
+    const failed = /^(\w+): .*\bfailed: ([\w-]+)/.exec(line);
+    if (failed) cur.failures.push({ shape: `${failed[1]}:${failed[2]}`, line });
+    const rastroErr = /^El Rastro error: .*: ([\w-]+)$/.exec(line);
+    if (rastroErr) cur.failures.push({ shape: `trades:${rastroErr[1]}`, line });
+    const dealerErr = /^dealer (\w+): \[tick \d+\] · error · .*error ([\w-]+)/.exec(line);
+    if (dealerErr) cur.failures.push({ shape: `dealers:${dealerErr[2]}`, line });
+  }
+}
+
+// ---------------------------------------------------------------- decisions.jsonl
+
+export interface DecisionNote {
+  tick: number;
+  dealer: string;
+  thread: number;
+  target?: string;
+  reservation?: number;
+  ourPrice?: number;
+}
+
+const DecisionSchema = z.looseObject({ tick: num, dealer: z.string(), thread: num.optional(), target: z.string().optional(), reservation: num.optional(), ourPrice: num.optional() });
+
+export function parseDecision(line: string): DecisionNote | undefined {
+  const r = DecisionSchema.safeParse(parseJson(line));
+  if (!r.success || r.data.thread === undefined) return undefined;
+  const d = r.data;
+  return { tick: d.tick, dealer: d.dealer, thread: d.thread as number, ...(d.target ? { target: d.target } : {}), ...(d.reservation !== undefined ? { reservation: d.reservation } : {}), ...(d.ourPrice !== undefined ? { ourPrice: d.ourPrice } : {}) };
+}
+
+// ---------------------------------------------------------------- snapshots: baseline /api/me and catalog
+
+/** A recorded `/api/me` (and `/api/catalog` when present) from a dump folder (snapshot.json) or an api-scan JSON file. */
+export interface Snapshot {
+  file: string;
+  tick: number;
+  me?: Me;
+  catalog?: Catalog;
+}
+
+function bodyOf(v: unknown): unknown {
+  return v && typeof v === "object" && "body" in v ? (v as { body: unknown }).body : v;
+}
+
+function readSnapshot(file: string): Snapshot | undefined {
+  const j = parseJson(readFileSync(file, "utf8"));
+  if (!j || typeof j !== "object") return undefined;
+  const o = j as Record<string, unknown>;
+  const me = MeSchema.safeParse(bodyOf(o["/api/me"]));
+  const cat = CatalogSchema.safeParse(bodyOf(o["/api/catalog"]));
+  const clock = bodyOf(o["/api/clock"]) as { tick?: unknown } | undefined;
+  const meTick = me.success ? (me.data as { tick?: unknown }).tick : undefined;
+  const tick = typeof clock?.tick === "number" ? clock.tick : typeof meTick === "number" ? meTick : undefined;
+  if (tick === undefined) return undefined;
+  return { file, tick, ...(me.success ? { me: me.data } : {}), ...(cat.success && cat.data.sets.length ? { catalog: cat.data } : {}) };
+}
+
+/** Every snapshot of one day's folder, oldest tick first. */
+export function daySnapshots(dayDir: string): Snapshot[] {
+  if (!existsSync(dayDir)) return [];
+  const files: string[] = [];
+  for (const name of readdirSync(dayDir)) {
+    if (/^api-scan-.*\.json$/.test(name)) files.push(join(dayDir, name));
+    else if (/^dump-/.test(name) && existsSync(join(dayDir, name, "snapshot.json"))) files.push(join(dayDir, name, "snapshot.json"));
+  }
+  return files.flatMap((f) => {
+    try {
+      const s = readSnapshot(f);
+      return s ? [s] : [];
+    } catch {
+      return [];
+    }
+  }).sort((a, b) => a.tick - b.tick);
+}
+
+/** The newest catalog recorded in any day folder (the catalog lists unreleased sets too). */
+export function latestCatalog(liveRoot: string): Catalog | undefined {
+  if (!existsSync(liveRoot)) return undefined;
+  const days = readdirSync(liveRoot).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  for (const d of days) {
+    const withCat = daySnapshots(join(liveRoot, d)).filter((s) => s.catalog);
+    const last = withCat.at(-1);
+    if (last?.catalog) return last.catalog;
+  }
+  return undefined;
+}
+
+/** `results/bazaar-live/values.json`: private values already asked (`/api/me/value`). */
+export function readValuesFile(file: string): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!existsSync(file)) return out;
+  const j = parseJson(readFileSync(file, "utf8")) as { values?: Record<string, unknown> } | undefined;
+  for (const [k, v] of Object.entries(j?.values ?? {})) if (typeof v === "number" && Number.isFinite(v)) out.set(k, v);
+  return out;
+}
+
