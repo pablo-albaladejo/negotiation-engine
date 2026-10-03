@@ -253,7 +253,7 @@ Nadie tiene aún puntos de mercado: ese componente lo da *The Market Test*.
 
 ## 6. Hallazgos
 
-1. **El feed público enseña las conversaciones de todos los equipos con los dealers.** `thread.message` lleva el texto del dealer y su oferta estructurada, y `settlement` el precio cerrado. Es la mejor fuente para calibrar a cuánto cede de verdad cada dealer. Recordatorio de la regla del repo: del rival solo se lee la estructura; si el texto de un dealer cuenta como "rival" es decisión del equipo.
+1. **El feed público enseña las conversaciones de todos los equipos con los dealers.** `thread.message` lleva el texto del dealer y su oferta estructurada, y `settlement` el precio cerrado. De los equipos solo se ve la oferta estructurada: el campo `text` siempre llega vacío. Es la mejor fuente para calibrar a cuánto cede de verdad cada dealer. Recordatorio de la regla del repo: del rival solo se lee la estructura; si el texto de un dealer cuenta como "rival" es decisión del equipo.
 2. **Easter eggs:** cada dealer esconde frases secretas; si el texto de un mensaje nuestro contiene una, salta un premio (insignia, sobre, carta o carta secreta). No puntúan y nadie ha encontrado ninguno todavía. Detalle completo en § 7.
 3. **Abuela regala cartas.** En el feed: MAL-02 a Team 17 (tick 146) y LAT-06 a Team 7 (tick 157), `reason: "gift from Abuela Carmen"`, tras mensajes amables (*"because you have been sweet to an old woman"*, *"because you asked so nicely"*). Es el mecanismo `gifts` (§ 7.5). Los regalos no puntúan (RULES.md:122).
 4. **Los dealers castigan:** `persona.strike` acumula avisos y `persona.cooloff` echa a un equipo hasta un tick.
@@ -261,6 +261,7 @@ Nadie tiene aún puntos de mercado: ese componente lo da *The Market Test*.
 6. **Cartas secretas y shinies:** el catálogo web cuenta *Secret cards found* (0 de momento) y *Shinies found* (épicas y legendarias aparecidas).
 7. ***The Market Test* se repite cada 2 h** sobre todos los venues con el mismo libro sintético. Es lo que puntúa el componente de mercado (peso 30); nuestro `v04` en modo `auto` es lo que se evalúa.
 8. **Las estrellas del leaderboard (`★ N`) son páginas completas del álbum.** `BigScreen-*.js` pinta `★ pages_complete` junto a `album_filled/album_slots` cuando es > 0 (al pasar el ratón: *"1 complete page"*). Una página = las 10 cartas de común a rara de un set; suma bonus de página (0,25).
+9. **Los hilos son privados.** `GET /api/threads/{id}` con nuestra clave sobre un hilo de otro equipo devuelve `403 {"error":"not_your_thread"}` (comprobado con hilos 282, 304, 306 el 3 oct). El control de acceso por dueño funciona: no se pueden leer las conversaciones ajenas; solo queda lo que expone el feed público (punto 1).
 
 ## 7. Easter eggs (investigación a fondo)
 
