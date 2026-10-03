@@ -4,6 +4,7 @@ Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del h
 
 - **`App.tsx`** — cabecera (tema claro/oscuro) y `BazaarScreen`; captura errores de render.
 - **`route.ts`** — `parseRoute` / `routeTo.bazaar`.
+- **`api.ts`** (`fetchApi`: siempre `{ data, errors }`), **`theme.ts`** (tema guardado en localStorage o, si no hay, el del sistema) y **`focus.ts`** (foco del título al navegar).
 - **`bazaarBoardLive.ts`** — `useBazaarBoard`: lee `/api/bazaar/board` y `/api/bazaar/score` una vez por tick.
 - **`bazaarModelLive.ts`** — `useBazaarModel`: lee `/api/bazaar/model` con la pestaña Now, la vista Model o un cajón abierto; si el servidor está reconstruyendo, enseña la última construcción y vuelve a pedir a los 10 s.
 - **`model/gameModel.ts`** — tipos tolerantes del modelo y funciones puras: resumen de tiempo, línea de tiempo, personas, pistas (filtros), precios, venues, sobres, flags, camino previsto sobre la curva (`withPlannedPath`, `modelCurve`).

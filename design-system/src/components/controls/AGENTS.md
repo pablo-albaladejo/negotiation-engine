@@ -4,7 +4,7 @@ Componentes de presentación: muestran valores, no calculan métricas. Exportado
 
 ## Archivos
 
-- **`Button.tsx`** — `PrimaryButton`, `SecondaryButton`, `BackLink` y `TableLink`: los únicos `<button>` del sistema.
+- **`Button.tsx`** — `PrimaryButton`, `SecondaryButton`, `BackLink` y `TableLink`: `<button type="button">` con la clase del sistema (`nr-btn-primary`, `nr-btn-secondary`, `nr-link-back`, `nr-link-table`).
 - **`Filters.tsx`** — `Filters`: selectores y casillas de filtro.
 - **`Pill.tsx`** — `Pill`: etiqueta corta.
 - **`ModeBadge.tsx`** — `ModeBadge`: insignia de modo.
