@@ -142,6 +142,7 @@ async function main() {
       posterior,
       personaModels,
       rivals: rivalLedger,
+      rivalConfirmPerTick: 2,
       ...(prevTime ? { prevTime } : {}),
       hintCorpus: loadHints(hintsFile),
       valueCache: valueCache.values,

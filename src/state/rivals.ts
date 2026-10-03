@@ -16,7 +16,8 @@ import { parseFeed, type FeedEvent } from "./world.js";
 const SCHEMA = "rivals-ledger/v1";
 const TEAM_ID = /^t\d+$/;
 
-export type SightingSource = "settlement" | "offer" | "pack";
+/** `card`: the asset's history (`/api/cards/{id}`) placed it after the last public sighting. */
+export type SightingSource = "settlement" | "offer" | "pack" | "card";
 
 export interface AssetSighting {
   ref: string;
@@ -24,6 +25,8 @@ export interface AssetSighting {
   holder: string;
   tick: number;
   source: SightingSource;
+  /** Last tick `/api/cards/{id}` showed no move since the sighting (the holder is still the same). */
+  confirmedTick?: number;
 }
 
 export interface BoardSnapshot {
@@ -47,9 +50,14 @@ export interface RivalLedger {
   wants: Record<string, Record<string, number>>;
   /** Latest leaderboard row per team. */
   boards: Record<string, BoardSnapshot>;
+  /** Every leaderboard row read per team, oldest first (at most `MAX_HISTORY`). */
+  history: Record<string, BoardSnapshot[]>;
 }
 
-export const emptyRivalLedger = (): RivalLedger => ({ schema: SCHEMA, lastEventId: 0, assets: {}, wants: {}, boards: {} });
+export const emptyRivalLedger = (): RivalLedger => ({ schema: SCHEMA, lastEventId: 0, assets: {}, wants: {}, boards: {}, history: {} });
+
+/** Leaderboard rows kept per team (one every 5 ticks: a whole game day and more). */
+export const MAX_HISTORY = 400;
 
 const obj = (x: unknown): Record<string, unknown> => (x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {});
 const num = (x: unknown): number | undefined => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
@@ -129,7 +137,48 @@ export function ingestLeaderboard(ledger: RivalLedger, raw: unknown, tick: numbe
     set("score", num(r.score));
     set("rank", num(r.rank));
     ledger.boards[team] = snap;
+    const h = (ledger.history[team] ??= []);
+    if (h.at(-1)?.tick !== snap.tick) h.push(snap);
+    if (h.length > MAX_HISTORY) h.splice(0, h.length - MAX_HISTORY);
   }
+}
+
+// ---------------------------------------------------------------- confirmation with /api/cards
+
+/** Ticks a confirmation stays fresh: the asset is not asked for again before. */
+export const CONFIRM_FRESH_TICKS = 10;
+
+/**
+ * Assets worth confirming this tick: held by another team and of a card in `refs` (page cards we lack), least
+ * recently confirmed first. The caller asks `/api/cards/{id}` for at most `max` of them.
+ */
+export function confirmCandidates(ledger: RivalLedger, us: string | undefined, refs: ReadonlySet<string>, tick: number, max: number): number[] {
+  return Object.entries(ledger.assets)
+    .filter(([, a]) => TEAM_ID.test(a.holder) && a.holder !== us && refs.has(a.ref) && tick - (a.confirmedTick ?? -Infinity) >= CONFIRM_FRESH_TICKS)
+    .sort(([, a], [, b]) => (a.confirmedTick ?? a.tick) - (b.confirmedTick ?? b.tick))
+    .slice(0, Math.max(0, max))
+    .map(([id]) => Number(id));
+}
+
+/**
+ * Applies an asset's `/api/cards/{id}` body: with no move after the sighting, the holder is confirmed at `tick`; with a
+ * later move, the asset goes to its new owner (a dealer, `burned`, us) or, if the API hides it ("a team"), to nobody we
+ * can name (it leaves every rival's list). Returns what happened, for the log.
+ */
+export function applyCardHistory(ledger: RivalLedger, assetId: number, raw: unknown, tick: number): "confirmed" | "moved" | "unknown" {
+  const a = ledger.assets[String(assetId)];
+  const body = obj(obj(raw).data ?? raw);
+  if (!a) return "unknown";
+  const moves = list(body.history).map(obj);
+  const last = moves.reduce<number | undefined>((m, h) => (num(h.tick) !== undefined && (m === undefined || num(h.tick)! > m) ? num(h.tick) : m), undefined);
+  if (last === undefined) return "unknown";
+  if (last <= a.tick) {
+    a.confirmedTick = tick;
+    return "confirmed";
+  }
+  const owner = str(body.owner) ?? "a team";
+  ledger.assets[String(assetId)] = { ref: a.ref, holder: owner, tick: last, source: "card" };
+  return "moved";
 }
 
 /** Events from the recorder's public stream files (`<dir>/<date>/stream-public.jsonl`), oldest first. */
@@ -195,11 +244,13 @@ export interface RivalPage {
 export interface RivalTeam {
   team: string;
   /** Cards seen with the team and not seen leaving it since (latest sighting per asset). */
-  seen: { assetId: number; ref: string; tick: number; source: SightingSource }[];
+  seen: { assetId: number; ref: string; tick: number; source: SightingSource; confirmedTick?: number }[];
   distinct: number;
   /** Refs seen more than once (spares they could sell). */
   spares: string[];
   board?: BoardSnapshot;
+  /** Leaderboard rows over time, oldest first (score, rank, album); absent when none was read. */
+  history?: BoardSnapshot[];
   /** Album cards we cannot see: `albumFilled` − distinct page cards seen (0 if the board is older or absent). */
   unseen?: number;
   /** Pages by how much of them we have seen, fullest first. */
@@ -234,7 +285,7 @@ export function rivalsView(ledger: RivalLedger, us: string | undefined, catalog:
   for (const [id, a] of Object.entries(ledger.assets)) {
     if (!TEAM_ID.test(a.holder) || a.holder === us) continue;
     const arr = byTeam.get(a.holder) ?? [];
-    arr.push({ assetId: Number(id), ref: a.ref, tick: a.tick, source: a.source });
+    arr.push({ assetId: Number(id), ref: a.ref, tick: a.tick, source: a.source, ...(a.confirmedTick !== undefined ? { confirmedTick: a.confirmedTick } : {}) });
     byTeam.set(a.holder, arr);
   }
   const teams = new Set([...byTeam.keys(), ...Object.keys(ledger.wants), ...Object.keys(ledger.boards)].filter((t) => TEAM_ID.test(t) && t !== us));
@@ -267,6 +318,7 @@ export function rivalsView(ledger: RivalLedger, us: string | undefined, catalog:
       distinct: refs.size,
       spares: [...count].filter(([, n]) => n > 1).map(([r]) => r),
       ...(board ? { board } : {}),
+      history: ledger.history[team] ?? [],
       ...(board?.albumFilled !== undefined ? { unseen: Math.max(0, board.albumFilled - distinctPage) } : {}),
       pages: teamPages.filter((p) => p.have > 0).sort((a, b) => b.have / b.of - a.have / a.of),
       wants,

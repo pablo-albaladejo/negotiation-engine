@@ -13,7 +13,7 @@ import { indexCatalog } from "../flags/flags.js";
 import { buildPacks, formatPacks, type PacksState } from "../packs/packs.js";
 import { buildPriceSheet, buildVenues, formatPriceSheet, formatVenues, valuesWanted, type PriceEntry, type VenueInfo } from "./prices.js";
 import { buildTime, formatTime, type TimeState } from "./time.js";
-import { emptyRivalLedger, formatRivals, ingestEvents, ingestLeaderboard, rivalsView, type RivalLedger, type RivalsState } from "./rivals.js";
+import { applyCardHistory, confirmCandidates, emptyRivalLedger, formatRivals, ingestEvents, ingestLeaderboard, rivalsView, type RivalLedger, type RivalsState } from "./rivals.js";
 import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
@@ -218,6 +218,11 @@ export interface BuildOptions {
    * so that whoever loaded it saves it; without it, built from this tick's feed only.
    */
   rivals?: RivalLedger;
+  /**
+   * `/api/cards/{id}` reads per tick to confirm that a rival still holds a page card we lack (default 0: no GET;
+   * the coordinator passes 2).
+   */
+  rivalConfirmPerTick?: number;
   /** Leaderboard ranks from the previous tick (if this tick does not read it). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
 }
@@ -361,6 +366,16 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     const ledger = opts.rivals ?? emptyRivalLedger();
     ingestEvents(ledger, events);
     if (leaderboard !== undefined) ingestLeaderboard(ledger, leaderboard, clock.tick);
+    const perTick = opts.rivalConfirmPerTick ?? 0;
+    if (perTick > 0 && catalog) {
+      const lacking = new Set(
+        catalog.sets.flatMap((set) => set.cards.filter((c) => (c as { page?: unknown }).page !== false && (c as { hidden?: unknown }).hidden !== true && !((ours.holdings.byRef as Record<string, number>)[c.id] ?? 0)).map((c) => c.id)),
+      );
+      for (const id of confirmCandidates(ledger, me?.id ?? undefined, lacking, clock.tick, perTick)) {
+        const card = await settle(`card ${id}`, client.raw("GET", `/api/cards/${id}`));
+        if (card !== undefined) applyCardHistory(ledger, id, card, clock.tick);
+      }
+    }
     rivals = rivalsView(ledger, me?.id ?? undefined, catalog);
   } catch (e) {
     missing.push(`rivals: ${e instanceof Error ? e.message : "error"}`);
