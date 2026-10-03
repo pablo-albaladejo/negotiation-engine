@@ -8,7 +8,7 @@ import { outcomeOf } from "../dealers/history/thread-log.js";
 import type { Prediction } from "../dealers/history/persona-fit.js";
 import { sideOfTopic, threadPrices } from "../dealers/negotiation/view.js";
 import { rivalOfferFrom, type Duel } from "../duels/schemas.js";
-import { DAYS_MIN, offerForSurplus, openingSurplus, targetSurplus, type DuelDecision, type DuelParams, type DuelState } from "../duels/duels.js";
+import { DAYS_MIN, offerForSurplus, referenceSurplus, targetSurplus, type DuelDecision, type DuelParams, type DuelState } from "../duels/duels.js";
 import { readSide, type TradeOffer } from "../trades/trades.js";
 import { detectFlag, detectPressure, type CatalogIndex, type FlagCandidate } from "../flags/flags.js";
 
@@ -382,7 +382,7 @@ export function duelStrategy(state: DuelState, params: DuelParams, decision: Due
   const decay = state.decay ?? params.decay;
   const round = state.ourOffers.length;
   const nextTarget = targetSurplus(state, params, round);
-  const acceptSurplus = Math.max(params.minSurplus, params.acceptShare * openingSurplus(state, params), (1 - decay) ** params.acceptLookahead * nextTarget);
+  const acceptSurplus = Math.max(params.minSurplus, params.acceptShare * referenceSurplus(state, params), (1 - decay) ** params.acceptLookahead * nextTarget);
   const best = DAYS_MIN + state.daysValue.indexOf(Math.max(...state.daysValue));
   const walk = "never outside our limit; never two concessions without a rival counter; last tick: accept anything >= min surplus";
   const action: StrategyDecision["action"] = decision.action === "accept" ? "accept" : decision.action === "wait" ? "wait" : decision.offer && state.ourOffers.at(-1)?.price === decision.offer.price ? "hold" : "counter";

@@ -1,8 +1,8 @@
 import { parseArgs } from "node:util";
 import { BazaarClient } from "../shared/client.js";
 import { DEFAULT_DUEL_PARAMS, type DuelParams } from "./duels.js";
-import { DuelsAgent, defaultDuelsStateFile, formatDuelEntry, formatNextDuels } from "./agent.js";
-import { duelsApi } from "./schemas.js";
+import { DuelsAgent, defaultDuelsStateFile, formatDuelEntry, formatNextDuels, ticksLeft } from "./agent.js";
+import { duelsApi, type DuelsApi } from "./schemas.js";
 import { loadBazaarEnv } from "../shared/env.js";
 
 /**
@@ -10,6 +10,8 @@ import { loadBazaarEnv } from "../shared/env.js";
  * one step per tick until Ctrl-C. `--dry-run` only does GETs (clock, duels, schedule) and prints what it would do; no POSTs.
  * Live, it persists per-duel memory in `--state-file` (default `results/bazaar-live/<date>/duels-state.json`,
  * atomic rename) so a restart neither reopens nor repeats offers. Never prints the key.
+ * `--restart-check [--restart-ticks 5]`: GET only; exits 1 if a live duel ends within that many ticks (2402 lost ~11 P
+ * while the coordinator was down for 5 ticks at its deadline), 0 if restarting the coordinator now is safe for duels.
  */
 
 function num(raw: string, name: string, min: number): number {
@@ -31,6 +33,8 @@ async function main() {
       "floor-share": { type: "string", default: String(DEFAULT_DUEL_PARAMS.floorShare) },
       "assumed-days-weight": { type: "string", default: String(DEFAULT_DUEL_PARAMS.assumedDaysWeight) },
       "state-file": { type: "string" },
+      "restart-check": { type: "boolean", default: false },
+      "restart-ticks": { type: "string", default: "5" },
     },
   });
   const params: Partial<DuelParams> = {
@@ -48,6 +52,7 @@ async function main() {
   }
   const dryRun = values["dry-run"];
   const api = duelsApi(new BazaarClient({ url: env.url, key: env.key }));
+  if (values["restart-check"]) process.exit(await restartCheck(api, num(values["restart-ticks"], "--restart-ticks", 0)));
   const stateFile = dryRun ? undefined : (values["state-file"] ?? defaultDuelsStateFile(process.cwd()));
   const agent = new DuelsAgent(api, { dryRun, params, ...(stateFile ? { stateFile } : {}) });
   console.log(`bazaar:duels · ${dryRun ? "DRY RUN (GET only, no POST)" : "LIVE"} · params ${JSON.stringify({ ...DEFAULT_DUEL_PARAMS, ...params })}${stateFile ? ` · state ${stateFile}` : ""}`);
@@ -63,6 +68,20 @@ async function main() {
     if (values.once) break;
     await sleep(Math.max(1, clock.next_tick_in ?? 5) * 1000 + 300);
   }
+}
+
+/** Live duels close to their deadline: a coordinator restart now could miss their last ticks. */
+async function restartCheck(api: DuelsApi, within: number): Promise<number> {
+  const [clock, { duels }] = await Promise.all([api.clock(), api.duels()]);
+  const live = duels.map((d) => ({ id: d.id, left: ticksLeft(d.deadline, clock, Date.now()) }));
+  const close = live.filter((d) => d.left !== undefined && d.left <= within);
+  const list = live.map((d) => `${d.id} (${d.left ?? "?"} ticks left)`).join(", ") || "none";
+  if (close.length > 0) {
+    console.log(`NOT SAFE to restart: duel(s) ${close.map((d) => d.id).join(", ")} end within ${within} ticks · live: ${list}`);
+    return 1;
+  }
+  console.log(`safe to restart for duels · tick ${clock.tick} · live: ${list}`);
+  return 0;
 }
 
 main().catch((e: unknown) => {

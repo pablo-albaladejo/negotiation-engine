@@ -44,3 +44,43 @@ describe("duel micro-concession (repeating a price earns no concession)", () => 
     );
   });
 });
+
+describe("duel ladder to a silent rival (never offered)", () => {
+  it("concedes at most silentLadder times plus one endgame step, monotonic and never past the limit", () => {
+    fc.assert(
+      fc.property(fc.constantFrom("buyer" as const, "seller" as const), fc.integer({ min: 20, max: 200 }), fc.integer({ min: 4, max: 30 }), (role, limit, ticks) => {
+        const s = role === "seller" ? 1 : -1;
+        const ours: StructuredOffer[] = [];
+        let sinceOurs = 0;
+        for (let t = 0; t < ticks; t++) {
+          const concessions = Math.max(0, ours.length - 1);
+          const d = decideDuel(
+            {
+              role,
+              limit,
+              withDays: false,
+              daysValue: daysTable.map(() => 0),
+              ourOffers: ours,
+              rivalOffers: [],
+              rivalMovedSinceOurLast: false,
+              concessionsSinceRival: concessions,
+              ticksSinceOurLast: sinceOurs,
+              ticksLeft: ticks - t,
+            },
+            DEFAULT_DUEL_PARAMS,
+          );
+          expect(d.action).not.toBe("accept");
+          sinceOurs++;
+          if (d.action !== "counter") continue;
+          const offer = d.offer!;
+          expect(s * (offer.price - limit)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus);
+          const last = ours.at(-1);
+          if (last) expect(s * (offer.price - last.price)).toBeLessThan(0);
+          ours.push(offer);
+          sinceOurs = 0;
+        }
+        expect(ours.length).toBeLessThanOrEqual(1 + DEFAULT_DUEL_PARAMS.silentLadder + 1);
+      }),
+    );
+  });
+});

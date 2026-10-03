@@ -22,6 +22,8 @@ export const DAYS_MAX = 10;
 export interface DuelParams {
   /** Opening: the seller asks limit × (1 + a); the buyer offers limit ÷ (1 + a). */
   anchorMargin: number;
+  /** Margin that the floor and `acceptShare` are measured against (kept apart so a softer opening doesn't lower them). */
+  referenceMargin: number;
   /** β of the engine's `concession` curve (> 1 concedes early). */
   beta: number;
   /** Rondas (mensajes nuestros) hasta llegar al suelo. */
@@ -48,10 +50,16 @@ export interface DuelParams {
   maxSilentConcessions: number;
   /** Ticks to wait for a silent rival before that single unanswered concession. */
   silentWaitTicks: number;
+  /** Unanswered concessions to a rival that has never offered (a ladder along the curve; no rounds, so no decay). */
+  silentLadder: number;
+  /** In the last ticks, a rival that never offered gets an offer at this fraction of the floor surplus. */
+  silentEndgameShare: number;
 }
 
 export const DEFAULT_DUEL_PARAMS: DuelParams = {
-  anchorMargin: 0.5,
+  // Day-2 hint 3: "open with an offer the other side can take"; 0–1 round deals scored 24–33 vs 6–7 for 6+ rounds.
+  anchorMargin: 0.35,
+  referenceMargin: 0.5,
   beta: 2,
   // v2: 3 rounds to the floor (was 4): in practice, 6–7 round hagglings lost 30–35 % to decay.
   maxRounds: 3,
@@ -67,6 +75,9 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   acceptLookahead: 1,
   maxSilentConcessions: 1,
   silentWaitTicks: 2,
+  // Silent rivals: 15 of 18 no-deals by 13:00 on Saturday scored 0; 4 of 19 accepted an offer of ours unanswered.
+  silentLadder: 3,
+  silentEndgameShare: 0.5,
 };
 
 /** Value to us (P) of each delivery day 0..10. */
@@ -141,15 +152,23 @@ export function withinLimit(state: Pick<DuelState, "role" | "limit" | "withDays"
   return offer.days !== undefined && Number.isInteger(offer.days) && offer.days >= DAYS_MIN && offer.days <= DAYS_MAX;
 }
 
-export function openingSurplus(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, params: DuelParams): number {
-  const a = params.anchorMargin;
+function surplusAtMargin(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, a: number, minSurplus: number): number {
   const price = state.role === "seller" ? state.limit * a : state.limit - state.limit / (1 + a);
   const days = state.withDays ? Math.max(...state.daysValue) : 0;
-  return Math.max(params.minSurplus, price + days);
+  return Math.max(minSurplus, price + days);
+}
+
+export function openingSurplus(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, params: DuelParams): number {
+  return surplusAtMargin(state, params.anchorMargin, params.minSurplus);
+}
+
+/** Surplus at `referenceMargin`: the yardstick for the floor and `acceptShare`. */
+export function referenceSurplus(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, params: DuelParams): number {
+  return surplusAtMargin(state, params.referenceMargin, params.minSurplus);
 }
 
 export function floorSurplus(state: Pick<DuelState, "role" | "limit" | "withDays" | "daysValue">, params: DuelParams): number {
-  return Math.max(params.minSurplus, params.floorShare * openingSurplus(state, params));
+  return Math.min(openingSurplus(state, params), Math.max(params.minSurplus, params.floorShare * referenceSurplus(state, params)));
 }
 
 /** Target surplus of our offer number `round` (0 = opening) by the engine's curve. */
@@ -285,9 +304,13 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   // Never two concessions without a new rival counteroffer: without one, at most `maxSilentConcessions`
   // (one), after waiting `silentWaitTicks` or already at the end. In practice, 8 of 10 duels without a deal had a
   // silent rival; 2 of those rivals accepted an offer of ours without saying anything.
-  const silentLeft = (state.concessionsSinceRival ?? 0) < params.maxSilentConcessions;
+  // A rival that has never offered gets a ladder (`silentLadder`): without their offers no round is counted, so no decay,
+  // and an unanswered duel scores 0. In the last ticks it gets one more step (`silentEndgameShare` of the floor).
+  const silentCap = rivalHasOffered ? params.maxSilentConcessions : params.silentLadder;
+  const silentLeft = (state.concessionsSinceRival ?? 0) < silentCap;
   const waitedEnough = (state.ticksSinceOurLast ?? 0) >= params.silentWaitTicks;
-  const canConcede = !previous || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival));
+  const endgameSilent = endgame && !rivalHasOffered && previous !== undefined;
+  const canConcede = !previous || state.rivalMovedSinceOurLast || (silentLeft && (waitedEnough || endgameWithRival)) || endgameSilent;
 
   // Next target surplus: engine curve, at the end split the difference with the rival.
   let target = targetSurplus(state, params, round);
@@ -300,6 +323,9 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     rule = "endgame";
   } else if (endgameWithRival && round > 0 && rival && rivalSurplus === undefined) {
     target = params.minSurplus;
+    rule = "endgame";
+  } else if (endgameSilent) {
+    target = Math.min(target, Math.max(params.minSurplus, params.silentEndgameShare * floorSurplus(state, params)));
     rule = "endgame";
   }
   // Never ask for less than the best figure the rival has already offered within our limit: 2558 offered 136 then
@@ -319,7 +345,7 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   if (rival && rivalSurplus !== undefined && rivalSurplus >= params.minSurplus) {
     // Accept early: each round shrinks the deal (`decay`); an offer that already leaves a reasonable share, or is worth
     // more than our next offer discounted one round, is accepted now.
-    if (rivalSurplus >= params.acceptShare * openingSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
+    if (rivalSurplus >= params.acceptShare * referenceSurplus(state, params)) return { action: "accept", rule: "accept-share", surplus: rivalSurplus, round };
     // Compare with the deal we'd expect by going on, not our next offer: the midpoint of theirs and ours, since rivals
     // meet us halfway. 2558: rival 29, next 32 → we countered and closed 11 P lower.
     // Within 1 P of our next offer: take it now. 2489: rival 122, we sent 121.
