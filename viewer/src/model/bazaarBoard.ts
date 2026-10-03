@@ -58,6 +58,8 @@ export interface BoardRow {
   /** The ladder Δ arrived on a later tick and was given to this deal: not an exact attribution. */
   d_lagged?: boolean;
   duel_result: number | null;
+  /** Duel only: number, session (1 = I, 2 = II, 3 = III, 4 = Grand Final), agreed delivery days, issues, decay per round. */
+  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
   tick_opened: number | null;
   tick_settled: number | null;
   messages: BoardMessage[];
@@ -341,7 +343,9 @@ export function pointsLabel(r: BoardRow): { value: string; tone?: "better" | "wo
 /** Status column: the outcome plus the raw detail when it adds something (`deal · auto-match`, `no deal · walked`). */
 export function statusLabel(r: BoardRow): string {
   const outcome = outcomeOf(r);
-  const detail = r.status === "matched" ? "auto-match" : r.status === "settled" && r.kind === "other-trade" ? "board" : r.status === outcome || r.status === "bought" || r.status === "sold" ? null : r.status;
+  // A duel is either live until its deadline or finished (deal or no deal): say which.
+  if (r.duel) return outcome === "open" ? `live · ends t${r.duel.deadline ?? "?"}` : `finished · ${outcome}`;
+  const detail = r.status === "matched" ? "auto-match" : r.status === "settled" && r.kind === "other-trade" ? "board" : r.status === outcome || r.status?.replace(/_/g, " ") === outcome || r.status === "bought" || r.status === "sold" ? null : r.status;
   return [outcome, detail, r.closed_reason].filter(Boolean).join(" · ");
 }
 
@@ -639,4 +643,27 @@ export interface BoardGrant {
   packs: string[];
   cards: string[];
   reason: string | null;
+}
+
+/** Duel session name as the schedule calls it (4 is the Grand Final, the last wave). */
+export function duelSessionName(session: number | null | undefined): string {
+  if (session === 1) return "Duels I";
+  if (session === 2) return "Duels II";
+  if (session === 3) return "Duels III";
+  if (session === 4) return "Grand Final (duels IV)";
+  return session == null ? "Duels (session unknown)" : `Duels ${session}`;
+}
+
+/**
+ * A duel that closed at a price we offered BEFORE our last offer: the rival accepted that earlier offer while our next
+ * one was on its way (e.g. deal 64 after we had already posted 69). Null when the deal is at our last offer or theirs.
+ */
+export function duelEarlierAccept(r: BoardRow): { price: number; tick: number | null; later: number; laterTick: number | null } | null {
+  if (!r.duel || outcomeOf(r) !== "deal" || r.price === null) return null;
+  const ours = r.messages.filter((m) => m.us && m.price !== null);
+  const last = ours[ours.length - 1];
+  if (!last || last.price === r.price) return null;
+  const earlier = [...ours].reverse().find((m) => m.price === r.price);
+  if (!earlier) return null;
+  return { price: r.price, tick: earlier.tick, later: last.price!, laterTick: last.tick };
 }

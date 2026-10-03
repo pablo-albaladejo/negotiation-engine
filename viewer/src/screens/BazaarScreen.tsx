@@ -25,6 +25,8 @@ import {
   outcomeOf,
   pointsLabel,
   statusLabel,
+  duelSessionName,
+  duelEarlierAccept,
   type Board,
   type BazaarModel,
   type BoardFilters,
@@ -136,9 +138,11 @@ function emptyChatNote(row: BoardRow): string {
 
 function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board: Board; rows: BoardRow[]; selectedId: string; onSelect: (id: string) => void; ladder?: ModelLadderLevel[] }) {
   const selectedIndex = rows.findIndex((r) => r.id === selectedId);
+  const duels = rows.some((r) => r.duel);
   return (
     <DataTable
       columns={[
+        ...(duels ? [{ key: "duel", label: "Duel" }] : []),
         { key: "counterparty", label: "With" },
         { key: "party", label: "Who they are" },
         { key: "kind", label: "Kind" },
@@ -146,12 +150,15 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         { key: "status", label: "Status" },
         { key: "price", label: "Price", numeric: true },
         { key: "value", label: "Our value", numeric: true },
-        { key: "surplus", label: "Margin vs our value", numeric: true },
+        ...(duels ? [{ key: "result", label: "Game result (captured)", numeric: true }] : []),
+        { key: "surplus", label: duels ? "Price vs limit" : "Margin vs our value", numeric: true },
         { key: "feeds", label: "Feeds" },
         { key: "score", label: "Points (Δ on its tick)", numeric: true },
         { key: "ticks", label: "Ticks" },
       ]}
       rows={rows.map((r) => ({
+        duel: r.duel ? `#${r.duel.no}` : "—",
+        result: r.duel_result === null ? "—" : toned(r.duel_result),
         counterparty: (
           <TableLink aria-pressed={r.id === selectedId} aria-label={`Open conversation with ${r.counterparty} (${r.id})`} onClick={() => onSelect(r.id)}>
             {partyOf(board, r).label}
@@ -161,7 +168,7 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         kind: KIND_LABEL[r.kind] ?? r.kind,
         item: r.item,
         status: statusLabel(r),
-        price: show(r.price, "—"),
+        price: r.duel?.days != null && r.price !== null ? `${r.price} · day ${r.duel.days}` : show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
         // Per-deal Δ from score-audit.jsonl; a dealer deal scores through the ladder, never neg_points.
@@ -214,9 +221,22 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
           <span>{row.item}</span>
           <span className="nr-muted">
             {statusLabel(row)} · price {show(row.price, "—")} · our value {show(row.our_value)}
-            {row.value_source ? ` (${row.value_source})` : ""} · margin vs our value {show(row.surplus, "—")}
-            {row.duel_result !== null ? ` · duel result ${row.duel_result}` : ""}
+            {row.value_source ? ` (${row.value_source})` : ""} · {row.duel ? "price vs limit" : "margin vs our value"} {show(row.surplus, "—")}
+            {row.duel_result !== null ? ` · game result (captured) ${row.duel_result}` : ""}
           </span>
+          {row.duel ? (
+            <span className="nr-muted" style={{ flexBasis: "100%" }}>
+              {`Duel #${row.duel.no} · ${duelSessionName(row.duel.session)} · issues: ${row.duel.issues.join(" + ") || "price"}${row.duel.days !== null ? ` · delivery day ${row.duel.days}` : ""}${row.duel.decay !== null ? ` · decay ${Math.round(row.duel.decay * 100)} %/round` : ""} · deadline t${row.duel.deadline ?? "?"}. The game scores the result (captured); «price vs limit» counts the price only (no delivery days, no decay), so the two differ.`}
+            </span>
+          ) : null}
+          {(() => {
+            const e = duelEarlierAccept(row);
+            return e ? (
+              <span style={{ flexBasis: "100%", color: "var(--warn)" }}>
+                {`Deal at ${e.price}: the rival accepted our earlier offer of ${e.price} (t${e.tick ?? "?"}); our later ${e.later} (t${e.laterTick ?? "?"}) did not count.`}
+              </span>
+            ) : null;
+          })()}
         </div>
         {conv ? <ConversationModelPanel conv={conv} model={model} /> : null}
         <NegotiationCurve row={row} conv={conv} model={model} />
@@ -706,7 +726,25 @@ function History({ board, rows, title, filters, onFiltersChange, ladder }: { boa
   return (
     <Fold title={`${title} (${rows.length})`}>
       <FiltersBar board={board} rows={rows} filters={filters} onChange={onFiltersChange} />
-      {shown.length > 0 ? <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} /> : <span className="nr-muted">Nothing matches these filters.</span>}
+      {shown.length === 0 ? (
+        <span className="nr-muted">Nothing matches these filters.</span>
+      ) : shown.some((r) => r.duel) ? (
+        // Duels grouped by session (Duels I, II, III, Grand Final), newest session first.
+        [...new Set(shown.map((r) => r.duel?.session ?? null))]
+          .sort((a, b) => (b ?? -1) - (a ?? -1))
+          .map((session, i) => {
+            const group = shown.filter((r) => (r.duel?.session ?? null) === session);
+            const deals = group.filter((r) => outcomeOf(r) === "deal");
+            const captured = Math.round(deals.reduce((s, r) => s + (r.duel_result ?? 0), 0) * 10) / 10;
+            return (
+              <Fold key={String(session)} open={i === 0} title={`${duelSessionName(session)} · ${group.length} duels · ${deals.length} deals · captured ${captured}`}>
+                <ConversationList board={board} rows={group} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />
+              </Fold>
+            );
+          })
+      ) : (
+        <ConversationList board={board} rows={shown} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />
+      )}
     </Fold>
   );
 }

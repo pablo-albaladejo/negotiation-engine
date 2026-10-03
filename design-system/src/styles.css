@@ -55,6 +55,8 @@ html{scroll-padding-top:calc(var(--header-height,64px) + var(--space-2))}
 .nr-chat-scroll.is-tall{max-height:820px}
 .nr-msg{border:1px solid var(--line);border-radius:var(--radius-lg);padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:4px;max-width:92%}
 .nr-msg.us{align-self:flex-end;background:var(--us-soft);border-color:transparent}
+/* Same width for every bubble: ours sit on the right, theirs on the left, with aligned edges (no stagger). */
+.nr-chat .nr-msg{width:85%}
 .nr-msg.them{align-self:flex-start;background:var(--them-soft);border-color:transparent}
 .nr-msg.us.is-highlighted{outline:2px solid var(--us)}
 .nr-msg.them.is-highlighted{outline:2px solid var(--them)}

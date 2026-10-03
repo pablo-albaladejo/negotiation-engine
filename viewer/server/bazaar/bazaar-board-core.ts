@@ -61,6 +61,10 @@ export const BoardDuelSchema = z.looseObject({
   rival: str.nullish(),
   deadline_tick: num.nullish(),
   rounds: num.nullish(),
+  session: num.nullish(),
+  days: num.nullish(),
+  issues: z.array(str).nullish(),
+  decay_per_round: num.nullish(),
   your_offer: DuelOfferSchema.nullish(),
   rival_offer: DuelOfferSchema.nullish(),
   messages: z.array(z.looseObject({ tick: num.nullish(), from: str.nullish(), text: str.nullish(), price: num.nullish() })).nullish(),
@@ -240,6 +244,8 @@ export interface BoardRow {
   /** The ladder Δ came on a later tick with no deal of ours (it lands a few ticks after the settlement): not exact. */
   d_lagged: boolean;
   duel_result: number | null;
+  /** Duel only: the game's duel number, its session (1 = Duels I, 2 = II, 3 = III, 4 = Grand Final), the agreed delivery days and the decay per round (absent elsewhere). */
+  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
   tick_opened: number | null;
   tick_settled: number | null;
   messages: BoardMessage[];
@@ -618,6 +624,7 @@ function duelRow(d: BoardDuel, input: BoardInput): BoardRow {
     d_ladder_points: deltas.ladder,
     d_score: deltas.score,
     duel_result: d.result ?? null,
+    duel: { no: d.duel, session: d.session ?? null, days: d.days ?? null, issues: d.issues ?? [], decay: d.decay_per_round ?? null, deadline: d.deadline_tick ?? null },
     tick_opened: ticks.length ? Math.min(...ticks) : null,
     tick_settled: open ? null : ticks.length ? Math.max(...ticks) : (d.deadline_tick ?? null),
     messages: msgs.map((m) => ({ sender: m.from === "you" ? input.team : (m.from ?? "?"), us: m.from === "you", tick: m.tick ?? null, price: m.price ?? null, text: m.text ?? "" })),

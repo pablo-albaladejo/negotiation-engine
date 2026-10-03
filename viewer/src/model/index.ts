@@ -13,6 +13,8 @@ export {
   outcomeOf,
   pointsLabel,
   statusLabel,
+  duelSessionName,
+  duelEarlierAccept,
   type Board,
   type BoardAgent,
   type BoardWorkshop,
