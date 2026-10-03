@@ -4,9 +4,10 @@ import type { Catalog } from "../shared/schemas.js";
  * Detector de mala fe para `POST /api/flags` (un flag correcto puntúa, uno erróneo cuesta: RULES.md:55).
  *
  * EXCEPCIÓN ESTRECHA, aprobada por el usuario, a «del rival solo se lee la estructura»: aquí se lee el texto del
- * dealer, pero SOLO para compararlo con la estructura de la oferta adjunta a ese mismo mensaje (qué carta, qué
- * rareza, cuántas). El texto NUNCA da una cifra ni cambia una decisión de precio. Solo se propone un flag cuando la
- * contradicción es verificable con la estructura y el catálogo; nunca por tono, presión ni frases de urgencia.
+ * dealer para dos cosas y nada más: (1) compararlo con la estructura de la oferta adjunta a ese mismo mensaje (qué
+ * carta, qué rareza, cuántas), y (2) buscar frases de presión de una LISTA CERRADA (`PRESSURE_PATTERNS`: las tres
+ * tácticas etiquetadas del trickster, site-map § 9.4) solo en contraofertas del dealer. El texto NUNCA da una cifra
+ * ni cambia una decisión de precio. Fuera de la lista cerrada, nunca se marca por tono ni por urgencia.
  */
 
 export interface CardInfo {
@@ -91,8 +92,44 @@ export function offerCards(offer: OfferShape | undefined | null): string[] {
   return out;
 }
 
+/** Tácticas de presión etiquetadas por el servidor en las contraofertas de un trickster (site-map § 9.4). */
+export type PressureTactic = "fake_deadline" | "fake_rival" | "false_scarcity";
+
+/**
+ * LISTA CERRADA y conservadora de frases de presión, sobre texto normalizado (minúsculas, sin acentos). Solo la forma
+ * clara de cada táctica: «decide now» / «we close in a minute»; otro pujador que «offered more»; «the last one
+ * anywhere». Ampliarla exige aprobación (un flag erróneo cuesta puntos). Ninguna captura una cifra.
+ */
+export const PRESSURE_PATTERNS: Readonly<Record<PressureTactic, readonly RegExp[]>> = {
+  fake_deadline: [
+    /\bdecide (right )?now\b/,
+    /\b(we|i) close in (a|one) minute\b/,
+    /\b(we are|we're|i am|i'm) closing in (a|one) minute\b/,
+    /\b(this|the|my) (offer|price) (expires|ends|is gone) in (a|one) minute\b/,
+  ],
+  fake_rival: [
+    /\b(another|other) (buyer|bidder|team|collector|customer) (already )?(has )?(offered|bid|paid) (me )?more\b/,
+    /\bsomeone else (already )?(has )?(offered|bid) (me )?more\b/,
+  ],
+  false_scarcity: [/\bthe last one (left )?anywhere\b/, /\bthe last (one|copy) in (all of )?madrid\b/],
+};
+
+const GIFT_RE = /\b(present|gift|regalo|regalito)\b/;
+
+/** Táctica de presión de la lista cerrada que nombra el texto; `undefined` si ninguna o si anuncia un regalo. Nunca un número. */
+export function pressureTactic(text: string): PressureTactic | undefined {
+  const norm = normalize(text).replace(/[‘’]/g, "'");
+  if (GIFT_RE.test(norm)) return undefined;
+  for (const tactic of Object.keys(PRESSURE_PATTERNS) as PressureTactic[]) {
+    if (PRESSURE_PATTERNS[tactic].some((re) => re.test(norm))) return tactic;
+  }
+  return undefined;
+}
+
 export interface FlagCandidate {
   messageId: number | string;
+  /** Frase de presión de la lista cerrada (no verificable con la estructura: exige aprobación antes de enviarse). */
+  tactic?: PressureTactic;
   namedCard?: string;
   offerCard?: string;
   namedRarity?: string;
@@ -122,7 +159,7 @@ export function detectFlag(message: { id?: number | string | null; text?: string
   if (!offerCard) return undefined;
   const named = namedCards(message.text, idx);
   // Un regalo anunciado («a little present from me: …») nombra otra carta sin contradecir la oferta: no se marca.
-  const mentionsGift = /\b(present|gift|regalo|regalito)\b/.test(normalize(message.text));
+  const mentionsGift = GIFT_RE.test(normalize(message.text));
   if (!mentionsGift && named.length === 1 && named[0] !== offerCard.id) {
     return { ...base, namedCard: named[0]!, offerCard: offerCard.id, verifiable: true, reason: `text names ${named[0]} (${idx.byId.get(named[0]!)?.name}), the offer gives ${offerCard.id} (${offerCard.name})` };
   }
@@ -131,4 +168,15 @@ export function detectFlag(message: { id?: number | string | null; text?: string
     return { ...base, offerCard: offerCard.id, namedRarity: rarities[0]!, offerRarity: offerCard.rarity, verifiable: true, reason: `text calls it ${rarities[0]}, ${offerCard.id} is ${offerCard.rarity}` };
   }
   return undefined;
+}
+
+/**
+ * Frase de presión en una contraoferta del dealer: hace falta una coincidencia con `PRESSURE_PATTERNS` Y que el mensaje
+ * sea una contraoferta suya (`counter`: lleva oferta y no es su primer mensaje del hilo). Sin las dos cosas, nada. El
+ * candidato no es `verifiable` (no lo prueba la estructura): el coordinador solo lo envía con aprobación.
+ */
+export function detectPressure(message: { id?: number | string | null; text?: string | null; offer?: OfferShape | null }, counter: boolean): FlagCandidate | undefined {
+  if (!counter || message.id == null || !message.text || !message.offer) return undefined;
+  const tactic = pressureTactic(message.text);
+  return tactic ? { messageId: message.id, tactic, verifiable: false, reason: `pressure line (${tactic}) in a counter-offer` } : undefined;
 }

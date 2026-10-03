@@ -21,14 +21,14 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | [`packs/`](packs/AGENTS.md) | Sobres: cerrados nuestros, valor esperado con el suministro, comprar, abrir o vender cerrado | (`pnpm bazaar:play`) |
 | [`hints/`](hints/AGENTS.md) | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
 | [`agenda/`](agenda/AGENTS.md) | Calendario como playbook (antelación y efecto por acción) y disparadores del feed | (`pnpm bazaar:play`) |
-| [`flags/`](flags/AGENTS.md) | Detector de flags: texto del dealer frente a la estructura de su oferta | (`pnpm bazaar:play`) |
+| [`flags/`](flags/AGENTS.md) | Detector de flags: texto del dealer frente a la estructura de su oferta, y frases de presión de una lista cerrada en sus contraofertas | (`pnpm bazaar:play`) |
 | [`coordinator/`](coordinator/AGENTS.md) | Coordinador por tick: presupuesto de `clock.limits`, intenciones de cada ruta, arbitraje | `pnpm bazaar:play` |
 
 ## Invariantes
 
 - **La cifra sale del código** (`engine/` + planificadores de cada carpeta), nunca de un texto.
 - **Toda oferta pasa por `enforceGuardrails`**: no cruza el límite y es monótona.
-- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Dos excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista) y comparar el texto de un dealer con la estructura de su oferta para un flag (`src/flags/flags.ts`). **Nunca para una cifra.**
+- **Del rival solo se lee la estructura** (ofertas y precios), nunca su texto. Dos excepciones estrechas, aprobadas: pistas de eggs (se guarda el texto que suena a pista) y, para un flag (`src/flags/flags.ts`): comparar texto con estructura, y frases de presión de una lista cerrada en contraofertas; **nunca para una cifra**. Las frases de presión solo se envían con aprobación (`--approve-flags`).
 
 ## Uso
 

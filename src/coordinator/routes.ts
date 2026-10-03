@@ -11,6 +11,7 @@ import { DEFAULT_TRADE_PARAMS, type TickPlan, type TradeState } from "../trades/
 import { completesPage, duelStrategy, type Strategy, type StrategyDecision } from "../state/conversation.js";
 import type { GameState } from "../state/game-state.js";
 import type { FlagRecord } from "../state/world.js";
+import type { FlagCandidate } from "../flags/flags.js";
 import type { Intent } from "./coordinator.js";
 
 /**
@@ -265,26 +266,48 @@ export class TradesRoute {
 // ---------------------------------------------------------------- flags
 
 /**
- * Flags de mala fe (`POST /api/flags`). Solo se propone un flag cuando el texto del dealer contradice la
- * ESTRUCTURA de la oferta de ese mismo mensaje (`flagCandidate.verifiable`), nunca por tono ni presión, y nunca
- * dos veces el mismo mensaje. No usa el cupo de aceptaciones. En vivo solo sin --dry-run Y con --confirm.
+ * Flags de mala fe (`POST /api/flags`). Se propone un flag cuando el texto del dealer contradice la ESTRUCTURA de la
+ * oferta de ese mismo mensaje (`flagCandidate.verifiable`), o cuando una contraoferta suya trae una frase de presión de
+ * la lista cerrada (`flagCandidate.tactic`, `src/flags/flags.ts`). Estas últimas no las prueba la estructura: solo se
+ * proponen si Pablo las aprobó (`--approve-flags <ids>` o, en bloque, `--flag-pressure`); sin aprobación se listan
+ * como candidatas. Nunca dos veces el mismo mensaje; no usa el cupo de aceptaciones. En vivo solo sin --dry-run Y con --confirm.
  */
+export interface FlagApproval {
+  /** Ids de mensaje con frase de presión aprobados uno a uno. */
+  messages: ReadonlySet<string>;
+  /** Todas las frases de presión de la lista cerrada aprobadas en bloque. */
+  allPressure: boolean;
+}
+
 export class FlagsRoute {
-  constructor(private readonly client: BazaarClient, private readonly dryRun: boolean) {}
+  constructor(
+    private readonly client: BazaarClient,
+    private readonly dryRun: boolean,
+    private readonly approval: FlagApproval = { messages: new Set(), allPressure: false },
+  ) {}
+
+  private sendable(f: FlagCandidate): boolean {
+    if (f.verifiable) return true;
+    return !!f.tactic && (this.approval.allPressure || this.approval.messages.has(String(f.messageId)));
+  }
 
   propose(state: GameState): RouteProposal {
     const out = empty();
     const sent = new Set(state.ours.flags.sent.map((f) => String(f.messageId)));
     for (const c of state.conversations) {
       const f = c.flagCandidate;
-      if (!f?.verifiable) continue;
+      if (!f) continue;
       if (sent.has(String(f.messageId))) {
         out.notes.push(`${c.id}: message ${f.messageId} already flagged`);
         continue;
       }
+      if (!this.sendable(f)) {
+        if (f.tactic) out.notes.push(`${c.id}: pressure candidate, message ${f.messageId} (${c.counterparty}, ${f.tactic}): needs approval (--approve-flags ${f.messageId})`);
+        continue;
+      }
       out.intents.push({ id: `flags:flag:${f.messageId}`, route: "flags", kind: "flag", conversation: c.id, summary: `flag message ${f.messageId} (${c.counterparty}): ${f.reason ?? "text contradicts the offer structure"}` });
     }
-    if (!out.intents.length) out.notes.push("no verifiable text/structure contradiction");
+    if (!out.intents.length) out.notes.push("no verifiable text/structure contradiction and no approved pressure line");
     return out;
   }
 
@@ -294,7 +317,7 @@ export class FlagsRoute {
     const records: FlagRecord[] = [];
     for (const c of state.conversations) {
       const f = c.flagCandidate;
-      if (!f?.verifiable || !selected.has(`flags:flag:${f.messageId}`)) continue;
+      if (!f || !this.sendable(f) || !selected.has(`flags:flag:${f.messageId}`)) continue;
       const reason = f.reason ?? "text contradicts the offer structure";
       if (this.dryRun) {
         lines.push(`flags: would flag message ${f.messageId} (${reason})`);

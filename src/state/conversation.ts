@@ -9,7 +9,7 @@ import { sideOfTopic, threadPrices } from "../dealers/negotiation/view.js";
 import { rivalOfferFrom, type Duel } from "../duels/schemas.js";
 import { DAYS_MIN, offerForSurplus, openingSurplus, targetSurplus, type DuelDecision, type DuelParams, type DuelState } from "../duels/duels.js";
 import { readSide, type TradeOffer } from "../trades/trades.js";
-import { detectFlag, type CatalogIndex, type FlagCandidate } from "../flags/flags.js";
+import { detectFlag, detectPressure, type CatalogIndex, type FlagCandidate } from "../flags/flags.js";
 
 /**
  * Una conversación como entidad de primera clase: hilo con un dealer, duelo u oferta nuestra en El Rastro.
@@ -149,19 +149,25 @@ export interface ConversationInputs {
 }
 
 /**
- * Último candidato a flag del hilo: mensajes del dealer con oferta adjunta, comparando texto con estructura.
- * Salvo trickster, la apertura se salta. El texto nunca da una cifra (excepción estrecha, ver `flags.ts`).
+ * Último candidato a flag del hilo: mensajes del dealer con oferta adjunta, comparando texto con estructura (gana
+ * siempre) y, si no hay, frases de presión de la lista cerrada en sus contraofertas (con oferta y no su primer
+ * mensaje). Salvo trickster, la apertura se salta. El texto nunca da una cifra (excepción estrecha, ver `flags.ts`).
  */
 function flagCandidateOf(t: Thread, i: ConversationInputs): FlagCandidate | undefined {
   if (!i.catalog || !t.with) return undefined;
   const theirs = t.messages.filter((m) => m.sender === t.with);
   const from = i.flagsFromFirstMessage?.has(t.with) ? 0 : 1;
   let found: FlagCandidate | undefined;
-  for (const m of theirs.slice(from)) {
-    const f = detectFlag({ ...(m.id != null ? { id: m.id } : {}), ...(m.text ? { text: m.text } : {}), ...(m.offer && typeof m.offer === "object" ? { offer: m.offer } : {}) }, i.catalog);
-    if (f?.verifiable) found = f;
-  }
-  return found;
+  let pressure: FlagCandidate | undefined;
+  theirs.forEach((m, k) => {
+    const msg = { ...(m.id != null ? { id: m.id } : {}), ...(m.text ? { text: m.text } : {}), ...(m.offer && typeof m.offer === "object" ? { offer: m.offer } : {}) };
+    if (k >= from) {
+      const f = detectFlag(msg, i.catalog!);
+      if (f?.verifiable) found = f;
+    }
+    pressure = detectPressure(msg, k >= 1) ?? pressure;
+  });
+  return found ?? pressure;
 }
 
 const setOfRef = (ref: string) => ref.split("-")[0] ?? ref;
@@ -416,7 +422,7 @@ export function formatConversation(c: Conversation): string {
   const decision = d ? ` · last ${d.action}${d.price !== undefined ? ` ${d.price}${d.days !== undefined ? `/d${d.days}` : ""}` : ""} (${d.rule}: ${d.reason}, tick ${d.tick})` : "";
   const plan = c.strategy.plan.plannedPath.length ? ` · path [${c.strategy.plan.plannedPath.join(", ")}]` : "";
   const next = c.strategy.next.priceIfTheyHold !== undefined ? ` · next ${c.strategy.next.priceIfTheyHold} if they hold` : "";
-  const flag = c.flagCandidate ? ` · FLAG? msg ${c.flagCandidate.messageId}` : "";
+  const flag = c.flagCandidate ? ` · FLAG? msg ${c.flagCandidate.messageId}${c.flagCandidate.tactic ? ` (${c.flagCandidate.tactic}, needs approval)` : ""}` : "";
   const probe = c.patience && c.phase !== "done" ? ` · probe cost ${c.patience.probeCostNow}` : "";
   return `${c.id} · ${c.kind} ${c.counterparty} · ${c.side} ${asset} · ${c.goal.why} · ${c.phase} (${c.roundsUsed}${c.patienceEstimate !== undefined ? `/${c.patienceEstimate}` : ""}) · ours [${lastN(c.history.ourPrices).join(", ")}] her [${lastN(c.history.herPrices).join(", ")}] now ${her} · ${turn}${result}${c.mood.cooloffUntil !== undefined ? ` · cooloff until ${c.mood.cooloffUntil}` : ""}${decision}${plan}${next}${probe}${flag}`;
 }

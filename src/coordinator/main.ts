@@ -47,6 +47,8 @@ async function main() {
       "cash-floor": { type: "string", default: "20" },
       "page-targets": { type: "string", default: "SAL-09" },
       "leaderboard-every": { type: "string", default: "5" },
+      "approve-flags": { type: "string", default: "" },
+      "flag-pressure": { type: "boolean", default: false },
     },
   });
   const live = !values["dry-run"] && values.confirm;
@@ -70,7 +72,9 @@ async function main() {
     ...(live ? { trace: new FileTrace(liveTraceDir(root)) } : {}),
   });
   const trades = new TradesRoute(client, dryRun);
-  const flagsRoute = new FlagsRoute(client, dryRun);
+  // Frases de presión: solo con aprobación (ids uno a uno o en bloque); las candidatas se listan en dry-run.
+  const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
+  const flagsRoute = new FlagsRoute(client, dryRun, { messages: approvedFlags, allPressure: values["flag-pressure"] });
   const eggs = new EggsRoute(client, dryRun);
   const convFile = defaultConversationsFile(root);
   const personasFile = defaultPersonasFile(root);

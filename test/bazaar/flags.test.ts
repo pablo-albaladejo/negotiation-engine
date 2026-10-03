@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { detectFlag, indexCatalog } from "../../src/flags/flags.js";
+import { detectFlag, detectPressure, indexCatalog, pressureTactic } from "../../src/flags/flags.js";
 
 // Guardarraíl del detector de flags: un flag erróneo cuesta puntos, así que solo hay candidato con una
 // contradicción verificable entre el texto y la ESTRUCTURA de la oferta del mismo mensaje.
@@ -49,5 +49,41 @@ describe("flags detector guardrails", () => {
     const f = detectFlag({ id: 4, text: "Here you are: Café Comercial, 40 P.", offer: sells("LAT-04") }, idx);
     expect(f?.verifiable).toBe(true);
     expect(f?.namedCard).toBe("MAL-10");
+  });
+});
+
+describe("pressure-line flags guardrails (closed list, counter-offers only)", () => {
+  const pressure = ["Decide now, we close in a minute.", "Another buyer offered more this morning.", "It is the last one anywhere, cariño.", "Someone else already offered more."];
+  const voice = ["Last chance, hurry!", "My grandchildren would pay more!", "This is my last offer.", "Take it or leave it.", "Same as a minute ago.", "No hurry, hijo."];
+  const text = fc.tuple(fc.constantFrom(...pressure, ...voice), fc.integer({ min: 1, max: 999 }), fc.string({ maxLength: 20 })).map(([t, p, s]) => `${s} ${t} ${p} P.`);
+  const offer = { give: { cash: 12 }, want: { types: ["card:LAT-04"] } };
+
+  it("never flags without a closed-list match plus a dealer counter-offer", () => {
+    fc.assert(
+      fc.property(text, fc.boolean(), fc.boolean(), (t, counter, withOffer) => {
+        const f = detectPressure({ id: 7, text: t, ...(withOffer ? { offer } : {}) }, counter);
+        if (!counter || !withOffer || pressureTactic(t) === undefined) expect(f).toBeUndefined();
+        else expect(f?.tactic).toBe(pressureTactic(t));
+        if (f) expect(f.verifiable).toBe(false);
+      }),
+    );
+    for (const t of voice) expect(pressureTactic(t)).toBeUndefined();
+    for (const t of pressure) expect(pressureTactic(t)).toBeDefined();
+    expect(detectPressure({ id: 8, text: "A little present from me, and it is the last one anywhere.", offer }, true)).toBeUndefined();
+  });
+
+  it("the detector never outputs a number", () => {
+    fc.assert(
+      fc.property(text, (t) => {
+        const tactic = pressureTactic(t);
+        expect(tactic === undefined || ["fake_deadline", "fake_rival", "false_scarcity"].includes(tactic)).toBe(true);
+        const f = detectPressure({ id: 9, text: t, offer }, true);
+        for (const [k, v] of Object.entries(f ?? {})) {
+          if (k === "messageId") continue;
+          expect(typeof v).not.toBe("number");
+          if (typeof v === "string") expect(v).not.toMatch(/\d/);
+        }
+      }),
+    );
   });
 });
