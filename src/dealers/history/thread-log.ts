@@ -47,12 +47,14 @@ export interface ThreadSummary {
   ladderPointsBefore?: number;
 }
 
-/** Cards the dealer offers in its most recent offer (`give.types` = "card:SAL-05"); empty if it doesn't say. */
+/** Cards the dealer offers in its most recent offer (`give.types` = "card:SAL-05", or `give.assets` refs); empty if it doesn't say. */
 export function revealedCards(thread: Thread, dealer: DealerRef): string[] {
   const offers = [...thread.standing_offers, ...thread.messages.map((m) => StandingOfferSchema.safeParse(m.offer)).flatMap((r) => (r.success ? [r.data] : []))];
   const hers = offers.filter((o) => isDealer(dealer, o.maker)).sort((a, b) => b.id - a.id);
   for (const o of hers) {
-    const cards = (o.give?.types ?? []).flatMap((t) => (typeof t === "string" && t.startsWith("card:") ? [t.slice(5)] : []));
+    const byType = (o.give?.types ?? []).flatMap((t) => (typeof t === "string" && t.startsWith("card:") ? [t.slice(5)] : []));
+    const byAsset = (o.give?.assets ?? []).flatMap((a) => (a && typeof a === "object" && typeof (a as { ref?: unknown }).ref === "string" ? [(a as { ref: string }).ref] : []));
+    const cards = [...byType, ...byAsset];
     if (cards.length) return [...new Set(cards)];
   }
   return [];

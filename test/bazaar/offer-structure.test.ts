@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import fc from "fast-check";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
 import { checkStructure, expectationOf, firstMismatch } from "../../src/dealers/negotiation/offer-structure.js";
+import { nextCopyValue } from "../../src/dealers/planning/plan.js";
+import { DEFAULT_VALUE_RULES } from "../../src/trades/trades.js";
 import { DealerInfoSchema, StandingOfferSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 
@@ -138,5 +141,70 @@ describe("the agent never accepts an offer with the wrong shape", () => {
   it("control: the same final bid with the right shape is accepted", async () => {
     const { posts } = await run((asset) => ({ give: { cash: 99 }, want: { assets: [{ id: asset }] }, final: true }));
     expect(posts.slice(0, 2)).toEqual(["open", "accept 500"]);
+  });
+});
+
+describe("rarity+set buy: the card she names is revalued at our value of one MORE copy (thread 493)", () => {
+  const RET = ["RET-06", "RET-07", "RET-08"];
+  /** Thread 493 resumed: Abuela names RET-06, which we already hold; the value lookup returns the held copy's value (poisoned cache). */
+  const run = async (herPrice: number, heldValue: number, missingValue: number) => {
+    const posts: string[] = [];
+    const thread = ThreadSchema.parse({
+      id: 493,
+      status: "open",
+      team: "t02",
+      with: "abuela",
+      topic: { buy: { rarity: "uncommon", set: "RET" } },
+      messages: [],
+      standing_offers: [{ id: 4816, maker: "abuela", to: "t02", status: "open", final: false, give: { cash: 0, assets: [], types: ["card:RET-06"] }, want: { cash: herPrice, assets: [], types: [] } }],
+    });
+    const api: BazaarApi = {
+      me: async () => ({ id: "t02", cash: 400, assets: [{ id: 77, kind: "card", ref: "RET-06", serial: 3, rarity: "uncommon", set: "RET", print_run: 90, your_value: heldValue }], score: { team: "t02" } }) as never,
+      catalog: async () => ({ sets: [{ id: "RET", released: true, cards: RET.map((id) => ({ id, rarity: "uncommon", book: 20 })) }], packs: [] }) as never,
+      value: async (card) => (card === "RET-06" ? heldValue : missingValue),
+      myThreads: async () => ({ threads: thread.status === "open" ? [{ id: 493, status: "open", with: "abuela" }] : [] }),
+      myOffers: async () => ({ offers: [] }),
+      thread: async () => structuredClone(thread),
+      openThread: async () => {
+        throw new Error("no new threads in this test");
+      },
+      say: async (_id, _text, price) => {
+        posts.push(price === undefined ? "say" : `say ${price}`);
+        return {};
+      },
+      closeThread: async () => {
+        posts.push("close");
+        thread.status = "closed";
+        return {};
+      },
+      accept: async (offerId) => {
+        posts.push(`accept ${offerId}`);
+        return {};
+      },
+    };
+    const records: TraceRecord[] = [];
+    const lines: string[] = [];
+    const a = new BazaarAgent(api, { dealer: { id: "abuela", aliases: ["Abuela"] }, dryRun: false, maxSpendPerHour: 200, maxThreads: 1, safety: 1, trace: { write: (r) => records.push(r) }, now: () => 1_700_000_000_000, log: (l) => lines.push(l) });
+    for (let tick = 1; tick < 5; tick++) await a.step({ tick, tick_seconds: 60 });
+    return { posts, records, lines };
+  };
+
+  it("real thread 493: RET-06 held at 40, her 29 → walks (named-card-revalue), never pays 24 for a ~10 P duplicate", async () => {
+    const { posts, records, lines } = await run(29, 40, 40);
+    expect(posts.some((p) => p.startsWith("accept"))).toBe(false);
+    expect(records.find((r) => r.action === "close")?.rule).toBe("named-card-revalue");
+    expect(lines.some((l) => /named-card-revalue: she offers RET-06 \(DUPLICATE, we hold 1\): our value 10 → limit 10 \(was \d+\)/.test(l))).toBe(true);
+  });
+
+  it("never accepts nor offers above the per-card value of the named duplicate", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 80 }), fc.integer({ min: 1, max: 120 }), fc.integer({ min: 1, max: 120 }), async (herPrice, heldValue, missingValue) => {
+        const { posts, records } = await run(herPrice, heldValue, missingValue);
+        const perCard = nextCopyValue(heldValue, 1, heldValue, DEFAULT_VALUE_RULES.marginals);
+        for (const r of records) if ((r.action === "accept" || r.action === "counter") && r.ourPrice !== undefined) expect(r.ourPrice).toBeLessThanOrEqual(perCard);
+        if (herPrice > perCard) expect(posts.some((p) => p.startsWith("accept"))).toBe(false);
+      }),
+      { numRuns: 60 },
+    );
   });
 });

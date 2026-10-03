@@ -15,6 +15,20 @@ import type { Catalog, DealerInfo, Me } from "../../shared/schemas.js";
  * open: her sell list for that rarity × 1.3 (13 over her common list of 10, the highest seen).
  */
 export const PLAUSIBLE_BID_FRAC = 1.3;
+/**
+ * Value of buying ONE MORE copy of a card we hold `copies` of (thread 493: RET-06 held, valued at 40, paid 24 for a ~10 P
+ * duplicate). The client's value cache is seeded with `your_value` of the copies we hold (what we lose if one leaves),
+ * so for a held card the looked-up value can be the held copy's; the next copy is worth that ÷ marginal(n) × marginal(n+1).
+ * Never above `apiValue`; without holdings it is `apiValue`.
+ */
+export function nextCopyValue(apiValue: number, copies: number, heldValue: number | undefined, marginals: readonly number[]): number {
+  if (copies <= 0 || !Number.isFinite(apiValue)) return apiValue;
+  const last = heldValue !== undefined && Number.isFinite(heldValue) ? heldValue : apiValue;
+  const m = marginals[copies - 1] ?? 0;
+  const next = m > 0 ? (last / m) * (marginals[copies] ?? 0) : 0;
+  return Math.max(0, Math.min(apiValue, Number.isFinite(next) ? next : 0));
+}
+
 /** ASSUMPTION (sim): her sell opening without opening_ask = list × 1.15 (Abuela, confirmed live). */
 const ASSUMED_OPENING_MARKUP = 1.15;
 /**

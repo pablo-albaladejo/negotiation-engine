@@ -241,7 +241,7 @@ export class DealersRoute {
     for (const [id, agent] of this.agents) {
       this.logs.length = 0;
       await agent.step(clock);
-      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ")).map((l) => `dealer ${id}: ${l}`));
+      out.notes.push(...this.logs.filter((l) => l.startsWith("unlock-chase ") || l.includes("named-card-revalue")).map((l) => `dealer ${id}: ${l}`));
       const quiet = this.logs.filter((l) => !/\b(open|accept|counter|hold|close)\b.*dry-run/.test(l));
       if (!this.collected.some((i) => i.dealer === id)) out.notes.push(`dealer ${id}: ${quiet.at(-1)?.replace(/^\[tick \d+\]( \(dry-run\))? · /, "") ?? "no action"}`);
     }

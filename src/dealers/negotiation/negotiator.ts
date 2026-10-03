@@ -172,6 +172,7 @@ export type Rule =
   | "one-message-per-tick"
   | "one-accept-per-tick"
   | "structure-mismatch"
+  | "named-card-revalue"
   | "asset-busy";
 
 export type Action =

@@ -1,7 +1,8 @@
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import { closeText, counterText, holdText, textMatchesPrice } from "./negotiation/messages.js";
 import { DEFAULT_NEGOTIATOR_PARAMS, decide, mirrorVerdict, stepResponses, type Decision, type NegotiatorParams, type ThreadView } from "./negotiation/negotiator.js";
-import { applyOnly, chaseCandidates, formatPlan, menuBlocks, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
+import { applyOnly, chaseCandidates, formatPlan, menuBlocks, nextCopyValue, PACK_SAFETY, rankCandidates, selectCandidates, UNLOCK_CHASE_TOLERANCE, type OnlyFilter } from "./planning/plan.js";
+import { readValueRules } from "../trades/trades.js";
 import { buyTargets, missingPageCards, raritySetTargets, rarityOf, spareTargets, type Target } from "./planning/planner.js";
 import { StandingOfferSchema, type Catalog, type Clock, type DealerInfo, type Me, type Thread } from "../shared/schemas.js";
 import { formatPatience, PatienceLog } from "./negotiation/patience.js";
@@ -118,6 +119,8 @@ interface Active {
   ladderBefore?: number;
   /** Rarity+set: card she offers, already revalued at our value. */
   revealed?: string;
+  /** Copies of `revealed` we already hold: a duplicate priced above our limit is walked (`named-card-revalue`). */
+  revealedHeld?: number;
   lastRule?: string;
   /** Purchase we accept ourselves: its price was already counted in the budget (not counted twice on close). */
   acceptedPrice?: number;
@@ -223,7 +226,7 @@ export class BazaarAgent {
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput() });
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput() });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
     const menu = this.o.menu;
@@ -367,7 +370,7 @@ export class BazaarAgent {
       this.catalog ??= await this.api.catalog();
       const cards = this.catalog.sets.find((s) => s.id === rs.set)?.cards.filter((c) => rarityOf(c) === rs.rarity) ?? [];
       if (!cards.length) return undefined;
-      const vals = await Promise.all(cards.map((c) => this.valueOf(c.id)));
+      const vals = await Promise.all(cards.map((c) => this.valueOf(c.id, me)));
       const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
       return { key: `buy:${rs.set}:${rs.rarity}`, side, topic: { buy: { rarity: rs.rarity, set: rs.set } }, reservation: Math.floor(mean * this.safety), label: `buy ${rs.rarity} ${rs.set}`, value: mean };
     }
@@ -380,7 +383,7 @@ export class BazaarAgent {
     }
     const card = topic?.buy?.card;
     if (side === "buy" && card) {
-      const value = await this.valueOf(card);
+      const value = await this.valueOf(card, me);
       return { key: `buy:${card}`, side, topic: { buy: { card } }, reservation: Math.floor(value * this.safety), label: `buy ${card}`, value };
     }
     return undefined;
@@ -456,12 +459,18 @@ export class BazaarAgent {
     return byCard ?? (rarity ? (sells.find((e) => e.rarity?.toLowerCase() === rarity)?.list_price ?? undefined) : undefined);
   }
 
-  private async valueOf(card: string): Promise<number> {
-    const cached = this.values.get(card);
-    if (cached !== undefined) return cached;
-    const v = await this.api.value(card);
-    this.values.set(card, v);
-    return v;
+  /** Our value of buying one more copy of `card`: for a card we already hold, the next copy's marginal (`nextCopyValue`). */
+  private async valueOf(card: string, me: Me): Promise<number> {
+    let v = this.values.get(card);
+    if (v === undefined) {
+      v = await this.api.value(card);
+      this.values.set(card, v);
+    }
+    const held = me.assets.filter((a) => a.ref === card && (a.kind ?? "card") === "card");
+    if (!held.length) return v;
+    const vals = held.flatMap((a) => (typeof a.your_value === "number" ? [a.your_value] : []));
+    this.catalog ??= await this.api.catalog();
+    return nextCopyValue(v, held.length, vals.length ? Math.min(...vals) : undefined, readValueRules(this.catalog).marginals);
   }
 
   /** Pack value source for the planner, unless the dealer refused the pack topic. */
@@ -486,7 +495,7 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput() });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput() });
       // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
@@ -509,14 +518,14 @@ export class BazaarAgent {
     const missing = missingPageCards(me, this.catalog).filter((m) => (this.skip.get(`buy:${m.id}`) ?? -1) <= tick);
     const plan = { budget, cash: me.cash, safety: this.safety, maxLookups: this.maxLookups };
     const buys = this.cardTopicOk
-      ? await buyTargets(missing, (c) => this.valueOf(c), plan)
-      : await raritySetTargets(missing, this.catalog, (c) => this.valueOf(c), { ...plan, maxLookups: 40, rarities: ["common", "uncommon"] });
+      ? await buyTargets(missing, (c) => this.valueOf(c, me), plan)
+      : await raritySetTargets(missing, this.catalog, (c) => this.valueOf(c, me), { ...plan, maxLookups: 40, rarities: ["common", "uncommon"] });
     return buys.find(free);
   }
 
   private async negotiate(thread: Thread, tick: number, me: Me, ticksPerHour: number, emit: (r: Omit<TraceRecord, "ts" | "tick" | "dealer" | "dryRun">) => void) {
     const active = this.active!;
-    await this.repriceRevealed(thread, active);
+    await this.repriceRevealed(thread, active, me);
     const { target } = active;
     const selfId = selfIdOf(thread, me);
     const p = threadPrices(thread, target.side, this.o.dealer, selfId);
@@ -555,7 +564,11 @@ export class BazaarAgent {
     let d: Decision = decide(view, firstStepFrac === undefined ? this.negotiatorParams : { ...this.negotiatorParams, firstStepFrac });
     // Before any accept (and on each of her offers): the shape of her offer must be the thread's; otherwise we close.
     const mismatch = await this.structureProblem(thread, target, d, reservation);
-    if (mismatch) {
+    if (active.revealedHeld && p.herCurrent && p.herCurrent.price > reservation && d.action.kind !== "close" && d.action.kind !== "wait") {
+      // The card she names is one we already hold: worth only a duplicate's marginal; above our limit we walk, never pay for it.
+      this.log(`  thread ${thread.id}: named-card-revalue: ${active.revealed} is a duplicate, her ${p.herCurrent.price} > our limit ${reservation}: closing politely`);
+      d = { action: { kind: "close" }, rule: "named-card-revalue", effectiveReservation: d.effectiveReservation };
+    } else if (mismatch) {
       this.log(`  thread ${thread.id}: structure-mismatch (${mismatch}): closing politely, never accepting`);
       d = { action: { kind: "close" }, rule: "structure-mismatch", effectiveReservation: d.effectiveReservation };
     } else if (d.action.kind === "accept" && target.side === "sell") {
@@ -730,16 +743,18 @@ export class BazaarAgent {
    * Rarity+set: her offer says which card she gives (`give.types` = "card:SAL-05", thread 184). It is revalued at our value
    * of that card, so a duplicate lowers the limit and the negotiator closes instead of paying for it (SAL-07 at 23).
    */
-  private async repriceRevealed(thread: Thread, active: Active): Promise<void> {
+  private async repriceRevealed(thread: Thread, active: Active, me: Me): Promise<void> {
     const topic = active.target.topic as { buy?: { rarity?: string; card?: string } };
     if (active.target.side !== "buy" || !topic.buy?.rarity || topic.buy.card) return;
     const card = revealedCards(thread, this.o.dealer)[0];
     if (!card || card === active.revealed) return;
-    const value = await this.valueOf(card);
-    const reservation = Math.floor(value * (this.o.safety ?? 0.9));
-    const held = active.copiesBefore[card] ?? 0;
-    this.log(`  thread ${active.id}: she offers ${card} (${held ? `DUPLICATE, we hold ${held}` : "new for us"}): our value ${Math.round(value * 10) / 10} → limit ${reservation} (was ${active.target.reservation})`);
+    // Value of one MORE copy (thread 493: RET-06 already held was priced at the held copy's 40 and bought at 24).
+    const value = await this.valueOf(card, me);
+    const reservation = Math.min(active.target.reservation, Math.floor(value * (this.o.safety ?? 0.9)));
+    const held = Math.max(active.copiesBefore[card] ?? 0, copiesOf(me, [card])[card] ?? 0);
+    this.log(`  thread ${active.id}: named-card-revalue: she offers ${card} (${held ? `DUPLICATE, we hold ${held}` : "new for us"}): our value ${Math.round(value * 10) / 10} → limit ${reservation} (was ${active.target.reservation})`);
     active.revealed = card;
+    active.revealedHeld = held;
     active.target = { ...active.target, value, reservation };
   }
 
