@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { proposePacks, type PackType } from "../../src/packs/packs.js";
 
-// Guardarraíles de la ruta de sobres: nunca vender cerrado por debajo de nuestro valor, nunca comprar a un
-// precio que no esté por debajo de la apertura (no contaría para la escalera) ni bajo el suelo de caja.
+// Packs route guardrails: never sell sealed below our value, never buy at a
+// price that is not below the opening (it would not count for the ladder) nor below the cash floor.
 const type = (over: Partial<PackType> = {}): PackType => ({ id: "sobre_x", slots: [], dealers: [{ persona: "d1", list: 26, opening: 30 }], ourValue: 40, ...over });
 const base = { cashFloor: 20, unlocked: ["d1"], dealers: [], incoming: [] };
 

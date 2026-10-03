@@ -8,8 +8,8 @@ const N = DEFAULT_MECHANISM_THRESHOLDS.noSwitchWithinTicks;
 const budget: Budget = { accepts: 1, messagesPerConversation: 1, maxOpenThreads: 5, openThreadsNow: 0, offersPerTick: 1, maxOpenOffers: 5, openOffersNow: 0, missing: [] };
 const session = (benchAt: number, ratio: number, hard = false): BenchSession => ({ benchAt, hard, shadowSurplus: ratio * 100, autoSurplus: 100, ratio, pairsShadow: 5, pairsAuto: 5, autoUnknown: 0, ticks: 16 });
 
-describe("cambio de mecanismo del venue", () => {
-  it("nunca se ejecuta sin --confirm y --allow-venue-switch (y nunca en dry-run)", () => {
+describe("venue mechanism switch", () => {
+  it("never executes without --confirm and --allow-venue-switch (and never in dry-run)", () => {
     fc.assert(
       fc.property(fc.boolean(), fc.boolean(), fc.boolean(), (dryRun, confirm, allowVenueSwitch) => {
         const flags = { dryRun, confirm, allowVenueSwitch };
@@ -22,7 +22,7 @@ describe("cambio de mecanismo del venue", () => {
     );
   });
 
-  it(`nunca se propone pasar a board a menos de ${N} ticks de un bench`, () => {
+  it(`never proposes moving to board less than ${N} ticks from a bench`, () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 240 }),
@@ -45,7 +45,7 @@ describe("cambio de mecanismo del venue", () => {
           const p = proposeVenueMechanism(d, "v04");
           const proposed = p.intents.some((i) => i.id === SWITCH_TO_BOARD_ID);
           if (ticksBefore < N) expect(proposed).toBe(false);
-          // Y si sale propuesto, el arbitraje lo selecciona como mucho una vez.
+          // And if it is proposed, arbitration selects it at most once.
           const verdicts = arbitrate([...p.intents, ...p.intents.map((i) => ({ ...i, id: `${i.id}:dup` }))], budget);
           expect(verdicts.filter((v) => v.selected && v.intent.kind === "venue").length).toBeLessThanOrEqual(1);
         },
@@ -53,7 +53,7 @@ describe("cambio de mecanismo del venue", () => {
     );
   });
 
-  it("recomienda board solo con sesiones, ratio, caja, tiempo y latido en verde", () => {
+  it("recommends board only with sessions, ratio, cash, time and heartbeat all green", () => {
     const now = new Date("2026-10-03T10:00:00Z");
     const base = {
       current: "auto",

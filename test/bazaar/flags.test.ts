@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { detectFlag, detectPressure, indexCatalog, pressureTactic } from "../../src/flags/flags.js";
 
-// Guardarraíl del detector de flags: un flag erróneo cuesta puntos, así que solo hay candidato con una
-// contradicción verificable entre el texto y la ESTRUCTURA de la oferta del mismo mensaje.
+// Flags detector guardrail: a wrong flag costs points, so there is a candidate only with a
+// verifiable contradiction between the text and the STRUCTURE of the offer in the same message.
 const catalog = {
   sets: [
     {

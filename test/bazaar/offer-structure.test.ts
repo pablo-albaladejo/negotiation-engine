@@ -8,29 +8,29 @@ const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncom
 const offer = (o: object) => StandingOfferSchema.parse({ id: 1, maker: "chato", status: "open", final: false, ...o });
 const SELL = { side: "sell", assetIds: [438] } as const;
 
-describe("forma de la oferta del dealer", () => {
-  it("hilo 257 real: Chato da 13 de efectivo y quiere solo el activo 438 → forma de compra válida", () => {
+describe("dealer offer shape", () => {
+  it("real thread 257: Chato gives 13 cash and wants only asset 438 → valid buy shape", () => {
     const real = offer({ give: { cash: 13, assets: [], types: [] }, want: { cash: 0, assets: [SAL07], types: [] } });
     expect(checkStructure(real, SELL, { accept: true })).toEqual({ ok: true });
   });
 
-  it("venta: si nos ofrece un sobre y pide efectivo (nos vende), nunca se acepta", () => {
+  it("sale: if it offers us a pack and asks for cash (it sells to us), it is never accepted", () => {
     const pack = offer({ give: { cash: 0, assets: [], types: ["pack:sobre_plata"] }, want: { cash: 13, assets: [], types: [] } });
     expect(checkStructure(pack, SELL)).toEqual({ ok: false, reason: "dealer-selling" });
     expect(checkStructure(offer({ give: { cash: 13 }, want: { cash: 13, assets: [SAL07] } }), SELL, { accept: true }).reason).toBe("dealer-selling");
   });
 
-  it("venta: quiere otro activo además del nuestro, o no da efectivo → no", () => {
+  it("sale: wants another asset besides ours, or gives no cash → no", () => {
     const extra = offer({ give: { cash: 40 }, want: { assets: [SAL07, { ...SAL07, id: 439 }] } });
     expect(checkStructure(extra, SELL, { accept: true }).reason).toBe("wants-other-assets");
     expect(checkStructure(offer({ give: { cash: 0 }, want: { assets: [SAL07] } }), SELL, { accept: true }).reason).toBe("no-cash");
     expect(checkStructure(offer({ give: { cash: 12 }, want: { assets: [] } }), SELL, { accept: true }).reason).toBe("wants-other-assets");
     expect(checkStructure(offer({ give: { cash: 12 }, want: { types: ["card:SAL-07"] } }), SELL).reason).toBe("wants-other-assets");
-    // Sin aceptar se tolera que aún no repita nuestro activo (sí lo exige al aceptar).
+    // Without accepting, it is tolerated that it does not yet repeat our asset (it is required when accepting).
     expect(checkStructure(offer({ give: { cash: 12 } }), SELL)).toEqual({ ok: true });
   });
 
-  it("compra: exactamente la carta pedida, solo efectivo y dentro del límite", () => {
+  it("buy: exactly the requested card, cash only and within the limit", () => {
     const exp = { side: "buy", card: "SAL-05" } as const;
     expect(checkStructure(offer({ give: { types: ["card:SAL-05"] }, want: { cash: 20 } }), exp, { accept: true, maxCash: 20 })).toEqual({ ok: true });
     expect(checkStructure(offer({ give: { types: ["card:SAL-05"] }, want: { cash: 21 } }), exp, { accept: true, maxCash: 20 }).reason).toBe("over-limit");
@@ -38,18 +38,18 @@ describe("forma de la oferta del dealer", () => {
     expect(checkStructure(offer({ give: { types: ["pack:sobre_plata"] }, want: { cash: 10 } }), exp).reason).toBe("wrong-goods");
     expect(checkStructure(offer({ give: { types: ["card:SAL-05", "card:SAL-06"] }, want: { cash: 10 } }), exp).reason).toBe("wrong-goods");
     expect(checkStructure(offer({ give: { cash: 10 }, want: { assets: [SAL07] } }), exp).reason).toBe("dealer-buying");
-    // Aún sin revelar la carta: se puede seguir negociando, pero no aceptar.
+    // Card not yet revealed: negotiation can continue, but not accepting.
     expect(checkStructure(offer({ want: { cash: 10 } }), exp)).toEqual({ ok: true });
     expect(checkStructure(offer({ want: { cash: 10 } }), exp, { accept: true, maxCash: 20 }).reason).toBe("wrong-goods");
   });
 
-  it("compra rareza+set: la carta que da debe ser de esa rareza y set", () => {
+  it("buy rarity+set: the card it gives must be of that rarity and set", () => {
     const exp = expectationOf({ buy: { rarity: "uncommon", set: "SAL" } }, "buy", (ref) => ref === "SAL-05")!;
     expect(checkStructure(offer({ give: { assets: [{ ...SAL07, ref: "SAL-05" }] }, want: { cash: 9 } }), exp, { accept: true, maxCash: 9 })).toEqual({ ok: true });
     expect(checkStructure(offer({ give: { types: ["card:LAT-01"] }, want: { cash: 9 } }), exp).reason).toBe("wrong-goods");
   });
 
-  it("firstMismatch revisa todas sus ofertas del hilo (mensajes y vigentes)", () => {
+  it("firstMismatch checks all its offers in the thread (messages and current ones)", () => {
     const thread = ThreadSchema.parse({
       id: 1,
       topic: { sell: { assets: [438] } },
@@ -62,7 +62,7 @@ describe("forma de la oferta del dealer", () => {
 
 const MENU = DealerInfoSchema.parse({ id: "chato", name: "El Chato", menu: { sells: [{ rarity: "uncommon", sets: "released", list_price: 26 }], buys: [{ rarity: "uncommon", sets: "released" }] } });
 
-/** Dealer que, en un hilo de venta, responde con una oferta de forma `herOffer` a un precio muy bueno. */
+/** Dealer that, in a sale thread, answers with an offer of shape `herOffer` at a very good price. */
 function dealerWith(herOffer: (asset: number) => object) {
   const posts: string[] = [];
   const threads = new Map<number, Thread>();
@@ -97,7 +97,7 @@ function dealerWith(herOffer: (asset: number) => object) {
   return { api, posts };
 }
 
-describe("el agente nunca acepta una oferta con forma equivocada", () => {
+describe("the agent never accepts an offer with the wrong shape", () => {
   const run = async (herOffer: (asset: number) => object) => {
     const { api, posts } = dealerWith(herOffer);
     const records: TraceRecord[] = [];
@@ -107,7 +107,7 @@ describe("el agente nunca acepta una oferta con forma equivocada", () => {
     return { posts, records, lines };
   };
 
-  it("venta en la que el dealer nos vende un sobre por 13: cierra educadamente tras leerla (structure-mismatch)", async () => {
+  it("sale where the dealer sells us a pack for 13: closes politely after reading it (structure-mismatch)", async () => {
     const { posts, records, lines } = await run(() => ({ give: { cash: 0, types: ["pack:sobre_plata"] }, want: { cash: 13 } }));
     expect(posts.some((p) => p.startsWith("accept"))).toBe(false);
     expect(posts).toEqual(["open", "say", "close"]);
@@ -115,13 +115,13 @@ describe("el agente nunca acepta una oferta con forma equivocada", () => {
     expect(lines.some((l) => l.includes("structure-mismatch (dealer-selling"))).toBe(true);
   });
 
-  it("venta con 99 de efectivo pero pidiendo además otro activo: nunca acepta", async () => {
+  it("sale with 99 cash but also asking for another asset: never accepts", async () => {
     const { posts, records } = await run((asset) => ({ give: { cash: 99 }, want: { assets: [{ id: asset }, { id: 999 }] }, final: true }));
     expect(posts.some((p) => p.startsWith("accept"))).toBe(false);
     expect(records.find((r) => r.action === "close")?.rule).toBe("structure-mismatch");
   });
 
-  it("control: la misma puja final con la forma correcta sí se acepta", async () => {
+  it("control: the same final bid with the right shape is accepted", async () => {
     const { posts } = await run((asset) => ({ give: { cash: 99 }, want: { assets: [{ id: asset }] }, final: true }));
     expect(posts.slice(0, 2)).toEqual(["open", "accept 500"]);
   });

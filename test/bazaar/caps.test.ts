@@ -14,7 +14,7 @@ const MENU = DealerInfoSchema.parse({
 });
 const CATALOG = { sets: [{ id: "AAA", released: true, cards: ["AAA-01", "AAA-02", "AAA-03", "AAA-04"].map((id) => ({ id, rarity: "common", book: 10 })) }], packs: [] };
 
-/** Abuela que nos compra comunes a 13 fijos (hilo 56): nunca se mueve. `walk` = se va tras nuestro primer mensaje. */
+/** Abuela who buys commons from us at a fixed 13 (thread 56): never moves. `walk` = leaves after our first message. */
 function fixedAbuela(opts: { walk?: boolean } = {}) {
   const posts: string[] = [];
   const assets = [1, 2, 3].map((id) => ({ id, kind: "card", ref: `AAA-0${id}`, rarity: "common", set: "AAA", your_value: 5 }));
@@ -72,8 +72,8 @@ function agentFor(api: BazaarApi, extra: Partial<ConstructorParameters<typeof Ba
   return { a, records };
 }
 
-describe("topes de la ejecución y precio fijo en el bucle", () => {
-  it("vende 2 comunes a su 13 fijo y se para en max-deals (2 hilos, uno a la vez)", async () => {
+describe("run caps and fixed price in the loop", () => {
+  it("sells 2 commons at her fixed 13 and stops at max-deals (2 threads, one at a time)", async () => {
     const { api, posts } = fixedAbuela();
     const { a, records } = agentFor(api);
     let tick = 1;
@@ -82,7 +82,7 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(a.runStats()).toEqual({ deals: 2, threads: 2, spent: 0 });
     expect(posts.filter((p) => p === "open")).toHaveLength(2);
     expect(posts.filter((p) => p.startsWith("accept"))).toHaveLength(2);
-    // Ancla tope lista × 1,3 = 14 (no 26): ya cubre su fijo 13 y cierra en el primer mensaje.
+    // Anchor capped at list × 1.3 = 14 (not 26): already covers her fixed 13 and closes on the first message.
     expect(posts.filter((p) => p.startsWith("say "))).toEqual(["say 14", "say 14"]);
     expect(records.filter((r) => r.action === "accept").map((r) => [r.rule, r.ourPrice])).toEqual([
       ["stuck-accept-within-limit", 13],
@@ -97,17 +97,17 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(after.map((r) => r.rule)).toEqual(["max-deals"]);
   });
 
-  it("--only: abre solo lo pedido, en ese orden", async () => {
+  it("--only: opens only what was asked, in that order", async () => {
     const { api } = fixedAbuela();
     const lines: string[] = [];
     const { a, records } = agentFor(api, { only: parseOnly("sell:AAA-03,sell:AAA-01"), maxDeals: 2, log: (l) => lines.push(l) });
     for (let tick = 1; tick < 40 && !a.done(); tick++) await a.step({ tick, tick_seconds: 60 });
     expect(records.filter((r) => r.action === "open").map((r) => r.target)).toEqual(["sell:3", "sell:1"]);
-    // Ancla tope lista × 1,3 = 14 (no 26): ya cubre su fijo 13 y cierra en el primer mensaje.
+    // Anchor capped at list × 1.3 = 14 (not 26): already covers her fixed 13 and closes on the first message.
     expect(lines.filter((l) => /\n  patience: 1 msgs \/ [23] ticks until close · her replies 0 · steps: anchor 14/.test(l))).toHaveLength(4);
   });
 
-  it("max-threads: no abre más conversaciones que el tope aunque no haya trato", async () => {
+  it("max-threads: does not open more conversations than the cap even without a deal", async () => {
     const { api, posts } = fixedAbuela({ walk: true });
     const { a, records } = agentFor(api, { maxThreads: 1 });
     for (let tick = 1; tick < 6; tick++) await a.step({ tick, tick_seconds: 60 });
@@ -116,7 +116,7 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
     expect(records.some((r) => r.rule === "max-threads")).toBe(true);
   });
 
-  it("dry-run: imprime el plan y nunca hace POST", async () => {
+  it("dry-run: prints the plan and never POSTs", async () => {
     const { api, posts } = fixedAbuela();
     const { a } = agentFor(api, { dryRun: true });
     const plan = (await a.plan()).join("\n");
@@ -128,8 +128,8 @@ describe("topes de la ejecución y precio fijo en el bucle", () => {
   });
 });
 
-describe("tope por su límite previsto (ajuste por persona)", () => {
-  it("la oferta nunca pasa ni la reserva ni el tope, comprando y vendiendo", () => {
+describe("cap by her expected limit (per-persona fit)", () => {
+  it("the offer never crosses the reservation nor the cap, buying and selling", () => {
     fc.assert(
       fc.property(fc.constantFrom("buy" as const, "sell" as const), fc.integer({ min: 2, max: 200 }), fc.integer({ min: 1, max: 200 }), fc.integer({ min: 1, max: 200 }), fc.boolean(), (side, reservation, cap, her, first) => {
         const tight = side === "buy" ? Math.min(reservation, cap) : Math.max(reservation, cap);

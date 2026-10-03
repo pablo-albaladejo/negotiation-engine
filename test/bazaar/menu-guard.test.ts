@@ -4,7 +4,7 @@ import { menuBlocks } from "../../src/dealers/planning/plan.js";
 import { CatalogSchema, DealerInfoSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 
-/** Menús reales de `/api/dealers/{id}` (2 oct, tick 132). */
+/** Real menus from `/api/dealers/{id}` (2 Oct, tick 132). */
 const CHATO = DealerInfoSchema.parse({
   id: "chato",
   menu: {
@@ -21,8 +21,8 @@ const ABUELA = DealerInfoSchema.parse({
 });
 const CATALOG = CatalogSchema.parse({ sets: [{ id: "SAL", released: true, cards: [] }, { id: "NEW", released: false, cards: [] }] });
 
-describe("menú del dealer: vender solo lo que compra, comprar solo lo que vende", () => {
-  it("El Chato compra uncommon y rare de sets publicados; no comunes ni sets sin publicar", () => {
+describe("dealer menu: sell only what it buys, buy only what it sells", () => {
+  it("El Chato buys uncommon and rare from published sets; not commons nor unpublished sets", () => {
     expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "uncommon", set: "SAL" })).toBeUndefined();
     expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "rare", set: "SAL" })).toBeUndefined();
     expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: "common", set: "SAL" })).toBe("chato does not buy common SAL (menu.buys)");
@@ -30,17 +30,17 @@ describe("menú del dealer: vender solo lo que compra, comprar solo lo que vende
     expect(menuBlocks(CHATO, CATALOG, { side: "sell", rarity: undefined, set: "SAL" })).toMatch(/does not buy/);
   });
 
-  it("Abuela no compra raras; vende comunes y uncommon, no raras", () => {
+  it("Abuela does not buy rares; sells commons and uncommon, not rares", () => {
     expect(menuBlocks(ABUELA, CATALOG, { side: "sell", rarity: "rare", set: "SAL" })).toMatch(/does not buy rare/);
     expect(menuBlocks(ABUELA, CATALOG, { side: "buy", rarity: "uncommon", set: "SAL", card: "SAL-07" })).toBeUndefined();
     expect(menuBlocks(ABUELA, CATALOG, { side: "buy", rarity: "rare", set: "SAL" })).toBe("abuela does not sell rare SAL (menu.sells)");
-    // Un sobre en su menú no habilita comprar cartas sueltas por él.
+    // A pack on her menu does not enable buying single cards through it.
     expect(menuBlocks(DealerInfoSchema.parse({ id: "x", menu: { sells: [{ pack: "sobre_plata", list_price: 150 }] } }), CATALOG, { side: "buy", rarity: "rare", set: "SAL" })).toMatch(/does not sell/);
   });
 });
 
-describe("modo serio sin ficha del dealer: no abre nada (el planificador antiguo vende sin mirar el menú)", () => {
-  it("requireMenu: con una repetida para vender, sin menú no hay objetivo", async () => {
+describe("serious mode without a dealer card: opens nothing (the old planner sells without looking at the menu)", () => {
+  it("requireMenu: with a duplicate to sell, without a menu there is no target", async () => {
     const posts: string[] = [];
     const assets = [1, 2].map((id) => ({ id, kind: "card", ref: "SAL-01", rarity: "common", set: "SAL", your_value: 3 }));
     const api: BazaarApi = {

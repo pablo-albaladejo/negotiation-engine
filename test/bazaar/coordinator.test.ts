@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { arbitrate, type Budget, type Intent } from "../../src/coordinator/coordinator.js";
 import { DEFAULT_DUEL_PARAMS, decideDuel, type DuelState } from "../../src/duels/duels.js";
 
-/** Guardarraíles del coordinador (cupos de `clock.limits`, un activo en un solo sitio) y de los duelos v2. */
+/** Coordinator guardrails (`clock.limits` quotas, one asset in one place) and duels v2. */
 
 const budget = (over: Partial<Budget> = {}): Budget => ({
   accepts: 1,

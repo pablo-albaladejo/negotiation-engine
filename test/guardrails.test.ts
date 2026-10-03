@@ -10,8 +10,8 @@ const mandate: fc.Arbitrary<Mandate> = fc.record({
   reservation: price,
 });
 
-describe("guardarraíles", () => {
-  it("nunca cruza el mandato", () => {
+describe("guardrails", () => {
+  it("never crosses the mandate", () => {
     fc.assert(
       fc.property(mandate, fc.array(price, { minLength: 1, maxLength: 30 }), (m, proposals) => {
         let previous: number | undefined;
@@ -23,7 +23,7 @@ describe("guardarraíles", () => {
     );
   });
 
-  it("las ofertas son monótonas (nunca retrocedemos)", () => {
+  it("offers are monotonic (we never go back)", () => {
     fc.assert(
       fc.property(mandate, fc.array(price, { minLength: 2, maxLength: 30 }), (m, proposals) => {
         const offers: number[] = [];
@@ -37,17 +37,17 @@ describe("guardarraíles", () => {
     );
   });
 
-  it("rechaza ofertas no finitas", () => {
+  it("rejects non-finite offers", () => {
     expect(() => enforceGuardrails({ role: "buyer", reservation: 100 }, Number.NaN)).toThrow();
   });
 });
 
-describe("guardarraíles multi-issue", () => {
+describe("multi-issue guardrails", () => {
   const scenario = issuesArb.chain((issues) =>
     fc.tuple(fc.constant(issues), mandateArb(issues), fc.array(offerArb(issues, 0.5), { minLength: 1, maxLength: 30 })),
   );
 
-  it("nunca cruza el mandato en ningún issue ni en utilidad", () => {
+  it("never crosses the mandate on any issue or in utility", () => {
     fc.assert(
       fc.property(scenario, ([issues, m, proposals]) => {
         let previous: Offer | undefined;
@@ -60,7 +60,7 @@ describe("guardarraíles multi-issue", () => {
     );
   });
 
-  it("monotonía en utilidad: nuestra utilidad nunca sube", () => {
+  it("utility monotonicity: our utility never goes up", () => {
     fc.assert(
       fc.property(scenario, ([issues, m, proposals]) => {
         const offers: Offer[] = [];
@@ -72,7 +72,7 @@ describe("guardarraíles multi-issue", () => {
     );
   });
 
-  it("con un issue coincide con los guardarraíles 1D (sobre la rejilla de oferta)", () => {
+  it("with one issue it matches the 1D guardrails (on the offer grid)", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 1000 }), fc.array(fc.integer({ min: 0, max: 1000 }), { minLength: 1, maxLength: 20 }), (res, ps) => {
         const issue = { name: "price", min: 0, max: 1000, direction: "lower-better" as const, weight: 1 };
@@ -87,7 +87,7 @@ describe("guardarraíles multi-issue", () => {
     );
   });
 
-  it("rechaza no finitos, issues ausentes e issues no declarados", () => {
+  it("rejects non-finite values, missing issues and undeclared issues", () => {
     const issues = [{ name: "pct", min: 0, max: 10, direction: "higher-better" as const, weight: 1 }];
     const m = { role: "buyer" as const, reservation: { pct: 3 } };
     expect(() => enforceOfferGuardrails(issues, m, { pct: Number.NaN })).toThrow();

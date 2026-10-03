@@ -2,7 +2,7 @@ import fc from "fast-check";
 import type { Issue } from "../../src/engine/config.js";
 import type { Offer, OfferMandate } from "../../src/engine/issues.js";
 
-/** Issues aleatorios ya normalizados (pesos a suma 1), nombres únicos. */
+/** Random issues already normalized (weights sum to 1), unique names. */
 export const issuesArb: fc.Arbitrary<Issue[]> = fc
   .array(
     fc.record({
@@ -33,7 +33,7 @@ export function offerArb(issues: Issue[], overshoot = 0): fc.Arbitrary<Offer> {
   ).map((values) => Object.fromEntries(issues.map((i, k) => [i.name, values[k]!])));
 }
 
-/** Mandato dentro de los límites de los issues (ya orientados a nuestro rol). */
+/** Mandate within the issues' limits (already oriented to our role). */
 export function mandateArb(issues: Issue[]): fc.Arbitrary<OfferMandate> {
   return fc.record({
     role: fc.constantFrom("buyer" as const, "seller" as const),

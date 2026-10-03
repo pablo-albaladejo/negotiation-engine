@@ -8,14 +8,14 @@ import type { TraceRecord } from "../../src/shared/trace.js";
 const MENU = DealerInfoSchema.parse({ id: "abuela", menu: { sells: [{ card: "SAL-05", rarity: "uncommon", list_price: 10 }], buys: [] } });
 const NOW = 1_700_000_000_000;
 
-/** Abuela que nos vende SAL-05 con una oferta final a 8; `dealerAccepts`: el trato se cierra solo y el hilo no deja ver el precio. */
+/** Abuela who sells us SAL-05 with a final offer of 8; `dealerAccepts`: the deal closes on its own and the thread does not show the price. */
 function seller(opts: { dealerAccepts?: boolean } = {}) {
   const posts: string[] = [];
   let cash = 400;
   let thread: Thread | undefined;
   const api: BazaarApi = {
     me: async () => {
-      // Entre ticks: ella acepta nuestra oferta y la caja baja 9; el hilo cerrado no muestra ninguna oferta.
+      // Between ticks: she accepts our offer and cash drops 9; the closed thread shows no offer.
       if (opts.dealerAccepts && thread?.status === "open") {
         thread = ThreadSchema.parse({ ...thread, status: "deal", standing_offers: [], messages: [] });
         cash -= 9;
@@ -36,7 +36,7 @@ function seller(opts: { dealerAccepts?: boolean } = {}) {
     closeThread: async () => ({}),
     accept: async (id) => {
       posts.push(`accept ${id}`);
-      // El hilo cerrado ya no muestra la oferta aceptada ("deal at ?").
+      // The closed thread no longer shows the accepted offer ("deal at ?").
       thread = ThreadSchema.parse({ ...thread, status: "deal", standing_offers: [], messages: [] });
       cash -= 8;
       return {};
@@ -45,7 +45,7 @@ function seller(opts: { dealerAccepts?: boolean } = {}) {
   return { api, posts };
 }
 
-describe("gasto: se cuenta el precio real de cada compra", () => {
+describe("spend: the real price of each purchase is counted", () => {
   const run = async (opts: { dealerAccepts?: boolean }) => {
     const { api, posts } = seller(opts);
     const team = new TeamBudget({ maxSpendPerHour: 60, maxSpendTotal: 150, cashFloor: 20, now: () => NOW });
@@ -56,7 +56,7 @@ describe("gasto: se cuenta el precio real de cada compra", () => {
     return { team, posts, lines, a };
   };
 
-  it("aceptamos su final a 8 y el hilo cerrado no deja ver el precio: 8 contado una sola vez", async () => {
+  it("we accept her final at 8 and the closed thread does not show the price: 8 counted only once", async () => {
     const { team, posts, a } = await run({});
     expect(posts).toEqual(["open", "accept 1"]);
     expect(team.spentThisHour()).toBe(8);
@@ -64,21 +64,21 @@ describe("gasto: se cuenta el precio real de cada compra", () => {
     expect(a.runStats().spent).toBe(8);
   });
 
-  it("el trato se cierra sin nuestra aceptación y sin precio visible: cuenta la caída de caja", async () => {
+  it("the deal closes without our acceptance and with no visible price: the cash drop counts", async () => {
     const { team, lines } = await run({ dealerAccepts: true });
     expect(team.spentThisHour()).toBe(9);
     expect(lines.some((l) => l.includes("9 P counted against the budgets (cash delta)"))).toBe(true);
   });
 });
 
-describe("suelo de caja", () => {
-  it("por defecto 270 + 10; con --cash-floor 20, el suelo es 20", () => {
+describe("cash floor", () => {
+  it("by default 270 + 10; with --cash-floor 20, the floor is 20", () => {
     expect(cashFloorOf(undefined, undefined)).toEqual({ floor: 280, venue: 270, reserve: 10 });
     expect(cashFloorOf("20", undefined)).toEqual({ floor: 20, venue: 20, reserve: 0 });
     expect(cashFloorOf("20", "5")).toEqual({ floor: 25, venue: 20, reserve: 5 });
   });
 
-  it("avisa en la línea de estado cuando el suelo supera la caja", () => {
+  it("warns in the status line when the floor exceeds cash", () => {
     const base = { clock: { tick: 130 }, cashFloor: 280, spentHour: 0, maxSpendHour: 60, spentTotal: 0, maxSpendTotal: 150, dealers: [] };
     expect(statusLine({ ...base, cash: 40 })).toContain("cash 40 (floor 280 > cash: WARNING no buys; lower it with --cash-floor)");
     expect(statusLine({ ...base, cash: 40, cashFloor: 20 })).toContain("cash 40 (floor 20) ·");

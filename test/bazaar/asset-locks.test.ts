@@ -5,7 +5,7 @@ import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 
 const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncommon", set: "SAL", print_run: 90 };
-/** `/api/me/offers` real del 2 oct (tick 132): 438 listado en El Rastro a 37 y en el hilo 260 con Abuela. */
+/** `/api/me/offers` real from 2 Oct (tick 132): 438 listed in El Rastro at 37 and in thread 260 with Abuela. */
 const MY_OFFERS = {
   offers: [
     { id: 2079, maker: "t02", to: null, venue: "rastro", thread: null, status: "open", give: { cash: 0, assets: [SAL07], types: [] }, want: { cash: 37, assets: [], types: [] } },
@@ -15,12 +15,12 @@ const MY_OFFERS = {
   ],
 };
 
-describe("un activo, un sitio", () => {
-  it("activos en nuestras ofertas abiertas (no las del dealer ni las canceladas)", () => {
+describe("one asset, one place", () => {
+  it("assets in our open offers (not the dealer's nor cancelled ones)", () => {
     expect([...assetsInOffers(MY_OFFERS, "t02")]).toEqual([[438, "offer 2079 on rastro"]]);
   });
 
-  it("activos de los topics de venta de los hilos abiertos", () => {
+  it("assets of the sale topics of open threads", () => {
     const threads = [
       { id: 260, status: "open", with: "abuela", topic: { sell: { assets: [438] } } },
       { id: 257, status: "closed", with: "chato", topic: { sell: { assets: [439] } } },
@@ -29,7 +29,7 @@ describe("un activo, un sitio", () => {
     expect([...assetsInThreads(threads)]).toEqual([[438, "thread 260 with abuela"]]);
   });
 
-  it("si no se pueden leer hilos u ofertas, no se ofrece ningún activo (falla cerrado)", async () => {
+  it("if threads or offers cannot be read, no asset is offered (fails closed)", async () => {
     const busy = await busyAssets({ myThreads: async () => ({ threads: [] }), myOffers: async () => Promise.reject(new Error("network")) });
     expect(busy).toBeUndefined();
     expect(sellBlocked({ sell: { assets: [1] } }, busy)).toMatch(/unknown/);
@@ -59,7 +59,7 @@ function api(opts: { offers?: unknown; threads?: unknown[] }) {
   return { a, posts };
 }
 
-describe("el agente de dealers no abre un hilo de venta de un activo ocupado", () => {
+describe("the dealers agent does not open a sale thread for a busy asset", () => {
   const firstOpen = async (opts: { offers?: unknown; threads?: unknown[] }) => {
     const { a, posts } = api(opts);
     const records: TraceRecord[] = [];
@@ -68,25 +68,25 @@ describe("el agente de dealers no abre un hilo de venta de un activo ocupado", (
     return { posts, records, plan: await agent.plan() };
   };
 
-  it("438 listado en El Rastro (oferta 2079): no lo ofrece a El Chato", async () => {
+  it("438 listed in El Rastro (offer 2079): does not offer it to El Chato", async () => {
     const { posts, records, plan } = await firstOpen({ offers: MY_OFFERS });
     expect(posts).toEqual([]);
     expect(records.map((r) => r.rule)).toEqual(["no-target"]);
     expect(plan.at(-1)).toBe("not opened: sell SAL-07 (asset 438 busy: offer 2079 on rastro)");
   });
 
-  it("438 ya en un hilo abierto con Abuela: no abre otro con El Chato", async () => {
+  it("438 already in an open thread with Abuela: does not open another with El Chato", async () => {
     const { posts } = await firstOpen({ threads: [{ id: 260, status: "open", with: "abuela", topic: { sell: { assets: [438] } } }] });
     expect(posts).toEqual([]);
   });
 
-  it("control: libre en todas partes, sí lo abre", async () => {
+  it("control: free everywhere, it does open it", async () => {
     const { posts } = await firstOpen({});
     expect(posts).toEqual(['open {"sell":{"assets":[438]}}']);
   });
 });
 
-describe("un activo, un sitio en hilos ya abiertos", () => {
+describe("one asset, one place in already open threads", () => {
   const THREAD_260 = { id: 260, status: "open", team: "t02", with: "abuela", topic: { sell: { assets: [438] } } };
   const LISTED = { offers: [MY_OFFERS.offers[0]] };
   const herBid = (status = "open") => ({ id: 2186, maker: "abuela", to: "t02", thread: 260, status, give: { cash: 40 }, want: { assets: [SAL07] }, final: true });
@@ -119,7 +119,7 @@ describe("un activo, un sitio en hilos ya abiertos", () => {
   const agentFor = (a: BazaarApi, lines: string[] = []) =>
     new BazaarAgent(a, { dealer: { id: "abuela", aliases: [] }, dryRun: false, maxSpendPerHour: 0, menu: MENU, trace: { write: () => {} }, now: () => 1_700_000_000_000, log: (l) => lines.push(l) });
 
-  it("al retomar el hilo 260 con 438 listado en El Rastro: no lo retoma, lo cierra educadamente", async () => {
+  it("when resuming thread 260 with 438 listed in El Rastro: does not resume it, closes it politely", async () => {
     const { a, posts } = abuela(() => LISTED);
     const lines: string[] = [];
     await agentFor(a, lines).step({ tick: 149, tick_seconds: 60 });
@@ -128,7 +128,7 @@ describe("un activo, un sitio en hilos ya abiertos", () => {
     expect(lines.some((l) => l.includes("thread 260: not resumed, asset 438 busy: offer 2079 on rastro"))).toBe(true);
   });
 
-  it("listado justo antes de aceptar su final: no vende (asset-busy)", async () => {
+  it("listed right before accepting its final: does not sell (asset-busy)", async () => {
     let listed = false;
     const { a, posts } = abuela(() => (listed ? LISTED : { offers: [] }));
     const agent = agentFor(a);
@@ -142,7 +142,7 @@ describe("un activo, un sitio en hilos ya abiertos", () => {
     expect(posts).toContain("close 260");
   });
 
-  it("control: libre, acepta su final de 40 por 438", async () => {
+  it("control: free, accepts its final of 40 for 438", async () => {
     const { a, posts } = abuela(() => ({ offers: [] }));
     await agentFor(a).step({ tick: 149, tick_seconds: 60 });
     expect(posts).toEqual(["accept 2186"]);
