@@ -18,6 +18,7 @@ export const DETECTORS = [
   "above-best-ask",
   "album-copy-lost",
   "cash-floor",
+  "reserve-breach",
   "max-spend",
   "double-act",
   "repeat-failure",
@@ -361,6 +362,69 @@ export function cashFloor(views: TickView[]): Alert[] {
         }),
       );
     } else if (!below) episode = undefined;
+  }
+  return out;
+}
+
+/** Cash after a buy: the first coordinator view after its tick, at most this many ticks later. */
+const CASH_AFTER_TICKS = 3;
+
+/**
+ * `reserve-breach` (commit 0ac4757): a buy of a card that is not a reserve target, leaving cash below cash floor +
+ * page reserve. As in the coordinator, only the reserve's own refs may use it; a buy that completes another page is
+ * still flagged, with `completesPage` in the evidence (live, the coordinator puts such a card in the reserve once a
+ * dealer prices it) (the cash kept for the page-completing card a dealer already priced). The
+ * reserve per tick comes from play.log `page reserve: N P kept for <refs>` (plan.jsonl does not carry it); from the
+ * first such line on, a tick without one kept nothing. Buys before that line are a backtest with the first logged
+ * reserve: low, since the reserve did not exist yet. Cash after = the next view's cash; no loss in P is counted.
+ */
+export function reserveBreach(ledger: Ledger, views: TickView[], reserves: Map<number, { amount: number; refs: string[] }>, reserveFrom: number | undefined, model: ValueModel | undefined): Alert[] {
+  if (reserveFrom === undefined) return [];
+  const first = reserves.get(reserveFrom)!;
+  const bySettlement = new Map<number, OurTrade[]>();
+  for (const t of ledger.trades) if (t.side === "buy") bySettlement.set(t.settlement, [...(bySettlement.get(t.settlement) ?? []), t]);
+  const completesPage = (t: OurTrade): boolean => {
+    const page = model?.pages.get(model.meta.get(t.ref)?.set ?? "");
+    return !!page?.includes(t.ref) && t.copiesBefore === 0 && page.every((r) => r === t.ref || (t.countsBefore.get(r) ?? 0) > 0);
+  };
+  const out: Alert[] = [];
+  for (const [settlement, ts] of bySettlement) {
+    const tick = ts[0]!.tick;
+    const live = tick >= reserveFrom;
+    const r = live ? (reserves.get(tick) ?? { amount: 0, refs: [] }) : first;
+    if (r.amount <= 0 || ts.some((t) => r.refs.includes(t.ref))) continue;
+    const before = views.filter((v) => v.tick <= tick && v.cash !== undefined).at(-1);
+    const after = views.find((v) => v.tick > tick && v.tick - tick <= CASH_AFTER_TICKS && v.cash !== undefined);
+    const floor = after?.cashFloor ?? before?.cashFloor;
+    if (after?.cash === undefined || floor === undefined || after.cash >= floor + r.amount) continue;
+    const paid = ts.reduce((sum, t) => sum + t.price + (t.venue ? t.fee : 0), 0);
+    const refs = [...new Set(ts.map((t) => t.ref))];
+    const completing = ts.filter(completesPage).map((t) => t.ref);
+    out.push(
+      alert({
+        tick,
+        detector: "reserve-breach",
+        severity: live ? "high" : "low",
+        refs,
+        assets: ts.map((t) => t.assetId),
+        summary: `Bought ${refs.join(", ")} for ${round(paid)} P from ${where(ts[0]!)} leaving cash ${after.cash} P (tick ${after.tick}) below floor ${floor} + page reserve ${r.amount} P for ${r.refs.join(", ")}${completing.length ? ` (it completed the ${completing.map((x) => model?.meta.get(x)?.set ?? x).join(", ")} page)` : ""}${live ? "" : " (backtest: the reserve did not exist yet)"}.`,
+        evidence: {
+          settlement,
+          tick,
+          paid: round(paid),
+          ...(before?.cash !== undefined ? { cashBefore: before.cash, cashBeforeTick: before.tick } : {}),
+          cashAfter: after.cash,
+          cashAfterTick: after.tick,
+          cashFloor: floor,
+          reserve: r.amount,
+          reserveRefs: r.refs,
+          shortfallP: round(floor + r.amount - after.cash),
+          ...(completing.length ? { completesPage: completing } : {}),
+          reserveSource: live ? `play.log page reserve line at tick ${tick}${reserves.has(tick) ? "" : " (none logged: 0)"}` : `backtest: first logged reserve (play.log tick ${reserveFrom}) applied to an earlier tick`,
+        },
+        key: `reserve-breach:${settlement}`,
+      }),
+    );
   }
   return out;
 }

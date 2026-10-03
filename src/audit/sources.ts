@@ -169,6 +169,8 @@ export interface PlayTick {
   acts: { route: string; side: "buy" | "sell"; ref?: string; assetId?: number; line: string }[];
   /** `route:error` shapes of failed executions. */
   failures: { shape: string; line: string }[];
+  /** Cash kept for page-completing cards (`page reserve: N P kept for <refs>`, logged only when N > 0). */
+  reserve?: { amount: number; refs: string[] };
 }
 
 /**
@@ -184,6 +186,8 @@ export class PlayLogParser {
   private marketProposals = new Map<string, { side: "buy" | "sell"; ref: string; line: string }>();
   /** Duel counters and accepts sent, from the execution block of each tick. */
   readonly duels = new DuelSendParser();
+  /** First tick with a `page reserve:` line: from there on a tick without one kept nothing. */
+  reserveFrom: number | undefined;
 
   push(raw: string): void {
     const line = raw.replace(/^\d\d:\d\d:\d\d\s+/, "").trim();
@@ -202,6 +206,11 @@ export class PlayLogParser {
     const cur = this.current;
     if (!cur) return;
     this.duels.push(line, cur.tick);
+    const reserve = /page reserve: (\d+(?:\.\d+)?) P kept for ([A-Z]{3}-\d{2}(?:, [A-Z]{3}-\d{2})*)/.exec(line);
+    if (reserve) {
+      cur.reserve = { amount: Number(reserve[1]), refs: reserve[2]!.split(", ") };
+      this.reserveFrom ??= cur.tick;
+    }
     const cash = /^us: .*· cash (-?\d+(?:\.\d+)?) P/.exec(line);
     if (cash) cur.cash = Number(cash[1]);
     const prop = /^\[markets\] accept: (SELL|BUY) ([A-Z]+-\d+) on (\w+) at \d+(?:\.\d+)? P \(offer #(\d+)\)/.exec(line);

@@ -5,7 +5,7 @@ import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
 import type { Catalog, Me } from "../shared/schemas.js";
 import { buildValueModel, heldAssets, type ValueModel } from "../trades/trades.js";
-import { albumCopyLost, bookGaps, cashFloor, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
+import { albumCopyLost, bookGaps, cashFloor, reserveBreach, churn, DETECTORS, doubleAct, dupBuy, maxSpend, planView, playView, repeatFailure, tradePairs, type Alert, type Detector, type TickView } from "./detectors.js";
 import { dealerSpam, duelUnanswered, repeatedPrice, type ConductInput } from "./conduct.js";
 import { baselineFromCounts, baselineFromMe, replay, type Baseline, type Ledger } from "./ledger.js";
 import { ValueHistory } from "./value-history.js";
@@ -236,6 +236,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     "above-best-ask": need("stream-team", "stream-public"),
     "album-copy-lost": need("stream-team", "baseline", "catalog", "values"),
     "cash-floor": coord(),
+    "reserve-breach": play.reserveFrom === undefined ? { ok: false, why: "page reserve unknown: no `page reserve:` line in play.log" } : need("stream-team", "play.log"),
     "max-spend": need("plan", "stream-team"),
     "double-act": coord(),
     "repeat-failure": coord(),
@@ -273,6 +274,7 @@ function evaluate(): { alerts: Alert[]; status: Record<string, unknown>; ledger:
     ...bookGaps(ledger),
     ...albumCopyLost(ledger, model, history),
     ...cashFloor(views),
+    ...reserveBreach(ledger, views, new Map([...play.ticks].flatMap(([t, p]) => (p.reserve ? [[t, p.reserve] as const] : []))), play.reserveFrom, model),
     ...maxSpend(views, ledger),
     ...doubleAct(views, ledger),
     ...repeatFailure(views),
