@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Árbol de AGENTS.md (parte de `pnpm docs:check`). Falla si una carpeta:
-//   - tiene más de MAX_FILES ficheros versionados (`git ls-files`, también los ya añadidos) directamente dentro;
-//   - no tiene AGENTS.md;
-//   - tiene una subcarpeta cuyo AGENTS.md no enlaza desde el suyo, o su AGENTS.md no enlaza al del padre.
-// Exenciones (documentadas también en el AGENTS.md raíz):
-//   - la raíz no cuenta para el tope: la configuración de las herramientas tiene que vivir ahí;
-//   - `results/` (trazas en vivo), `design-system/.design-sync/` (generado), `docs/bazaar/bundles/assets/`
-//     (copia literal del frontend del Bazaar) y `docs/bazaar/bundles/pretty/assets/` (su versión legible) quedan fuera de todo,
-//     y no llevan AGENTS.md propio por subcarpeta.
+// AGENTS.md tree (part of `pnpm docs:check`). Fails if a folder:
+//   - has more than MAX_FILES versioned files (`git ls-files`, including already-added ones) directly inside;
+//   - has no AGENTS.md;
+//   - has a subfolder whose AGENTS.md is not linked from its own, or its AGENTS.md does not link to the parent's.
+// Exemptions (also documented in the root AGENTS.md):
+//   - the root does not count towards the cap: tool configuration has to live there;
+//   - `results/` (live traces), `design-system/.design-sync/` (generated), `docs/bazaar/bundles/assets/`
+//     (literal copy of the Bazaar frontend) and `docs/bazaar/bundles/pretty/assets/` (its readable version) are left out of everything,
+//     and do not carry their own per-subfolder AGENTS.md.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -42,7 +42,7 @@ for (const file of files) {
   }
 }
 
-/** Rutas (relativas a la raíz) a las que apuntan los enlaces markdown de un AGENTS.md. */
+/** Paths (relative to the root) that the markdown links of an AGENTS.md point to. */
 function linkTargets(dir) {
   const text = readFileSync(join(root, dir, "AGENTS.md"), "utf8");
   const targets = new Set();
@@ -59,20 +59,20 @@ const issues = [];
 
 for (const [dir, count] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
   if (isTreeExempt(dir)) continue;
-  if (!COUNT_EXEMPT.has(dir) && count > MAX_FILES) issues.push(`${dir}/: ${count} ficheros (máximo ${MAX_FILES}); divide por concepto en subcarpetas`);
+  if (!COUNT_EXEMPT.has(dir) && count > MAX_FILES) issues.push(`${dir}/: ${count} files (max ${MAX_FILES}); split by concept into subfolders`);
   if (!hasAgents(dir)) {
-    issues.push(`${dir}/: falta AGENTS.md`);
+    issues.push(`${dir}/: missing AGENTS.md`);
     continue;
   }
   const targets = linkTargets(dir);
   for (const child of children.get(dir) ?? []) {
     if (isTreeExempt(child) && !hasAgents(child)) continue;
-    if (!targets.has(agentsOf(child))) issues.push(`${agentsOf(dir)}: no enlaza a ${agentsOf(child)}`);
+    if (!targets.has(agentsOf(child))) issues.push(`${agentsOf(dir)}: does not link to ${agentsOf(child)}`);
   }
-  if (dir !== "." && !targets.has(agentsOf(posix.dirname(dir)))) issues.push(`${agentsOf(dir)}: no enlaza al padre ${agentsOf(posix.dirname(dir))}`);
+  if (dir !== "." && !targets.has(agentsOf(posix.dirname(dir)))) issues.push(`${agentsOf(dir)}: does not link to the parent ${agentsOf(posix.dirname(dir))}`);
 }
 
-console.log(`\n✓ Árbol de AGENTS.md (máx. ${MAX_FILES} ficheros por carpeta)`);
-console.log(`  Carpetas: ${[...counts.keys()].filter((d) => !isTreeExempt(d)).length}, problemas: ${issues.length}\n`);
+console.log(`\n✓ AGENTS.md tree (max ${MAX_FILES} files per folder)`);
+console.log(`  Folders: ${[...counts.keys()].filter((d) => !isTreeExempt(d)).length}, problems: ${issues.length}\n`);
 for (const issue of issues) console.log(`  ${issue}`);
 process.exit(issues.length > 0 ? 1 : 0);

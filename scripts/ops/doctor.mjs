@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// `pnpm bazaar:doctor [--fast]`: comprueba que todo está listo para `pnpm bazaar:up`. Solo lectura (ningún POST);
-// nunca imprime la clave. Una línea ✓/✗ por comprobación; sale con 1 si alguna falla (3 si solo falta .env.broker).
-// --fast se salta typecheck, test y docs:check. La prueba de `bazaar:play --dry-run --once` deshace lo que ella
-// misma cambie en results/ (foto antes y después; los ficheros del grabador y results/logs/ no se tocan).
+// `pnpm bazaar:doctor [--fast]`: checks that everything is ready for `pnpm bazaar:up`. Read-only (no POST);
+// never prints the key. One ✓/✗ line per check; exits with 1 if any fails (3 if only .env.broker is missing).
+// --fast skips typecheck, test and docs:check. The `bazaar:play --dry-run --once` check undoes whatever it
+// changes in results/ (snapshot before and after; the recorder's files and results/logs/ are not touched).
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,41 +32,41 @@ const tail = (s, n = 8) => (s ?? "").trim().split("\n").slice(-n);
 
 console.log(`bazaar:doctor${values.fast ? " (--fast)" : ""} · ${new Date().toLocaleString("sv-SE")}`);
 
-// 1. .env y la clave (nunca se imprime). .env.broker es opcional.
+// 1. .env and the key (never printed). .env.broker is optional.
 const env = loadEnv();
-if (!env.exists) bad(".env", "no existe (copia .env.example y pon BAZAAR_KEY)");
-else if (!env.key) bad(".env", "BAZAAR_KEY vacía");
-else ok(".env", `BAZAAR_KEY presente (${env.key.length} caracteres) · ${env.url}`);
-// .env.broker solo hace falta para el broker en sombra de bazaar:up: si falta, ✗ solo para ese hijo (salida 3).
+if (!env.exists) bad(".env", "does not exist (copy .env.example and set BAZAAR_KEY)");
+else if (!env.key) bad(".env", "BAZAAR_KEY empty");
+else ok(".env", `BAZAAR_KEY present (${env.key.length} characters) · ${env.url}`);
+// .env.broker is only needed for bazaar:up's shadow broker: if missing, ✗ only for that child (exit 3).
 let brokerMissing = false;
 const brokerFile = join(ROOT, ".env.broker");
 const brokerKey = existsSync(brokerFile) ? parseEnv(readFileSync(brokerFile, "utf8")).BAZAAR_BROKER_KEY?.trim() : undefined;
-if (brokerKey) ok(".env.broker", "BAZAAR_BROKER_KEY presente: bazaar:up arranca el broker en sombra (--dry-run)");
+if (brokerKey) ok(".env.broker", "BAZAAR_BROKER_KEY present: bazaar:up starts the shadow broker (--dry-run)");
 else {
   brokerMissing = true;
-  console.log(`${paint(31, "✗")} .env.broker — ${existsSync(brokerFile) ? "BAZAAR_BROKER_KEY vacía" : "no existe"}: solo el broker en sombra no arrancará (los otros tres sí)`);
+  console.log(`${paint(31, "✗")} .env.broker — ${existsSync(brokerFile) ? "BAZAAR_BROKER_KEY empty" : "does not exist"}: only the shadow broker will not start (the other three will)`);
 }
 
-// 2. Node ≥ 22 y pnpm.
+// 2. Node ≥ 22 and pnpm.
 const major = Number(process.versions.node.split(".")[0]);
 if (major >= 22) ok("node", process.version);
-else bad("node", `${process.version} (hace falta ≥ 22)`);
+else bad("node", `${process.version} (≥ 22 required)`);
 const pnpm = run("pnpm", ["--version"]);
 if (pnpm.status === 0) ok("pnpm", pnpm.stdout.trim());
-else bad("pnpm", "no encontrado en el PATH");
+else bad("pnpm", "not found in PATH");
 
-// 3. git: rama DAY2, árbol limpio o con cambios, por delante o por detrás del remoto.
+// 3. git: DAY2 branch, clean or dirty tree, ahead of or behind the remote.
 const branch = run("git", ["rev-parse", "--abbrev-ref", "HEAD"]).stdout?.trim();
 const dirty = (run("git", ["status", "--porcelain"]).stdout ?? "").split("\n").filter(Boolean).length;
 const fetched = run("git", ["fetch", "--quiet", "origin", "DAY2"], { timeout: 15_000 }).status === 0;
 const counts = run("git", ["rev-list", "--left-right", "--count", "HEAD...@{u}"]).stdout?.trim().split(/\s+/);
-const sync = counts?.length === 2 ? `${counts[0]} por delante, ${counts[1]} por detrás de origin${fetched ? "" : " (sin fetch: dato del último)"}` : "sin rama remota";
-const gitDetail = `rama ${branch} · ${dirty ? `${dirty} ficheros con cambios` : "árbol limpio"} · ${sync}`;
+const sync = counts?.length === 2 ? `${counts[0]} ahead, ${counts[1]} behind origin${fetched ? "" : " (no fetch: data from the last one)"}` : "no remote branch";
+const gitDetail = `branch ${branch} · ${dirty ? `${dirty} changed files` : "clean tree"} · ${sync}`;
 if (branch === "DAY2") ok("git", gitDetail);
-else bad("git", `${gitDetail} (hace falta DAY2)`);
+else bad("git", `${gitDetail} (DAY2 required)`);
 
-// 4. typecheck, test y docs:check (se salta con --fast).
-if (values.fast) ok("typecheck · test · docs:check", "saltados (--fast)");
+// 4. typecheck, test and docs:check (skipped with --fast).
+if (values.fast) ok("typecheck · test · docs:check", "skipped (--fast)");
 else
   for (const script of ["typecheck", "test", "docs:check"]) {
     const t0 = Date.now();
@@ -74,39 +74,39 @@ else
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     if (r.status === 0) ok(`pnpm ${script}`, `${secs} s`);
     else {
-      bad(`pnpm ${script}`, `salió con ${r.status}`);
+      bad(`pnpm ${script}`, `exited with ${r.status}`);
       for (const l of tail(`${r.stdout}\n${r.stderr}`)) info(l);
     }
   }
 
-// 5. API: /api/clock y /api/me con la clave.
+// 5. API: /api/clock and /api/me with the key.
 if (env.key) {
   try {
     const clock = await apiGet(env, "/api/clock");
     ok("API /api/clock", clockLine(clock));
-    info(`límites: ${Object.entries(clock.limits ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ") || "(ninguno)"}`);
+    info(`limits: ${Object.entries(clock.limits ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ") || "(none)"}`);
   } catch (e) {
     bad("API /api/clock", e instanceof Error ? e.message : String(e));
   }
   try {
     const me = await apiGet(env, "/api/me");
-    ok("API /api/me", `${me.id} ${me.name ?? ""} · caja ${me.cash} · nivel ${me.level} · ${me.assets?.length ?? 0} activos · desbloqueados ${(me.unlocked ?? []).join(", ") || "-"}${me.frozen ? " · CONGELADO" : ""}`);
+    ok("API /api/me", `${me.id} ${me.name ?? ""} · cash ${me.cash} · level ${me.level} · ${me.assets?.length ?? 0} assets · unlocked ${(me.unlocked ?? []).join(", ") || "-"}${me.frozen ? " · FROZEN" : ""}`);
   } catch (e) {
     bad("API /api/me", e instanceof Error ? e.message : String(e));
   }
-} else bad("API", "sin BAZAAR_KEY no se comprueba");
+} else bad("API", "not checked without BAZAAR_KEY");
 
-// 6. Puerto del visor: libre o ya sirviendo el visor.
+// 6. Viewer port: free or already serving the viewer.
 const port = await probeViewer(viewerPort);
-if (port === "free") ok(`puerto ${viewerPort}`, "libre: bazaar:up arrancará el visor");
-else if (port === "viewer") ok(`puerto ${viewerPort}`, "ya sirve el visor: bazaar:up lo reutiliza");
-else bad(`puerto ${viewerPort}`, "ocupado por otro proceso (bazaar:up buscará otro puerto)");
+if (port === "free") ok(`port ${viewerPort}`, "free: bazaar:up will start the viewer");
+else if (port === "viewer") ok(`port ${viewerPort}`, "already serving the viewer: bazaar:up reuses it");
+else bad(`port ${viewerPort}`, "taken by another process (bazaar:up will look for another port)");
 
-// 7. `pnpm bazaar:play --dry-run --once` sale con 0; se deshacen solo los cambios que cause en results/.
+// 7. `pnpm bazaar:play --dry-run --once` exits with 0; only the changes it causes in results/ are undone.
 if (env.key) {
   const RESULTS = join(ROOT, "results");
   const LIVE = join(RESULTS, "bazaar-live");
-  // El grabador y bazaar:up escriben a la vez: sus ficheros quedan fuera de la foto y nunca se tocan.
+  // The recorder and bazaar:up write at the same time: their files stay out of the snapshot and are never touched.
   const foreign = (rel) => rel.startsWith("logs/") || /(^|\/)(stream-[^/]*\.jsonl|feed-poll\.jsonl)$/.test(rel);
   const manifest = () => {
     const m = new Map();
@@ -134,7 +134,7 @@ if (env.key) {
   const t0 = Date.now();
   const r = run("pnpm", ["bazaar:play", "--dry-run", "--once"], { timeout: Number(values["play-timeout"]) * 1000 });
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
-  // Deshacer: ficheros nuevos fuera; cambiados, de vuelta desde la copia (si están en bazaar-live).
+  // Undo: new files removed; changed ones restored from the backup (if they are in bazaar-live).
   const after = manifest();
   const reverted = [];
   const kept = [];
@@ -143,17 +143,17 @@ if (env.key) {
     const abs = join(RESULTS, rel);
     if (!before.has(rel)) {
       rmSync(abs, { force: true });
-      reverted.push(`${rel} (nuevo, borrado)`);
+      reverted.push(`${rel} (new, deleted)`);
     } else if (existsSync(join(backup, rel))) {
       cpSync(join(backup, rel), abs);
-      reverted.push(`${rel} (restaurado)`);
+      reverted.push(`${rel} (restored)`);
     } else kept.push(rel);
   }
   for (const rel of before.keys()) if (!after.has(rel) && existsSync(join(backup, rel))) {
     cpSync(join(backup, rel), join(RESULTS, rel));
-    reverted.push(`${rel} (borrado, restaurado)`);
+    reverted.push(`${rel} (deleted, restored)`);
   }
-  // Carpetas que creó la prueba y quedaron vacías.
+  // Folders the check created that were left empty.
   const pruneEmpty = (dir) => {
     if (!existsSync(dir)) return;
     for (const e of readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) pruneEmpty(join(dir, e.name));
@@ -165,16 +165,16 @@ if (env.key) {
   const tick = /== tick (\d+)/.exec(r.stdout ?? "")?.[1];
   if (r.status === 0) ok("pnpm bazaar:play --dry-run --once", `${secs} s${tick ? ` · tick ${tick}` : ""}`);
   else {
-    bad("pnpm bazaar:play --dry-run --once", r.error ? r.error.message : `salió con ${r.status}`);
+    bad("pnpm bazaar:play --dry-run --once", r.error ? r.error.message : `exited with ${r.status}`);
     for (const l of tail(`${r.stdout}\n${r.stderr}`)) info(l);
   }
-  info(reverted.length ? `results/ deshecho: ${reverted.join(", ")}` : "results/: la prueba no cambió nada");
-  if (kept.length) info(`results/ cambiado fuera de bazaar-live (no se toca): ${kept.join(", ")}`);
-  if (gitNew.length) info(`git status de results/ sigue con cambios nuevos: ${gitNew.join(", ")}`);
-} else bad("pnpm bazaar:play --dry-run --once", "sin BAZAAR_KEY no se prueba");
+  info(reverted.length ? `results/ undone: ${reverted.join(", ")}` : "results/: the check changed nothing");
+  if (kept.length) info(`results/ changed outside bazaar-live (left alone): ${kept.join(", ")}`);
+  if (gitNew.length) info(`git status of results/ still has new changes: ${gitNew.join(", ")}`);
+} else bad("pnpm bazaar:play --dry-run --once", "not tested without BAZAAR_KEY");
 
-if (failures) console.log(paint(31, `\n${failures} comprobación(es) fallida(s)`));
-else if (brokerMissing) console.log(paint(33, "\nListo salvo el broker en sombra: pnpm bazaar:up arranca los otros tres"));
-else console.log(paint(32, "\nTodo listo: pnpm bazaar:up"));
-// 1: algo falla; 3: solo falta .env.broker (bazaar:up arranca sin el broker en sombra); 0: todo bien.
+if (failures) console.log(paint(31, `\n${failures} check(s) failed`));
+else if (brokerMissing) console.log(paint(33, "\nReady except the shadow broker: pnpm bazaar:up starts the other three"));
+else console.log(paint(32, "\nAll ready: pnpm bazaar:up"));
+// 1: something fails; 3: only .env.broker is missing (bazaar:up starts without the shadow broker); 0: all good.
 process.exit(failures ? 1 : brokerMissing ? 3 : 0);

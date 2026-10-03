@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Escaneo de solo lectura de la API del Bazaar: GET a cada endpoint conocido, guarda las respuestas
-// completas en results/bazaar-live/<fecha>/api-scan-HHMM.json e imprime la forma de cada una.
+// Read-only scan of the Bazaar API: GET to every known endpoint, saves the full responses
+// to results/bazaar-live/<date>/api-scan-HHMM.json and prints the shape of each one.
 // Uso: set -a && . ./.env && . ./.env.broker && set +a && pnpm bazaar:scan
-// Nunca imprime claves. /api/cards/{id} pide el id NUMÉRICO del asset (no la ref tipo "SAL-09"):
-// se usan los ids de nuestras cartas de /api/me. /api/broker/book usa X-Broker-Key si está en el entorno.
+// Never prints keys. /api/cards/{id} needs the asset's NUMERIC id (not a ref like "SAL-09"):
+// the ids of our cards from /api/me are used. /api/broker/book uses X-Broker-Key if it is in the environment.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -11,7 +11,7 @@ const URL = process.env.BAZAAR_URL;
 const KEY = process.env.BAZAAR_KEY;
 const BROKER = process.env.BAZAAR_BROKER_KEY ?? process.env.BROKER_KEY;
 if (!URL || !KEY) {
-  console.error("Faltan BAZAAR_URL / BAZAAR_KEY (carga .env)");
+  console.error("Missing BAZAAR_URL / BAZAAR_KEY (load .env)");
   process.exit(1);
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -48,24 +48,24 @@ async function scan(path, headers) {
 }
 for (const p of team) await scan(p);
 
-// Nuestro venue y sus ofertas.
+// Our venue and its offers.
 const mine = out["/api/venues"]?.body?.venues?.find((v) => v.owner === out["/api/me"]?.body?.id);
 if (mine?.venue) await scan(`/api/venues/${mine.venue}/offers`);
 
-// Valor privado de cada carta que nos falta para completar una página, y detalle de un par de assets nuestros.
+// Private value of each card we are missing to complete a page, and detail of a couple of our assets.
 const assets = out["/api/me"]?.body?.assets ?? [];
 for (const a of assets.filter((x) => x.kind === "card").slice(0, 2)) await scan(`/api/cards/${a.id}`);
 await scan("/api/me/value?card=SAL-09");
 
-// Broker (solo si hay clave de broker en el entorno).
+// Broker (only if there is a broker key in the environment).
 if (BROKER) await scan("/api/broker/book", { "X-Broker-Key": BROKER });
-else console.log("skip /api/broker/book (sin BAZAAR_BROKER_KEY en el entorno: carga .env.broker)");
+else console.log("skip /api/broker/book (no BAZAAR_BROKER_KEY in the environment: load .env.broker)");
 
 const now = new Date();
-const day = now.toLocaleDateString("sv-SE"); // fecha local AAAA-MM-DD
+const day = now.toLocaleDateString("sv-SE"); // local date YYYY-MM-DD
 const hhmm = now.toTimeString().slice(0, 5).replace(":", "");
 const dir = join(process.cwd(), "results", "bazaar-live", day);
 mkdirSync(dir, { recursive: true });
 const file = join(dir, `api-scan-${hhmm}.json`);
 writeFileSync(file, JSON.stringify(out));
-console.log(`guardado ${file}`);
+console.log(`saved ${file}`);

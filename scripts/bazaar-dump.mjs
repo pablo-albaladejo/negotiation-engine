@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Volcado de solo lectura del estado del Bazaar para reconstruir el día: foto actual, todo lo nuestro
-// (hilos con mensajes, duelos terminados, ofertas, activos), historial de cada carta y el feed.
-// Guarda en results/bazaar-live/<fecha>/dump-HHMM/ un JSON por fuente, timeline.jsonl (un evento por línea,
-// ordenado por tick) y summary.md. Uso: set -a && . ./.env && . ./.env.broker && set +a && pnpm bazaar:dump
-// Límites que impone la API (medidos el 3 oct): el feed devuelve como mucho 500 eventos y no pagina; el
-// historial de las cartas ajenas pone "a team" en vez del equipo. Nunca imprime claves. Solo GET.
+// Read-only dump of the Bazaar state to reconstruct the day: current snapshot, everything of ours
+// (threads with messages, finished duels, offers, assets), each card's history and the feed.
+// Saves to results/bazaar-live/<date>/dump-HHMM/ one JSON per source, timeline.jsonl (one event per line,
+// sorted by tick) and summary.md. Uso: set -a && . ./.env && . ./.env.broker && set +a && pnpm bazaar:dump
+// Limits imposed by the API (measured on 3 Oct): the feed returns at most 500 events and does not paginate; the
+// history of other teams' cards says "a team" instead of the team. Never prints keys. GET only.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -12,7 +12,7 @@ const URL = process.env.BAZAAR_URL;
 const KEY = process.env.BAZAAR_KEY;
 const BROKER = process.env.BAZAAR_BROKER_KEY ?? process.env.BROKER_KEY;
 if (!URL || !KEY) {
-  console.error("Faltan BAZAAR_URL / BAZAAR_KEY (carga .env)");
+  console.error("Missing BAZAAR_URL / BAZAAR_KEY (load .env)");
   process.exit(1);
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -46,7 +46,7 @@ mkdirSync(dir, { recursive: true });
 const save = (name, data) => writeFileSync(join(dir, name), JSON.stringify(data, null, 1));
 const log = (s) => console.log(s);
 
-// 1. Foto actual de todos los endpoints de lectura.
+// 1. Current snapshot of all read endpoints.
 const snapshot = {};
 for (const p of [
   "/api/clock", "/api/schedule", "/api/levels", "/api/catalog", "/api/dealers", "/api/leaderboard",
@@ -63,7 +63,7 @@ for (const v of venues) {
 if (BROKER) snapshot["/api/broker/book"] = await get("/api/broker/book", { "X-Broker-Key": BROKER });
 save("snapshot.json", snapshot);
 
-// 2. Lo nuestro: hilos con todos sus mensajes y duelos terminados.
+// 2. Ours: threads with all their messages and finished duels.
 const threadList = (await get("/api/me/threads")).body?.threads ?? [];
 const threads = [];
 for (const t of threadList) threads.push(t.messages ? t : ((await get(`/api/threads/${t.id}`)).body ?? t));
@@ -71,16 +71,16 @@ save("threads.json", threads);
 const duelsDone = (await get("/api/duels?done=true")).body?.duels ?? [];
 const duelsLive = snapshot["/api/duels"].body?.duels ?? [];
 save("duels.json", { done: duelsDone, live: duelsLive });
-log(`hilos ${threads.length} · duelos terminados ${duelsDone.length} · en curso ${duelsLive.length}`);
+log(`threads ${threads.length} · finished duels ${duelsDone.length} · in progress ${duelsLive.length}`);
 
-// 3. Feed: lo más que da la API (500 eventos, sin paginación).
+// 3. Feed: the most the API gives (500 events, no pagination).
 const feed = (await get("/api/feed?limit=500")).body?.events ?? [];
 save("feed.json", feed);
 const feedTicks = feed.map((e) => e.tick).filter(Number.isFinite);
 const feedFrom = feedTicks.length ? Math.min(...feedTicks) : null;
-log(`feed ${feed.length} eventos · ticks ${feedFrom ?? "-"}–${feedTicks.length ? Math.max(...feedTicks) : "-"}`);
+log(`feed ${feed.length} events · ticks ${feedFrom ?? "-"}–${feedTicks.length ? Math.max(...feedTicks) : "-"}`);
 
-// 4. Historial de todas las cartas: ids secuenciales desde 1; se para tras 40 ids seguidos inexistentes.
+// 4. History of all cards: sequential ids from 1; stops after 40 consecutive nonexistent ids.
 const cards = [];
 let misses = 0;
 for (let id = 1; misses < 40; id++) {
@@ -89,12 +89,12 @@ for (let id = 1; misses < 40; id++) {
     cards.push(r.body);
     misses = 0;
   } else misses++;
-  if (id % 100 === 0) log(`cartas: id ${id} · ${cards.length} encontradas`);
+  if (id % 100 === 0) log(`cards: id ${id} · ${cards.length} found`);
 }
 save("cards.json", cards);
-log(`cartas ${cards.length}`);
+log(`cards ${cards.length}`);
 
-// 5. Timeline: un evento por línea, ordenado por tick.
+// 5. Timeline: one event per line, sorted by tick.
 const team = me.id;
 const timeline = [];
 for (const c of cards) {
@@ -115,12 +115,12 @@ for (const d of duelsDone) {
   const last = d.messages?.at(-1)?.tick ?? d.deadline_tick;
   timeline.push({ tick: last, src: "duel", type: "duel.result", duel: d.duel, item: d.item, role: d.role, status: d.status, price: d.price, limit: d.your_limit, result: d.result });
 }
-// Del feed solo lo que no sale de otras fuentes (ofertas, liquidaciones ajenas, anuncios, reloj…).
+// From the feed only what does not come from other sources (offers, other teams' settlements, announcements, clock…).
 for (const e of feed) timeline.push({ tick: e.tick, src: "feed", type: e.type, actor: e.actor, id: e.id, payload: e.payload });
 timeline.sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0));
 writeFileSync(join(dir, "timeline.jsonl"), timeline.map((e) => JSON.stringify(e)).join("\n") + "\n");
 
-// 6. Resumen legible.
+// 6. Readable summary.
 const clock = snapshot["/api/clock"].body ?? {};
 const count = (xs, k) => xs.reduce((m, x) => ((m[k(x)] = (m[k(x)] ?? 0) + 1), m), {});
 const why = count(timeline.filter((e) => e.type === "transfer"), (e) => e.why?.replace(/ from .*/, " from …").replace(/#\d+/, "#…") ?? "?");
@@ -145,4 +145,4 @@ L.push("| # | Equipo | Score | Deals | Álbum | Páginas |", "|---|---|---|---|-
 for (const t of lb) L.push(`| ${t.rank} | ${t.name}${t.team === team ? " ←" : ""} | ${t.score} | ${t.deals} | ${t.album_filled}/${t.album_slots} | ${t.pages_complete} |`);
 L.push("", "## Ficheros", "", "snapshot.json · threads.json · duels.json · feed.json · cards.json · timeline.jsonl (ordenado por tick)");
 writeFileSync(join(dir, "summary.md"), L.join("\n") + "\n");
-log(`guardado ${dir} (${timeline.length} eventos en timeline.jsonl)`);
+log(`saved ${dir} (${timeline.length} events in timeline.jsonl)`);

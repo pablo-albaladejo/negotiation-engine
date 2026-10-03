@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// Graba el stream en vivo del Bazaar (/api/events/stream, SSE) para poder reconstruir el día entero:
-// el feed solo devuelve los últimos 500 eventos y no pagina. Solo lectura; nunca imprime claves.
+// Records the live Bazaar stream (/api/events/stream, SSE) so the whole day can be reconstructed:
+// the feed only returns the last 500 events and does not paginate. Read-only; never prints keys.
 // Uso: set -a && . ./.env && set +a && pnpm bazaar:record [--scope team,public] [--quiet]
-// Cada evento va como una línea a results/bazaar-live/<fecha>/stream-<scope>.jsonl:
-// {recv, scope, event, id?, data}. Si el stream cae se reconecta con espera creciente (y Last-Event-ID si
-// el servidor manda ids); con 429/503 (límite: 6 streams por clave) mientras tanto lee /api/feed y graba
-// en feed-poll.jsonl los eventos que aún no había visto.
+// Each event goes as one line to results/bazaar-live/<date>/stream-<scope>.jsonl:
+// {recv, scope, event, id?, data}. If the stream drops it reconnects with growing backoff (and Last-Event-ID if
+// the server sends ids); on 429/503 (limit: 6 streams per key) it meanwhile reads /api/feed and records
+// the events it had not seen yet in feed-poll.jsonl.
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const URL = process.env.BAZAAR_URL;
 const KEY = process.env.BAZAAR_KEY;
 if (!URL || !KEY) {
-  console.error("Faltan BAZAAR_URL / BAZAAR_KEY (carga .env)");
+  console.error("Missing BAZAAR_URL / BAZAAR_KEY (load .env)");
   process.exit(1);
 }
 const arg = (name) => {
@@ -34,7 +34,7 @@ const brief = (data) => {
   return `${data.type ?? ""} ${data.actor ?? ""} tick ${data.tick ?? "?"} ${JSON.stringify(d).slice(0, 120)}`;
 };
 
-// Respaldo con 429/503: el feed, sin repetir ids ya grabados.
+// Fallback on 429/503: the feed, without repeating already-recorded ids.
 const seenFeed = new Set();
 async function pollFeed() {
   try {
@@ -48,9 +48,9 @@ async function pollFeed() {
       append("feed-poll.jsonl", { recv: new Date().toISOString(), ...e });
       n++;
     }
-    if (n) console.log(`[feed] ${n} eventos nuevos`);
+    if (n) console.log(`[feed] ${n} new events`);
   } catch {
-    // red caída: se reintenta en el siguiente ciclo
+    // network down: retried on the next cycle
   }
 }
 
@@ -67,7 +67,7 @@ async function record(scope) {
         fallback = r.status === 429 || r.status === 503;
         throw new Error(`HTTP ${r.status}`);
       }
-      console.log(`[${scope}] conectado`);
+      console.log(`[${scope}] connected`);
       backoff = 1000;
       const decoder = new TextDecoder();
       let buf = "";
@@ -79,7 +79,7 @@ async function record(scope) {
           const line = buf.slice(0, nl).replace(/\r$/, "");
           buf = buf.slice(nl + 1);
           if (line === "") {
-            // fin de evento
+            // end of event
             if (ev.data.length) {
               const raw = ev.data.join("\n");
               let data;
@@ -90,7 +90,7 @@ async function record(scope) {
             }
             ev = { event: "message", data: [] };
           } else if (line.startsWith(":")) {
-            // comentario (keep-alive)
+            // comment (keep-alive)
           } else {
             const i = line.indexOf(":");
             const field = i < 0 ? line : line.slice(0, i);
@@ -101,9 +101,9 @@ async function record(scope) {
           }
         }
       }
-      throw new Error("stream cerrado");
+      throw new Error("stream closed");
     } catch (e) {
-      console.log(`[${scope}] ${e?.message ?? e} · reintento en ${Math.round(backoff / 1000)} s${fallback ? " (mientras, /api/feed)" : ""}`);
+      console.log(`[${scope}] ${e?.message ?? e} · retrying in ${Math.round(backoff / 1000)} s${fallback ? " (meanwhile, /api/feed)" : ""}`);
       append(`stream-${scope}.jsonl`, { recv: new Date().toISOString(), scope, event: "_disconnected", data: { error: String(e?.message ?? e) } });
       if (fallback) await pollFeed();
       await sleep(backoff);
@@ -112,5 +112,5 @@ async function record(scope) {
   }
 }
 
-console.log(`grabando ${scopes.join(", ")} → results/bazaar-live/<fecha>/stream-<scope>.jsonl (Ctrl+C para parar)`);
+console.log(`recording ${scopes.join(", ")} → results/bazaar-live/<date>/stream-<scope>.jsonl (Ctrl+C to stop)`);
 await Promise.all(scopes.map(record));

@@ -39,7 +39,7 @@ const allowlist = new Set([
   "config", "timeoutMs", "trace",
   // Fixture/test data
   "fixture", "input",
-  // Literales de estado de hilo del Bazaar y campos del sistema de diseño
+  // Bazaar thread-status literals and design-system fields
   "walked", "end",
 ]);
 

@@ -1,4 +1,4 @@
-// Piezas comunes de `pnpm bazaar:doctor`, `pnpm bazaar:up` y `pnpm bazaar:down`. Solo lectura; nunca imprime claves.
+// Shared pieces of `pnpm bazaar:doctor`, `pnpm bazaar:up` and `pnpm bazaar:down`. Read-only; never prints keys.
 import { existsSync } from "node:fs";
 import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
@@ -9,10 +9,10 @@ export const DEFAULT_VIEWER_PORT = 5199;
 export const STATUS_FILE = join(ROOT, "results", "logs", "up-status.json");
 export const DEFAULT_URL = "https://bazaar.causaprima.ai";
 
-/** Fecha local AAAA-MM-DD, como las carpetas de `results/bazaar-live/` del grabador. */
+/** Local date YYYY-MM-DD, like the recorder's `results/bazaar-live/` folders. */
 export const localDate = (d = new Date()) => d.toLocaleDateString("sv-SE");
 
-/** Carga `.env` en `process.env` (lo ya exportado manda) y devuelve URL y clave. */
+/** Loads `.env` into `process.env` (what is already exported wins) and returns URL and key. */
 export function loadEnv() {
   const file = join(ROOT, ".env");
   if (existsSync(file)) process.loadEnvFile(file);
@@ -21,14 +21,14 @@ export function loadEnv() {
   return { file, exists: existsSync(file), url, key };
 }
 
-/** GET a la API del Bazaar con la clave del equipo; lanza con el código HTTP si falla. */
+/** GET to the Bazaar API with the team key; throws with the HTTP code on failure. */
 export async function apiGet(env, path, timeoutMs = 10_000) {
   const r = await fetch(`${env.url}${path}`, { headers: { "X-Team-Key": env.key ?? "" }, signal: AbortSignal.timeout(timeoutMs) });
   if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
   return r.json();
 }
 
-/** ¿Hay algo escuchando en 127.0.0.1:port? */
+/** Is anything listening on 127.0.0.1:port? */
 export function portInUse(port, timeoutMs = 1500) {
   return new Promise((done) => {
     const s = connect({ host: "127.0.0.1", port });
@@ -42,7 +42,7 @@ export function portInUse(port, timeoutMs = 1500) {
   });
 }
 
-/** "free" (nada escucha), "viewer" (responde /api/bazaar/score con JSON) u "other". */
+/** "free" (nothing listening), "viewer" (answers /api/bazaar/score with JSON) or "other". */
 export async function probeViewer(port) {
   if (!(await portInUse(port))) return "free";
   try {
@@ -53,11 +53,11 @@ export async function probeViewer(port) {
   }
 }
 
-/** Una línea del reloj: tick, hora de juego, puertas, pausa. */
+/** One clock line: tick, game time, doors, pause. */
 export const clockLine = (c) =>
-  `tick ${c.tick} · hora de juego ${c.t_hours ?? "?"} · puertas ${c.doors ?? "?"}${c.paused ? " · en pausa" : ""}${c.round_name ? ` · ${c.round_name}` : ""}${c.doors !== "open" && c.next_opens ? ` · abre ${c.next_opens}` : ""}`;
+  `tick ${c.tick} · game time ${c.t_hours ?? "?"} · doors ${c.doors ?? "?"}${c.paused ? " · paused" : ""}${c.round_name ? ` · ${c.round_name}` : ""}${c.doors !== "open" && c.next_opens ? ` · opens ${c.next_opens}` : ""}`;
 
-/** ¿El proceso pid sigue vivo? */
+/** Is process pid still alive? */
 export function alive(pid) {
   try {
     process.kill(pid, 0);
