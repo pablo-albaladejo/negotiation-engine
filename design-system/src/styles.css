@@ -154,6 +154,7 @@ html{scroll-padding-top:calc(var(--header-height,64px) + var(--space-2))}
 .nr-link-back:focus-visible,.nr-btn-back:focus-visible,.nr-btn-secondary:focus-visible,.nr-btn:focus-visible,.nr-btn-primary:focus-visible{outline:2px solid var(--us);outline-offset:2px}
 .nr-link-table{background:transparent;border:none;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
 .nr-link-table:focus-visible{outline:2px solid var(--us);outline-offset:2px}
+.nr-link-table:hover{text-decoration:underline;text-underline-offset:3px}
 .nr-link-back,.nr-btn-back,.nr-link-table{min-height:24px;padding:2px 0}
 
 /* P7 projector: discreet corner back link, visible on hover/focus only, outside the scaled canvas */
