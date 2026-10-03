@@ -263,7 +263,10 @@ export class DealersRoute {
       const ev = i.value !== undefined && i.price !== undefined ? (i.side === "buy" ? i.value - i.price : i.price - i.value) : i.value;
       const what = `${i.dealer} ${i.kind.toUpperCase()} ${i.target}${i.thread !== undefined ? ` (thread ${i.thread})` : ""}${i.price !== undefined ? ` @ ${i.price} P` : ""}${i.rule ? ` (${i.rule})` : ""}${i.text ? ` "${i.text}"` : ""}`;
       const sold = /^sell:(\d+)$/.exec(i.target)?.[1];
-      const base = { id: dealerKey(i), route: "dealers" as const, summary: what, ...(conv ? { conversation: conv } : {}), ...(ev !== undefined ? { ev } : {}), ...(sold ? { locks: [`asset:${sold}`] } : {}) };
+      // A named card we buy shares a `buy:<ref>` lock with El Rastro bids: one route per card and tick.
+      const bought = /^buy:([A-Z]+-\d+)$/.exec(i.target)?.[1];
+      const locks = [...(sold ? [`asset:${sold}`] : []), ...(bought ? [`buy:${bought}`] : [])];
+      const base = { id: dealerKey(i), route: "dealers" as const, summary: what, ...(conv ? { conversation: conv } : {}), ...(ev !== undefined ? { ev } : {}), ...(locks.length ? { locks } : {}) };
       if (i.kind === "accept") {
         const page = i.side === "buy" && i.cards.some((c) => completesPage(c, me, state.ours.album.pages, this.o.pageTargets));
         out.intents.push({ ...base, kind: "accept", acceptClass: page ? "page-completing" : "dealer-ladder" });
@@ -342,6 +345,14 @@ export class TradesRoute {
         summary: `El Rastro: ACCEPT offer #${a.offer.id} (${a.kind}: get ${a.getCards.join(", ") || "-"}, give ${a.giveCards.join(", ") || "-"}, cash ${a.cashNet} P, value created ${a.valueCreated.toFixed(1)})`,
       });
     }
+    // A card one of our dealer threads is already buying gets no El Rastro bid, and a resting one is cancelled:
+    // two routes would buy two copies, and the second is worth ~25 % of the first.
+    const dealerBuys = new Set(state.conversations.flatMap((c) => (c.kind === "dealer" && c.side === "buy" && c.phase !== "done" && c.asset.ref ? [c.asset.ref] : [])));
+    for (const c of state.conversations) {
+      const id = Number(/^rastro:(\d+)$/.exec(c.id)?.[1]);
+      if (c.kind !== "rastro" || c.side !== "buy" || c.phase === "done" || !c.asset.ref || !dealerBuys.has(c.asset.ref) || !c.history.ourPrices.length || !Number.isFinite(id)) continue;
+      if (!plan.cancels.some((x) => x.id === id)) plan.cancels.push({ id, reason: `a dealer thread is buying ${c.asset.ref}` });
+    }
     for (const c of plan.cancels) out.intents.push({ id: `trades:cancel:${c.id}`, route: "trades", kind: "cancel", summary: `El Rastro: CANCEL #${c.id} (${c.reason})` });
     // Scanner on: the same context the markets route gets this tick (directed listings from this El Rastro state, page targets).
     const trade = this.scanner ? this.last.state : undefined;
@@ -355,7 +366,11 @@ export class TradesRoute {
         out.notes.push(`El Rastro: list ${p.ref} @ ${p.price} P held back: bid ${sale.quote.price} P on ${sale.venue.id} (#${sale.quote.offer}, net ${sale.net}) goes through the markets route`);
         return;
       }
-      const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [`sell:${p.ref}`] : [])];
+      if (p.kind === "bid" && dealerBuys.has(p.ref)) {
+        out.notes.push(`El Rastro: bid ${p.ref} @ ${p.price} P held back: a dealer thread of ours is buying it`);
+        return;
+      }
+      const locks = [...("assets" in p.body.give ? p.body.give.assets : []).map((id) => `asset:${id}`), ...(p.kind === "list" ? [`sell:${p.ref}`] : [`buy:${p.ref}`])];
       out.intents.push({ id: `trades:post:${k}`, route: "trades", kind: "listing", ev: p.value, price: p.price, ref: p.ref, locks, summary: `El Rastro: POST ${p.kind} ${p.ref} @ ${p.price} P (${p.why}, value ${p.value.toFixed(1)})` });
     });
     out.notes.push(`El Rastro: ${plan.evaluated} offers read, ${plan.opportunities.length} opportunities${plan.notes.length ? ` · ${plan.notes.slice(0, 2).join(" · ")}` : ""}`);
