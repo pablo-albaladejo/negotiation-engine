@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { freeCounts, takesLastFreeCopy } from "../shared/last-copy.js";
 import type { Asset, Catalog } from "../shared/schemas.js";
+import { isKeepsake } from "../shared/asset-locks.js";
 
 /**
  * Trades with other teams in El Rastro: valuation at OUR private values and pure,
@@ -121,7 +122,8 @@ export function readValueRules(catalog: Catalog): ValueRules {
 export function heldAssets(assets: Asset[]): HeldAsset[] {
   return assets
     .filter((a) => (a.kind ?? "card") === "card" && /^[A-Z]+-\d+$/.test(a.ref))
-    .map((a) => ({ id: a.id, ref: a.ref, value: a.your_value ?? 0, locked: a.locked === true }));
+    // A keepsake (`isKeepsake`) counts as locked: no El Rastro, rival or team-desk route gives it away.
+    .map((a) => ({ id: a.id, ref: a.ref, value: a.your_value ?? 0, locked: a.locked === true || isKeepsake(a) }));
 }
 
 export function countHoldings(held: HeldAsset[]): Map<string, number> {

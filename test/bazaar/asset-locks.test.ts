@@ -1,10 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
-import { assetsInOffers, assetsInThreads, busyAssets, sellBlocked } from "../../src/shared/asset-locks.js";
+import { assetsInOffers, assetsInThreads, busyAssets, isKeepsake, sellBlocked } from "../../src/shared/asset-locks.js";
 import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
-import { DEFAULT_TRADE_PARAMS, buildValueModel, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
+import { DEFAULT_TRADE_PARAMS, buildValueModel, heldAssets, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
 
 const SAL07 = { id: 438, kind: "card", ref: "SAL-07", serial: 10, rarity: "uncommon", set: "SAL", print_run: 90 };
 /** `/api/me/offers` real from 2 Oct (tick 132): 438 listed in El Rastro at 37 and in thread 260 with Abuela. */
@@ -193,5 +193,28 @@ describe("El Rastro never lists a busy asset nor the album copy", () => {
         }
       }),
     );
+  });
+});
+
+describe("keepsakes never leave on their own", () => {
+  it("a one-print card, or an epic/legendary without a positive value, is held as locked", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("common", "uncommon", "rare", "epic", "legendary"),
+        fc.option(fc.integer({ min: 1, max: 500 }), { nil: null }),
+        fc.option(fc.double({ min: -5, max: 300, noNaN: true }), { nil: null }),
+        (rarity, printRun, value) => {
+          const asset = { id: 1056, kind: "card", ref: "LAT-13", rarity, print_run: printRun, your_value: value };
+          const keep = printRun === 1 || ((rarity === "epic" || rarity === "legendary") && !((value ?? 0) > 0));
+          expect(isKeepsake(asset)).toBe(keep);
+          expect(heldAssets([asset])[0]!.locked).toBe(keep);
+        },
+      ),
+    );
+  });
+
+  it("the egg gift LAT-13 (legendary, print_run 1, your_value 0) is locked", () => {
+    const [held] = heldAssets([{ id: 1056, kind: "card", ref: "LAT-13", rarity: "legendary", print_run: 1, serial: 1, your_value: 0 }]);
+    expect(held!.locked).toBe(true);
   });
 });
