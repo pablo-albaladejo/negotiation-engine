@@ -134,6 +134,22 @@ export interface BoardAlbumPage {
   of: number;
   complete: boolean;
   missing: BoardMissingCard[];
+  color?: string | null;
+  theme?: string | null;
+  /** Every page card in catalog order (held or missing). */
+  cards?: BoardAlbumCard[];
+  /** Off-page cards (shinies); hidden ones only when we hold them. */
+  shinies?: BoardAlbumCard[];
+}
+
+export interface BoardAlbumCard extends BoardMissingCard {
+  /** Copies we hold (0 = missing). */
+  held: number;
+  print_run: number | null;
+  /** Copies in circulation. */
+  minted: number | null;
+  hidden: boolean;
+  flavour: string | null;
 }
 
 export interface BoardAlbum {

@@ -5,6 +5,7 @@ import { PageTitle } from "../ui/page-title.js";
 import { Workshop } from "./Workshop.js";
 import { TeamDesk } from "./TeamDesk.js";
 import { VenueBooks } from "./venues/VenueBooks.js";
+import { AlbumCards } from "./album/AlbumCards.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
 import { componentOf } from "../model/scoreTree.js";
 import type { ModelLadderLevel } from "../model/gameModel.js";
@@ -36,7 +37,6 @@ import {
   mentionsUs,
   offerCurve,
   PARTY_LABEL,
-  RARITY_COLOR,
   ourOfferIds,
   partyOf,
   scheduleLines,
@@ -44,7 +44,6 @@ import {
   standingOf,
   teamLabel,
   withTeamNames,
-  type BoardAlbumPage,
   type OfferCurve,
 } from "../model/index.js";
 import { useBazaarModel } from "../bazaarModelLive.js";
@@ -511,15 +510,6 @@ function MarketPanel({ board }: { board: Board }) {
 
 const fmt = (v: number | null | undefined, digits = 2): string => (v === null || v === undefined ? "—" : String(Math.round(v * 10 ** digits) / 10 ** digits));
 
-function Bar({ have, of, complete }: { have: number; of: number; complete: boolean }) {
-  const pct = Math.round((100 * have) / Math.max(1, of));
-  return (
-    <div role="meter" aria-valuemin={0} aria-valuemax={of} aria-valuenow={have} aria-label={`${have} of ${of}`} style={{ height: 8, borderRadius: "var(--radius-pill)", background: "var(--line)", overflow: "hidden" }}>
-      <div style={{ width: `${pct}%`, height: "100%", background: complete ? "var(--ok)" : pct >= 70 ? "var(--us)" : "var(--muted)" }} />
-    </div>
-  );
-}
-
 function Scoreboard({ board }: { board: Board }) {
   const st = standingOf(board);
   const h = board.header;
@@ -606,50 +596,6 @@ function RightNow({ board, onOpen }: { board: Board; onOpen: (id: string) => voi
         />
       ) : (
         <span className="nr-muted">Nothing open.</span>
-      )}
-    </Card>
-  );
-}
-
-function AlbumPageRow({ page }: { page: BoardAlbumPage }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)" }}>
-        <strong>
-          {page.name} <span className="nr-muted">({page.set})</span>
-        </strong>
-        <span>
-          {page.have}/{page.of}
-          {page.complete ? " ✓" : ""}
-        </span>
-      </div>
-      <Bar have={page.have} of={page.of} complete={page.complete} />
-      {page.missing.length > 0 ? (
-        <ul aria-label={`Missing from ${page.name}`} style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: "var(--space-1) var(--space-3)" }}>
-          {page.missing.map((m) => (
-            <li key={m.ref} className="nr-muted" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: "50%", background: RARITY_COLOR[m.rarity ?? "common"] ?? "var(--muted)", flex: "none" }} />
-              <span>{`${m.ref} ${m.name}${m.rarity && m.rarity !== "common" ? ` [${m.rarity}]` : ""} — ${m.value !== null ? `value ${fmt(m.value, 1)}` : "value ?"}${m.book !== null ? ` · book ${m.book}` : ""}`}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
-function Album({ board }: { board: Board }) {
-  const album = board.album;
-  return (
-    <Card title={album ? `Album ${album.filled ?? "?"}/${album.slots ?? "?"} · ★ ${album.pages.filter((p) => p.complete).length} pages complete` : "Album"}>
-      {album && album.pages.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-          {album.pages.map((p) => (
-            <AlbumPageRow key={p.set} page={p} />
-          ))}
-        </div>
-      ) : (
-        <span className="nr-muted">{NOT_LOGGED}</span>
       )}
     </Card>
   );
@@ -831,7 +777,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <RightNow board={board} onOpen={open} />
       <TeamDesk board={board} />
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>
-        <Album board={board} />
+        <AlbumCards board={board} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <ScoreMovers board={board} onOpen={open} />
           <Agents board={board} />

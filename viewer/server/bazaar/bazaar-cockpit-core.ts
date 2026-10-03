@@ -9,9 +9,21 @@ import { z } from "zod";
 const num = z.number();
 const str = z.string();
 
-const CatalogCardSchema = z.looseObject({ id: str, name: str.nullish(), rarity: str.nullish(), book: num.nullish(), page: z.boolean().nullish() });
+const CatalogCardSchema = z.looseObject({
+  id: str,
+  name: str.nullish(),
+  rarity: str.nullish(),
+  book: num.nullish(),
+  page: z.boolean().nullish(),
+  print_run: num.nullish(),
+  minted: num.nullish(),
+  hidden: z.boolean().nullish(),
+  flavour: str.nullish(),
+});
 const CatalogSchema = z.looseObject({
-  sets: z.array(z.looseObject({ id: str, name: str.nullish(), released: z.boolean().nullish(), cards: z.array(CatalogCardSchema).nullish() })).nullish(),
+  sets: z
+    .array(z.looseObject({ id: str, name: str.nullish(), theme: str.nullish(), color: str.nullish(), released: z.boolean().nullish(), cards: z.array(CatalogCardSchema).nullish() }))
+    .nullish(),
 });
 const AlbumSchema = z.looseObject({
   pages: z.array(z.looseObject({ set: str, name: str.nullish(), have: num.nullish(), of: num.nullish(), complete: z.boolean().nullish() })).nullish(),
@@ -20,7 +32,7 @@ const AlbumSchema = z.looseObject({
 });
 const MeAlbumSchema = z.looseObject({
   album: AlbumSchema.nullish(),
-  assets: z.array(z.looseObject({ ref: str.nullish(), kind: str.nullish() })).nullish(),
+  assets: z.array(z.looseObject({ ref: str.nullish(), kind: str.nullish(), your_value: num.nullish() })).nullish(),
 });
 const ScheduleSchema = z.looseObject({
   now_hours: num.nullish(),
@@ -37,6 +49,17 @@ export interface MissingCard {
   value: number | null;
 }
 
+/** One card of a set for the album grid: held or missing, with scarcity (minted of print_run). */
+export interface AlbumCard extends MissingCard {
+  /** Copies we hold (0 = missing). */
+  held: number;
+  print_run: number | null;
+  /** Copies in circulation. */
+  minted: number | null;
+  hidden: boolean;
+  flavour: string | null;
+}
+
 export interface AlbumPage {
   set: string;
   name: string;
@@ -44,6 +67,13 @@ export interface AlbumPage {
   of: number;
   complete: boolean;
   missing: MissingCard[];
+  /** Set color and theme from the catalog. */
+  color: string | null;
+  theme: string | null;
+  /** Every page card in catalog order. */
+  cards: AlbumCard[];
+  /** Off-page cards (shinies): they top the page up. Hidden ones only when we hold them. */
+  shinies: AlbumCard[];
 }
 
 export interface AlbumOut {
@@ -85,12 +115,38 @@ export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap
   const catalog = CatalogSchema.safeParse(catalogRaw);
   const sets = new Map((catalog.success ? (catalog.data.sets ?? []) : []).map((s) => [s.id, s]));
   const held = holdingsOf(meRaw);
+  const ownValue = new Map((me.data.assets ?? []).flatMap((a) => (a.ref && typeof a.your_value === "number" ? [[a.ref, a.your_value] as const] : [])));
   const pages: AlbumPage[] = (me.data.album.pages ?? []).map((p) => {
-    const cards = (sets.get(p.set)?.cards ?? []).filter((c) => c.page !== false);
+    const set = sets.get(p.set);
+    const all = set?.cards ?? [];
+    const cards = all.filter((c) => c.page !== false);
     const missing = cards
       .filter((c) => !held[c.id])
       .map((c) => ({ ref: c.id, name: c.name ?? c.id, rarity: c.rarity ?? null, book: c.book ?? null, value: values.get(c.id) ?? null }));
-    return { set: p.set, name: p.name ?? p.set, have: p.have ?? 0, of: p.of ?? cards.length, complete: p.complete ?? false, missing };
+    const card = (c: (typeof all)[number]): AlbumCard => ({
+      ref: c.id,
+      name: c.name ?? c.id,
+      rarity: c.rarity ?? null,
+      book: c.book ?? null,
+      value: ownValue.get(c.id) ?? values.get(c.id) ?? null,
+      held: held[c.id] ?? 0,
+      print_run: c.print_run ?? null,
+      minted: c.minted ?? null,
+      hidden: c.hidden ?? false,
+      flavour: c.flavour ?? null,
+    });
+    return {
+      set: p.set,
+      name: p.name ?? p.set,
+      have: p.have ?? 0,
+      of: p.of ?? cards.length,
+      complete: p.complete ?? false,
+      missing,
+      color: set?.color ?? null,
+      theme: set?.theme ?? null,
+      cards: cards.map(card),
+      shinies: all.filter((c) => c.page === false && (!c.hidden || held[c.id])).map(card),
+    };
   });
   pages.sort((a, b) => b.have / Math.max(1, b.of) - a.have / Math.max(1, a.of));
   return { filled: me.data.album.filled ?? null, slots: me.data.album.slots ?? null, pages };

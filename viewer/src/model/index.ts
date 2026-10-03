@@ -18,6 +18,7 @@ export {
   type BoardWorkshop,
   type BoardDeskTeam,
   type BoardBookRow,
+  type BoardAlbumCard,
   type BoardVenueBook,
   type BoardVenueBooks,
   type BoardDeskChain,
