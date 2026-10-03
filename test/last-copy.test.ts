@@ -1,6 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { freeCounts, isLastFreeCopy, takesLastFreeCopy } from "../src/shared/last-copy.js";
+import { proposeRivalSwap, RIVAL_SWAP_PARAMS, swapGain } from "../src/markets/rival-swap.js";
+import type { RivalsState, RivalTeam } from "../src/state/rivals.js";
 import { acceptLockedIds, buildValueModel, DEFAULT_TRADE_PARAMS, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../src/trades/trades.js";
 
 /** Last-free-copy guardrail: no sale or payment leaves 0 free copies of a card (free = held − locked − reserved). */
@@ -85,6 +87,35 @@ describe("last free copy", () => {
           const kept = held.filter((h) => h.ref === ref && !a.payAssets.includes(h.id) && !locked.has(h.id) && !reserved.has(h.id) && !listedAfter.has(h.id));
           expect(kept.length).toBeGreaterThanOrEqual(1);
         }
+      }),
+    );
+  });
+
+  it("a rival swap never gives the last free copy, nets at least minGain and keeps one open swap per team", () => {
+    const teamArb = fc.record({ wants: fc.subarray(REFS), seen: fc.array(fc.constantFrom(...REFS), { maxLength: 4 }), age: fc.integer({ min: 0, max: 90 }) });
+    fc.assert(
+      fc.property(fc.array(copyArb, { minLength: 1, maxLength: 8 }), fc.array(teamArb, { minLength: 1, maxLength: 4 }), fc.array(fc.integer({ min: 1, max: 40 }), { minLength: 3, maxLength: 3 }), (copies, teams, values) => {
+        const held: HeldAsset[] = copies.map((c, i) => ({ id: 100 + i, ref: c.ref, value: c.value, locked: c.locked }));
+        const reserved = new Set(held.filter((_, i) => copies[i]!.reserved).map((a) => a.id));
+        const zero = new Map(REFS.map((r, k) => [r, values[k]!]));
+        const model = buildValueModel(CATALOG, held, zero);
+        for (const [k, r] of REFS.entries()) model.base.set(r, values[k]!);
+        const state: TradeState = { tick: 100, myId: "t02", cash: 100, held, pageSets: ["SAL"], board: [], mine: [], toMe: [], settlements: [], model, limits: { offersPerTick: 12, maxOpenOffers: 30, acceptsPerTick: 1 }, spent: 0, reserved };
+        const rivalTeams: RivalTeam[] = teams.map((t, k) => ({
+          team: `t${10 + k}`,
+          seen: t.seen.map((ref, j) => ({ assetId: 900 + k * 10 + j, ref, tick: 100 - t.age, source: "offer" as const })),
+          distinct: new Set(t.seen).size,
+          spares: [],
+          pages: [],
+          wants: t.wants.map((ref) => ({ ref, tick: 100 - t.age })),
+        }));
+        const rivals: RivalsState = { teams: rivalTeams, byRef: {}, seenAssets: 0, lastEventId: 0 };
+        const { plan } = proposeRivalSwap({ tick: 100, trade: state, rivals, cashFloor: 20 }, RIVAL_SWAP_PARAMS, new Map());
+        const locked = new Set(held.filter((a) => a.locked).map((a) => a.id));
+        expect(plan.posts.length).toBeLessThanOrEqual(RIVAL_SWAP_PARAMS.maxOpen);
+        expect(new Set(plan.posts.map((p) => p.team)).size).toBe(plan.posts.length);
+        expect(takesLastFreeCopy(plan.posts.map((p) => p.assetId), held, locked, reserved)).toBe(false);
+        for (const p of plan.posts) expect(swapGain(state, p.give, p.get, new Set())!.gain).toBeGreaterThanOrEqual(RIVAL_SWAP_PARAMS.minGain);
       }),
     );
   });

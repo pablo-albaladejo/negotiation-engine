@@ -432,7 +432,7 @@ export class TradesRoute {
   constructor(
     private readonly client: BazaarClient,
     dryRun: boolean,
-    private readonly params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets" | "pageBonusScored" | "rastroBids">> = {},
+    private readonly params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets" | "pageBonusScored" | "rastroBids" | "rivalSwap">> = {},
     backoffFile?: string,
   ) {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });

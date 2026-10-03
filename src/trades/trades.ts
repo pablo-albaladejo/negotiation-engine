@@ -456,6 +456,8 @@ export interface TradeParams {
    * ones are cancelled) and an accept that brings in cards for cash must bring a page-completing card (target or last missing).
    */
   rastroBids?: boolean;
+  /** `--rival-swap` (opt-in): a card-for-card swap we accept (we pay no cash, only the fee) is allowed without a page-completing card. */
+  rivalSwap?: boolean;
   /** No El Rastro listing below this price (P): the 5 % + 1 P fee eats the margin; that surplus is left for the dealers. */
   minListPrice: number;
   /** Venue-switch reserve (P above `cashFloor`, set by the coordinator): only page-completing buys may use it. */
@@ -749,7 +751,8 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const spendableFor = (cards: readonly string[]) =>
     spendable - (cards.some((c) => reserveRefs.has(c)) || !cards.some(newPageCard) ? 0 : reserve) - (cards.some(completesPage) ? 0 : venueReserve);
   // Without --rastro-bids, an El Rastro buy (cards for cash) is only taken for a page-completing card.
-  const buyAllowed = (e: Evaluation) => params.rastroBids || !(e.getCards.length && e.spend > 0) || e.getCards.some(completesPage);
+  const buyAllowed = (e: Evaluation) =>
+    params.rastroBids || !(e.getCards.length && e.spend > 0) || e.getCards.some(completesPage) || (!!params.rivalSwap && e.kind === "swap" && readSide(e.offer.want).cash === 0);
   let accept: Evaluation | undefined;
   if (state.limits.acceptsPerTick >= 1) {
     accept = opportunities.find((e) => e.ok && buyAllowed(e) && e.spend <= budget && e.spend <= spendableFor(e.getCards));

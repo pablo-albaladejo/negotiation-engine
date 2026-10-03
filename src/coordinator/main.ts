@@ -26,6 +26,7 @@ import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
 import { executeRivalBuy, proposeRivalBuy, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
+import { executeRivalSwap, proposeRivalSwap, type RivalSwapPlan } from "../markets/rival-swap.js";
 import { ScannerLedger } from "../markets/scanner.js";
 import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corpus.js";
 import { defaultHintLabelsFile, HintLabeler, loadHintLabels } from "../hints/labels.js";
@@ -81,6 +82,7 @@ async function main() {
       "allow-venue-switch": { type: "boolean", default: false },
       "rival-page": { type: "boolean", default: false },
       "rival-buy": { type: "boolean", default: false },
+      "rival-swap": { type: "boolean", default: false },
       "rastro-bids": { type: "boolean", default: false },
       "no-venue-reserve": { type: "boolean", default: false },
       scanner: { type: "boolean", default: false },
@@ -113,7 +115,9 @@ async function main() {
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
   const rastroBids = values["rastro-bids"] === true;
-  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, rastroBids }, defaultListBackoffFile(root));
+  // --rival-swap (opt-in): El Rastro may also accept a card-for-card swap addressed to us (fee only) without a page-completing card.
+  const rivalSwap = values["rival-swap"] === true;
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, rastroBids, rivalSwap }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
@@ -305,6 +309,7 @@ async function main() {
     const proposals: { route: string; p: RouteProposal }[] = [];
     let rivalPlan: RivalPagePlan = { posts: [], cancels: [] };
     let rivalBuyPlan: RivalBuyPlan = { posts: [], cancels: [] };
+    let rivalSwapPlan: RivalSwapPlan = { posts: [], cancels: [] };
     const routeErrors: string[] = [];
     const me = await client.me().catch(() => undefined);
     for (const [route, run] of [
@@ -356,6 +361,17 @@ async function main() {
             m.notes.push(...r.notes);
           } catch (e) {
             m.notes.push(`[rival-buy] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
+          }
+          // Directed card-for-card swaps of our spares (opt-in --rival-swap: without it, nothing is proposed).
+          if (rivalSwap) {
+            try {
+              const r = proposeRivalSwap({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), otherAssets: rivalPlan.posts.map((p) => p.assetId), rivals: state.rivals, pageTargets, pageBonusScored, cashFloor: num(values["cash-floor"], "--cash-floor"), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+              rivalSwapPlan = r.plan;
+              m.intents.push(...r.intents);
+              m.notes.push(...r.notes);
+            } catch (e) {
+              m.notes.push(`[rival-swap] off: ${e instanceof Error ? e.message.slice(0, 200) : String(e)}`);
+            }
           }
           return { ...m, strategies: new Map(), decisions: new Map() };
         },
@@ -424,6 +440,8 @@ async function main() {
     report("markets", await executeRivalPage(client, selectedIntents, rivalPlan, dryRun || !values["rival-page"], undefined, undefined, state.tick));
     // Rival-buy bids go out only live AND with the opt-in --rival-buy; otherwise "would" lines.
     report("markets", await executeRivalBuy(client, selectedIntents, rivalBuyPlan, dryRun || !values["rival-buy"], undefined, undefined, state.tick));
+    // Rival-swap offers go out only live AND with the opt-in --rival-swap (proposed only with it).
+    report("markets", await executeRivalSwap(client, selectedIntents, rivalSwapPlan, dryRun || !rivalSwap, undefined, undefined, state.tick));
     report("packs", await executePacks(client, selectedIntents, dryRun));
     report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);
