@@ -97,6 +97,12 @@ export interface AgentOptions {
   /** Asset ids received from another team today: the planner never offers them to this dealer. */
   teamReceived?: () => ReadonlySet<number>;
   /**
+   * Coordinator, 3 Oct: a thread this agent did not open (a probe Pablo opened by hand) is never resumed, countered,
+   * accepted or closed. Threads opened in this run always count as ours; this says whether an older one is (the trace).
+   * Without it (standalone runs), every open thread with the dealer is resumed as before.
+   */
+  ownsThread?: (thread: number) => boolean;
+  /**
    * One-shot egg open (Pablo, 3 Oct, `--egg-open`): with no target, open the pack she sells at our budget so the queued
    * egg probe rides on the counter or the farewell; never above our budget, and her ask far above it means no deal.
    */
@@ -192,6 +198,10 @@ export class BazaarAgent {
   private readonly maxLookups: number;
   private readonly negotiatorParams: NegotiatorParams;
   private threadsOpened = 0;
+  /** Threads left alone (logged once). */
+  private readonly foreignLogged = new Set<number>();
+  /** Threads this run opened (always ours). */
+  private readonly openedHere = new Set<number>();
   private dealsDone = 0;
   private spentRun = 0;
 
@@ -285,7 +295,11 @@ export class BazaarAgent {
       const me = await this.api.me();
       this.prevCash = this.lastCash;
       this.lastCash = me.cash;
-      if (!this.active) await this.adoptOpenThread(me, tick);
+      if (!this.active && (await this.adoptOpenThread(me, tick)) === "foreign") {
+        // A thread we did not open is open with her: leave it alone and open nothing on top of it.
+        emit({ action: "idle", rule: "foreign-thread" });
+        return out;
+      }
       if (this.active) {
         const thread = await this.api.thread(this.active.id);
         if (thread.status === "open") {
@@ -322,6 +336,7 @@ export class BazaarAgent {
       try {
         const welcome = await this.isFirstConversation();
         const thread = await this.api.openThread(this.o.dealer.id, target.topic);
+        this.openedHere.add(thread.id);
         this.active = { id: thread.id, target, lastSentTick: tick, sent: [], holdsUsed: 0, patience: new PatienceLog(target.side, tick), welcome, ...(target.chase ? { chase: target.chase } : {}), ...this.openSnapshot(me, target, tick) };
         this.team.claimBuy(this.o.dealer.id, buyCardOf(target));
         this.threadsOpened += 1;
@@ -355,12 +370,23 @@ export class BazaarAgent {
   }
 
   /** After a restart: resumes the thread open with the dealer, rebuilding the target from its topic. */
-  private async adoptOpenThread(me: Me, tick: number): Promise<void> {
+  private async adoptOpenThread(me: Me, tick: number): Promise<"foreign" | undefined> {
     const list = await this.api.myThreads("open");
     const summary = list.threads.find((t) => isDealer(this.o.dealer, t.with) && (t.status ?? "open") === "open");
     if (!summary) return;
+    if (this.o.ownsThread && !this.openedHere.has(summary.id) && !this.o.ownsThread(summary.id)) {
+      if (!this.foreignLogged.has(summary.id)) this.log(`  thread ${summary.id}: not opened by us (a probe by hand): left alone, nothing opened with ${this.o.dealer.id} while it is open`);
+      this.foreignLogged.add(summary.id);
+      return "foreign";
+    }
     const thread = await this.api.thread(summary.id);
     const target = await this.targetFromTopic(thread, me);
+    // Buying packs is PAUSED (packs.ts): a pack thread is never resumed after a restart, only left to her.
+    if (this.o.ownsThread && target?.key.startsWith("buy:pack:")) {
+      if (!this.foreignLogged.has(thread.id)) this.log(`  thread ${thread.id}: ${target.key} not resumed (pack buys paused): left alone`);
+      this.foreignLogged.add(thread.id);
+      return "foreign";
+    }
     // One asset, one place when resuming too: if the asset is already in another open offer or thread, this thread is closed.
     const busyWhy = target?.side === "sell" ? sellBlocked(target.topic, (await busyAssets(this.api, me.id, thread.id)) ?? new Map()) : undefined;
     if (busyWhy) {

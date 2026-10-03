@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog, Clock, DealerInfo, Me } from "../shared/schemas.js";
-import type { TraceRecord, TraceSink } from "../shared/trace.js";
+import { liveTraceDir, type TraceRecord, type TraceSink } from "../shared/trace.js";
 import { BazaarAgent, type DealerIntent } from "../dealers/agent.js";
 import { dealsPerHourOf, negotiatorForDealer, traitsOf, unlockedDealerIds } from "../dealers/dealer-profile.js";
 import { TeamBudget } from "../dealers/team.js";
@@ -94,6 +94,19 @@ export class DuelsRoute {
 // ---------------------------------------------------------------- dealers
 
 /** Trace the coordinator silences in the proposals pass (to avoid duplicate records). */
+/**
+ * A thread is ours when play's trace recorded opening it (`thread-<id>.jsonl` with an `open` record); a probe Pablo
+ * opened by hand has none. Read from disk each time (a few small files a tick), so a restart keeps the answer.
+ */
+function openedByPlay(thread: number): boolean {
+  const file = join(liveTraceDir(process.cwd()), `thread-${thread}.jsonl`);
+  try {
+    return existsSync(file) && readFileSync(file, "utf8").includes('"action":"open"');
+  } catch {
+    return false;
+  }
+}
+
 class SwitchableTrace implements TraceSink {
   muted = true;
   constructor(private readonly inner: TraceSink | undefined) {}
@@ -280,6 +293,7 @@ export class DealersRoute {
             !this.state.conversations.some((c) => c.counterparty === id) &&
             !this.lessonEntries.some((e) => e.dealer === id && (e.ts ?? "").startsWith(new Date().toISOString().slice(0, 10))),
           teamReceived: () => this.teamReceived,
+          ownsThread: (thread) => openedByPlay(thread),
           pastNoDeals: (key) => pastNoDeals(this.lessonEntries, id, key, new Date().toISOString().slice(0, 10)),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);
@@ -685,7 +699,8 @@ export function probePhrasesFor(hints: readonly HintLine[], persona: string): st
     })
     .sort((a, b) => a.r - b.r || Number(isSpanishPhrase(b.k)) - Number(isSpanishPhrase(a.k)) || b.tick - a.tick)
     .flatMap(({ k }) => {
-      if (!k || !isProbePhrase(k) || seen.has(normalize(k))) return [];
+      // Keywords cut from the middle of a sentence ("to pack up", "your lucky face") are not a topic a dealer could know about.
+      if (!k || !isProbePhrase(k) || /^(to|your|this|it|her|him)\s/i.test(k) || seen.has(normalize(k))) return [];
       seen.add(normalize(k));
       return [k];
     });
