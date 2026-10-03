@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
+import type { NewsSignals } from "../../../src/news/signals.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
 import { loadRivalLedger, type RivalLedger } from "../../../src/state/rivals.js";
 import { loadPosterior, type PersonaEstimates } from "../../../src/dealers/history/persona-fit.js";
@@ -148,6 +149,8 @@ export interface ModelOut {
    * and `state.conversations[].prediction`.
    */
   fit: { source: "persona-posterior.json" | "this tick only"; estimates: Record<string, PersonaEstimates>; welcome: string[]; bands: Record<string, string> } | null;
+  /** `GameState.news`: the news as a hint (unverified, never a figure), from today's news-summary.json. */
+  news: NewsSignals | null;
 }
 
 /**
@@ -266,6 +269,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     venues: { state: null, api: [] },
     now: null,
     fit: null,
+    news: null,
   };
 }
 
@@ -390,7 +394,7 @@ export class BazaarModel {
       const clock = await client.clock();
       const withLb = clock.tick - this.lastLeaderboard >= PLAY_DEFAULTS.leaderboardEvery;
       this.rivals ??= loadRivalLedger(join(this.bazaarDir, "rivals.json"), this.bazaarDir);
-      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos, posterior, rivals: this.rivals });
+      state = await buildGameState(client, { leaderboard: withLb, pageTargets: PLAY_DEFAULTS.pageTargets, memos: persisted.memos, posterior, rivals: this.rivals, newsDir: join(this.bazaarDir, new Date().toLocaleDateString("sv-SE")) });
       if (withLb && !state.missing.some((m) => m.startsWith("leaderboard"))) this.lastLeaderboard = state.tick;
     } catch (e) {
       const reason = `GameState failed: ${e instanceof BazaarError ? e.code : e instanceof Error ? e.name : "error"}`;
@@ -534,6 +538,7 @@ export class BazaarModel {
         // Band of each observed conversation (`sells|buys:<rarity>`), also when the GameState does not know the rarity.
         bands: Object.fromEntries(Object.values(posterior.observations).map((o) => [o.id, o.band])),
       },
+      news: state.news ?? null,
     };
     this.cache = { refreshAt: now() + refreshIn, data };
     return data;

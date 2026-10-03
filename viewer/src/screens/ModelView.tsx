@@ -6,6 +6,7 @@ import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
 import { DealerEstimates } from "./DealerEstimates.js";
 import { Rivals } from "./Rivals.js";
+import { NewsSignals } from "./NewsSignals.js";
 import { PersonaStrategy } from "./DealerFitStrip.js";
 import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
@@ -986,6 +987,7 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Personas model={model} />
       <DealerEstimates model={model} />
       <Hints model={model} />
+      <NewsSignals model={model} />
       <Card title={`Conversations in our model (${active.length} active, ${convs.length - active.length} done)`}>
         {convs.length > 0 ? <ConversationsTable convs={convs} onOpen={onOpen} /> : <Muted>No conversations.</Muted>}
       </Card>
