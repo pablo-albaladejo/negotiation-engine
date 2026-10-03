@@ -147,6 +147,8 @@ export function unlockChaseFor(state: GameState, dealer: string): string | undef
 export class DealersRoute {
   private readonly agents = new Map<string, BazaarAgent>();
   private readonly team: TeamBudget;
+  /** Venue-switch reserve (P above the cash floor), set by the coordinator each tick: only page-completing buys use it. */
+  venueReserve = 0;
   private readonly trace: SwitchableTrace;
   private collected: DealerIntent[] = [];
   private allowed = new Set<string>();
@@ -251,6 +253,7 @@ export class DealersRoute {
     await this.ensureAgents(me);
     const reserve = pageReserveOf(state, me, this.o.pageTargets, await pageTargetCaps(this.client, me, this.o.pageTargets, this.o.pageBonusScored ?? false));
     this.team.pageReserve = reserve.amount;
+    this.team.venueReserve = this.venueReserve;
     if (reserve.amount) out.notes.push(`page reserve: ${reserve.amount} P kept for ${reserve.refs.join(", ")} (${reserve.why}; other page-card buys stay above it)`);
     this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
     // Score audit: each deal should score your_value − price at our private values; every Δ is checked against our settlements.
@@ -375,7 +378,7 @@ export class TradesRoute {
   constructor(
     private readonly client: BazaarClient,
     dryRun: boolean,
-    private readonly params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets" | "pageBonusScored">> = {},
+    private readonly params: Partial<Pick<TradeParams, "maxSpend" | "cashFloor" | "pageTargets" | "pageBonusScored" | "rastroBids">> = {},
     backoffFile?: string,
   ) {
     this.agent = new TradesAgent(client, { ...DEFAULT_TRADE_PARAMS, ...params }, { dryRun, log: () => {}, ...(backoffFile ? { backoffFile } : {}) });
@@ -383,6 +386,8 @@ export class TradesRoute {
 
   /** Page reserve of the last proposal (P): directed bids of the markets route stay above it too. */
   lastReserve = 0;
+  /** Venue-switch reserve (P above the cash floor), set by the coordinator each tick: only page-completing buys use it. */
+  venueReserve = 0;
 
   /** El Rastro state and plan of the last proposal (the rival-page listings reuse them; `undefined` before the first). */
   get lastState(): TradeState | undefined {
@@ -398,7 +403,7 @@ export class TradesRoute {
     // Other teams' demand and supply lift asks and rank bids (absent rivals: the plan is unchanged).
     const reserve = pageReserveOf(state, me, pageTargets, await pageTargetCaps(this.client, me, pageTargets, this.params.pageBonusScored ?? false));
     this.lastReserve = reserve.amount;
-    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? { refs: reserve.refs, amount: reserve.amount } : undefined);
+    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? { refs: reserve.refs, amount: reserve.amount } : undefined, this.venueReserve);
     const { plan } = this.last;
     if (plan.accept) {
       const a = plan.accept;
@@ -425,7 +430,7 @@ export class TradesRoute {
     for (const c of plan.cancels) out.intents.push({ id: `trades:cancel:${c.id}`, route: "trades", kind: "cancel", summary: `El Rastro: CANCEL #${c.id} (${c.reason})` });
     // Scanner on: the same context the markets route gets this tick (directed listings from this El Rastro state, page targets).
     const trade = this.scanner ? this.last.state : undefined;
-    const saleCtx: MarketsContext = trade ? { ...this.scannerContext, directedRefs: new Set(directedListings(trade).map((d) => d.ref)), pageTargets } : {};
+    const saleCtx: MarketsContext = trade ? { ...this.scannerContext, directedRefs: new Set(directedListings(trade).map((d) => d.ref)), pageTargets, venueReserve: this.venueReserve } : {};
     // The scanner's sales this tick, computed once (marketSale would rerun proposeMarkets per listing).
     const scannerSales = trade ? proposeMarkets(state, new Map(), { ...saleCtx, scanner: true, trade }).sales : undefined;
     // `sell:<ref>` (one sale of a card per tick across routes) goes on the first listing of each card only: a second spare

@@ -195,9 +195,9 @@ export class TradesAgent {
   }
 
   /** Tick proposal without sending anything (GET only): state and `planTick` plan. `rivals`: other teams' signals, if known. */
-  async propose(rivals?: RivalSignals, pageReserve?: TradeParams["pageReserve"]): Promise<{ state: TradeState; plan: TickPlan }> {
+  async propose(rivals?: RivalSignals, pageReserve?: TradeParams["pageReserve"], venueReserve = 0): Promise<{ state: TradeState; plan: TickPlan }> {
     const state = { ...(await this.state()), ...(rivals ? { rivals } : {}) };
-    return { state, plan: planTick(state, pageReserve ? { ...this.params, pageReserve } : this.params) };
+    return { state, plan: planTick(state, { ...this.params, ...(pageReserve ? { pageReserve } : {}), ...(venueReserve ? { venueReserve } : {}) }) };
   }
 
   async step(): Promise<StepResult> {
@@ -254,11 +254,19 @@ export class TradesAgent {
       if (!ok && errors.at(-1)?.match(/wait_for_tick|rate_limited|too_many/)) break;
       // The server says the asset is busy elsewhere: it is neither listed nor used to pay for a few ticks.
       if (!ok && assetId !== undefined && errors.at(-1)?.includes("asset_locked")) this.reservedUntil.set(assetId, state.tick + (this.opts.reserveTicks ?? 2));
-      // Every post of an asset (new or reprice) counts; after `relistBackoffAfter` it rests `relistBackoffTicks` and counts again.
+      // Every post of a card (new or reprice, any copy) counts; after `relistBackoffAfter` all its copies rest
+      // `relistBackoffTicks` and count again (LAT-04: 51 posts over several copies, 0 fills).
       if (ok && assetId !== undefined && p.kind === "list") {
-        const n = (this.listPosts.get(assetId) ?? 0) + 1;
-        this.listPosts.set(assetId, n >= this.params.relistBackoffAfter ? 0 : n);
-        if (n >= this.params.relistBackoffAfter) this.listBackoff.set(assetId, state.tick + this.params.relistBackoffTicks);
+        const copies = state.held.filter((a) => a.ref === p.ref).map((a) => a.id);
+        if (!copies.includes(assetId)) copies.push(assetId);
+        this.listPosts.set(assetId, (this.listPosts.get(assetId) ?? 0) + 1);
+        const n = copies.reduce((sum, id) => sum + (this.listPosts.get(id) ?? 0), 0);
+        if (n >= this.params.relistBackoffAfter) {
+          for (const id of copies) {
+            this.listPosts.set(id, 0);
+            this.listBackoff.set(id, state.tick + this.params.relistBackoffTicks);
+          }
+        }
         backoffChanged = true;
       }
       // A bid may fill before the next read: it is recorded now with the id returned by the POST.

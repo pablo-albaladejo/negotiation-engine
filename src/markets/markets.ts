@@ -94,6 +94,8 @@ export interface MarketsContext {
   pageTargets?: readonly string[];
   /** `--page-bonus-scored`: a buy counts the page bonus of the target sets (otherwise no set's bonus counts). */
   pageBonusScored?: boolean;
+  /** Venue-switch reserve (P above `cashFloor`): scanner buys stay above it; sells and page-completing buys do not. */
+  venueReserve?: number;
   params?: ScannerParams;
 }
 
@@ -174,6 +176,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   let committed = 0;
   const cash = state.ours.cash ?? 0;
   const cashFloor = ctx.cashFloor ?? 0;
+  const buyFloor = cashFloor + (ctx.venueReserve ?? 0);
   const spendPerHour = ctx.spendPerHour ?? params.spendPerHour;
   const hour = gameHourOf(state.tick, state.time.gameHour ?? state.clock.tHours, state.clock.tickSeconds);
   const targetSets = new Set((ctx.pageTargets ?? []).map(setOfRef));
@@ -224,7 +227,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   for (const { e, c, v, asset } of candidates) {
     const cp = counterpartyOf(c, trade);
     const d = scanDecision(
-      { side: c.side, price: c.quote.price, fee: c.fee, penalty: c.penalty, marginal: v.value, cash, cashFloor, spentThisHour: ledger.spentIn(hour), committedThisTick: committed, spendPerHour, dealsWithCounterparty: ledger.dealsWith(hour, cp) + (tickDeals.get(cp) ?? 0) },
+      { side: c.side, price: c.quote.price, fee: c.fee, penalty: c.penalty, marginal: v.value, cash, cashFloor: c.side === "buy" ? buyFloor : cashFloor, spentThisHour: ledger.spentIn(hour), committedThisTick: committed, spendPerHour, dealsWithCounterparty: ledger.dealsWith(hour, cp) + (tickDeals.get(cp) ?? 0) },
       params,
     );
     if (!d.ok) {

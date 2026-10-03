@@ -451,6 +451,15 @@ export interface TradeParams {
   pageTargets?: readonly string[];
   /** `--page-bonus-scored`: a page target's bonus counts again (cap 0.9 × its value); without it the target is capped at its base. */
   pageBonusScored?: boolean;
+  /**
+   * `--rastro-bids` (opt-in): post passive bids on El Rastro (162 posted on 3 Oct, 0 filled). Off: no bid is posted (open
+   * ones are cancelled) and an accept that brings in cards for cash must bring a page-completing card (target or last missing).
+   */
+  rastroBids?: boolean;
+  /** No El Rastro listing below this price (P): the 5 % + 1 P fee eats the margin; that surplus is left for the dealers. */
+  minListPrice: number;
+  /** Venue-switch reserve (P above `cashFloor`, set by the coordinator): only page-completing buys may use it. */
+  venueReserve?: number;
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -468,10 +477,11 @@ export const DEFAULT_TRADE_PARAMS: TradeParams = {
   maxBids: 12,
   maxNewPerTick: 12,
   cashFloor: 0,
-  relistBackoffAfter: 6,
+  relistBackoffAfter: 2,
   relistBackoffTicks: 60,
   repriceHysteresis: 2,
   demandPremium: 0.15,
+  minListPrice: 8,
 };
 
 /**
@@ -732,12 +742,21 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const reserveRefs = new Set(params.pageReserve?.refs ?? []);
   const reserve = params.pageReserve?.amount ?? 0;
   const newPageCard = (c: string) => (counts.get(c) ?? 0) === 0 && (state.model.pages.get(state.model.meta.get(c)?.set ?? setOf(c)) ?? []).includes(c);
-  const spendableFor = (cards: readonly string[]) => spendable - (cards.some((c) => reserveRefs.has(c)) || !cards.some(newPageCard) ? 0 : reserve);
+  // Page-completing: a page target, or the last card missing from its page.
+  const completesPage = (c: string) => reserveRefs.has(c) || (params.pageTargets ?? []).includes(c) || (newPageCard(c) && (state.model.pages.get(state.model.meta.get(c)?.set ?? setOf(c)) ?? []).filter((r) => (counts.get(r) ?? 0) === 0).length === 1);
+  // Venue-switch reserve: cash above the floor kept for the new venue; only page-completing buys may use it.
+  const venueReserve = params.venueReserve ?? 0;
+  const spendableFor = (cards: readonly string[]) =>
+    spendable - (cards.some((c) => reserveRefs.has(c)) || !cards.some(newPageCard) ? 0 : reserve) - (cards.some(completesPage) ? 0 : venueReserve);
+  // Without --rastro-bids, an El Rastro buy (cards for cash) is only taken for a page-completing card.
+  const buyAllowed = (e: Evaluation) => params.rastroBids || !(e.getCards.length && e.spend > 0) || e.getCards.some(completesPage);
   let accept: Evaluation | undefined;
   if (state.limits.acceptsPerTick >= 1) {
-    accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= spendableFor(e.getCards));
-    const blocked = opportunities.find((e) => e.ok && e !== accept && (e.spend > budget || e.spend > spendableFor(e.getCards)));
-    if (blocked && (!accept || blocked.valueCreated > accept.valueCreated)) notes.push(`offer #${blocked.offer.id} has value ${blocked.valueCreated.toFixed(1)} but needs ${blocked.spend} P > budget ${budget.toFixed(0)}`);
+    accept = opportunities.find((e) => e.ok && buyAllowed(e) && e.spend <= budget && e.spend <= spendableFor(e.getCards));
+    const notPage = opportunities.find((e) => e.ok && !buyAllowed(e));
+    if (notPage && !accept) notes.push(`offer #${notPage.offer.id} (buy ${notPage.getCards.join(", ")}) skipped: El Rastro buys only for page-completing cards (--rastro-bids to restore)`);
+    const blocked = opportunities.find((e) => e.ok && buyAllowed(e) && e !== accept && (e.spend > budget || e.spend > spendableFor(e.getCards)));
+    if (blocked && (!accept || blocked.valueCreated > accept.valueCreated)) notes.push(`offer #${blocked.offer.id} has value ${blocked.valueCreated.toFixed(1)} but needs ${blocked.spend} P > budget ${budget.toFixed(0)}${venueReserve && !blocked.getCards.some(completesPage) ? ` (venue-switch reserve ${venueReserve} P)` : ""}`);
   }
   const reserved = new Set(state.reserved);
   if (accept) {
@@ -878,6 +897,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       price = target;
       why = "reprice";
     }
+    if ((why ? price : e.price) < params.minListPrice) {
+      cancels.push({ id: e.offer.id, reason: `${e.ref} at ${why ? price : e.price} P < El Rastro min ${params.minListPrice} P (fee eats the margin; left for the dealers)` });
+      continue;
+    }
     if (why) {
       const post: PlannedPost = { key: e.key, kind: "list", ref: e.ref, price, value: price - tradeFee(price, 1, fees) - loss, limit: floor, reference, why, replaces: e.offer.id, body: listBody(id, price, params) };
       if (tryPost(post)) {
@@ -896,8 +919,8 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   let committed = 0;
   let bidCount = 0;
   const bidBudget = Math.min(budget - acceptSpend, spendable - reserve - acceptCash);
-  // A bid on a reserved page card may use the reserve.
-  const bidRoom = (ref: string) => (reserveRefs.has(ref) ? Math.min(budget - acceptSpend, spendable - acceptCash) : bidBudget);
+  // A bid on a reserved page card may use the reserve; only a page-completing bid may use the venue-switch reserve.
+  const bidRoom = (ref: string) => (reserveRefs.has(ref) ? Math.min(budget - acceptSpend, spendable - acceptCash) : bidBudget) - (completesPage(ref) ? 0 : venueReserve);
   // Bids closest to completing a page first, then cards a rival recently held (a bid can fill), then by value created.
   const unsupplied = (ref: string) => (state.rivals && !state.rivals.supply.has(ref) ? 1 : 0);
   const bidRank = (ref: string): [number, number, number] => {
@@ -912,6 +935,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const existingBids = existing.filter((x) => x.kind === "bid").sort((a, b) => byRank(a.ref, b.ref) || a.offer.id - b.offer.id);
   const bidRefs = new Set<string>();
   for (const e of existingBids) {
+    if (!params.rastroBids) {
+      cancels.push({ id: e.offer.id, reason: `passive bid ${e.ref} off (El Rastro bids never filled; --rastro-bids to restore)` });
+      continue;
+    }
     const t = bidTargets.get(e.ref);
     if (!t || bidRefs.has(e.ref)) {
       cancels.push({ id: e.offer.id, reason: bidRefs.has(e.ref) ? `duplicate bid ${e.ref}` : `bid ${e.ref} no longer wanted at our values` });
@@ -963,7 +990,9 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       return { s, floor, target, reference, value: target - tradeFee(target, 1, fees) - s.loss };
     })
     .sort((a, b) => b.value - a.value || a.s.assetId - b.s.assetId);
-  for (const l of newLists) {
+  const cheap = [...new Set(newLists.filter((l) => l.target < params.minListPrice).map((l) => `${l.s.ref}@${l.target}`))];
+  if (cheap.length) notes.push(`${cheap.length} listings under El Rastro min ${params.minListPrice} P left for the dealers: ${cheap.join(" ")}`);
+  for (const l of newLists.filter((x) => x.target >= params.minListPrice)) {
     if (open >= openCap) {
       notes.push(`listing ${l.s.ref} skipped: open-offer cap ${openCap} (--max-offers)`);
       break;
@@ -975,7 +1004,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     open += 1;
   }
   const newBids = [...bidTargets]
-    .filter(([ref, t]) => !bidRefs.has(ref) && t.value >= params.minMargin)
+    .filter(([ref, t]) => params.rastroBids && !bidRefs.has(ref) && t.value >= params.minMargin)
     .sort(([ra], [rb]) => byRank(ra, rb) || ra.localeCompare(rb));
   const overBudget: string[] = [];
   for (const [ref, t] of newBids) {

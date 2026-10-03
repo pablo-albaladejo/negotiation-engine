@@ -67,6 +67,12 @@ export interface NegotiatorParams {
    * after that, the usual curve (adaptive or Boulware). 0 disables it.
    */
   firstStepFrac: number;
+  /**
+   * `welcome_first_deal`: her price is taken without negotiating further only once it captures at least this share of
+   * her range (her opening → her expected limit, `herLimitCap`). Below it we keep countering toward our anchor (thread
+   * 894: Pilar 47 → 48 → 50 against our 64, 61; taking 50 gave ladder +0.014 vs +0.033 for thread 901 taken at her limit).
+   */
+  welcomeTakeShare: number;
 }
 
 export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
@@ -88,6 +94,7 @@ export const DEFAULT_NEGOTIATOR_PARAMS: NegotiatorParams = {
   // OFF by default; the coordinator turns it on per persona only with a certain mirror (`MIRROR_FIRST_STEP_FRAC`). Offline replay (personas.md § 3.3 model, with and without mirror): on the 11 saved threads, the same (small gaps);
   // on synthetic rare/epic threads, worse (mean EV 11.42 → 10.92 with 0.12). Try it with --first-step-frac.
   firstStepFrac: 0,
+  welcomeTakeShare: 0.8,
 };
 
 /** Negotiator from before the evidence of threads 56 and 125 (far anchor + Boulware), for comparison. */
@@ -134,7 +141,8 @@ export interface ThreadView {
   herAtOurMessages?: readonly number[];
   /**
    * `welcome_first_deal` (site-map § 8.2): the team's first conversation with this dealer, in which its opening is its
-   * limit (it won't improve). With this, its price is accepted if it creates value at our private value (rule `welcome-first-deal`).
+   * limit (it won't improve). With this, its price is accepted if it creates value at our private value (rule `welcome-first-deal`),
+   * but only for a `welcomeTakeReason` (final, high share, stalled or walk risk); otherwise we keep countering.
    */
   welcomeFirstDeal?: boolean;
   /** Our last message in the thread was text only (a hold, no new offer): never two in a row. */
@@ -146,6 +154,8 @@ export interface ThreadView {
   herLimitCap?: number;
   /** Estimated β of its persona's curve (`PersonaModel.strategy.beta`); `undefined` without it. */
   herBeta?: number;
+  /** Rounds after which its persona walks unless offered its limit (`PersonaModel.strategy.walk_after_rounds`); `undefined` without it. */
+  herWalkAfterRounds?: number;
 }
 
 export type Rule =
@@ -398,14 +408,54 @@ export function isLowball(view: Pick<ThreadView, "side" | "reservation" | "herOp
  * of ours 1 P better for us goes out (`welcome-counter`, with guardrails); the dealer can't pass its limit and repeats the
  * price, and then it is accepted (`welcome-first-deal`). Only if its price fits the private reservation and creates value at
  * our private value (EV > 0); in that conversation it replaces the «don't close at its opening» of `effectiveReservation`.
+ * Live (thread 894, Pilar) her welcome opening was NOT her limit (47 → 48 → 50), so `decide` only takes it with a
+ * `welcomeTakeReason`; otherwise the usual negotiation goes on.
  */
 export function welcomeTake(view: Pick<ThreadView, "side" | "reservation" | "privateValue" | "herCurrent" | "welcomeFirstDeal">): boolean {
   return !!view.welcomeFirstDeal && !!view.herCurrent && view.privateValue !== undefined && valuePositive(view, view.herCurrent.price);
 }
 
+/**
+ * Share of her range (her opening → her expected limit `herLimitCap`) that `price` captures for us, 0–1: the ladder
+ * share (RULES.md:118, personas.md § 9). `undefined` without her opening or an expected limit.
+ */
+export function rangeShare(view: Pick<ThreadView, "side" | "herOpening" | "herLimitCap">, price: number): number | undefined {
+  const { herOpening: open, herLimitCap: limit } = view;
+  if (open === undefined || limit === undefined) return undefined;
+  const span = view.side === "sell" ? limit - open : open - limit;
+  if (span <= 0) return 1;
+  return Math.max(0, Math.min(1, (view.side === "sell" ? price - open : open - price) / span));
+}
+
+export type WelcomeTakeReason = "final" | "share" | "stalled" | "walk-risk";
+
+/**
+ * Why a welcome price may be taken now instead of countering toward our anchor, or `undefined` to keep negotiating:
+ * her offer is `final`; it already captures `welcomeTakeShare` of her range; she stopped moving after our last
+ * counter (her limit; not with β < `fixedPriceMinBeta`, whose curve doesn't move early); or our next counter would go
+ * past her persona's `walk_after_rounds` (past it she walks unless offered her limit, personas.md § 3).
+ */
+export function welcomeTakeReason(view: ThreadView, p: Pick<NegotiatorParams, "welcomeTakeShare" | "fixedPriceMinBeta">): WelcomeTakeReason | undefined {
+  const her = view.herCurrent;
+  if (!her) return undefined;
+  if (her.final) return "final";
+  const share = rangeShare(view, her.price);
+  if (share !== undefined && share >= p.welcomeTakeShare) return "share";
+  const n = view.ourPrices.length;
+  // Stalled: she already answered our last counter (one price per reply after her opening) with the same price.
+  if (n >= 1 && view.herPrices.length >= n + 1 && (view.herBeta === undefined || view.herBeta >= p.fixedPriceMinBeta)) {
+    if (view.herPrices[view.herPrices.length - 2] === her.price) return "stalled";
+  }
+  // Our next counter would go past her measured patience (thread 901: Pilar answered our 4th counter with her final).
+  if (view.herWalkAfterRounds !== undefined && n >= Math.round(view.herWalkAfterRounds)) return "walk-risk";
+  return undefined;
+}
+
 export function decide(view: ThreadView, p: NegotiatorParams = DEFAULT_NEGOTIATOR_PARAMS): Decision {
   const effRes = effectiveReservation(view);
-  if (view.herCurrent && welcomeTake(view)) {
+  const welcomeWhy = view.herCurrent && welcomeTake(view) ? welcomeTakeReason(view, p) : undefined;
+  // Welcome price with room left in her range: no early take, the usual negotiation (anchor, steps, AC_next) goes on.
+  if (view.herCurrent && welcomeWhy) {
     const her = view.herCurrent;
     if (view.ourPrices.length === 0) {
       const mandate: Mandate = { role: view.side === "buy" ? "buyer" : "seller", reservation: view.reservation };

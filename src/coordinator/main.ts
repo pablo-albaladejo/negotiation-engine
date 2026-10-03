@@ -31,6 +31,7 @@ import { appendHints, defaultHintsFile, loadHints, seedRaw } from "../hints/corp
 import { defaultHintLabelsFile, HintLabeler, loadHintLabels } from "../hints/labels.js";
 import { decideMechanism, DEFAULT_MECHANISM_THRESHOLDS, formatMechanismLine, ticksPerHourOf } from "../venue/mechanism.js";
 import { executeVenueMechanism, proposeVenueMechanism } from "../venue/route.js";
+import { VENUE_COST } from "../venue/venue.js";
 import { defaultHeartbeatFile, defaultSessionsFile, loadBenchSessions, loadHeartbeat, publicSession } from "../broker/shadow.js";
 import { parseFeed, defaultFlagsFile, defaultPersonasFile, formatPersona, loadFlags, loadPersonaMemos, saveFlags, savePersonaMemos } from "../state/world.js";
 
@@ -80,6 +81,8 @@ async function main() {
       "allow-venue-switch": { type: "boolean", default: false },
       "rival-page": { type: "boolean", default: false },
       "rival-buy": { type: "boolean", default: false },
+      "rastro-bids": { type: "boolean", default: false },
+      "no-venue-reserve": { type: "boolean", default: false },
       scanner: { type: "boolean", default: false },
       "scanner-spend-per-hour": { type: "string", default: "60" },
       "plan-log": { type: "string", default: "" },
@@ -109,7 +112,8 @@ async function main() {
     pageBonusScored,
     ...(live ? { trace: new FileTrace(liveTraceDir(root)), lessonsFile: join(root, "docs", "bazaar", "lessons.json"), scoreAuditFile: defaultScoreAuditFile(root) } : {}),
   });
-  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored }, defaultListBackoffFile(root));
+  const rastroBids = values["rastro-bids"] === true;
+  const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, rastroBids }, defaultListBackoffFile(root));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));
@@ -284,6 +288,19 @@ async function main() {
     console.log(`  ${formatMechanismLine(state.venue.mechanismDecision)}`);
     console.log("== budget (clock.limits) ==");
     for (const l of formatBudget(budget)) console.log(`  ${l}`);
+    // Venue-switch reserve: until our venue is board, buys that do not complete a page only spend cash above
+    // VENUE_COST + --cash-floor (290 P), so `pnpm bazaar:venue --replace --mechanism board` becomes affordable.
+    const venueReserveOn = !values["no-venue-reserve"] && state.ours.venue?.mechanism !== "board";
+    const switchCash = VENUE_COST + num(values["cash-floor"], "--cash-floor");
+    trades.venueReserve = dealers.venueReserve = venueReserveOn ? VENUE_COST : 0;
+    if (venueReserveOn) {
+      const cash = state.ours.cash ?? 0;
+      console.log(
+        cash < switchCash
+          ? `  venue-switch reserve: cash ${cash} P < ${switchCash} P (venue ${VENUE_COST} + floor ${values["cash-floor"]}): buys only for page-completing cards; sells unchanged (--no-venue-reserve to disable)`
+          : `  venue-switch reserve: cash ${cash} P ≥ ${switchCash} P: venue switch now allowed (pnpm bazaar:venue --replace --mechanism board --name ... --confirm, coordinator session); non-page buys only spend above ${switchCash} P`,
+      );
+    }
 
     const proposals: { route: string; p: RouteProposal }[] = [];
     let rivalPlan: RivalPagePlan = { posts: [], cancels: [] };
@@ -320,6 +337,7 @@ async function main() {
             spendPerHour: scannerSpendPerHour,
             pageTargets,
             pageBonusScored,
+            venueReserve: trades.venueReserve,
           });
           // Directed listings to a rival that lacks one page card (never throws: off with a note on bad data).
           try {

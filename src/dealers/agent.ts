@@ -89,6 +89,8 @@ export interface AgentOptions {
   firstStepFrac?: () => number;
   /** β of her persona's curve at this tick (`PersonaModel`): with β < 1 the fixed price is not applied. */
   herBeta?: () => number | undefined;
+  /** `walk_after_rounds` of her persona at this tick (`PersonaModel`): a welcome price is taken before our counter goes past it. */
+  herWalkAfterRounds?: () => number | undefined;
   /**
    * Unlock chase: the persona (e.g. "pilar") that a deal with THIS dealer would unlock early (active, not unlocked for us,
    * `early_deals_with` = this dealer, our level ≥ `early_min_level`), or `undefined`. With no target with room, the agent
@@ -559,6 +561,7 @@ export class BazaarAgent {
     const herAt = active.patience.herAtCounters();
     const cap = this.o.herLimitCap?.(thread.id);
     const herBeta = this.o.herBeta?.();
+    const herWalk = this.o.herWalkAfterRounds?.();
     const view: ThreadView = {
       side: target.side,
       reservation,
@@ -576,6 +579,7 @@ export class BazaarAgent {
       ...(active.lastTextOnly ? { lastWasTextOnly: true } : {}),
       ...(cap !== undefined ? { herLimitCap: cap } : {}),
       ...(herBeta !== undefined ? { herBeta } : {}),
+      ...(herWalk !== undefined ? { herWalkAfterRounds: herWalk } : {}),
     };
     const firstStepFrac = this.o.firstStepFrac?.();
     let d: Decision = decide(view, firstStepFrac === undefined ? this.negotiatorParams : { ...this.negotiatorParams, firstStepFrac });

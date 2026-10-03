@@ -31,6 +31,7 @@ export async function runTradesCli(
       "cash-floor": { type: "string" },
       "page-targets": { type: "string", default: "SAL-09" },
       "page-bonus-scored": { type: "boolean", default: false },
+      "rastro-bids": { type: "boolean", default: false },
     },
   });
   const n = (flag: string, v: string | undefined, fallback: number): number => {
@@ -49,6 +50,7 @@ export async function runTradesCli(
     cashFloor: n("cash-floor", values["cash-floor"], DEFAULT_TRADE_PARAMS.cashFloor),
     pageTargets: values["page-targets"].split(",").map((s) => s.trim()).filter(Boolean),
     pageBonusScored: values["page-bonus-scored"] === true,
+    rastroBids: values["rastro-bids"] === true,
   };
   const dryRun = values["dry-run"];
   if (!dryRun && !values.confirm) {
