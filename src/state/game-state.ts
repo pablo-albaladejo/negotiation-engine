@@ -1,6 +1,7 @@
 import { updatePosterior, type Posterior } from "../dealers/history/persona-fit.js";
 import { buildPersonaModel, type PersonaModel } from "./persona-model.js";
 import { traitsOf } from "../dealers/dealer-profile.js";
+import { join } from "node:path";
 import { z } from "zod";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Clock, Me } from "../shared/schemas.js";
@@ -17,6 +18,7 @@ import { applyCardHistory, confirmCandidates, emptyRivalLedger, formatRivals, in
 import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { buildPersonas, parseFeed, personaTypeOf, worldFromFeed, formatEggsAndFlags, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
 
 /**
  * A single `GameState` per tick, built with GET only and tolerant: each read that fails is recorded in
@@ -89,6 +91,12 @@ export interface GameState {
   /** Personas (dealers and those that appear via `/api/levels` or the feed), with state and unlock progress. */
   personas: Persona[];
   world: { eggs: WorldEggs };
+  /**
+   * News (Radio Rastro, the Bulletin, the notice board) as a HINT: which dealer, set or card is being talked about and
+   * in which direction. Read from news-summary.json (`pnpm bazaar:news`), never from the API; may be rumour and never a
+   * figure. No decision reads it yet.
+   */
+  news: NewsSignals;
   env: {
     schedule: { nowHours?: number; next: { atHours: number; action: string; note?: string }[] };
     dealers: { id: string; name?: string; status?: string; level?: number }[];
@@ -225,6 +233,8 @@ export interface BuildOptions {
   rivalConfirmPerTick?: number;
   /** Leaderboard ranks from the previous tick (if this tick does not read it). */
   prevRanks?: ReadonlyMap<string, { rank?: number; score?: number }>;
+  /** Folder with news-summary.json (default `<cwd>/results/bazaar-live/<local date>`); missing or bad file → empty. */
+  newsDir?: string;
 }
 
 /** Builds the tick's state with parallel GETs; never throws on a failed read (except `/api/clock`). */
@@ -410,6 +420,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
+    news: readNewsSignals(opts.newsDir ?? join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE")), clock.tick),
     env: {
       schedule: scheduleSummary(schedule),
       dealers: (dealers?.dealers ?? []).map((d) => ({ id: d.id, ...(d.name ? { name: d.name } : {}), ...(d.status ? { status: d.status } : {}), ...(typeof d.level === "number" ? { level: d.level } : {}) })),
@@ -473,6 +484,7 @@ export function formatGameState(g: GameState): string[] {
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours));
   lines.push(...formatHints(g.hints.all));
+  if (g.news) lines.push(...formatNewsSignals(g.news));
   lines.push("venues:", ...formatVenues(g.markets.venues));
   lines.push(...formatPriceSheet(g.markets.prices));
   if (g.rivals) lines.push(...formatRivals(g.rivals));
