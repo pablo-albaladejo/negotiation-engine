@@ -533,6 +533,9 @@ function Scoreboard({ board }: { board: Board }) {
         <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <span style={{ font: "800 44px/1 var(--font-display)" }}>{fmt(st.score)}</span>
           <span style={{ fontSize: 20, fontWeight: 700 }}>{st.rank !== null ? `#${st.rank}${st.teams ? ` of ${st.teams}` : ""}` : "rank ?"}</span>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>
+            {fmt(h?.cash, 0)} P <span className="nr-muted" style={{ fontSize: 13, fontWeight: 500 }}>{`cash · level ${fmt(h?.level, 0)}`}</span>
+          </span>
         </div>
         <span className="nr-muted">
           {st.ahead ? `${fmt(st.gapToAhead)} behind ${st.ahead.name} (next place)` : st.rank === 1 ? "We lead" : ""}
@@ -541,9 +544,6 @@ function Scoreboard({ board }: { board: Board }) {
         <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap" }}>
           <ScoreTree board={board} />
         </div>
-        <span>
-          Cash <strong>{fmt(h?.cash, 0)} P</strong> · level {fmt(h?.level, 0)}
-        </span>
       </div>
     </Card>
   );
