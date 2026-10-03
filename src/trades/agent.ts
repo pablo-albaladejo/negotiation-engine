@@ -146,9 +146,9 @@ export class TradesAgent {
   }
 
   /** Tick proposal without sending anything (GET only): state and `planTick` plan. `rivals`: other teams' signals, if known. */
-  async propose(rivals?: RivalSignals): Promise<{ state: TradeState; plan: TickPlan }> {
+  async propose(rivals?: RivalSignals, pageReserve?: TradeParams["pageReserve"]): Promise<{ state: TradeState; plan: TickPlan }> {
     const state = { ...(await this.state()), ...(rivals ? { rivals } : {}) };
-    return { state, plan: planTick(state, this.params) };
+    return { state, plan: planTick(state, pageReserve ? { ...this.params, pageReserve } : this.params) };
   }
 
   async step(): Promise<StepResult> {

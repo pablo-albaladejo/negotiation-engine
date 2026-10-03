@@ -23,6 +23,8 @@ export class TeamBudget {
   readonly maxSpendPerHour: number;
   readonly maxSpendTotal: number;
   readonly cashFloor: number;
+  /** Cash kept for page-completing cards we still lack (set by the coordinator each tick); only `pageLeft` may use it. */
+  pageReserve = 0;
 
   constructor(o: TeamBudgetOptions) {
     this.maxSpendPerHour = o.maxSpendPerHour;
@@ -41,7 +43,7 @@ export class TeamBudget {
 
   /** What can still be spent: what is left of the hour, of the run and of the cash above the floor. */
   left(cash?: number): number {
-    const byCash = cash === undefined ? Infinity : cash - this.cashFloor;
+    const byCash = cash === undefined ? Infinity : cash - this.cashFloor - this.pageReserve;
     return Math.min(this.maxSpendPerHour - this.spentThisHour(), this.maxSpendTotal - this.spentRun, byCash);
   }
 

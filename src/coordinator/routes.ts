@@ -240,6 +240,9 @@ export class DealersRoute {
     this.state = state;
     const me = await this.client.me();
     await this.ensureAgents(me);
+    const reserve = pageReserveOf(state, me, this.o.pageTargets);
+    this.team.pageReserve = reserve.amount;
+    if (reserve.amount) out.notes.push(`page reserve: ${reserve.amount} P kept for ${reserve.refs.join(", ")} (other buys stay above it)`);
     this.lessons.observe(me.score as { neg_points?: unknown; ladder_points?: unknown } | undefined, clock.tick);
     // Score audit: each deal scores your_value − price at our private values; log every move to check it against the settlements.
     const neg = (me.score as { neg_points?: unknown } | undefined)?.neg_points;
@@ -302,6 +305,23 @@ export class DealersRoute {
   }
 }
 
+/**
+ * Cash kept for page-completing cards we still lack: the last price a dealer asked for each (none asked yet, nothing
+ * kept). Other buys leave it untouched, so a cheap El Rastro accept never takes the cash of a page bonus.
+ */
+export function pageReserveOf(state: GameState, me: Me | undefined, pageTargets: readonly string[]): { refs: string[]; amount: number } {
+  const refs = pageTargets.filter((t) => !me?.assets.some((a) => a.ref === t && (a.kind ?? "card") === "card"));
+  let amount = 0;
+  for (const ref of refs) {
+    const asked = state.conversations
+      .filter((c) => c.kind === "dealer" && c.side === "buy" && c.asset.ref === ref && c.history.herPrices.length)
+      .sort((a, b) => Number(a.id.split(":")[1]) - Number(b.id.split(":")[1]))
+      .at(-1);
+    if (asked) amount += asked.history.herCurrent?.price ?? asked.history.herPrices.at(-1)!;
+  }
+  return { refs, amount };
+}
+
 // ---------------------------------------------------------------- El Rastro
 
 export class TradesRoute {
@@ -329,7 +349,8 @@ export class TradesRoute {
     const out = empty();
     this.last = undefined;
     // Other teams' demand and supply lift asks and rank bids (absent rivals: the plan is unchanged).
-    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined);
+    const reserve = pageReserveOf(state, me, pageTargets);
+    this.last = await this.agent.propose(state.rivals ? tradeSignals(state.rivals, state.tick) : undefined, reserve.amount ? reserve : undefined);
     const { plan } = this.last;
     if (plan.accept) {
       const a = plan.accept;

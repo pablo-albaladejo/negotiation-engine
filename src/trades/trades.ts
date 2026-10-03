@@ -375,6 +375,8 @@ export interface TradeParams {
   relistBackoffAfter: number;
   /** Extra ask premium on a card another team asked for or that brings a team within 2 of a page (`TradeState.rivals`). */
   demandPremium: number;
+  /** Cash kept for page-completing cards we still lack: only buys of `refs` may use it. */
+  pageReserve?: { refs: readonly string[]; amount: number };
 }
 
 export const DEFAULT_TRADE_PARAMS: TradeParams = {
@@ -615,10 +617,14 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
 
   const budget = params.maxSpend - state.spent;
   const spendable = state.cash - params.cashFloor;
+  // A buy that is not a reserved page card leaves the page reserve untouched (RET-09 @84 took SAL-09's cash).
+  const reserveRefs = new Set(params.pageReserve?.refs ?? []);
+  const reserve = params.pageReserve?.amount ?? 0;
+  const spendableFor = (cards: readonly string[]) => spendable - (cards.some((c) => reserveRefs.has(c)) ? 0 : reserve);
   let accept: Evaluation | undefined;
   if (state.limits.acceptsPerTick >= 1) {
-    accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= spendable);
-    const blocked = opportunities.find((e) => e.ok && e !== accept && (e.spend > budget || e.spend > spendable));
+    accept = opportunities.find((e) => e.ok && e.spend <= budget && e.spend <= spendableFor(e.getCards));
+    const blocked = opportunities.find((e) => e.ok && e !== accept && (e.spend > budget || e.spend > spendableFor(e.getCards)));
     if (blocked && (!accept || blocked.valueCreated > accept.valueCreated)) notes.push(`offer #${blocked.offer.id} has value ${blocked.valueCreated.toFixed(1)} but needs ${blocked.spend} P > budget ${budget.toFixed(0)}`);
   }
   const reserved = new Set(state.reserved);
@@ -747,7 +753,9 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   // Existing bids: invalid out; above the ceiling, to the ceiling now; budget by value.
   let committed = 0;
   let bidCount = 0;
-  const bidBudget = Math.min(budget - acceptSpend, spendable - acceptCash);
+  const bidBudget = Math.min(budget - acceptSpend, spendable - reserve - acceptCash);
+  // A bid on a reserved page card may use the reserve.
+  const bidRoom = (ref: string) => (reserveRefs.has(ref) ? Math.min(budget - acceptSpend, spendable - acceptCash) : bidBudget);
   // Bids closest to completing a page first, then cards a rival recently held (a bid can fill), then by value created.
   const unsupplied = (ref: string) => (state.rivals && !state.rivals.supply.has(ref) ? 1 : 0);
   const bidRank = (ref: string): [number, number, number] => {
@@ -778,7 +786,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
       if (price !== e.price) why = "reprice";
     }
     const cost = price + tradeFee(price, 1, fees);
-    if (committed + cost > bidBudget || bidCount >= params.maxBids) {
+    if (committed + cost > bidRoom(e.ref) || bidCount >= params.maxBids) {
       cancels.push({ id: e.offer.id, reason: bidCount >= params.maxBids ? "over --max-bids" : "over --max-spend budget" });
       continue;
     }
@@ -831,7 +839,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   for (const [ref, t] of newBids) {
     if (bidCount >= params.maxBids || open >= openCap || newSlots <= 0) break;
     const cost = t.target + tradeFee(t.target, 1, fees);
-    if (committed + cost > bidBudget) {
+    if (committed + cost > bidRoom(ref)) {
       overBudget.push(`${ref}@${t.target}`);
       continue;
     }
