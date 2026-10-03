@@ -302,6 +302,10 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     target = params.minSurplus;
     rule = "endgame";
   }
+  // Never ask for less than the best figure the rival has already offered within our limit: 2558 offered 136 then
+  // dropped to 123, and we conceded to 130 instead of holding 136.
+  const bestRivalSurplus = Math.max(-Infinity, ...state.rivalOffers.filter((o) => withinLimit(state, o)).map((o) => surplusOf(state, o)));
+  if (round > 0 && bestRivalSurplus > target) target = bestRivalSurplus;
   // Engine guardrail on surplus: never rises above the previous offer nor drops below the minimum.
   target = enforceGuardrails({ role: "seller", reservation: params.minSurplus }, target, prevSurplus);
   // What we would actually offer next: if we can't concede, the current offer.
