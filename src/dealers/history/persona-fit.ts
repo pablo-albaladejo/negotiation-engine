@@ -444,16 +444,20 @@ export function updatePosterior(prev: Posterior, conversations: readonly Convers
     if (!o) continue;
     const old = observations[o.id];
     const keepFinal = !!old?.final && old.her.at(-1) === o.her.at(-1);
-    observations[o.id] = { ...o, final: o.final || keepFinal, tick: old?.tick ?? tick, ...(old?.welcome ? { welcome: true } : {}) };
+    const { welcome: _w, ...rest } = o;
+    observations[o.id] = { ...rest, final: o.final || keepFinal, tick: old?.tick ?? tick };
   }
-  // La primera conversación de cada persona es de bienvenida (se marca una vez y se conserva en el fichero).
+  // Bienvenida: la primera conversación del equipo con la persona (menor id), solo si su prior tiene bienvenida o su precio
+  // se mantuvo plano desde la apertura hasta el final (≥ 3 rondas sin moverse). Se recalcula en cada tick.
   const firstOf = new Map<string, ConvObs>();
   for (const o of Object.values(observations)) {
     const cur = firstOf.get(o.persona);
     if (!cur || threadNo(o.id) < threadNo(cur.id)) firstOf.set(o.persona, o);
   }
+  for (const o of Object.values(observations)) delete o.welcome;
   for (const [persona, first] of firstOf) {
-    if (!Object.values(observations).some((o) => o.persona === persona && o.welcome)) observations[first.id] = { ...first, welcome: true };
+    const flat = first.her.length >= 4 && first.her.every((x) => x === first.her[0]);
+    if (PERSONA_PRIORS[persona]?.welcomeFracOfBook !== undefined || flat) observations[first.id] = { ...first, welcome: true };
   }
   const estimates = { ...prev.estimates };
   const predictions = new Map<string, Prediction>();
