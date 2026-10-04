@@ -6,7 +6,7 @@ Fichas recogidas por entrevista a cada sesión el 4 oct de 2026 (~10:00–10:10)
 
 ## Subcarpetas
 
-- [`ops/`](ops/AGENTS.md): coordinator, goals, ui
+- [`ops/`](ops/AGENTS.md): coordinator, goals, ui, agents-keeper
 - [`routes/`](routes/AGENTS.md): trader, team-trades, dealers, broker, duels, eggs, packs, workshop (y team-desk, retirado)
 - [`analysis/`](analysis/AGENTS.md): audit, leaderboard-analyst, market-analyst
 - [`tools/`](tools/AGENTS.md): scripts y notas de sesión que antes vivían en un scratchpad
@@ -31,6 +31,7 @@ Los prompts nombran a otras sesiones por su **agente**. Al relanzar, el nombre d
 | audit | audit-work-completed | [analysis/audit.md](analysis/audit.md) |
 | leaderboard-analyst | negotiation-ring-08 | [analysis/leaderboard-analyst.md](analysis/leaderboard-analyst.md) |
 | market-analyst | negotiation-ring-34 | [analysis/market-analyst.md](analysis/market-analyst.md) |
+| agents-keeper | negotiation-ring-10 | [ops/agents-keeper.md](ops/agents-keeper.md) |
 | team-desk (retirado) | negotiation-ring-98 | [routes/team-desk.md](routes/team-desk.md) |
 
 ## Cómo relanzar todo
