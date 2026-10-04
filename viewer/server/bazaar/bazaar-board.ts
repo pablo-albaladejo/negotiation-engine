@@ -6,7 +6,6 @@ import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
 import { eggsOf, type EggsOut } from "./profile/eggs.js";
 import { grantsOf, type Grant } from "./profile/grants.js";
-import { ourValuesOf } from "./profile/our-values.js";
 import { marketTestOf, type MarketTestOut } from "./market-test/market-test.js";
 import { forexOf, type ForexOut } from "./forex/forex.js";
 import { forexThreadsOf } from "./forex/forex-threads.js";
@@ -369,7 +368,7 @@ export class BazaarBoard {
       const v = field(await get(`/api/me/value?card=${encodeURIComponent(ref)}`), "your_value");
       if (typeof v === "number") this.missingValues.set(ref, v);
     }
-    const album = albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues, ourValuesOf(meRaw, this.catalog?.raw ?? null, this.missingValues));
+    const album = albumOf(meRaw, this.catalog?.raw ?? null, this.missingValues);
     const schedule = scheduleOf(await get("/api/schedule"));
     const myOffers = parseOffers(field(offersRaw, "offers")).filter((o) => o.maker === team);
     const valuesRaw = await readJsonFile(join(this.bazaarDir, "values.json"));

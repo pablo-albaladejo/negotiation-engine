@@ -152,8 +152,6 @@ export interface BoardAlbumCard extends BoardMissingCard {
   minted: number | null;
   hidden: boolean;
   flavour: string | null;
-  /** Our value from our value model: held → what losing a copy costs; missing → what one more adds. */
-  our_value?: number | null;
 }
 
 export interface BoardAlbum {

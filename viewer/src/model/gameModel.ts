@@ -270,6 +270,25 @@ export interface ModelLadderLevel {
   deals: { thread: number; dealer: string; level: number; share: number; assumed: boolean }[];
 }
 
+export interface ModelValuationCard {
+  ref: string;
+  set: string;
+  rarity: string;
+  held: number;
+  api?: number;
+  base: number;
+  baseSource: "api" | "estimated";
+  nextCopy: number;
+  loseCopy?: number;
+}
+
+export interface ModelValuation {
+  rules: { marginals: number[]; pageBonus: number; masterBonus: number };
+  portfolio: number;
+  cards: ModelValuationCard[];
+  pages: { set: string; have: number; of: number; complete: boolean; bonus: number; missing: string[] }[];
+}
+
 export interface GameModel {
   available: boolean;
   /** The response is the latest build and another is in progress (optional on older servers). */
@@ -304,6 +323,8 @@ export interface GameModel {
   ladder?: ModelLadderLevel[];
   /** Optional: an older server does not provide it. */
   prices?: { source: string; rows: Record<string, unknown>[] };
+  /** `GameState.valuation` (src/state/valuation.ts): our value model per card and page; optional on older servers. */
+  valuation?: ModelValuation | null;
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
   venues?: { state: unknown; api: unknown[] };
   now?: NowData | null;

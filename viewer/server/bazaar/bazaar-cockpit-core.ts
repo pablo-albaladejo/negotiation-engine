@@ -58,8 +58,6 @@ export interface AlbumCard extends MissingCard {
   minted: number | null;
   hidden: boolean;
   flavour: string | null;
-  /** Our value (`ourValuesOf`): held → what losing a copy costs; missing → what one more adds. */
-  our_value: number | null;
 }
 
 export interface AlbumPage {
@@ -111,7 +109,7 @@ export function holdingsOf(meRaw: unknown): Record<string, number> {
  * Album pages, from most to least complete, with the page cards we are missing according to
  * the catalog. `values` carries our private value for the cards already queried.
  */
-export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap<string, number>, ours: ReadonlyMap<string, number> = new Map()): AlbumOut | null {
+export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap<string, number>): AlbumOut | null {
   const me = MeAlbumSchema.safeParse(meRaw);
   if (!me.success || !me.data.album) return null;
   const catalog = CatalogSchema.safeParse(catalogRaw);
@@ -136,7 +134,6 @@ export function albumOf(meRaw: unknown, catalogRaw: unknown, values: ReadonlyMap
       minted: c.minted ?? null,
       hidden: c.hidden ?? false,
       flavour: c.flavour ?? null,
-      our_value: ours.get(c.id) ?? null,
     });
     return {
       set: p.set,

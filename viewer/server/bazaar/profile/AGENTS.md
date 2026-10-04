@@ -6,7 +6,6 @@
   - Nuestras insignias («badge.awarded») y los regalos («gift.given») con sus cartas y lo que hacíamos con esa persona cuando llegó: el hilo, nuestra oferta de ese tick (estructura, sin texto) y el trato de los ticks siguientes. Además, los regalos de cada persona a todo el campo (cuántos, a cuántos equipos y cuántos a nosotros).
   - Sale del stream público que guarda el recorder más el feed, sin duplicados por id. Solo estructura: nunca el texto de un dealer. Las cartas se completan con el catálogo (nombre, rareza, tirada, oculta).
 - **`grants.ts`** — `grantsOf` arma `board.grants`: las subvenciones de la organización a nuestro equipo («admin.grant» del stream de equipo, `results/bazaar-live/<fecha>/stream-team.jsonl`), con P, sobres, cartas, quién (schedule, news, system) y el motivo. Sirve para que un salto de caja (la paga diaria, los +400 P de hoy o los +150 P de mañana) salga etiquetado como subvención y no como un trato o un error. Solo se leen las líneas que nombran el evento y cada fichero se relee solo si cambia su tamaño.
-- **`our-values.ts`** — `ourValuesOf`: nuestro valor por carta para el álbum (`our_value`), con el mismo modelo que usa `bazaar:play` (`buildValueModel` de `src/trades/trades.ts` y `marginalValue` de `src/markets/scanner.ts`). Si la tenemos, lo que cuesta perder una copia (con el riesgo de página); si falta, lo que suma una copia más (con el bonus de página). Sale de los activos de `/api/me`, el catálogo y los valores de la API que ya conocemos. Muestra una cifra, no decide ninguna.
 
 ## Links
 

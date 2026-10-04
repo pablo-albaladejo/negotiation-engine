@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../src/shared/client.js";
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
+import type { ValuationState } from "../../../src/state/valuation.js";
 import type { NewsSignals } from "../../../src/news/signals.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
 import { loadRivalLedger, type RivalLedger } from "../../../src/state/rivals.js";
@@ -141,6 +142,8 @@ export interface ModelOut {
   ladder: LadderLevel[];
   /** Prices per card: `state.markets.prices` if present; otherwise rebuilt here (origin in `source`). */
   prices: { source: "state" | "viewer" | "none"; rows: Record<string, unknown>[] };
+  /** `GameState.valuation`: our value model per card and page (null until the state has it). */
+  valuation: ValuationState | null;
   /** Packs: whatever the state carries (PACKS route) and, failing that, the catalog (`packs`) and our sealed packs. */
   packs: { state: unknown; catalog: unknown[]; held: unknown[] };
   /** Venues: `state.markets.venues` if present; otherwise `/api/venues`. */
@@ -271,6 +274,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     hints: [],
     ladder: [],
     prices: { source: "none", rows: [] },
+    valuation: null,
     packs: { state: null, catalog: [], held: [] },
     venues: { state: null, api: [] },
     now: null,
@@ -531,6 +535,7 @@ export class BazaarModel {
       hints: await this.readHints(),
       ladder: await this.ladderOf(state),
       prices: pricesOf(state, market),
+      valuation: state.valuation ?? null,
       packs: {
         state: stateAny.packs ?? record(stateAny.markets).packs ?? null,
         catalog: Array.isArray(record(market?.catalog).packs) ? (record(market?.catalog).packs as unknown[]) : [],

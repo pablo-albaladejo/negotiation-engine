@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Card } from "@negotiation-ring/design-system";
 import { RARITY_COLOR, type Board, type BoardAlbumCard, type BoardAlbumPage } from "../../model/index.js";
+import type { ModelValuation, ModelValuationCard } from "../../model/gameModel.js";
 
 /**
  * The album as cards, like the game's /cards page: one band per set (color, theme, have/of) and a tile per page card,
- * held in full color or missing in grey; under each tile the book price, the API value (`your_value`) and ours (our value model); copies in circulation under each tile, and
+ * held in full color or missing in grey; under each tile the book price, the API value (`your_value`) and ours from `GameState.valuation` (lose a copy, +1 copy; ~ = estimated base), and the page bonus per set; copies in circulation under each tile, and
  * the shinies (off the page) apart. The art is our own drawing (sun + a skyline seeded by the ref), not the game's.
  * Read-only: no figure is computed here.
  */
@@ -37,7 +38,7 @@ function Skyline({ seed, dark }: { seed: string; dark: string }) {
   );
 }
 
-function Tile({ c, color, set }: { c: BoardAlbumCard; color: string; set: string }) {
+function Tile({ c, color, set, v }: { c: BoardAlbumCard; color: string; set: string; v: ModelValuationCard | undefined }) {
   const rarity = c.rarity ?? "common";
   const rc = RARITY_COLOR[rarity] ?? "var(--muted)";
   const have = c.held > 0;
@@ -113,11 +114,24 @@ function Tile({ c, color, set }: { c: BoardAlbumCard; color: string; set: string
         <span>{c.book !== null ? `book ${c.book}` : ""}</span>
       </span>
       <span
-        style={{ fontSize: 11, display: "flex", justifyContent: "space-between", gap: 4, fontVariantNumeric: "tabular-nums" }}
-        title={`API: your_value from the Bazaar${have ? " (this copy)" : " (/api/me/value, first copy)"}. Ours: our value model, ${have ? "what losing one copy costs (page risk included)" : "what one more copy adds (page bonus included)"}.`}
+        style={{ fontSize: 11, display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0 4px", fontVariantNumeric: "tabular-nums", whiteSpace: "pre-line" }}
+        title={
+          v
+            ? [
+                `API: ${v.api !== undefined ? fmtV(v.api) : "?"} (your_value${have ? " of the copy we hold" : ", first copy"})`,
+                `Base: ${fmtV(v.base)} (${v.baseSource === "api" ? "from the API" : "estimated: set multiplier × book"}; first copy, no page bonus)`,
+                `Next copy: ${fmtV(v.nextCopy)} (what one more adds)`,
+                v.loseCopy !== undefined ? `Lose a copy: ${fmtV(v.loseCopy)} (value lost + page risk)` : null,
+              ]
+                .filter(Boolean)
+                .join("\n")
+            : "Our valuation loads with the model (GameState.valuation)."
+        }
       >
         <span className="nr-muted">{`API ${c.value !== null ? fmtV(c.value) : "?"}`}</span>
-        <span style={{ color: "var(--us)", fontWeight: 700 }}>{`ours ${c.our_value != null ? fmtV(c.our_value) : "?"}`}</span>
+        <span style={{ color: "var(--us)", fontWeight: 700 }}>
+          {v ? (have ? `lose ${fmtV(v.loseCopy ?? 0)} · +1 ${fmtV(v.nextCopy)}` : `${v.baseSource === "estimated" ? "~" : ""}+1 ${fmtV(v.nextCopy)}`) : "ours ?"}
+        </span>
       </span>
     </li>
   );
@@ -125,7 +139,9 @@ function Tile({ c, color, set }: { c: BoardAlbumCard; color: string; set: string
 
 const grid = { listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 124px), 1fr))", gap: "var(--space-3)" } as const;
 
-function Page({ p }: { p: BoardAlbumPage }) {
+function Page({ p, val }: { p: BoardAlbumPage; val: ModelValuation | null }) {
+  const vOf = (ref: string) => val?.cards.find((x) => x.ref === ref);
+  const bonus = val?.pages.find((x) => x.set === p.set)?.bonus;
   const color = p.color ?? FALLBACK;
   const pct = Math.round((100 * p.have) / Math.max(1, p.of));
   return (
@@ -136,6 +152,11 @@ function Page({ p }: { p: BoardAlbumPage }) {
           <strong style={{ font: "800 18px/1.1 var(--font-display)" }}>{p.name}</strong>
           {p.theme ? <span className="nr-muted" style={{ fontSize: 12, fontStyle: "italic" }}>{p.theme}</span> : null}
         </div>
+        {bonus !== undefined ? (
+          <span className="nr-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }} title="Page bonus: page bonus fraction × Σ base of its cards (GameState.valuation)">
+            {`page bonus ${fmtV(bonus)}${p.complete ? " · ours" : " · at stake"}`}
+          </span>
+        ) : null}
         <span style={{ fontWeight: 800, color: p.complete ? "var(--ok)" : undefined, whiteSpace: "nowrap" }}>{`${p.have}/${p.of}${p.complete ? " ✓" : ""}`}</span>
       </div>
       <div style={{ height: 6, borderRadius: "var(--radius-pill)", background: "var(--line)", overflow: "hidden" }}>
@@ -144,7 +165,7 @@ function Page({ p }: { p: BoardAlbumPage }) {
       {p.cards && p.cards.length > 0 ? (
         <ul style={grid} aria-label={`${p.name} cards`}>
           {p.cards.map((c) => (
-            <Tile key={c.ref} c={c} color={color} set={p.set} />
+            <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} />
           ))}
         </ul>
       ) : (
@@ -157,7 +178,7 @@ function Page({ p }: { p: BoardAlbumPage }) {
           </span>
           <ul style={grid} aria-label={`${p.name} shinies`}>
             {p.shinies.map((c) => (
-              <Tile key={c.ref} c={c} color={color} set={p.set} />
+              <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} />
             ))}
           </ul>
         </>
@@ -192,7 +213,7 @@ function Chip({ on, label, dot, onClick }: { on: boolean; label: string; dot?: s
   );
 }
 
-export function AlbumCards({ board }: { board: Board }) {
+export function AlbumCards({ board, valuation = null }: { board: Board; valuation?: ModelValuation | null }) {
   const album = board.album;
   const [set, setSet] = useState<string>("all");
   const [missingOnly, setMissingOnly] = useState(false);
@@ -218,7 +239,7 @@ export function AlbumCards({ board }: { board: Board }) {
           <Chip on={missingOnly} label="only missing" onClick={() => setMissingOnly(!missingOnly)} />
         </div>
         {pages.map((p) => (
-          <Page key={p.set} p={p} />
+          <Page key={p.set} p={p} val={valuation} />
         ))}
       </div>
     </Card>
