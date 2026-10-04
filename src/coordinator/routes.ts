@@ -150,8 +150,12 @@ function openedByPlay(thread: number): boolean {
   }
 }
 
-/** Dealers whose ladder level did not move the server's ladder_points after our deals: their ladder gain counts 0. */
-const LADDER_UNVERIFIED: ReadonlySet<string> = new Set(["picaros"]);
+/**
+ * Dealers whose ladder level did not move the server's ladder_points after our deals: their ladder gain counts 0.
+ * Empty since 4 Oct: the CHA-09 buy from Picaros at 59 moved it +0.045 (t2094); her earlier sales closed at her fixed
+ * price (span 0), which scores 0 with any dealer (Pablo approved via the coordinator).
+ */
+const LADDER_UNVERIFIED: ReadonlySet<string> = new Set<string>();
 /** Dealer sales earn no ladder bonus nor ladder discount (audit, 4 Oct: SAL-03, MAL-08, LAT-05 at her opening scored 0). */
 const LADDER_SALES_UNSCORED = true;
 
