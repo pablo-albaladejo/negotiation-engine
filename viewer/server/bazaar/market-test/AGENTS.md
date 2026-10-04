@@ -4,6 +4,7 @@
   - Resultado oficial por sesión: «bench.started» y «bench.finished» del stream de equipo (`results/bazaar-live/<fecha>/stream-team.jsonl`, solo las líneas con «bench.»): hora, eficiencia frente a la base auto, Δ, emparejamientos y si es la versión «hard».
   - Libro tick a tick: `results/bazaar-live/<fecha>/bench.jsonl` (cotización y temple de cada operador sintético), por la ventana `start_tick`…+`ticks`. `dryRun` dice si lo leyó la sombra o el broker en vivo.
   - Nuestros emparejamientos: líneas «match» de `<fecha>/broker.jsonl` (enviado, rechazado o dry-run), si existe.
+  - El libro y los emparejamientos se juntan de todas las carpetas de fecha (los ticks son globales): un broker lanzado ayer sigue escribiendo en la carpeta de ayer. Si en la ventana hay líneas del broker en vivo (`dryRun` falso), se descartan las de la sombra.
   - Números de la sombra de las sesiones auto: `results/bazaar-live/bench-sessions.json`.
   - «Ahora»: la última línea de `results/logs/broker-live.log`.
   - `hindsight` por sesión: lo nuestro (emparejamientos «sent» y no dry-run: pares y excedente de cotización, el campo `surplus`) frente al óptimo a posteriori, con los pares perdidos (`missed`) y los nuestros fuera del óptimo (`suboptimal`); provisional hasta el último tick leído mientras corre, final al acabar. Solo comparable en board (v26): en auto (v04) el libro se graba después de que auto ya cruzó, así que se marca «no comparable» y sin % capturado. Es excedente de cotización (bid − ask), **no** la eficiencia oficial: bench.jsonl no trae límites privados.

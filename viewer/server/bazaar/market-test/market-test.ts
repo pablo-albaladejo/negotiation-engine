@@ -230,10 +230,19 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
   }, [] as z.infer<typeof ShadowSchema>[]);
 
   const sessions: (MarketSession & { _book: z.infer<typeof BenchLineSchema>[]; _matches: z.infer<typeof MatchSchema>[] })[] = [];
+  // A long-running broker keeps writing to the day folder it was launched in, so the book and our matches are
+  // pooled across days (ticks are global) and each session takes its window from the pool.
+  const book: z.infer<typeof BenchLineSchema>[] = [];
+  const matches: z.infer<typeof MatchSchema>[] = [];
+  for (const day of days) {
+    book.push(...(await cached(join(bazaarDir, day, "bench.jsonl"), (t) => jsonl(t, BenchLineSchema), [] as z.infer<typeof BenchLineSchema>[])));
+    matches.push(...(await cached(join(bazaarDir, day, "broker.jsonl"), (t) => jsonl(t, MatchSchema, '"match"'), [] as z.infer<typeof MatchSchema>[])));
+  }
+  // With a live broker and a shadow both writing, the window keeps only the live lines.
+  const preferLive = <T extends { dryRun?: boolean | null | undefined }>(lines: T[]): T[] =>
+    lines.some((l) => l.dryRun === false) ? lines.filter((l) => l.dryRun === false) : lines;
   for (const day of days) {
     const events = await cached(join(bazaarDir, day, "stream-team.jsonl"), (t) => jsonl(t, StreamLineSchema, '"bench.'), [] as z.infer<typeof StreamLineSchema>[]);
-    const book = await cached(join(bazaarDir, day, "bench.jsonl"), (t) => jsonl(t, BenchLineSchema), [] as z.infer<typeof BenchLineSchema>[]);
-    const matches = await cached(join(bazaarDir, day, "broker.jsonl"), (t) => jsonl(t, MatchSchema, '"match"'), [] as z.infer<typeof MatchSchema>[]);
     const started = new Map<number, MarketSession & { _book: z.infer<typeof BenchLineSchema>[]; _matches: z.infer<typeof MatchSchema>[] }>();
     for (const l of events) {
       const d = l.data;
@@ -246,7 +255,7 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
         const name = strOf(p.name);
         const shadow = shadows.find((s) => s.official?.session === session || (s.firstTick != null && Math.abs(s.firstTick - start) <= 2));
         const inWindow = (tick: number) => tick >= start && tick <= start + ticks + 1;
-        const lines = book.filter((b) => inWindow(b.tick));
+        const lines = preferLive(book.filter((b) => inWindow(b.tick)));
         const dry = lines.length ? lines.every((b) => b.dryRun !== false) : null;
         started.set(session, {
           day,
@@ -269,7 +278,7 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
           our_matches: null,
           hindsight: null,
           _book: lines,
-          _matches: matches.filter((m) => inWindow(m.tick)),
+          _matches: preferLive(matches.filter((m) => inWindow(m.tick))),
         });
       } else if (d.type === "bench.finished") {
         const s = started.get(session);
