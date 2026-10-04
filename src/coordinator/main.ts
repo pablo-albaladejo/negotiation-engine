@@ -25,6 +25,7 @@ import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/pric
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeWorkshop, proposeWorkshop } from "../workshop/workshop.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
+import { loadCounterpartyRoom } from "../markets/room.js";
 import { defaultEpicDoneFile, EPIC_BUY_LANES, executeRivalBuy, seedEpicDone, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { executeRivalSwap, proposeRivalSwap, type RivalSwapPlan } from "../markets/rival-swap.js";
@@ -353,12 +354,15 @@ async function main() {
       [
         "markets",
         async () => {
+          // Payday cap per counterparty: what score-audit already credited to each team (read each tick, small files).
+          const room = loadCounterpartyRoom(process.cwd());
           const byRef = new Map<string, number[]>();
           for (const a of me?.assets ?? []) if ((a.kind ?? "card") === "card") byRef.set(a.ref, [...(byRef.get(a.ref) ?? []), a.id]);
           const m = proposeMarkets(state, byRef, {
             scanner: values.scanner === true,
             ...(trades.lastState ? { trade: trades.lastState, directedRefs: new Set(directedListings(trades.lastState).map((d) => d.ref)) } : {}),
             ledger: scannerLedger,
+            room,
             cashFloor: num(values["cash-floor"], "--cash-floor"),
             spendPerHour: scannerSpendPerHour,
             pageTargets,
@@ -378,7 +382,7 @@ async function main() {
           try {
             const epic = values["rival-buy-epic"] ? EPIC_BUY_LANES : undefined;
             const apiValues = await rivalBuyValues(client, trades.lastState, state.rivals, undefined, epic ? epic.map((e) => e.ref) : []);
-            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, pageReserve: trades.lastReserve, apiValues, ...(epic ? { epic } : {}), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, pageReserve: trades.lastReserve, apiValues, room, ...(epic ? { epic } : {}), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
             rivalBuyPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);
@@ -398,7 +402,7 @@ async function main() {
           }
           // Team desk: counter-offers to offers made to us that El Rastro rejects (intents only with the opt-in --team-desk).
           try {
-            const r = proposeTeamDesk({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), ...(trades.lastState?.rivals ? { rivals: trades.lastState.rivals } : {}) }, undefined, undefined, deskOfferIds(deskLedger));
+            const r = proposeTeamDesk({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), ...(trades.lastState?.rivals ? { rivals: trades.lastState.rivals } : {}), room }, undefined, undefined, deskOfferIds(deskLedger));
             deskPlan = r.plan;
             deskIntents = r.intents;
             if (values["team-desk"]) m.intents.push(...r.intents);

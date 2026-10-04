@@ -2,6 +2,7 @@ import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
 import { isKeepsake } from "../shared/asset-locks.js";
 import { isLastFreeCopy } from "../shared/last-copy.js";
+import { MIN_ROOM, roomOf } from "../markets/room.js";
 import {
   acceptLockedIds,
   evaluateOffer,
@@ -95,6 +96,8 @@ export interface DeskInput {
   trade: TradeState | undefined;
   tradePlan?: TickPlan;
   rivals?: RivalSignals;
+  /** Score room left per counterparty (`loadCounterpartyRoom`): a team below `MIN_ROOM` gets no counter. */
+  room?: ReadonlyMap<string, number>;
 }
 
 /** Last price we asked per `team:ref:venue` (counters stay monotonic across expiries within one run). */
@@ -220,6 +223,10 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
       answered.add(key);
       if (open >= params.maxOpen) {
         notes.push(`${TAG} skip ${ref} → ${r.team}: ${params.maxOpen} counters open`);
+        continue;
+      }
+      if (roomOf(input.room, r.team) < MIN_ROOM) {
+        notes.push(`${TAG} skip ${ref} → ${r.team}: score room ${roomOf(input.room, r.team)} < ${MIN_ROOM} (Payday cap per counterparty)`);
         continue;
       }
       const copies = trade.held.filter((a) => a.ref === ref && usable(a.id)).sort((x, y) => x.value - y.value || y.id - x.id);

@@ -7,6 +7,7 @@ import type { RivalsState, RivalTeam } from "../state/rivals.js";
 import { buyGain, countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, slowReprice, tradeFee, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
+import { MIN_ROOM, roomOf } from "./room.js";
 
 /**
  * Rival buy: a directed El Rastro bid (`to` = the team, cash for one card) for a page card we lack, sent to a rival
@@ -64,7 +65,7 @@ export interface EpicBuyParams {
   /** Open lane: one bid on El Rastro to anyone (no `to`, `teams` unused) at the ceiling, never repriced, reposted when it expires. */
   open?: boolean;
 }
-export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04", "t13"], start: 185, ceiling: 215, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
+export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04"], start: 185, ceiling: 215, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
 /**
  * Second epic lane: RET-11 (value 288 = book 180 × RET 1.6, no page bonus). Directed to t05/t12/t10 up to 240 got no
  * fill (4 Oct); directed bids between teams fill ~3 % (26 of 811), open ones far more, so it is now one open bid at 240
@@ -103,6 +104,8 @@ export interface RivalBuyInput {
   apiValues?: ReadonlyMap<string, number>;
   /** `--rival-buy-epic`: the epic lanes (one or several); their cards leave the normal and high-value lanes. */
   epic?: EpicBuyParams | readonly EpicBuyParams[];
+  /** Score room left per counterparty (`loadCounterpartyRoom`): a team below `MIN_ROOM` is never bid to. */
+  room?: ReadonlyMap<string, number>;
 }
 
 export interface RivalBuyPricing {
@@ -341,6 +344,10 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       cancel(e.offer.id, key, `El Rastro bids on ${e.ref} (no double fill)`);
       continue;
     }
+    if (roomOf(input.room, e.team) < MIN_ROOM) {
+      cancel(e.offer.id, key, `${e.team} score room ${roomOf(input.room, e.team)} < ${MIN_ROOM}`, true);
+      continue;
+    }
     const asm = assessRivalBuy(team, e.ref, input, params);
     const cap = asm.p?.cap;
     if (!asm.ok && !/^cap /.test(asm.reason)) {
@@ -381,6 +388,10 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       const team = byTeam.get(t);
       const key = `${t}:${ref}`;
       if (!team || handled.has(key) || team.seen.filter((s) => s.ref === ref).length < (input.apiValues?.has(ref) ? 1 : 2)) continue;
+      if (roomOf(input.room, t) < MIN_ROOM) {
+        notes.push(`${TAG} skip ${ref} ← ${t}: score room ${roomOf(input.room, t)} < ${MIN_ROOM}`);
+        continue;
+      }
       const until = memo.get(key)?.backoffUntil;
       if (until !== undefined && until > trade.tick) {
         notes.push(`${TAG} skip ${ref} ← ${t}: backoff until tick ${until}`);
@@ -466,8 +477,9 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   let open = 0;
   let committed = 0;
   for (const e of mine) {
-    if (!epic.teams.includes(e.team) || e.price > epic.ceiling || open >= 1) {
-      cancel(e.offer.id, e.team, !epic.teams.includes(e.team) ? `${e.team} not in the epic list` : e.price > epic.ceiling ? `bid ${e.price} > ceiling ${epic.ceiling}` : "one epic bid at a time", false);
+    const lowRoom = roomOf(input.room, e.team) < MIN_ROOM;
+    if (!epic.teams.includes(e.team) || e.price > epic.ceiling || open >= 1 || lowRoom) {
+      cancel(e.offer.id, e.team, !epic.teams.includes(e.team) ? `${e.team} not in the epic list` : e.price > epic.ceiling ? `bid ${e.price} > ceiling ${epic.ceiling}` : lowRoom ? `${e.team} score room ${roomOf(input.room, e.team)} < ${MIN_ROOM}` : "one epic bid at a time", false);
       continue;
     }
     const age = trade.tick - (e.offer.created_tick ?? trade.tick);
@@ -499,7 +511,7 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   }
   if (open) return committed;
   const seenWith = (team: string) => input.rivals?.teams.find((t) => t.team === team)?.seen.some((s) => s.ref === epic.ref) ?? false;
-  const team = epic.teams.find((t) => !doneNow.has(t) && memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t));
+  const team = epic.teams.find((t) => !doneNow.has(t) && memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t) && roomOf(input.room, t) >= MIN_ROOM);
   if (!team) {
     out.notes.push(`${tag} ${epic.ref}: no listed holder left (${epic.teams.join("/")} done or not seen with it)`);
     return 0;

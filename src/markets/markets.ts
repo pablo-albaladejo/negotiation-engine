@@ -4,6 +4,7 @@ import { freeCounts as freeCountsOf, isLastFreeCopy } from "../shared/last-copy.
 import type { GameState } from "../state/game-state.js";
 import type { PriceEntry, Quote, VenueInfo } from "../state/prices.js";
 import { countHoldings, type TradeState } from "../trades/trades.js";
+import { roomOf } from "./room.js";
 import { gameHourOf, marginalValue, SCANNER_PARAMS, ScannerLedger, scanDecision, type ScannerParams } from "./scanner.js";
 
 /**
@@ -103,6 +104,8 @@ export interface MarketsContext {
   /** Venue-switch reserve (P above `cashFloor`): scanner buys stay above it; sells and page-completing buys do not. */
   venueReserve?: number;
   params?: ScannerParams;
+  /** Score room left per counterparty (`loadCounterpartyRoom`): the scanner's edge counts at most this much. */
+  room?: ReadonlyMap<string, number>;
 }
 
 interface Valued {
@@ -233,7 +236,7 @@ export function proposeMarkets(state: GameState, assetsByRef: ReadonlyMap<string
   for (const { e, c, v, asset } of candidates) {
     const cp = counterpartyOf(c, trade);
     const d = scanDecision(
-      { side: c.side, price: c.quote.price, fee: c.fee, penalty: c.penalty, marginal: v.value, cash, cashFloor: c.side === "buy" ? buyFloor : cashFloor, spentThisHour: ledger.spentIn(hour), committedThisTick: committed, spendPerHour, dealsWithCounterparty: ledger.dealsWith(hour, cp) + (tickDeals.get(cp) ?? 0) },
+      { side: c.side, price: c.quote.price, fee: c.fee, penalty: c.penalty, marginal: v.value, cash, cashFloor: c.side === "buy" ? buyFloor : cashFloor, spentThisHour: ledger.spentIn(hour), committedThisTick: committed, spendPerHour, dealsWithCounterparty: ledger.dealsWith(hour, cp) + (tickDeals.get(cp) ?? 0), room: roomOf(ctx.room, cp) },
       params,
     );
     if (!d.ok) {

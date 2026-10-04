@@ -4,7 +4,8 @@ import { buyGain, pageRisk, valueDelta, type ValueModel } from "../trades/trades
  * Dispersion scanner (markets route): buy asks below our MARGINAL private value and sell into bids above it.
  * neg_points score value gained at private value (buy: v − p, sell: p − v), so each leg scores on its own.
  * Per-deal cap: a team trade scores at most `scoredGainCap` (Payday: gain ≤ 50 per trade), so the edge is ranked at
- * min(edge, cap); a bigger raw edge buys nothing extra. The per-counterparty cap is approximated by `dealsPerCounterpartyPerHour`.
+ * min(edge, cap, room left with that counterparty); a bigger raw edge buys nothing extra. The cap is also per counterparty
+ * and cumulative (`room.ts`), so a team whose room is spent scores nothing.
  * Pure: margin, marginal value, per-deal decision and the hourly ledger. The figure is always the price on display.
  */
 export const SCANNER_PARAMS = {
@@ -54,6 +55,8 @@ export interface ScanInput {
   spentThisHour: number;
   committedThisTick: number;
   spendPerHour: number;
+  /** Score room left with this counterparty (Payday cap per counterparty, `room.ts`); unknown → no extra cap. */
+  room?: number;
   /** Scanner deals with this counterparty this game hour (executed + earlier this tick). */
   dealsWithCounterparty: number;
 }
@@ -68,7 +71,7 @@ export interface ScanDecision {
 
 /** One scanner deal: net (edge − fee − penalty) ≥ margin, spend cap, cash floor and counterparty cap. */
 export function scanDecision(i: ScanInput, p: ScannerParams = SCANNER_PARAMS): ScanDecision {
-  const edge = r1(Math.min(p.scoredGainCap, i.side === "buy" ? i.marginal - i.price : i.price - i.marginal));
+  const edge = r1(Math.min(p.scoredGainCap, i.room ?? Infinity, i.side === "buy" ? i.marginal - i.price : i.price - i.marginal));
   const net = r1(edge - i.fee - i.penalty);
   const margin = scannerMargin(i.price, p);
   const d = (ok: boolean, reason: string): ScanDecision => ({ ok, edge, net, margin, reason });

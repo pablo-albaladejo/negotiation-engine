@@ -8,6 +8,8 @@
 
   Si ya tenemos la carta o su valor queda por debajo del techo, no sale ninguna puja nueva. Los escalones de precio son inicio, punto medio y techo. Con varias vías (`EPIC_BUY_LANES`: SAL-11 y RET-11), cada puja respeta el techo y la lista de su vía, hay una abierta como mucho por carta, y todas las que quedan abiertas juntas dejan la caja por encima del suelo. La vía abierta (RET-11) publica una sola puja sin `to` al techo, nunca por encima, y El Rastro no la cancela (sin la exención sí lo haría).
 
+- **`room.test.ts`** — tope de Payday por contraparte (`src/markets/room.ts`). Con el caso medido (t05: +50 y luego 0), el margen queda en 0. Con registros aleatorios, el margen siempre está entre 0 y 50. Una vía épica nunca puja a un equipo con margen < `MIN_ROOM`, y cancela la puja que ya tuviera con él. La ventaja del escáner nunca supera el margen que queda con la contraparte.
+
 - **`workshop.test.ts`** — El Taller (`src/workshop/workshop.ts`). Con manos aleatorias (copias libres, en un anuncio nuestro, en un hilo o en otro venue), comprueba que el Taller:
   - nunca entrega la última copia libre, una copia ocupada ni una oculta;
   - nunca mezcla rarezas;
