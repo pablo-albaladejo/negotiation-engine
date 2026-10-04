@@ -93,7 +93,7 @@ export interface AgentOptions {
    */
   ladderSellDiscount?: () => number;
   /** Today's no-deal threads with this dealer on a target key and her best price in them (`pastNoDeals` in the coordinator). */
-  pastNoDeals?: (key: string) => { n: number; best: number } | undefined;
+  pastNoDeals?: (key: string) => { n: number; best: number; lastTs?: string } | undefined;
   /** Asset ids received from another team today: the planner never offers them to this dealer. */
   teamReceived?: () => ReadonlySet<number>;
   /**
@@ -595,6 +595,10 @@ export class BazaarAgent {
     if (past && past.n >= HOPELESS_MIN_REPEATS && (c.side === "sell" ? past.best < c.reservation : past.best > c.reservation)) {
       return `${past.n} no-deal threads today, her best ${past.best} vs our ${c.side === "sell" ? "min" : "max"} ${c.reservation}`;
     }
+    const sinceLast = past?.lastTs ? this.now() - Date.parse(past.lastTs) : Infinity;
+    if (past && sinceLast < HOPELESS_COOLDOWN_MS && (c.side === "sell" ? past.best < c.reservation : past.best > c.reservation)) {
+      return `no-deal thread ${Math.round(sinceLast / 60_000)} min ago, her best ${past.best} vs our ${c.side === "sell" ? "min" : "max"} ${c.reservation} (cooldown ${HOPELESS_COOLDOWN_MS / 60_000} min)`;
+    }
     // Her band is per rarity across sets; a forex route is per card (Pilar pays SAL rares ~75, other rares ~54).
     if (c.kind === "buy-pack" || !c.rarity || c.forex) return undefined;
     const band = `${c.side === "sell" ? "buys" : "sells"}:${c.rarity}`;
@@ -978,6 +982,11 @@ export const HOPELESS_MIN_SAMPLES = 3;
 const EGG_OPEN_RARITIES = new Set(["epic", "legendary"]);
 /** No-deal threads on the same target with the same dealer (today) before it counts as hopeless. */
 export const HOPELESS_MIN_REPEATS = 2;
+/**
+ * After ONE no-deal thread whose best price never reached our limit, the same target with the same dealer waits this
+ * long (ms) before reopening (audit, 4 Oct: Chato fixed at 33 on CHA-08 against our ~31, threads 2246 then 2290).
+ */
+export const HOPELESS_COOLDOWN_MS = 60 * 60_000;
 /** Slack over her measured range (P) before a target counts as hopeless. */
 export const HOPELESS_MARGIN_P = 1;
 

@@ -420,11 +420,12 @@ export class DealersRoute {
  * Today's no-deal threads with `dealer` on target `key` (`sell:620`, `buy:SAL-09`…, the suffix of the lesson's `item`)
  * and her best price across them: the highest she bid when she buys, the lowest she asked when she sells.
  */
-export function pastNoDeals(entries: readonly LessonEntry[], dealer: string, key: string, day: string): { n: number; best: number } | undefined {
+export function pastNoDeals(entries: readonly LessonEntry[], dealer: string, key: string, day: string): { n: number; best: number; lastTs?: string } | undefined {
   const mine = entries.filter((e) => e.dealer === dealer && e.outcome !== "deal" && (e.ts ?? "").startsWith(day) && /\(([^)]+)\)$/.exec(e.item)?.[1] === key && e.her_prices.length);
   if (!mine.length) return undefined;
   const prices = mine.flatMap((e) => e.her_prices);
-  return { n: mine.length, best: mine[0]!.kind === "sell" ? Math.max(...prices) : Math.min(...prices) };
+  const lastTs = mine.map((e) => e.ts ?? "").sort().at(-1);
+  return { n: mine.length, best: mine[0]!.kind === "sell" ? Math.max(...prices) : Math.min(...prices), ...(lastTs ? { lastTs } : {}) };
 }
 
 /** Catalog for the page-target caps (it does not change within the day): one GET per run. */
