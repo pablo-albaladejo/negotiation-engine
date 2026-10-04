@@ -12,6 +12,7 @@ Hackathon: solo se testea lo que no se negocia (decisión del equipo, 3 oct 2026
 - **`duels-micro-step.test.ts`** — duelos: si el rival se mueve cada ronda, nuestras ofertas nunca se repiten mientras quede ≥ 1 P de margen y nunca cruzan el límite (micro-concesión de 1 P, texto = cifra).
 - **`duels-days.test.ts`** — duelos con días (Duels II/III): con cualquier forma legible de `your_days_weight` (número, tabla, objeto "0".."10", `{ weight }`) la oferta lleva días enteros 0..10, texto = cifra y no cruza el límite; un peso ilegible no se convierte en 0 en silencio: el duelo se pausa sin mensaje ni aceptación (también si falta `issues`); `days_meaning` fija la dirección de un peso único.
 - **[`bazaar/`](bazaar/AGENTS.md)** — guardarraíles del agente: cifra = texto, forma de la oferta, un activo en un sitio, topes, menú, coordinador, flags y sobres.
+- **[`markets/`](markets/AGENTS.md)** — guardarraíles de las rutas de mercados: vía épica de rival-buy (techo, suelo de caja, solo equipos de la lista, una puja abierta).
 - **[`engine/`](engine/AGENTS.md)** — generadores de fast-check del motor.
 - **[`fixtures/`](fixtures/AGENTS.md)** — fichas reales de dealers e hilo 56 (referencia).
 

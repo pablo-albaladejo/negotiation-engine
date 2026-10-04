@@ -24,7 +24,7 @@ import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
-import { executeRivalBuy, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
+import { EPIC_BUY_PARAMS, executeRivalBuy, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { executeRivalSwap, proposeRivalSwap, type RivalSwapPlan } from "../markets/rival-swap.js";
 import { ScannerLedger } from "../markets/scanner.js";
@@ -85,6 +85,7 @@ async function main() {
       "allow-venue-switch": { type: "boolean", default: false },
       "rival-page": { type: "boolean", default: false },
       "rival-buy": { type: "boolean", default: false },
+      "rival-buy-epic": { type: "boolean", default: false },
       "rival-swap": { type: "boolean", default: false },
       "team-desk": { type: "boolean", default: false },
       "rastro-bids": { type: "boolean", default: false },
@@ -364,8 +365,9 @@ async function main() {
           }
           // Directed bids to a rival seen holding a spare of a page card we lack (same safety: off with a note).
           try {
-            const apiValues = await rivalBuyValues(client, trades.lastState, state.rivals);
-            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, pageReserve: trades.lastReserve, apiValues, ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
+            const epic = values["rival-buy-epic"] ? EPIC_BUY_PARAMS : undefined;
+            const apiValues = await rivalBuyValues(client, trades.lastState, state.rivals, undefined, epic ? [epic.ref] : []);
+            const r = proposeRivalBuy({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), rivals: state.rivals, maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, pageReserve: trades.lastReserve, apiValues, ...(epic ? { epic } : {}), ...(budget.opensBlocked ? { opensBlocked: budget.opensBlocked } : {}) });
             rivalBuyPlan = r.plan;
             m.intents.push(...r.intents);
             m.notes.push(...r.notes);

@@ -43,6 +43,31 @@ export const RIVAL_BUY_PARAMS = {
 };
 export type RivalBuyParams = typeof RIVAL_BUY_PARAMS;
 
+/**
+ * Epic test lane (`--rival-buy-epic`, Pablo, 4 Oct, test A): one card, directed only to a closed list of holders, one
+ * bid open at a time. Price steps start → midpoint → ceiling (`maxReprices` raises, one every `repriceAfterTicks`); a
+ * team that does not fill after the last step is done for the run and the next listed holder gets the cycle. Its own
+ * cash floor; `/api/me/value` must stay at or above the ceiling (else no bid). The card is never resold (a single copy
+ * is never a duplicate). Outside `--max-spend`: the approval set its own ceiling and floor.
+ */
+export interface EpicBuyParams {
+  ref: string;
+  teams: readonly string[];
+  start: number;
+  ceiling: number;
+  maxReprices: number;
+  repriceAfterTicks: number;
+  expiresInTicks: number;
+  cashFloor: number;
+}
+export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04"], start: 150, ceiling: 180, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
+
+/** Price of step `n` (0 = start, `maxReprices` = ceiling), never above the ceiling. */
+export function epicStep(epic: EpicBuyParams, n: number): number {
+  const steps = Math.max(1, epic.maxReprices);
+  return Math.min(epic.ceiling, Math.round(epic.start + ((epic.ceiling - epic.start) * Math.min(n, steps)) / steps));
+}
+
 const MIN_MARGIN = 2;
 const TAG = "[rival-buy]";
 
@@ -64,6 +89,8 @@ export interface RivalBuyInput {
   pageReserve?: number;
   /** `/api/me/value` of candidate cards we lack (`rivalBuyValues`): enables the high-value lane. */
   apiValues?: ReadonlyMap<string, number>;
+  /** `--rival-buy-epic`: the epic test lane; its card leaves the normal and high-value lanes. */
+  epic?: EpicBuyParams;
 }
 
 export interface RivalBuyPricing {
@@ -104,6 +131,8 @@ export interface RivalBuyPost {
   replaces?: number;
   reprice: number;
   hi?: boolean;
+  /** Epic test lane post (`--rival-buy-epic`). */
+  epic?: boolean;
   body: { venue: "rastro"; to: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
 }
 
@@ -112,6 +141,8 @@ export interface RivalBuyCancel {
   offerId: number;
   key: string;
   backoff: boolean;
+  /** Epic lane: this team is done for the run (no new cycle). */
+  done?: boolean;
   reason: string;
 }
 
@@ -226,10 +257,13 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   const byTeam = new Map(rivals!.teams.map((t) => [t.team, t]));
   const rastro = rastroBids(trade, input.tradePlan);
   let budget = spendLeft(input);
+  const epicRef = input.epic?.ref;
+  if (input.epic) proposeEpicBuy(input, input.epic, existing, memo, { intents, notes, plan });
 
   // Existing directed bids: cancel, reprice or keep (what they commit comes off the budget).
   let open = 0;
   for (const e of existing) {
+    if (e.ref === epicRef) continue;
     const key = `${e.team}:${e.ref}`;
     const team = byTeam.get(e.team);
     if (!team) {
@@ -275,6 +309,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   // New candidates: page cards we lack that a rival holds a spare of.
   const fresh: RivalBuyPricing[] = [];
   for (const [ref, who] of Object.entries(rivals!.byRef)) {
+    if (ref === epicRef) continue;
     for (const t of who.holders) {
       const team = byTeam.get(t);
       const key = `${t}:${ref}`;
@@ -298,7 +333,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   }
   // Most value created first; one bid per card.
   fresh.sort((a, b) => b.gain - b.bid - (a.gain - a.bid) || a.ref.localeCompare(b.ref) || a.team.localeCompare(b.team));
-  const refs = new Set(existing.map((e) => e.ref));
+  const refs = new Set(existing.filter((e) => e.ref !== epicRef).map((e) => e.ref));
   let hiUsed = hiLedger.filter((t) => t > trade.tick - params.hiWindowTicks).length;
   for (const p of fresh) {
     if (refs.has(p.ref)) continue;
@@ -325,6 +360,99 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   }
   if (!plan.posts.length && !plan.cancels.length && !notes.length) notes.push(`${TAG} no rival seen with a spare of a page card we lack`);
   return { intents, notes, plan };
+}
+
+/** Cash the epic lane may use: cash minus what El Rastro commits and accepts this tick. */
+function epicCash(input: RivalBuyInput): number {
+  const t = input.trade!;
+  return t.cash - (input.tradePlan?.committedAfter ?? 0) - (input.tradePlan?.accept?.spend ?? 0);
+}
+
+/**
+ * Epic test lane: keeps at most one directed bid for `epic.ref`, only to `epic.teams`, at `epicStep` prices through
+ * `enforceGuardrails` (reservation = ceiling), never leaving cash below `epic.cashFloor`. Pure except reading `memo`.
+ */
+export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existing: ReturnType<typeof directedBids>, memo: RivalBuyMemo, out: { intents: Intent[]; notes: string[]; plan: RivalBuyPlan }): void {
+  const trade = input.trade!;
+  const tag = `${TAG} [epic]`;
+  const mine = existing.filter((e) => e.ref === epic.ref);
+  const cancel = (offerId: number, team: string, reason: string, done: boolean) => {
+    const intentId = `markets:rivalbuy:cancel:${offerId}`;
+    out.plan.cancels.push({ intentId, offerId, key: `${team}:${epic.ref}`, backoff: false, ...(done ? { done: true } : {}), reason });
+    out.intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${tag} cancel #${offerId} (${reason})` });
+    out.notes.push(`${tag} cancel #${offerId} ${reason}`);
+  };
+  const held = countHoldings(trade.held).get(epic.ref) ?? 0;
+  const value = input.apiValues?.get(epic.ref);
+  const stop = held > 0 ? `we hold ${epic.ref}: test done` : value === undefined ? `/api/me/value of ${epic.ref} unknown` : value < epic.ceiling ? `/api/me/value ${value} < ceiling ${epic.ceiling}` : undefined;
+  if (stop) {
+    for (const e of mine) cancel(e.offer.id, e.team, stop, held > 0);
+    out.notes.push(`${tag} ${epic.ref}: ${stop}`);
+    return;
+  }
+  const cash = epicCash(input);
+  let open = 0;
+  for (const e of mine) {
+    if (!epic.teams.includes(e.team) || e.price > epic.ceiling || open >= 1) {
+      cancel(e.offer.id, e.team, !epic.teams.includes(e.team) ? `${e.team} not in the epic list` : e.price > epic.ceiling ? `bid ${e.price} > ceiling ${epic.ceiling}` : "one epic bid at a time", false);
+      continue;
+    }
+    const age = trade.tick - (e.offer.created_tick ?? trade.tick);
+    if (age < epic.repriceAfterTicks) {
+      open += 1;
+      continue;
+    }
+    // Step already reached: from memo, or from the price on display after a restart.
+    let n = memo.get(`${e.team}:${epic.ref}`)?.reprices ?? 0;
+    for (let k = 0; k <= epic.maxReprices; k++) if (epicStep(epic, k) <= e.price) n = Math.max(n, k);
+    if (n >= epic.maxReprices) {
+      cancel(e.offer.id, e.team, `no fill at the ceiling ${epic.ceiling} after ${n} reprice(s): ${e.team} done`, true);
+      continue;
+    }
+    const next = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epicStep(epic, n + 1), e.price);
+    const fee = tradeFee(next, 1, MAKER_FEES);
+    if (next <= e.price || cash - next - fee < epic.cashFloor) {
+      cancel(e.offer.id, e.team, next <= e.price ? `no higher step than ${e.price}: ${e.team} done` : `cash ${Math.floor(cash)} − ${next + fee} < floor ${epic.cashFloor}`, next <= e.price);
+      continue;
+    }
+    cancel(e.offer.id, e.team, `reprice ${e.price} → ${next}`, false);
+    const post = makeEpicPost(e.team, next, epic, n + 1, e.offer.id);
+    out.plan.posts.push(post);
+    out.intents.push(postIntent(post, `${tag} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${epic.maxReprices})`, value! - next - fee));
+    out.notes.push(`${tag} reprice ${epic.ref} ← ${e.team} #${e.offer.id} ${e.price} → ${next} (${n + 1}/${epic.maxReprices}, ceiling ${epic.ceiling})`);
+    open += 1;
+  }
+  if (open) return;
+  const seenWith = (team: string) => input.rivals?.teams.find((t) => t.team === team)?.seen.some((s) => s.ref === epic.ref) ?? false;
+  const team = epic.teams.find((t) => memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t));
+  if (!team) {
+    out.notes.push(`${tag} ${epic.ref}: no listed holder left (${epic.teams.join("/")} done or not seen with it)`);
+    return;
+  }
+  const price = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epicStep(epic, 0));
+  const fee = tradeFee(price, 1, MAKER_FEES);
+  if (cash - price - fee < epic.cashFloor) {
+    out.notes.push(`${tag} ${epic.ref} ← ${team}: cash ${Math.floor(cash)} − ${price + fee} < floor ${epic.cashFloor}`);
+    return;
+  }
+  const post = makeEpicPost(team, price, epic, 0, undefined);
+  out.plan.posts.push(post);
+  const line = `${tag} ${epic.ref} ← ${team} · /api/me/value ${value} · bid ${price} (steps ${epicStep(epic, 0)}→${epicStep(epic, epic.maxReprices)}, ceiling ${epic.ceiling}) · cash floor ${epic.cashFloor} · POST rastro to=${team} exp ${epic.expiresInTicks}`;
+  out.intents.push(postIntent(post, line, value! - price - fee));
+  out.notes.push(line);
+}
+
+function makeEpicPost(team: string, price: number, epic: EpicBuyParams, reprice: number, replaces: number | undefined): RivalBuyPost {
+  return {
+    intentId: `markets:rivalbuy:post:${team}:${epic.ref}`,
+    team,
+    ref: epic.ref,
+    price,
+    reprice,
+    epic: true,
+    ...(replaces !== undefined ? { replaces } : {}),
+    body: { venue: "rastro", to: team, give: { cash: price }, want: { cards: [epic.ref] }, expires_in_ticks: epic.expiresInTicks },
+  };
 }
 
 function makePost(team: string, ref: string, price: number, params: RivalBuyParams, reprice: number, replaces: number | undefined): RivalBuyPost {
@@ -359,7 +487,8 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
     try {
       await client.cancelOffer(c.offerId);
       cancelled.add(c.offerId);
-      if (c.backoff) memo.set(c.key, { reprices: 0, backoffUntil: tick + params.backoffTicks });
+      if (c.done) memo.set(c.key, { reprices: 0, backoffUntil: Infinity });
+      else if (c.backoff) memo.set(c.key, { reprices: 0, backoffUntil: tick + params.backoffTicks });
       lines.push(`${TAG} cancelled #${c.offerId} (${c.reason})`);
     } catch (e) {
       lines.push(`${TAG} cancel #${c.offerId} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
@@ -379,7 +508,7 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
       await client.postOffer(p.body);
       memo.set(`${p.team}:${p.ref}`, { reprices: p.reprice });
       if (p.hi && p.reprice === 0) hiLedger.push(tick);
-      lines.push(`${TAG} sent ${what}${p.hi ? " (high-value lane)" : ""}`);
+      lines.push(`${TAG} sent ${what}${p.hi ? " (high-value lane)" : ""}${p.epic ? " (epic test lane)" : ""}`);
     } catch (e) {
       lines.push(`${TAG} ${what} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
     }
@@ -391,14 +520,15 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
  * `/api/me/value` of the cards a rival is seen holding (a spare or a single copy) and we lack, highest book first, at most `valueLookups` per
  * call (the client caches each value for an hour, so later ticks reuse them). A failed lookup is left out.
  */
-export async function rivalBuyValues(client: Pick<BazaarClient, "value">, trade: TradeState | undefined, rivals: RivalsState | undefined, params: RivalBuyParams = RIVAL_BUY_PARAMS): Promise<Map<string, number>> {
+export async function rivalBuyValues(client: Pick<BazaarClient, "value">, trade: TradeState | undefined, rivals: RivalsState | undefined, params: RivalBuyParams = RIVAL_BUY_PARAMS, always: readonly string[] = []): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (!trade || !rivals) return out;
   const counts = countHoldings(trade.held);
   const held = new Set(rivals.teams.flatMap((t) => t.seen.map((s) => s.ref)));
   const refs = [...held].filter((r) => (counts.get(r) ?? 0) === 0);
   refs.sort((a, b) => (trade.model.meta.get(b)?.book ?? 0) - (trade.model.meta.get(a)?.book ?? 0) || a.localeCompare(b));
-  for (const ref of refs.slice(0, params.valueLookups)) {
+  // `always` (the epic card) is looked up first and on top of the per-call budget.
+  for (const ref of [...always.filter((r) => (counts.get(r) ?? 0) === 0), ...refs.filter((r) => !always.includes(r)).slice(0, params.valueLookups)]) {
     try {
       out.set(ref, await client.value(ref));
     } catch {
