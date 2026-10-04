@@ -176,7 +176,7 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         party: PARTY_LABEL[partyOf(board, r).kind],
         kind: KIND_LABEL[r.kind] ?? r.kind,
         item: r.item,
-        status: statusLabel(r),
+        status: <span style={{ color: STATUS_TONE[outcomeOf(r)], fontWeight: 600 }}>{statusLabel(r)}</span>,
         price: r.duel?.days != null && r.price !== null ? `${r.price} · day ${r.duel.days}` : show(r.price, "—"),
         value: r.our_value === null ? (r.value_source === NOT_LOGGED ? NOT_LOGGED : "—") : `${r.our_value}${r.value_source ? ` (${r.value_source})` : ""}`,
         surplus: r.surplus === null ? "—" : toned(r.surplus),
@@ -734,6 +734,9 @@ function Agents({ board }: { board: Board }) {
  * Duel efficiency in relative terms: what we captured over what the duels were worth to us (Σ game result ÷ Σ our
  * limit, in %). A no-deal counts its limit with 0 captured, so walking away lowers it; in-progress duels are left out.
  */
+/** Status colour by outcome: deal green, no deal red, still open in our colour. */
+const STATUS_TONE: Record<string, string> = { deal: "var(--ok)", "no deal": "var(--bad)", open: "var(--us)" };
+
 function duelEfficiency(rows: BoardRow[]): number | null {
   const closed = rows.filter((r) => outcomeOf(r) !== "open" && r.our_value);
   const limit = closed.reduce((s, r) => s + (r.our_value ?? 0), 0);
