@@ -476,6 +476,20 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
 
   if (!canConcede) return { action: "wait", rule: "waiting-for-rival", surplus: prevSurplus!, round };
 
+  // Endgame with the rival outside our limit on price only (Grand Final 15824: seller, limit 100, 6.66 P per day, rival
+  // 62 / day 10): the clamp in `offerForSurplus` left day 0 as the only exact day and we sent 101 / day 0 (+1) instead of
+  // 100 / day 10 (+66.6). Offer our limit price on the rival's day: a price no worse for them than our previous one, on
+  // the day they ask for, so it is a concession to them even if our surplus rises.
+  if (rule === "endgame" && rival && rivalSurplus === undefined && state.withDays && rival.days !== undefined) {
+    const s = sign(state.role);
+    const atRivalDay: StructuredOffer = { price: s > 0 ? Math.ceil(state.limit - 1e-9) : Math.floor(state.limit + 1e-9), days: rival.days };
+    const noWorsePrice = !previous || s * (atRivalDay.price - previous.price) <= 0;
+    const repeat = previous !== undefined && previous.price === atRivalDay.price && previous.days === atRivalDay.days;
+    if (noWorsePrice && !repeat && withinLimit(state, atRivalDay) && surplusOf(state, atRivalDay) >= params.minSurplus) {
+      return { action: "counter", offer: atRivalDay, text: duelText("counter", round, atRivalDay), rule, surplus: surplusOf(state, atRivalDay), round };
+    }
+  }
+
   let offer = offerForSurplus(state, target);
   // Day deadlock (Duels II 5659, 5679, 6029: no deal): the rival repeats a day that leaves no room for us (their offer
   // is a loss there) while their own price would already be a deal on our best day. Following their day only shaves

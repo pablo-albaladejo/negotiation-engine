@@ -128,3 +128,32 @@ describe("day deadlock: offer our best day when the rival's day leaves no room (
     );
   });
 });
+
+describe("endgame with the rival outside the limit on price only", () => {
+  it("offers our limit price on the rival's day, never a worse price for them nor a loss (Grand Final 15824)", () => {
+    fc.assert(
+      fc.property(fc.constantFrom("buyer" as const, "seller" as const), fc.integer({ min: 20, max: 200 }), fc.double({ min: -8, max: 8, noNaN: true }), fc.integer({ min: 0, max: 10 }), fc.integer({ min: 1, max: 3 }), (role, limit, w, rivalDays, ticksLeft) => {
+        const daysValue = Array.from({ length: 11 }, (_, d) => w * d);
+        const s = role === "seller" ? 1 : -1;
+        const rival: StructuredOffer = { price: Math.max(1, limit - s * Math.round(limit * 0.4)), days: rivalDays };
+        const previous: StructuredOffer = { price: limit + s, days: 5 };
+        const state: DuelState = { role, limit, withDays: true, daysValue, ourOffers: [previous], rivalOffers: [rival], rivalMovedSinceOurLast: true, ticksLeft };
+        const d = decideDuel(state, DEFAULT_DUEL_PARAMS);
+        expect(d.action).not.toBe("accept");
+        if (d.action !== "counter") return;
+        const o = d.offer!;
+        expect(withinLimit(state, o)).toBe(true);
+        expect(surplusOf(state, o)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus);
+        expect(textMatchesOffer(d.text!, o)).toBe(true);
+      }),
+    );
+    const daysValue = Array.from({ length: 11 }, (_, d) => 6.66 * d);
+    const state: DuelState = {
+      role: "seller", limit: 100, withDays: true, daysValue, ticksLeft: 3, rivalMovedSinceOurLast: true,
+      ourOffers: [{ price: 102, days: 5 }, { price: 100, days: 5 }], rivalOffers: [{ price: 59, days: 10 }, { price: 62, days: 10 }],
+    };
+    const d = decideDuel(state, DEFAULT_DUEL_PARAMS);
+    expect(d.action).toBe("counter");
+    expect(d.offer).toEqual({ price: 100, days: 10 });
+  });
+});
