@@ -82,6 +82,7 @@ const PROBE_WINDOW = 6;
 const strings = (xs: readonly unknown[] | null | undefined): string[] =>
   (xs ?? []).flatMap((x) => (typeof x === "string" ? [x] : x && typeof x === "object" && typeof (x as { ref?: unknown }).ref === "string" ? [(x as { ref: string }).ref] : []));
 
+/** `personasRaw`: one `personas.json` per day folder (probes are kept per day): their probes are merged. */
 export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: unknown, catalogRaw: unknown): EggsOut {
   const seen = new Set<number>();
   const unique = events.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true))).sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0) || a.id - b.id);
@@ -93,12 +94,22 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
     return { ref, name: c?.name ?? null, rarity: c?.rarity ?? null, hidden: c?.hidden === true, print_run: c?.print_run ?? null };
   };
 
-  const pf = PersonasFileSchema.safeParse(personasRaw);
-  const probesOf = (persona: string) =>
-    (pf.success ? (pf.data.personas?.[persona]?.eggProbes ?? []) : []).flatMap((p) => {
-      const x = ProbeSchema.safeParse(p);
-      return x.success ? [x.data] : [];
-    });
+  const files = (Array.isArray(personasRaw) ? personasRaw : [personasRaw]).flatMap((raw) => {
+    const f = PersonasFileSchema.safeParse(raw);
+    return f.success ? [f.data] : [];
+  });
+  const probesOf = (persona: string) => {
+    const seenProbe = new Set<string>();
+    return files
+      .flatMap((f) => f.personas?.[persona]?.eggProbes ?? [])
+      .flatMap((p) => {
+        const x = ProbeSchema.safeParse(p);
+        if (!x.success || seenProbe.has(`${x.data.tick}|${x.data.phrase}`)) return [];
+        seenProbe.add(`${x.data.tick}|${x.data.phrase}`);
+        return [x.data];
+      })
+      .sort((a, b) => a.tick - b.tick);
+  };
 
   const personas = new Map<string, PersonaEggs>();
   const slot = (persona: string, name: string | null) => {
@@ -122,7 +133,7 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
     p.persona_name ??= name;
     return p;
   };
-  if (pf.success) for (const [persona, v] of Object.entries(pf.data.personas ?? {})) if ((v.eggProbes ?? []).length) slot(persona, null);
+  for (const f of files) for (const [persona, v] of Object.entries(f.personas ?? {})) if ((v.eggProbes ?? []).length) slot(persona, null);
 
   const ours: OurEgg[] = [];
   for (const e of unique) {

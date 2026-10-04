@@ -31,27 +31,82 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
   const hidden = (board.album?.pages ?? []).flatMap((pg) => (pg.shinies ?? []).filter((c) => c.hidden && c.held > 0));
   const badges = eggs.badges ?? [];
   const gifts = eggs.gifts ?? [];
+  // One block per dealer: its eggs and gifts for us, by tick, in the order we first met it.
+  const dealers: { id: string; name: string | null; eggs: typeof eggs.ours; gifts: typeof gifts }[] = [];
+  const dealer = (id: string, name: string | null | undefined) => {
+    let d = dealers.find((x) => x.id === id);
+    if (!d) dealers.push((d = { id, name: name ?? persona(id)?.persona_name ?? null, eggs: [], gifts: [] }));
+    d.name ??= name ?? null;
+    return d;
+  };
+  for (const x of [...eggs.ours.map((e) => ({ tick: e.tick, e })), ...gifts.map((g) => ({ tick: g.tick, g }))].sort((a, b) => a.tick - b.tick)) {
+    if ("e" in x) dealer(x.e.persona, x.e.persona_name).eggs.push(x.e);
+    else dealer(x.g.from ?? "?", x.g.from_name).gifts.push(x.g);
+  }
   return (
-    <Card title={title ?? `Our easter eggs · ${eggs.ours.length} found`}>
+    <Card title={title ?? `Our easter eggs · ${eggs.ours.length} found · ${gifts.length} gifts`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-        {eggs.ours.length ? (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            {eggs.ours.map((e) => {
-              const total = persona(e.persona)?.found.length ?? e.order;
-              return (
-                <li key={`${e.persona}-${e.tick}`} style={{ borderLeft: "4px solid var(--us)", paddingLeft: "var(--space-2)" }}>
-                  <strong>{e.persona_name ?? e.persona}</strong> <span className="nr-muted">({e.persona}) · tick {e.tick} · find #{e.order} of {total} at this persona</span>
-                  <br />
-                  Probe: {e.probe ? <>«{e.probe.phrase}» <span className="nr-muted">(t{e.probe.tick})</span></> : <span className="nr-muted">none of ours in the 6 ticks before</span>}
-                  <br />
-                  Prize: <strong>{prizeOf(e)}</strong>
-                  {e.prize.reason ? <span className="nr-muted">{` · ${e.prize.reason}`}</span> : null}
-                </li>
-              );
-            })}
-          </ul>
+        {dealers.length ? (
+          dealers.map((d) => {
+            const info = persona(d.id);
+            const fieldGifts = (eggs.gifts_by_persona ?? []).find((g) => g.persona === d.id);
+            return (
+              <section key={d.id} style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "baseline", flexWrap: "wrap" }}>
+                  <strong style={{ fontSize: 16 }}>{d.name ?? d.id}</strong>
+                  <span className="nr-muted">
+                    {[
+                      `(${d.id})`,
+                      `${d.eggs.length} egg${d.eggs.length === 1 ? "" : "s"} · ${d.gifts.length} gift${d.gifts.length === 1 ? "" : "s"} for us`,
+                      info ? `${info.found.length} eggs found here by all teams` : null,
+                      info?.probes.sent ? `our probes ${info.probes.sent} sent · ${info.probes.hit} hit` : null,
+                      fieldGifts ? `gave ${fieldGifts.total} gifts to ${fieldGifts.teams} teams` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </div>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  {[...d.eggs.map((e) => ({ tick: e.tick, egg: e, gift: null })), ...d.gifts.map((g) => ({ tick: g.tick, egg: null, gift: g }))]
+                    .sort((a, b) => a.tick - b.tick)
+                    .map(({ egg: e, gift: g }) =>
+                      e ? (
+                        <li key={`e-${e.tick}`} style={{ borderLeft: "4px solid var(--us)", paddingLeft: "var(--space-2)" }}>
+                          <strong>Egg</strong> <span className="nr-muted">{`· tick ${e.tick} · find #${e.order} of ${info?.found.length ?? e.order} here`}</span>
+                          <br />
+                          Probe: {e.probe ? <>«{e.probe.phrase}» <span className="nr-muted">(t{e.probe.tick})</span></> : <span className="nr-muted">none of ours in the 6 ticks before</span>}
+                          <br />
+                          Prize: <strong>{prizeOf(e)}</strong>
+                          {e.prize.reason ? <span className="nr-muted">{` · ${e.prize.reason}`}</span> : null}
+                        </li>
+                      ) : g ? (
+                        <li key={`g-${g.tick}`} style={{ borderLeft: "4px solid var(--ok)", paddingLeft: "var(--space-2)" }}>
+                          <strong>Gift</strong> <span className="nr-muted">{`· tick ${g.tick}`}</span>
+                          <br />
+                          <strong>{[...g.cards.map((c) => `${cardText(c)}${c.hidden ? " · hidden (never sold)" : ""}`), ...(g.cash ? [`${g.cash} P`] : []), ...g.packs.map((x) => `pack ${x}`)].join(" + ") || "—"}</strong>
+                          {g.context ? (
+                            <>
+                              <br />
+                              <span className="nr-muted">
+                                {[
+                                  g.context.thread !== null ? `while negotiating in thread #${g.context.thread}` : "while negotiating",
+                                  g.context.our_offer ? `our offer t${g.context.our_tick ?? "?"}: ${g.context.our_offer}` : null,
+                                  g.context.deal ? `deal t${g.context.deal.tick}: ${g.context.deal.refs.join(" + ") || "?"} at ${g.context.deal.price ?? "?"} P` : "no deal in the next ticks",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </>
+                          ) : null}
+                        </li>
+                      ) : null,
+                    )}
+                </ul>
+              </section>
+            );
+          })
         ) : (
-          <span className="nr-muted">No eggs found yet.</span>
+          <span className="nr-muted">No eggs or gifts yet.</span>
         )}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-3)" }}>
           <span>
@@ -63,34 +118,6 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
             {hidden.length ? hidden.map((c) => `${c.ref}${c.name ? ` «${c.name}»` : ""} ×${c.held} · never sold`).join(" · ") : "none"}
           </span>
         </div>
-        <strong>{`Gifts · ${gifts.length} received`}</strong>
-        {gifts.length ? (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            {gifts.map((g) => (
-              <li key={`${g.from}-${g.tick}`} style={{ borderLeft: "4px solid var(--ok)", paddingLeft: "var(--space-2)" }}>
-                <strong>{g.from_name ?? g.from ?? "?"}</strong> <span className="nr-muted">{`(${g.from ?? "?"}) · tick ${g.tick}`}</span>
-                <br />
-                Gift: <strong>{[...g.cards.map((c) => `${cardText(c)}${c.hidden ? " · hidden (never sold)" : ""}`), ...(g.cash ? [`${g.cash} P`] : []), ...g.packs.map((x) => `pack ${x}`)].join(" + ") || "—"}</strong>
-                {g.context ? (
-                  <>
-                    <br />
-                    <span className="nr-muted">
-                      {[
-                        g.context.thread !== null ? `while negotiating in thread #${g.context.thread}` : "while negotiating",
-                        g.context.our_offer ? `our offer t${g.context.our_tick ?? "?"}: ${g.context.our_offer}` : null,
-                        g.context.deal ? `deal t${g.context.deal.tick}: ${g.context.deal.refs.join(" + ") || "?"} at ${g.context.deal.price ?? "?"} P` : "no deal in the next ticks",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="nr-muted">No gifts received yet.</span>
-        )}
         {(eggs.gifts_by_persona ?? []).length ? (
           <span className="nr-muted">
             {`Gifts across the field: ${(eggs.gifts_by_persona ?? []).map((p) => `${p.persona} gave ${p.total} to ${p.teams} teams (${p.ours} to us)`).join(" · ")}`}

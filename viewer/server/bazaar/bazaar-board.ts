@@ -413,7 +413,7 @@ export class BazaarBoard {
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       grants: await grantsOf(this.bazaarDir, team),
       market_test: await marketTestOf(this.bazaarDir, join(dirname(this.bazaarDir), "logs")),
-      eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await readJsonFile(join(this.bazaarDir, this.today(), "personas.json")), this.catalog?.raw ?? null),
+      eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await Promise.all((await datesOf(this.bazaarDir)).map((d) => readJsonFile(join(this.bazaarDir, d, "personas.json")))), this.catalog?.raw ?? null),
       team_desk: teamDeskOf(
         (await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data,
         offerExpiriesOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events]),

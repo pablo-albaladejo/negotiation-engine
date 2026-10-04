@@ -2,7 +2,7 @@
 
 Tarjetas de nuestro equipo, bajo el marcador («We are Team 2»):
 
-- **`Eggs.tsx`** — «Our easter eggs»:
+- **`Eggs.tsx`** — «Our easter eggs», agrupado por dealer (un bloque por persona con sus huevos y regalos por tick y su resumen: hallazgos de todos, nuestros sondeos, regalos al campo):
   - cada huevo que hemos encontrado: persona, tick, el puesto entre los hallazgos de esa persona, la frase de sondeo nuestra que lo disparó y el premio (cartas con nombre, rareza, tirada y si es oculta, P, sobres y la insignia de ese tick);
   - nuestras insignias y las cartas ocultas que tenemos (nunca se venden);
   - los regalos, uno por bloque: persona, tick, carta y en qué negociación llegó (hilo, nuestra oferta, trato), y cuántos regala cada persona a todo el campo;
