@@ -1,6 +1,6 @@
 # leaderboard-analyst
 
-> Sesión de origen: `negotiation-ring-08` · vivo · entrevista: 4 oct ~10:00.
+> Sesión de origen: `negotiation-ring-08` · cerrada con el Bazaar (4 oct, 15:00) · ficha final.
 
 ## Misión
 
@@ -28,21 +28,24 @@ Hechos medidos:
 - `negotiating` es relativo a los demás equipos: baja aunque nuestros neg_points suban.
 - Market 7,50 es el suelo del stall `auto` (bench_points 0,5); los venues `board` con tráfico (t12, t10, t06) sacan ~12 y los que no tienen tráfico quedan por debajo de 7,5.
 - Pesos: R1 viernes 0,5; R2 y R3 1,0.
-Al arrancar: arma un Monitor sobre results/bazaar-live/<hoy>/plan.jsonl buscando `days-unreadable` y sobre la antigüedad de rivals.json (>10 min = stale), y re-ármalo cada 30 min hasta que acabe Duels III (18,65 h). Si aparece un `days-unreadable`, pide el JSON crudo de `/api/duels` y propone el ajuste (o `--assumed-days-weight N`) antes del límite del coordinator.
-Pendiente al cerrar (4 oct, ~10:00): t02 en el puesto 14, score 20,42, neg 13,99, mkt 6,43. Market ya está por debajo del suelo de 7,50; ofrecer a Pablo investigar por qué.
+- Las partes del panel con «Δ day» se miden desde el reinicio diario: en una ronda nueva son lo acumulado en la ronda, no ganancia frente a ayer; lo que cuenta es el score total.
+- Del puesto 6 al 14 suele haber < 3 puntos: medio punto mueve 2-3 puestos, y caer de rank sin bajar el score es que los demás suman más rápido.
+Si el Bazaar vuelve a abrir con duelos: arma un Monitor sobre results/bazaar-live/<hoy>/plan.jsonl buscando `days-unreadable` y sobre la antigüedad de rivals.json (>10 min = stale), re-ármalo cada 30 min hasta la última sesión de duelos; si aparece un `days-unreadable`, pide el JSON crudo de `/api/duels` y propone el ajuste (o `--assumed-days-weight N`) antes del límite del coordinator.
+Estado final (4 oct, Bazaar cerrado, tick 2802): t02 9.º con 28,18 (negotiating 18,41, market 9,77); líder t05 37,73. Sin trabajo pendiente.
 ```
 
 ## Procesos
 
 - No lanza procesos en vivo.
-- Monitor local (tail de `plan.jsonl` buscando `days-unreadable` y antigüedad de `rivals.json` cada 2 min), con ventana de 30 min que se rearma.
+- Monitor local (tail de `plan.jsonl` buscando `days-unreadable` y antigüedad de `rivals.json` cada 2 min), con ventana de 30 min que se rearma; apagado al acabar los duelos.
 - Comprobaciones: `pnpm bazaar:duels --dry-run --once`.
 
-## Estado al 4 oct (instantánea)
+## Estado final (4 oct, Bazaar cerrado)
 
-- Commits: 5d0d08a (desglose neg/market en el historial de rivales; en vivo) y e98134f (duelos: pausa si `your_days_weight` es ilegible, esquema tolerante, `days_meaning`, test; en vivo desde el 3 oct 17:05, aprobado por Pablo).
-- Duels II jugó días en 67 de 109 duelos, sin pausas. Sin trabajo a medias.
-- Pendiente de Pablo: si investigar la caída de market (6,43, bajo el suelo) y de negotiating (16,08 → 13,99).
+- Commits: 5d0d08a (desglose neg/market en el historial de rivales) y e98134f (duelos: pausa si `your_days_weight` es ilegible, esquema tolerante, `days_meaning`, test; en vivo desde el 3 oct 17:05, aprobado por Pablo). Otras sesiones ampliaron `test/duels-days.test.ts` con casos de Duels II y la Grand Final.
+- Duelos con días: Duels II 67 de 109; 4 oct 100 de 102. Ninguna pausa `days-unreadable` en todo el torneo.
+- Leaderboard final: t02 9.º, 28,18 (neg 18,41, market 9,77; duel_points 31,77, neg_points 80, bench 0,5, organic 0). Durante el 4 oct osciló entre el 15.º y el 9.º.
+- Sin trabajo a medias ni decisiones pendientes.
 
 ## Ficheros clave
 
