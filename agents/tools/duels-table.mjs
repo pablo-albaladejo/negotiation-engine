@@ -14,6 +14,9 @@ const outArg = process.argv.indexOf("--out");
 const OUT = join(DIR, outArg > 0 ? process.argv[outArg + 1] : `duels-s${SESSION}.txt`);
 const TITLE = { 2: "Duelos I", 3: "Duelos II", 4: "Duelos III" }[SESSION] ?? `Duels session ${SESSION}`;
 const TRACK = join(DIR, "dpts.log");
+// One line per tick where duels of ours closed: {tick, session, before, after, delta, duels[]} (shared jump when duels.length > 1).
+const duelPointsFile = () => { const d = new Date(); const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; return join(ROOT, "results", "bazaar-live", day, "duel-points.jsonl"); };
+function writeDuelPoints(rec) { const f = duelPointsFile(); mkdirSync(dirname(f), { recursive: true }); appendFileSync(f, `${JSON.stringify(rec)}\n`); }
 const TTY = process.argv.includes("--tty");
 // Keys only from .env (BAZAAR_KEY, BAZAAR_URL).
 const env = Object.fromEntries(readFileSync(join(ROOT, ".env"), "utf8").split("\n").filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]));
@@ -55,6 +58,8 @@ for (;;) {
     if (prevPts !== undefined) {
       const fresh = closed.filter((d) => !prevClosed.has(d.duel));
       if (fresh.length) appendFileSync(TRACK, `t${clock.tick} Δduel_points ${(pts - prevPts).toFixed(2)} (${prevPts} → ${pts}) · closed: ${fresh.map((d) => `${d.duel} ${d.role}`).join(" | ")}\n`);
+      // Same jump for the viewer's Points column (a duel has no settlement, so score-audit never sees it).
+      if (fresh.length) writeDuelPoints({ tick: clock.tick, session: SESSION, before: prevPts, after: pts, delta: Math.round((pts - prevPts) * 1000) / 1000, duels: fresh.map((d) => d.duel) });
       if (fresh.length) fresh.forEach((d, k) => dpts.set(d.duel, fresh.length > 1 ? (k === 0 ? `${sign(pts - prevPts)}*` : "*") : sign(pts - prevPts)));
     }
     prevPts = pts; prevClosed = new Set(closed.map((d) => d.duel));
