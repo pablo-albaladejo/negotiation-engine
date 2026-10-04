@@ -61,7 +61,7 @@ describe("rival buy · epic test lane", () => {
           trade: tradeState(cash, held ? [{ id: 1, ref: EPIC.ref, value: 10, locked: false } as HeldAsset] : [], mine),
           tradePlan: { committedAfter: committed } as never,
           rivals: rivals(holders),
-          maxSpend: 0,
+          maxSpend: 1000,
           cashFloor: 20,
           epic: EPIC,
           ...(value !== undefined ? { apiValues: new Map([[EPIC.ref, value]]) } : {}),
@@ -80,6 +80,9 @@ describe("rival buy · epic test lane", () => {
           expect(p.body.want).toEqual({ cards: [EPIC.ref] });
           expect(cash - committed - p.price - tradeFee(p.price, 1, MAKER_FEES)).toBeGreaterThanOrEqual(EPIC.cashFloor);
         }
+        // Inside --max-spend, fee included (coordinator, 4 Oct: RET-11 filled at 240 + 13 > 250).
+        const tight = proposeRivalBuy({ ...input, maxSpend: 200 }, RIVAL_BUY_PARAMS, new Map(memo), []);
+        for (const p of tight.plan.posts.filter((x) => x.ref === EPIC.ref)) expect(p.price + tradeFee(p.price, 1, MAKER_FEES)).toBeLessThanOrEqual(200);
         // One epic bid at a time, counting the ones that stay open.
         expect(epicPosts.length + kept.length).toBeLessThanOrEqual(1);
         // Kept bids are within the rules too: listed team, at or below the ceiling.
@@ -95,7 +98,7 @@ describe("rival buy · epic test lane", () => {
   });
 
   it("a listed holder seen with the card gets the start price when nothing is open", () => {
-    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals(["t08"]), maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
+    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals(["t08"]), maxSpend: 1000, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
     expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", EPIC.start]]);
   });
@@ -120,7 +123,7 @@ describe("rival buy · epic test lane", () => {
           trade: tradeState(cash, [], mine),
           tradePlan: { committedAfter: committed } as never,
           rivals: { teams: ids.map(team), byRef: { [a.ref]: { holders: ha, wantedBy: [] }, [b.ref]: { holders: hb, wantedBy: [] } }, seenAssets: ids.length, lastEventId: 0 },
-          maxSpend: 0,
+          maxSpend: 1000,
           cashFloor: 20,
           epic: EPIC_BUY_LANES,
           apiValues: new Map([[a.ref, 234], [b.ref, 288]]),
@@ -150,7 +153,7 @@ describe("rival buy · epic test lane", () => {
 
   it("a holder that did not fill at the ceiling is not bid again in the same tick: the next listed holder gets the start price", () => {
     const at = bid(3000, "t18", EPIC.ceiling, EPIC.repriceAfterTicks);
-    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], [at]), rivals: rivals(["t18", "t08"]), maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
+    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], [at]), rivals: rivals(["t18", "t08"]), maxSpend: 1000, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map([[`t18:${EPIC.ref}`, { reprices: EPIC.maxReprices }]]), []);
     expect(plan.cancels.map((c) => c.offerId)).toEqual([3000]);
     expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", EPIC.start]]);
@@ -158,7 +161,7 @@ describe("rival buy · epic test lane", () => {
 
   it("open lane: one bid to anyone at the ceiling, never above it, and El Rastro leaves it alone", () => {
     const lane = EPIC_BUY_LANES.find((l) => l.open)!;
-    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals([]), maxSpend: 0, cashFloor: 20, epic: EPIC_BUY_LANES, apiValues: new Map([[EPIC.ref, 234], [lane.ref, 288]]) };
+    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals([]), maxSpend: 1000, cashFloor: 20, epic: EPIC_BUY_LANES, apiValues: new Map([[EPIC.ref, 234], [lane.ref, 288]]) };
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
     const posts = plan.posts.filter((p) => p.ref === lane.ref);
     expect(posts.map((p) => [p.price, p.body.to])).toEqual([[lane.ceiling, undefined]]);

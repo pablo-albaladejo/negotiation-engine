@@ -497,6 +497,12 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
     }
     const next = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epicStep(epic, n + 1), e.price);
     const fee = tradeFee(next, 1, MAKER_FEES);
+    if (next + fee > input.maxSpend) {
+      out.notes.push(`${tag} hold ${epic.ref} ← ${e.team} #${e.offer.id} at ${e.price}: step ${next} + fee ${fee} > --max-spend ${input.maxSpend}`);
+      open += 1;
+      committed += e.price;
+      continue;
+    }
     if (next <= e.price || cash - next - fee < epic.cashFloor) {
       cancel(e.offer.id, e.team, next <= e.price ? `no higher step than ${e.price}: ${e.team} done` : `cash ${Math.floor(cash)} − ${next + fee} < floor ${epic.cashFloor}`, next <= e.price);
       continue;
@@ -518,6 +524,10 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   }
   const price = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epicStep(epic, 0));
   const fee = tradeFee(price, 1, MAKER_FEES);
+  if (price + fee > input.maxSpend) {
+    out.notes.push(`${tag} ${epic.ref} ← ${team}: ${price} + fee ${fee} > --max-spend ${input.maxSpend}`);
+    return 0;
+  }
   if (cash - price - fee < epic.cashFloor) {
     out.notes.push(`${tag} ${epic.ref} ← ${team}: cash ${Math.floor(cash)}${reserved ? ` (after ${reserved} other epic bids)` : ""} − ${price + fee} < floor ${epic.cashFloor}`);
     return 0;
@@ -544,6 +554,10 @@ function proposeOpenEpic(input: RivalBuyInput, epic: EpicBuyParams, mine: Return
   if (committed) return committed;
   const price = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epic.ceiling);
   const fee = tradeFee(price, 1, MAKER_FEES);
+  if (price + fee > input.maxSpend) {
+    out.notes.push(`${tag} ${epic.ref}: open bid ${price} + fee ${fee} > --max-spend ${input.maxSpend}`);
+    return 0;
+  }
   if (cash - price - fee < epic.cashFloor) {
     out.notes.push(`${tag} ${epic.ref}: cash ${Math.floor(cash)} − ${price + fee} < floor ${epic.cashFloor}`);
     return 0;

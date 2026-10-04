@@ -50,7 +50,7 @@ describe("counterparty score room", () => {
           const room = new Map(Object.entries(roomObj));
           const mine: TradeOffer[] = bids.map((b, k) => ({ id: 1000 + k, to: b.to, venue: "rastro", status: "open", give: { cash: EPIC.start }, want: { cards: [EPIC.ref] }, created_tick: TICK - b.age, expires_tick: TICK + 10 }));
           const rivals: RivalsState = { teams: EPIC.teams.map(team), byRef: { [EPIC.ref]: { holders: [...EPIC.teams], wantedBy: [] } }, seenAssets: EPIC.teams.length, lastEventId: 0 };
-          const input: RivalBuyInput = { tick: TICK, trade: tradeState(1000, mine), rivals, maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 300]]), room };
+          const input: RivalBuyInput = { tick: TICK, trade: tradeState(1000, mine), rivals, maxSpend: 1000, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 300]]), room };
           const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
           const low = (t: string) => (room.get(t) ?? COUNTERPARTY_CAP) < MIN_ROOM;
           for (const p of plan.posts) expect(low(p.team)).toBe(false);

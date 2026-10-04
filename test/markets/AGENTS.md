@@ -5,6 +5,7 @@
   - solo va a los equipos de la lista;
   - deja la caja por encima del suelo;
   - es la única puja épica abierta a la vez.
+  - con la comisión incluida, nunca supera `--max-spend`.
 
   Si ya tenemos la carta o su valor queda por debajo del techo, no sale ninguna puja nueva. Los escalones de precio son inicio, punto medio y techo. Con varias vías (`EPIC_BUY_LANES`: SAL-11 y RET-11), cada puja respeta el techo y la lista de su vía, hay una abierta como mucho por carta, y todas las que quedan abiertas juntas dejan la caja por encima del suelo. La vía abierta (RET-11) publica una sola puja sin `to` al techo, nunca por encima, y El Rastro no la cancela (sin la exención sí lo haría).
 
