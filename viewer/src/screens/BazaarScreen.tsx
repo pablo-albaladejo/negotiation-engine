@@ -157,7 +157,7 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         { key: "status", label: "Status" },
         { key: "price", label: "Price", numeric: true },
         { key: "value", label: "Our value", numeric: true },
-        ...(duels ? [{ key: "result", label: "Game result (captured)", numeric: true }] : []),
+        ...(duels ? [{ key: "result", label: "Game result (captured)", numeric: true }, { key: "eff", label: "Efficiency (captured ÷ our limit)", numeric: true }] : []),
         { key: "surplus", label: duels ? "Price vs limit" : "Margin vs our value", numeric: true },
         // Duels only feed duel points: the column says nothing there.
         ...(duels ? [] : [{ key: "feeds", label: "Feeds" }]),
@@ -167,6 +167,7 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
       rows={rows.map((r) => ({
         duel: r.duel ? `#${r.duel.no}` : "—",
         result: r.duel_result === null ? "—" : toned(r.duel_result),
+        eff: duelEfficiency([r]) === null ? "—" : `${duelEfficiency([r])}%`,
         counterparty: (
           <TableLink aria-pressed={r.id === selectedId} aria-label={`Open conversation with ${r.counterparty} (${r.id})`} onClick={() => onSelect(r.id)}>
             {partyOf(board, r).label}
@@ -729,6 +730,18 @@ function Agents({ board }: { board: Board }) {
   );
 }
 
+/**
+ * Duel efficiency in relative terms: what we captured over what the duels were worth to us (Σ game result ÷ Σ our
+ * limit, in %). A no-deal counts its limit with 0 captured, so walking away lowers it; in-progress duels are left out.
+ */
+function duelEfficiency(rows: BoardRow[]): number | null {
+  const closed = rows.filter((r) => outcomeOf(r) !== "open" && r.our_value);
+  const limit = closed.reduce((s, r) => s + (r.our_value ?? 0), 0);
+  if (!limit) return null;
+  const captured = closed.reduce((s, r) => s + (outcomeOf(r) === "deal" ? (r.duel_result ?? 0) : 0), 0);
+  return Math.round((1000 * captured) / limit) / 10;
+}
+
 function History({ board, rows, title, filters, onFiltersChange, ladder, open = false }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void; ladder?: ModelLadderLevel[]; open?: boolean }) {
   // "Whose" only applies where other teams' trades are listed (duels are always ours).
   const shown = filterBoardRows(rows, rows.some((r) => r.kind === "other-trade") ? filters : { ...filters, scope: "all" });
@@ -746,12 +759,15 @@ function History({ board, rows, title, filters, onFiltersChange, ladder, open = 
             const group = shown.filter((r) => (r.duel?.session ?? null) === session);
             const deals = group.filter((r) => outcomeOf(r) === "deal");
             const captured = Math.round(deals.reduce((s, r) => s + (r.duel_result ?? 0), 0) * 10) / 10;
+            const done = group.filter((r) => outcomeOf(r) !== "open");
+            const eff = duelEfficiency(done);
+            const rel = done.length ? ` · efficiency ${eff ?? "—"}% · ${Math.round((captured / done.length) * 10) / 10}/duel · ${Math.round((100 * deals.length) / done.length)}% deals` : "";
             // In-progress duels get their own table on top, so they never hide among the closed ones.
             const live = group.filter((r) => outcomeOf(r) === "open");
             const closed = group.filter((r) => outcomeOf(r) !== "open");
             const list = (rs: BoardRow[]) => <ConversationList board={board} rows={rs} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />;
             return (
-              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels${live.length ? ` · ${live.length} in progress` : ""} · ${deals.length} deals · captured ${captured}`}>
+              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels${live.length ? ` · ${live.length} in progress` : ""} · ${deals.length} deals · captured ${captured}${rel}`}>
                 {live.length ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                     <strong style={{ color: "var(--us)" }}>{`● In progress · ${live.length}`}</strong>
