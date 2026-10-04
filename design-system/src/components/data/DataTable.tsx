@@ -20,6 +20,8 @@ export interface DataTableProps {
   onRowClick?: (rowIndex: number) => void;
   /** Row index visually highlighted as "selected" (e.g. the round picked on a chart). */
   selectedRowIndex?: number;
+  /** Called with the row under the mouse, and with null when it leaves (e.g. to highlight the row's point on a chart). */
+  onRowHover?: (rowIndex: number | null) => void;
 }
 
 function isCell(value: ReactNode | DataTableCell): value is DataTableCell {
@@ -31,7 +33,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && target.closest('button, a, input, select, textarea, [role="button"]') !== null;
 }
 
-export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataTableProps) {
+export function DataTable({ columns, rows, onRowClick, selectedRowIndex, onRowHover }: DataTableProps) {
   return (
     <div className="nr-table-wrap">
       <table className="nr-table">
@@ -58,6 +60,7 @@ export function DataTable({ columns, rows, onRowClick, selectedRowIndex }: DataT
                     },
                   }
                 : {})}
+              {...(onRowHover ? { onMouseEnter: () => onRowHover(rowIndex), onMouseLeave: () => onRowHover(null) } : {})}
             >
               {columns.map((column) => {
                 const raw = row[column.key];

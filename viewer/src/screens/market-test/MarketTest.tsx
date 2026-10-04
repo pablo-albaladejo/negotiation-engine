@@ -75,7 +75,7 @@ function Legend({ showOurs, showGhosts }: { showOurs: boolean; showGhosts: boole
           <Key label="refused or dry-run">
             <rect x={9} y={2} width={8} height={8} fill="none" stroke="var(--us)" strokeWidth={2} />
           </Key>
-          <Key label="the ask and bid we paired (rings, joined), #n = row below">
+          <Key label="the ask and bid we paired (rings, joined), #n = row below (hover a row to focus it)">
             <g>
               <line x1={13} x2={13} y1={2} y2={10} stroke="var(--us)" strokeWidth={2} />
               <circle cx={13} cy={2.5} r={2.2} fill="none" stroke="var(--us)" strokeWidth={1.5} />
@@ -100,7 +100,7 @@ function Legend({ showOurs, showGhosts }: { showOurs: boolean; showGhosts: boole
   );
 }
 
-function BookChart({ s }: { s: BoardMarketSession }) {
+function BookChart({ s, hover = null }: { s: BoardMarketSession; hover?: number | null }) {
   const [showOurs, setShowOurs] = useState(true);
   const [showGhosts, setShowGhosts] = useState(true);
   const traders = s.traders ?? [];
@@ -109,8 +109,13 @@ function BookChart({ s }: { s: BoardMarketSession }) {
   const allGhosts = s.hindsight?.pairs ?? [];
   const ghosts = showGhosts ? allGhosts : [];
   // The traders of our matches and of the optimum stand out; the rest of the book fades.
-  const matched = new Set([...matches.flatMap((m) => [m.sell, m.buy].filter((x): x is string => x !== null)), ...ghosts.flatMap((g) => [g.ask_id, g.bid_id])]);
-  const fade = (id: string) => (matched.size === 0 ? 1 : matched.has(id) ? 1 : 0.3);
+  // Hovering a row of the matches table focuses that match: its two traders and its rings; everything else dims.
+  const focus = hover !== null ? matches[hover] : undefined;
+  const matched = focus
+    ? new Set([focus.sell, focus.buy].filter((x): x is string => x !== null))
+    : new Set([...matches.flatMap((m) => [m.sell, m.buy].filter((x): x is string => x !== null)), ...ghosts.flatMap((g) => [g.ask_id, g.bid_id])]);
+  const fade = (id: string) => (matched.size === 0 ? 1 : matched.has(id) ? 1 : focus ? 0.12 : 0.3);
+  const dimMatch = (i: number) => (focus && i !== hover ? 0.2 : 1);
   const quotes = [...traders.flatMap((t) => t.points.map((p) => p.quote)), ...matches.flatMap((m) => [m.ask, m.bid, m.price].filter((x): x is number => x !== null))];
   if (!quotes.length) return <span className="nr-muted">No book lines logged for this session (bench.jsonl).</span>;
   const W = 760;
@@ -176,7 +181,7 @@ function BookChart({ s }: { s: BoardMarketSession }) {
           );
         })}
         {ghosts.map((g, i) => (
-          <g key={`ghost${i}`}>
+          <g key={`ghost${i}`} opacity={focus ? 0.2 : 1}>
             <line x1={x(g.tick)} x2={x(g.tick)} y1={y(g.ask)} y2={y(g.bid)} stroke={GHOST} strokeWidth={1.5} strokeDasharray="4 3" />
             <circle cx={x(g.tick)} cy={y(g.ask)} r={8} fill="none" stroke={GHOST} strokeWidth={1.5} strokeDasharray="3 2">
               <title>{`O${i + 1} optimal ask: ${g.ask_id} at ${g.ask} (t${g.tick})`}</title>
@@ -191,12 +196,12 @@ function BookChart({ s }: { s: BoardMarketSession }) {
         ))}
         {matches.map((m, i) =>
           m.ask !== null && m.bid !== null ? (
-            <g key={`pair${i}`}>
-              <line x1={x(m.tick)} x2={x(m.tick)} y1={y(m.ask)} y2={y(m.bid)} stroke="var(--us)" strokeWidth={2} />
-              <circle cx={x(m.tick)} cy={y(m.ask)} r={6} fill="none" stroke="var(--us)" strokeWidth={2}>
+            <g key={`pair${i}`} opacity={dimMatch(i)}>
+              <line x1={x(m.tick)} x2={x(m.tick)} y1={y(m.ask)} y2={y(m.bid)} stroke="var(--us)" strokeWidth={i === hover ? 3.5 : 2} />
+              <circle cx={x(m.tick)} cy={y(m.ask)} r={i === hover ? 9 : 6} fill="none" stroke="var(--us)" strokeWidth={i === hover ? 3 : 2}>
                 <title>{`#${i + 1} ask we took: ${m.sell ?? "?"} at ${m.ask}`}</title>
               </circle>
-              <circle cx={x(m.tick)} cy={y(m.bid)} r={6} fill="none" stroke="var(--us)" strokeWidth={2}>
+              <circle cx={x(m.tick)} cy={y(m.bid)} r={i === hover ? 9 : 6} fill="none" stroke="var(--us)" strokeWidth={i === hover ? 3 : 2}>
                 <title>{`#${i + 1} bid we took: ${m.buy ?? "?"} at ${m.bid}`}</title>
               </circle>
             </g>
@@ -204,14 +209,14 @@ function BookChart({ s }: { s: BoardMarketSession }) {
         )}
         {matches.map((m, i) =>
           m.price !== null ? (
-            <text key={`n${i}`} x={x(m.tick) + 8} y={y(m.price) + 4} fontSize="11" fontWeight={700} fill="var(--us)">
+            <text key={`n${i}`} x={x(m.tick) + 8} y={y(m.price) + 4} fontSize={i === hover ? 14 : 11} fontWeight={700} fill="var(--us)" opacity={dimMatch(i)}>
               {`#${i + 1}`}
             </text>
           ) : null,
         )}
         {matches.map((m, i) =>
           m.price !== null ? (
-            <rect key={`p${i}`} x={x(m.tick) - 4} y={y(m.price) - 4} width={8} height={8} fill={m.status === "sent" ? "var(--us)" : "none"} stroke="var(--us)" strokeWidth={2}>
+            <rect key={`p${i}`} opacity={dimMatch(i)} x={x(m.tick) - 4} y={y(m.price) - 4} width={8} height={8} fill={m.status === "sent" ? "var(--us)" : "none"} stroke="var(--us)" strokeWidth={2}>
               <title>{`our match t${m.tick}: ${m.sell ?? "?"} × ${m.buy ?? "?"} at ${m.price} (ask ${m.ask ?? "?"} / bid ${m.bid ?? "?"}) · ${m.status ?? "?"}${m.error ? ` · ${m.error}` : ""}`}</title>
             </rect>
           ) : null,
@@ -290,6 +295,7 @@ export function MarketTest({ board }: { board: Board }) {
   const mt = board.market_test;
   const sessions = mt?.sessions ?? [];
   const [picked, setPicked] = useState<string | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
   if (!mt) return <Card title="Market test">{<span className="nr-muted">Not available (older viewer server).</span>}</Card>;
   const key = (s: BoardMarketSession) => `${s.day}:${s.session}`;
   const withBook = sessions.filter((s) => s.traders !== null);
@@ -341,6 +347,7 @@ export function MarketTest({ board }: { board: Board }) {
               onRowClick={(i) => {
                 const s = sessions[i];
                 if (s) setPicked(key(s));
+                setHover(null);
               }}
               {...(selected ? { selectedRowIndex: sessions.indexOf(selected) } : {})}
             />
@@ -355,7 +362,7 @@ export function MarketTest({ board }: { board: Board }) {
               {selected.shadow ? ` · shadow surplus ${selected.shadow.shadow_surplus ?? "?"} vs auto ${selected.shadow.auto_surplus ?? "?"} (pairs ${selected.shadow.pairs_shadow ?? "?"} vs ${selected.shadow.pairs_auto ?? "?"})` : ""}
             </span>
             {selected.hindsight ? <HindsightPanel s={selected} h={selected.hindsight} /> : null}
-            {selected.traders ? <BookChart s={selected} /> : <span className="nr-muted">Book kept only for the last sessions.</span>}
+            {selected.traders ? <BookChart s={selected} hover={hover} /> : <span className="nr-muted">Book kept only for the last sessions.</span>}
             {(selected.our_matches ?? []).length ? (
               <div style={{ overflowX: "auto" }}>
                 <DataTable
@@ -379,6 +386,8 @@ export function MarketTest({ board }: { board: Board }) {
                     source: m.source ?? "—",
                     status: <span style={{ color: m.status === "sent" ? "var(--ok)" : m.status === "refused" ? "var(--warn)" : "var(--muted)", fontWeight: 700 }}>{`${m.status ?? "?"}${m.error ? ` · ${m.error}` : ""}`}</span>,
                   }))}
+                  onRowHover={setHover}
+                  {...(hover !== null ? { selectedRowIndex: hover } : {})}
                 />
               </div>
             ) : (
