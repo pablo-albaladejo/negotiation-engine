@@ -8,7 +8,7 @@ import { buyGain, countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, sl
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
 import { COUNTERPARTY_CAP, MIN_ROOM, roomOf } from "./room.js";
-import { isOurOfferVenue, OFFER_VENUE } from "../shared/offer-venue.js";
+import { isOurOfferVenue, OFFER_VENUE, OFFER_VENUE_OWNER } from "../shared/offer-venue.js";
 
 /**
  * Rival buy: a directed El Rastro bid (`to` = the team, cash for one card) for a page card we lack, sent to a rival
@@ -48,6 +48,8 @@ export const RIVAL_BUY_PARAMS = {
   hiWindowTicks: 120,
   /** `/api/me/value` lookups per tick for candidate cards (cached for an hour by the client). */
   valueLookups: 30,
+  /** Pablo, 4 Oct ("negocia las 3"): these cards go first; a non-priority bid is cancelled when one of them needs its slot or budget. */
+  priorityRefs: ["MAL-04", "MAL-06", "MAL-09"] as readonly string[],
 };
 export type RivalBuyParams = typeof RIVAL_BUY_PARAMS;
 
@@ -342,6 +344,8 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
 
   // Existing directed bids: cancel, reprice or keep (what they commit comes off the budget).
   let open = 0;
+  const priority = new Set(params.priorityRefs);
+  const yieldable: { id: number; key: string; ref: string; committed: number }[] = [];
   for (const e of existing) {
     if (epicRefs.has(e.ref)) continue;
     const key = `${e.team}:${e.ref}`;
@@ -388,6 +392,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     budget -= committed;
     open += 1;
     handled.add(key);
+    if (!priority.has(e.ref)) yieldable.push({ id: e.offer.id, key, ref: e.ref, committed });
   }
 
   // New candidates: page cards we lack that a rival holds a spare of.
@@ -397,6 +402,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     for (const t of who.holders) {
       const team = byTeam.get(t);
       const key = `${t}:${ref}`;
+      if (t === OFFER_VENUE_OWNER) continue;
       if (!team || handled.has(key) || team.seen.filter((s) => s.ref === ref).length < (input.apiValues?.has(ref) ? 1 : 2)) continue;
       if (roomOf(input.room, t) < MIN_ROOM) {
         notes.push(`${TAG} skip ${ref} ← ${t}: score room ${roomOf(input.room, t)} < ${MIN_ROOM}`);
@@ -419,12 +425,21 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       fresh.push(asm.p);
     }
   }
-  // Most value created first; one bid per card.
-  fresh.sort((a, b) => b.gain - b.bid - (a.gain - a.bid) || a.ref.localeCompare(b.ref) || a.team.localeCompare(b.team));
+  // Priority cards first, then most value created; one bid per card.
+  const prio = (r: string) => (priority.has(r) ? 0 : 1);
+  fresh.sort((a, b) => prio(a.ref) - prio(b.ref) || b.gain - b.bid - (a.gain - a.bid) || a.ref.localeCompare(b.ref) || a.team.localeCompare(b.team));
   const refs = new Set(existing.filter((e) => !epicRefs.has(e.ref)).map((e) => e.ref));
   let hiUsed = hiLedger.filter((t) => t > trade.tick - params.hiWindowTicks).length;
   for (const p of fresh) {
     if (refs.has(p.ref)) continue;
+    // A priority card takes the slot and budget of a kept non-priority bid (cancelled, so the cash is free again).
+    while (priority.has(p.ref) && (open >= params.maxOpen || p.bid + p.fee > budget) && yieldable.length) {
+      const y = yieldable.shift()!;
+      cancel(y.id, y.key, `make room for priority ${p.ref}`);
+      budget += y.committed;
+      open -= 1;
+      refs.delete(y.ref);
+    }
     if (open >= params.maxOpen) {
       notes.push(`${TAG} skip ${p.ref} ← ${p.team}: ${open}/${params.maxOpen} directed bids open`);
       continue;
