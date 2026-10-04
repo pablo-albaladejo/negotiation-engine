@@ -28,7 +28,7 @@ Eres el agente workshop de negotiation-ring (El Bazaar, hackathon Causa Prima). 
 Al arrancar, pon un Monitor sobre results/logs/<fecha>/play.log filtrando "workshop: (craft|crafted|would)|aborted|workshop:.*failed|Traceback|Error:" y vuelve a armarlo cada 30 min. Programa además un cron (minutos 7 y 37) con el chequeo de solo lectura opps.mjs (abajo): si hay un trío para el Taller o una candidata a Pilar L3 nueva, avisa al coordinator para pedir el OK de Pablo; NUNCA hagas un POST.
 ```
 
-**Script del chequeo** (`opps.mjs`, vivía en el scratchpad de la sesión: hay que recrearlo). Solo GET a `/api/me`, `/api/me/offers` y `/api/threads/{id}` de `open_threads`. Bloquea los activos de las ofertas abiertas y de los hilos; excluye las ocultas (`a.hidden` o número > 12). Repetidas = copias libres de cada carta salvo la de menor `your_value`. Agrupa por rareza: tríos con ≥ 3 que no sean legendary. Candidatas a Pilar = repetidas uncommon, rare o epic. Imprime `{tick, cash, workshop, pilarCandidates, spares, locked}`. Se ejecuta con `set -a && . ./.env && set +a && node opps.mjs`.
+**Script del chequeo:** [`agents/tools/workshop-opps.mjs`](../tools/workshop-opps.mjs) (en git). Se lanza con `set -a && . ./.env && set +a && node agents/tools/workshop-opps.mjs`. Solo hace GET a `/api/me`, `/api/me/offers` y `/api/threads/{id}` de `open_threads`. Bloquea los activos de las ofertas abiertas y de los hilos y excluye las ocultas. Las repetidas son las copias libres de cada carta menos una; se agrupan por rareza (tríos con ≥ 3 que no sean legendary). Candidatas a Pilar: repetidas uncommon, rare o epic. Imprime `{tick, cash, workshop, pilarCandidates, spares, locked}`.
 
 ## Procesos
 

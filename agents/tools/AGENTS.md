@@ -6,3 +6,7 @@ Reglas: solo lectura (GET) salvo que la ficha del agente diga otra cosa; las cla
 
 | Fichero | Agente | Qué es |
 |---------|--------|--------|
+| `duels-table.mjs` | [duels](../routes/duels.md) | Tabla en vivo (solo GET) de una sesión de duelos: trato, result y Δduel_points por duelo cada 15 s (`node agents/tools/duels-table.mjs 4`) |
+| `audit-tick-eval.py` | [audit](../analysis/audit.md) | Una línea por tick de `play.log` con los Δ (score, escalera, neg, duelos, caja) y los FLAG |
+| `audit-alerts.sh` | [audit](../analysis/audit.md) | Alertas: caídas de play, banco/Pícaros, desajustes de score-audit, bench, nuestro venue y nuestros tratos |
+| `objetivos-design.md` | [market-analyst](../analysis/market-analyst.md) → [goals](../ops/goals.md) | Diseño de partida de los objetivos del equipo |
