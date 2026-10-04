@@ -74,7 +74,10 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
     odds: "~15-20 %",
     stake: "unknown",
     cost: "0 P, 1 probe",
-    note: "if it misses, Pilar is closed",
+    // Missed (threads 2598, 4136). Pilar sent us to the Abuela about the chulapa dorada and reacted only to a "private
+    // sale" (thread 4180, t2578): it is for those who have "shown their seriousness", likely a closed deal with her first
+    // (she buys SAL/RET uncommon+). She was disabled for everyone from t2583 until the close.
+    note: "missed; next: a deal with Pilar, then the private-sale phrase",
   },
   {
     n: 4,
@@ -99,12 +102,12 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
   {
     n: 0,
     persona: "banco",
-    route: "excluded",
+    route: "manual",
     line: "Poderoso caballero es don Dinero, don Ernesto.", // game text
     key: "poderoso caballero", // game text
-    odds: "~12 %",
-    stake: "—",
-    cost: "excluded: Pablo decided no threads with the banco",
+    odds: "missed (thread 3830, 4 Oct): Don Ernesto only quoted RET-12",
+    stake: "unknown",
+    cost: "0 P, 1 banco thread (Pablo's yes, 4 Oct)",
   },
 ];
 
