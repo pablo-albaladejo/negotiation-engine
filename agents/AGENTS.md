@@ -9,6 +9,7 @@ Fichas recogidas por entrevista a cada sesión el 4 oct de 2026 (~10:00–10:10)
 - [`ops/`](ops/AGENTS.md): coordinator, goals, ui
 - [`routes/`](routes/AGENTS.md): trader, team-trades, dealers, broker, duels, eggs, packs, workshop (y team-desk, retirado)
 - [`analysis/`](analysis/AGENTS.md): audit, leaderboard-analyst, market-analyst
+- [`tools/`](tools/AGENTS.md): scripts y notas de sesión que antes vivían en un scratchpad
 
 ## Mapa agente → sesión (4 oct)
 
