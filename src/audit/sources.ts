@@ -125,6 +125,8 @@ export interface DuelSend {
   duel: number;
   action: "counter" | "accept";
   price?: number;
+  /** Delivery day of the offer (`92 P/day 10`); undefined on a price-only duel. */
+  days?: number;
   rule?: string;
   /** From the duel header: our role and our limit (the private value) at that tick. */
   role?: "seller" | "buyer";
@@ -161,21 +163,26 @@ export class DuelSendParser {
   readonly terms = new Map<number, DuelTerms>();
   private duel: number | undefined;
   private head: { role: "seller" | "buyer"; limit?: number } | undefined;
+  /** The duel of the last header: its `assumption: W P per day` line comes after the decision line. */
+  private lastDuel: number | undefined;
 
   push(line: string, tick: number): void {
     const weight = /^\[duels\] duel (\d+) \((seller|buyer),.*?(-?\d+(?:\.\d+)?) P per day/.exec(line);
     if (weight) this.terms.set(Number(weight[1]), { ...this.terms.get(Number(weight[1])), role: weight[2] as "seller" | "buyer", perDay: Number(weight[3]) });
+    const assumption = /^assumption: (-?\d+(?:\.\d+)?) P per day/.exec(line);
+    if (assumption && this.lastDuel !== undefined) this.terms.set(this.lastDuel, { ...this.terms.get(this.lastDuel), perDay: Number(assumption[1]) });
     const head = /^duel (\d+) · (seller|buyer) · (?:.*?\blimit (\d+(?:\.\d+)?))?/.exec(line);
     if (head) {
       this.duel = Number(head[1]);
+      this.lastDuel = this.duel;
       this.head = { role: head[2] as "seller" | "buyer", ...(head[3] !== undefined ? { limit: Number(head[3]) } : {}) };
       this.terms.set(this.duel, { ...this.terms.get(this.duel), ...this.head });
       return;
     }
-    const sent = /^→ (COUNTER|ACCEPT) (?:rival )?(\d+(?:\.\d+)?) P\b.*?\(([^()]*)\).*\[sent\]/.exec(line);
+    const sent = /^→ (COUNTER|ACCEPT) (?:rival )?(\d+(?:\.\d+)?) P(?:\/day (\d+))?\b.*?\(([^()]*)\).*\[sent\]/.exec(line);
     if (!sent || this.duel === undefined) return;
-    const rule = sent[3]!.split(",").at(-1)?.trim();
-    this.sends.push({ tick, duel: this.duel, action: sent[1] === "ACCEPT" ? "accept" : "counter", price: Number(sent[2]), ...(rule ? { rule } : {}), ...this.head, line });
+    const rule = sent[4]!.split(",").at(-1)?.trim();
+    this.sends.push({ tick, duel: this.duel, action: sent[1] === "ACCEPT" ? "accept" : "counter", price: Number(sent[2]), ...(sent[3] !== undefined ? { days: Number(sent[3]) } : {}), ...(rule ? { rule } : {}), ...this.head, line });
     this.duel = undefined;
     this.head = undefined;
   }

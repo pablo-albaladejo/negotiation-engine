@@ -243,10 +243,12 @@ export function duelUnanswered(input: ConductInput): Alert[] {
  * `duel-left-on-table`: a duel closed at a worse price than an offer the rival had already made and we countered instead
  * of accepting (duel 2558: we sold, the rival offered 136 at tick 560, we asked 139 and closed at 125 two rounds later).
  * Any earlier rival offer better than the deal was inside our limit, because the deal was. `lossP` is the price gap,
- * before the per-round decay that also shrinks the later deal.
+ * before the per-round decay that also shrinks the later deal. On a price + days duel with known terms the gap is in
+ * real surplus (price + w·days): duel 11624 closed at 114 P day 0 (+24) after a rival 84 P day 10 (+5.7), which is no loss.
+ * The deal's day comes from the rival offer or our sent offer at the deal price.
  */
 export function duelLeftOnTable(input: ConductInput): Alert[] {
-  interface Offer { tick: number; price: number }
+  interface Offer { tick: number; price: number; days?: number }
   interface Duel { id: number; role?: string; rival: Offer[]; deal?: { tick: number; price: number }; firstRecv?: string; session?: number; rivalName?: string }
   const duels = new Map<number, Duel>();
   const practice = new Set<number>();
@@ -261,7 +263,7 @@ export function duelLeftOnTable(input: ConductInput): Alert[] {
       if (asStr(p.role)) d.role = asStr(p.role)!;
       if (asNum(p.session) !== undefined) d.session = asNum(p.session)!;
     } else if (e.type === "duel.message" && asNum(p.price) !== undefined) {
-      d.rival.push({ tick: e.tick, price: asNum(p.price)! });
+      d.rival.push({ tick: e.tick, price: asNum(p.price)!, ...(asNum(p.days) !== undefined ? { days: asNum(p.days)! } : {}) });
       if (asStr(p.from)) d.rivalName = asStr(p.from)!;
     } else if (e.type === "duel.result" && p.status === "deal" && asNum(p.price) !== undefined) d.deal = { tick: e.tick, price: asNum(p.price)! };
   }
@@ -270,7 +272,17 @@ export function duelLeftOnTable(input: ConductInput): Alert[] {
   for (const d of duels.values()) {
     if (!d.deal || (d.role !== "seller" && d.role !== "buyer")) continue;
     const seller = d.role === "seller";
-    const better = (o: Offer): number => (seller ? o.price - d.deal!.price : d.deal!.price - o.price);
+    const deal = d.deal;
+    // Day of the deal: the latest offer at the deal price, the rival's or ours.
+    const ours = input.duelSends.filter((s) => s.duel === d.id && s.price === deal.price && s.tick <= deal.tick);
+    const atDeal = [...d.rival.filter((o) => o.price === deal.price && o.tick <= deal.tick), ...ours.map((s) => ({ tick: s.tick, price: deal.price, days: s.days }))].sort((a, b) => b.tick - a.tick)[0];
+    const terms = input.duelTerms?.get(d.id);
+    const dealSurplus = duelSurplus(terms, deal.price, atDeal ? atDeal.days : 0);
+    const better = (o: Offer): number => {
+      const real = dealSurplus !== undefined ? duelSurplus(terms, o.price, o.days) : undefined;
+      if (real !== undefined) return Math.round((real - dealSurplus!) * 10) / 10;
+      return seller ? o.price - deal.price : deal.price - o.price;
+    };
     const best = d.rival.filter((o) => o.tick < d.deal!.tick && better(o) > 0).sort((a, b) => better(b) - better(a) || a.tick - b.tick)[0];
     if (!best) continue;
     const gap = better(best);
@@ -283,7 +295,7 @@ export function duelLeftOnTable(input: ConductInput): Alert[] {
         ...(counts ? { lossP: gap } : {}),
         refs: [],
         assets: [],
-        summary: `Duel ${d.id}${d.rivalName ? ` with ${d.rivalName}` : ""} (we ${seller ? "sell" : "buy"}) closed at ${d.deal.price} P, but the rival had offered ${best.price} P at tick ${best.tick} and we countered instead of accepting (${gap} P left, ${d.deal.tick - best.tick} ticks later, with decay)${counts ? "" : " (before scoring / practice)"}.`,
+        summary: `Duel ${d.id}${d.rivalName ? ` with ${d.rivalName}` : ""} (we ${seller ? "sell" : "buy"}) closed at ${d.deal.price} P${atDeal?.days ? ` day ${atDeal.days}` : ""}, but the rival had offered ${best.price} P${best.days ? ` day ${best.days}` : ""} at tick ${best.tick} and we countered instead of accepting (${gap} P left${dealSurplus !== undefined ? " in real surplus" : ""}, ${d.deal.tick - best.tick} ticks later, with decay)${counts ? "" : " (before scoring / practice)"}.`,
         evidence: { duel: d.id, role: d.role, deal: d.deal, bestRivalOffer: best, rivalOffers: d.rival, scored: counts },
         key: `duel-left-on-table:${d.id}`,
       }),
