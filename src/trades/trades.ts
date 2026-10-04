@@ -3,6 +3,7 @@ import { freeCounts, takesLastFreeCopy } from "../shared/last-copy.js";
 import type { Asset, Catalog } from "../shared/schemas.js";
 import { isKeepsake } from "../shared/asset-locks.js";
 import { MIN_ROOM, roomOf } from "../markets/room.js";
+import { OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Trades with other teams in El Rastro: valuation at OUR private values and pure,
@@ -532,6 +533,9 @@ export interface TradeState {
   room?: ReadonlyMap<string, number>;
 }
 
+/** Venues where our own listings and bids live: OFFER_VENUE, and El Rastro until the old ones are cancelled. */
+const isPostVenue = (venue: string | null | undefined): boolean => venue === OFFER_VENUE || venue === "rastro";
+
 /** An open El Rastro bid of ours for a card another route owns (`foreignBidRefs`): never cancelled or repriced here. */
 function isForeignBid(o: TradeOffer, refs: ReadonlySet<string> | undefined): boolean {
   if (!refs?.size) return false;
@@ -572,7 +576,7 @@ export interface Evaluation {
 }
 
 export interface OfferBody {
-  venue: "rastro";
+  venue: string;
   give: { assets: number[] } | { cash: number };
   want: { cash: number } | { cards: string[] };
   expires_in_ticks: number;
@@ -621,7 +625,7 @@ function blank(offer: TradeOffer, source: Evaluation["source"], reason: string):
  */
 export function acceptLockedIds(state: Pick<TradeState, "held" | "mine">): Set<number> {
   const ownListed = new Set(
-    state.mine.filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && !o.to).flatMap((o) => readSide(o.give).assets.map((a) => a.id)),
+    state.mine.filter((o) => (o.status ?? "open") === "open" && isPostVenue(o.venue) && o.thread == null && !o.to).flatMap((o) => readSide(o.give).assets.map((a) => a.id)),
   );
   return new Set(state.held.filter((a) => a.locked && !ownListed.has(a.id)).map((a) => a.id));
 }
@@ -713,8 +717,8 @@ function classifyMine(o: TradeOffer, held: HeldAsset[]): ExistingOffer | undefin
   return undefined;
 }
 
-const listBody = (assetId: number, price: number, p: TradeParams): OfferBody => ({ venue: "rastro", give: { assets: [assetId] }, want: { cash: price }, expires_in_ticks: p.expiresInTicks });
-const bidBody = (ref: string, price: number, p: TradeParams): OfferBody => ({ venue: "rastro", give: { cash: price }, want: { cards: [ref] }, expires_in_ticks: p.expiresInTicks });
+const listBody = (assetId: number, price: number, p: TradeParams): OfferBody => ({ venue: OFFER_VENUE, give: { assets: [assetId] }, want: { cash: price }, expires_in_ticks: p.expiresInTicks });
+const bidBody = (ref: string, price: number, p: TradeParams): OfferBody => ({ venue: OFFER_VENUE, give: { cash: price }, want: { cards: [ref] }, expires_in_ticks: p.expiresInTicks });
 
 /** Next price with slow repricing: towards `target` at most one step of `repriceFrac` (min. 1 P). */
 export function slowReprice(current: number, target: number, frac: number): number {
@@ -804,10 +808,12 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const fees = MAKER_FEES;
 
   // Our El Rastro offers (those in dealer threads and directed ones, `to` set, are left alone but still count as open).
-  const ours = (o: TradeOffer) => o.venue === "rastro" && o.thread == null && !o.to && !isForeignBid(o, state.foreignBidRefs);
+  // Pablo, 4 Oct: we post only on OFFER_VENUE; our listings and bids still on El Rastro are cancelled and reposted there.
+  const ours = (o: TradeOffer) => isPostVenue(o.venue) && o.thread == null && !o.to && !isForeignBid(o, state.foreignBidRefs);
   const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !ours(o)).length;
+  const moved = state.mine.filter((o) => (o.status ?? "open") === "open" && ours(o) && o.venue !== OFFER_VENUE && (o.expires_tick == null || o.expires_tick > state.tick));
   const existing = state.mine
-    .filter((o) => (o.status ?? "open") === "open" && ours(o) && (o.expires_tick == null || o.expires_tick > state.tick))
+    .filter((o) => (o.status ?? "open") === "open" && ours(o) && o.venue === OFFER_VENUE && (o.expires_tick == null || o.expires_tick > state.tick))
     .flatMap((o) => {
       const c = classifyMine(o, state.held);
       return c ? [c] : [];
@@ -892,7 +898,7 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
     }
   }
 
-  const cancels: TickPlan["cancels"] = [];
+  const cancels: TickPlan["cancels"] = moved.map((o) => ({ id: o.id, reason: `moved to ${OFFER_VENUE} (we post only there)` }));
   const posts: PlannedPost[] = [];
   const kept: ExistingOffer[] = [];
   let newSlots = Math.min(state.limits.offersPerTick, params.maxNewPerTick);

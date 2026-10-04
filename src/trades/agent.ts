@@ -4,6 +4,7 @@ import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog } from "../shared/schemas.js";
 import { assetsInOffers, assetsInThreads } from "../shared/asset-locks.js";
 import { loadCounterpartyRoom } from "../markets/room.js";
+import { OFFER_VENUE } from "../shared/offer-venue.js";
 import {
   buildValueModel,
   countHoldings,
@@ -125,7 +126,8 @@ export class TradesAgent {
     const { mine, toMe } = parseMyOffers(rawOffers, myId);
     // One asset, one place: what is in an open thread with a dealer (topic or thread offer) is neither listed nor used to pay.
     const inThreads = [...assetsInThreads((await this.api.myThreads("open")).threads)].concat([...assetsInOffers(rawOffers, myId)].filter(([, where]) => where.includes("in thread")));
-    const board = parseOffers(await this.api.board("rastro"));
+    // El Rastro plus the venue we post on: offers there can be accepted and price our listings.
+    const board = [...parseOffers(await this.api.board("rastro")), ...parseOffers(await this.api.board(OFFER_VENUE).catch(() => ({ offers: [] })))];
     let settlements: TradeState["settlements"] = [];
     try {
       settlements = parseSettlements(await this.api.feed(200));
@@ -195,7 +197,7 @@ export class TradesAgent {
   private trackFilledBids(mine: TradeState["mine"], tick: number): void {
     const now = new Map<number, { cash: number; expires: number }>();
     for (const o of mine) {
-      if (o.venue !== "rastro" || o.thread != null || o.to || (o.status ?? "open") !== "open") continue;
+      if ((o.venue !== "rastro" && o.venue !== OFFER_VENUE) || o.thread != null || o.to || (o.status ?? "open") !== "open") continue;
       const g = readSide(o.give);
       const w = readSide(o.want);
       if (g.cash > 0 && w.cards.length === 1 && !this.foreignBidRefs.has(w.cards[0]!)) now.set(o.id, { cash: g.cash, expires: o.expires_tick ?? Infinity });
