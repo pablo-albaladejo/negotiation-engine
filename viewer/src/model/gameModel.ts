@@ -757,6 +757,8 @@ export interface PriceRow {
   lastTrade: number | null;
   value: number | null;
   holdings: number;
+  /** What one more copy adds at our values (held: the next copy's marginal; none held: the value). */
+  nextValue: number | null;
   buyEdge: number | null;
   sellEdge: number | null;
   completesPage: boolean;
@@ -808,7 +810,9 @@ export function priceRows(model: GameModel): PriceRow[] {
         lastTrade: bestOf(pick(o, "lastTrade", "last_trade"), (a) => a),
         value,
         holdings,
-        buyEdge: n(o, "buyEdge", "buy_edge") ?? (value !== null && ask !== null ? Math.round((value - ask) * 10) / 10 : null),
+        nextValue: n(o, "nextValue", "next_value") ?? (holdings === 0 ? value : null),
+        // A held card's value carries the page bonus we already have: never value − ask for it.
+        buyEdge: n(o, "buyEdge", "buy_edge") ?? (value !== null && ask !== null && holdings === 0 ? Math.round((value - ask) * 10) / 10 : null),
         sellEdge: n(o, "sellEdge", "sell_edge") ?? (value !== null && bid !== null && holdings > 0 ? Math.round((bid - value) * 10) / 10 : null),
         completesPage: pick(o, "completesPage", "completes_page") === true,
       },

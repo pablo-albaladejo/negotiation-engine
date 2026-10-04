@@ -8,7 +8,7 @@ import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Clock, Me } from "../shared/schemas.js";
 import { extractScoreFields, type ScoreFields } from "../shared/score.js";
 import { duelsApi, type Duel, type Schedule } from "../duels/schemas.js";
-import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
+import { buildValueModel, countHoldings, heldAssets, parseMyOffers, parseOffers, readSide, valueDelta } from "../trades/trades.js";
 import { spareTargets } from "../dealers/planning/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
@@ -250,6 +250,17 @@ export interface BuildOptions {
 }
 
 /** Builds the tick's state with parallel GETs; never throws on a failed read (except `/api/clock`). */
+/** Value of one more copy of each held card at our values (the same model the markets route buys with). */
+function nextCopyValues(assets: Me["assets"], catalog: Parameters<typeof buildValueModel>[0] | undefined, values: ReadonlyMap<string, number>): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!catalog) return out;
+  const held = heldAssets(assets);
+  const counts = countHoldings(held);
+  const model = buildValueModel(catalog, held, new Map([...values].filter(([ref]) => !counts.has(ref))));
+  for (const ref of counts.keys()) if (model.base.has(ref)) out.set(ref, valueDelta(counts, [], [ref], model));
+  return out;
+}
+
 export async function buildGameState(client: BazaarClient, opts: BuildOptions = {}): Promise<GameState> {
   const duels = duelsApi(client);
   const clock = await client.clock();
@@ -393,7 +404,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     const v = await settle(`value ${ref}`, client.value(ref));
     if (v !== undefined) valueCache.set(ref, v);
   }
-  const prices = buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache) });
+  const prices = buildPriceSheet({ ...priceInputs, values: Object.fromEntries(valueCache), nextCopy: nextCopyValues(me?.assets ?? [], catalog, valueCache) });
   // Forex chains: the day's dealer deals (any team) and the live venue quotes; never takes the tick down.
   let forex: ForexState | undefined;
   try {

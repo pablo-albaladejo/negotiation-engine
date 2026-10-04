@@ -812,7 +812,7 @@ function Packs({ model }: { model: GameModel }) {
 
 const edge = (v: number | null) => (v === null ? "—" : v > 0 ? { value: `+${fmt(v)}`, tone: "better" as const } : fmt(v));
 
-function Prices({ model }: { model: GameModel }) {
+export function Prices({ model }: { model: GameModel }) {
   const rows = priceRows(model);
   const [f, setF] = useState<PriceFilters>({ set: "", rarity: "", opportunities: false, sort: "buyEdge" });
   const oppId = useId();
@@ -832,7 +832,7 @@ function Prices({ model }: { model: GameModel }) {
     <Card title={`Prices (${rows.length} cards · ${model.prices?.source === "state" ? "from GameState" : "rebuilt by the viewer"})`}>
       <div style={col}>
         <Muted>
-          Book = catalogue price · Value = our private value from the server (includes the +25 % page bonus; local only) · Market = best ask / bid in El Rastro and other venues. Buy edge = value − ask, sell edge = bid − value. Score = value gained at private value (uncapped, measured 3 Oct). ★ = completes a page.
+          Book = catalogue price · Our value = the server's private value (your_value) of the copy we hold or of the first copy (includes the page bonus; local only) · Next copy = what one more copy adds (held: only its marginal, the page bonus is already ours) · Market = best ask / bid in El Rastro and other venues. Buy edge = next copy − ask, sell edge = bid − value. Score = value gained at private value (uncapped, measured 3 Oct). ★ = completes a page.
         </Muted>
         <div className="nr-filters" role="group" aria-label="Price filters">
           <SelectBox label="Set" value={f.set} onChange={(set) => setF({ ...f, set })} options={[{ value: "", label: "All" }, ...sets.map((x) => ({ value: x, label: x }))]} />
@@ -855,6 +855,7 @@ function Prices({ model }: { model: GameModel }) {
             { key: "last", label: "Last trade", numeric: true },
             { key: "value", label: "Our value", numeric: true },
             { key: "held", label: "Held", numeric: true },
+            { key: "next", label: "Next copy", numeric: true },
             { key: "buy", label: "Buy edge", numeric: true },
             { key: "sell", label: "Sell edge", numeric: true },
             { key: "dealers", label: "Dealers" },
@@ -873,6 +874,7 @@ function Prices({ model }: { model: GameModel }) {
             last: fmt(r.lastTrade),
             value: fmt(r.value),
             held: r.holdings,
+            next: fmt(r.nextValue),
             buy: edge(r.buyEdge),
             sell: edge(r.sellEdge),
             dealers: r.dealers.join(", ") || "—",
@@ -1013,7 +1015,6 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Markets model={model} onOpen={onOpen} />
       <Venues model={model} board={board} />
       <Rivals model={model} board={board} />
-      <Prices model={model} />
       <Packs model={model} />
     </div>
   );

@@ -38,7 +38,9 @@ export interface PriceEntry {
   lastTrade?: { price: number; tick: number };
   value?: number;
   holdings: number;
-  /** value − bestAsk: what we gain by buying at the best ask. */
+  /** What one more copy adds at our values (held: the next copy's marginal, without the page bonus we already have). */
+  nextValue?: number;
+  /** nextValue − bestAsk (value − bestAsk if we hold none): what we gain by buying one more at the best ask. */
   buyEdge?: number;
   /** bestBid − value: what we gain by selling at the best bid. */
   sellEdge?: number;
@@ -79,6 +81,8 @@ export interface PriceInputs {
   holdings: Readonly<Record<string, number>>;
   pages: readonly { set: string; have: number; of: number }[];
   pageTargets: readonly string[];
+  /** Value of one more copy per held card (`valueDelta` of the value model); without it, held cards get no buy edge. */
+  nextCopy?: ReadonlyMap<string, number>;
 }
 
 export function buildPriceSheet(i: PriceInputs): PriceEntry[] {
@@ -139,6 +143,8 @@ export function buildPriceSheet(i: PriceInputs): PriceEntry[] {
       const printRun = num(c.print_run);
       const minted = num(raw.minted);
       const held = i.holdings[c.id] ?? 0;
+      // A held card's value carries the page bonus we already have: one more copy is worth only its marginal.
+      const next = held > 0 ? i.nextCopy?.get(c.id) : value;
       const sells = i.dealers.filter((d) => menuHas(obj(obj(d).menu).sells, c.id, setId, c.rarity)).map((d) => String(obj(d).id));
       const buys = i.dealers.filter((d) => menuHas(obj(obj(d).menu).buys, c.id, setId, c.rarity)).map((d) => String(obj(d).id));
       const lt = last.get(c.id);
@@ -159,7 +165,8 @@ export function buildPriceSheet(i: PriceInputs): PriceEntry[] {
         ...(lt ? { lastTrade: lt } : {}),
         ...(value !== undefined ? { value } : {}),
         holdings: held,
-        ...(value !== undefined && ask ? { buyEdge: Math.round((value - ask.price) * 10) / 10 } : {}),
+        ...(next !== undefined ? { nextValue: Math.round(next * 10) / 10 } : {}),
+        ...(next !== undefined && ask ? { buyEdge: Math.round((next - ask.price) * 10) / 10 } : {}),
         ...(value !== undefined && bid ? { sellEdge: Math.round((bid.price - value) * 10) / 10 } : {}),
         completesPage: i.pageTargets.includes(c.id) || (!!page && held === 0 && page.have === page.of - 1),
       });

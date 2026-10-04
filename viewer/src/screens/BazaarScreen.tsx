@@ -7,7 +7,7 @@ import { TeamDesk } from "./TeamDesk.js";
 import { VenueBooks } from "./venues/VenueBooks.js";
 import { Forex } from "./forex/Forex.js";
 import { MarketTest } from "./market-test/MarketTest.js";
-import { AlbumCards } from "./album/AlbumCards.js";
+import { CardsView } from "./album/CardsView.js";
 import { EggsView } from "./profile/EggsView.js";
 import { PersonasView } from "./profile/PersonasView.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
@@ -803,8 +803,8 @@ type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market
 const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: "now", label: "Now · this tick", hint: "What the coordinator picked this tick, live conversations, our open offers and what changed since the last tick." },
   { id: "cockpit", label: "Cockpit · score and history", hint: "Straight from the Bazaar API: scoreboard, upcoming events, right now, team desk, what moved the score, agents alive, and the full history of trades and duels." },
-  { id: "cards", label: "Cards · our album", hint: "Our album page by page: every card held or missing, copies in circulation, value per card, and the shinies that top a page up." },
-  { id: "model", label: "Model · our reasoning", hint: "Our internal view: the three score layers, timeline, coordinator, goals, news, markets, venues, rivals, prices and packs." },
+  { id: "cards", label: "Cards · our album", hint: "Our album page by page (held or missing, copies in circulation, API value vs ours, shinies), then the price sheet of every card: market, our value, next copy and edges." },
+  { id: "model", label: "Model · our reasoning", hint: "Our internal view: the three score layers, timeline, coordinator, goals, news, markets, venues, rivals and packs." },
   { id: "venues", label: "Venues · every open book", hint: "Every open venue's asks and bids side by side, each offer marked against our hand and values. Nothing here sends." },
   { id: "forex", label: "Forex · buy here, sell there", hint: "A → B → C chains: buy a card at one place, hold it, sell it at another, net of fees." },
   { id: "market-test", label: "Market test · auto vs board", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
@@ -855,7 +855,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         {view === "now" ? (
           <NowView board={board} model={model} onOpen={openModel} />
         ) : view === "cards" ? (
-          <AlbumCards board={board} />
+          <CardsView board={board} model={model} loading={loading} />
         ) : view === "venues" ? (
           <VenueBooks board={board} />
         ) : view === "forex" ? (

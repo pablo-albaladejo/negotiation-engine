@@ -13,6 +13,7 @@ La pestaña «Cards» (la tarjeta «Album», fuera de la cabina), con el aspecto
 El dibujo es nuestro: un sol y un perfil de edificios que sale de la referencia de la carta. No se copia el arte del juego.
 
 - **`AlbumCards.tsx`** — la tarjeta.
+- **`CardsView.tsx`** — la pestaña «Cards»: el álbum y, debajo, la tabla «Prices» (`Prices` de `viewer/src/screens/ModelView.tsx`, salida de «Model»): libro, mercado, nuestro valor, «Next copy» (lo que suma una copia más) y los huecos (buy edge = next copy − ask).
 
 Datos: `board.album.pages[].cards` y `.shinies`, de `albumOf` en [`viewer/server/bazaar/`](../../../server/bazaar/AGENTS.md). Solo lectura; aquí no se calcula ninguna cifra.
 
