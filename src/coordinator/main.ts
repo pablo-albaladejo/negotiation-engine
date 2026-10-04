@@ -98,6 +98,7 @@ async function main() {
       "scanner-spend-per-hour": { type: "string", default: "60" },
       "plan-log": { type: "string", default: "" },
       "hint-llm": { type: "boolean", default: false },
+      "duels-fast": { type: "boolean", default: false },
     },
   });
   const live = !values["dry-run"] && values.confirm;
@@ -120,6 +121,11 @@ async function main() {
   }
   const root = process.cwd();
   const duels = new DuelsRoute(client, dryRun, live ? defaultDuelsStateFile(root) : undefined);
+  // --duels-fast: duels step every tick on their own loop (same client and bucket); the main loop skips the duel route.
+  if (values["duels-fast"]) {
+    if (values.once) await duels.runFast(live, true);
+    else void duels.runFast(live);
+  }
   const dealers = new DealersRoute(client, {
     dryRun,
     maxSpendPerHour: num(values["max-spend-hour"], "--max-spend-hour"),

@@ -13,6 +13,7 @@ import { introDemand } from "../intros/intros.js";
 import { forexBuyRoute, forexRoutes, forexSellRoute, setForexRoutes } from "../dealers/planning/forex.js";
 import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
+import { clockGate } from "../dealers/serious.js";
 import { duelsApi } from "../duels/schemas.js";
 import { TradesAgent } from "../trades/agent.js";
 import { buildValueModel, countHoldings, DEFAULT_TRADE_PARAMS, heldAssets, pageTargetCap, type TickPlan, type TradeParams, type TradeState } from "../trades/trades.js";
@@ -51,13 +52,19 @@ const empty = (): RouteProposal => ({ intents: [], notes: [], strategies: new Ma
 export class DuelsRoute {
   readonly agent: DuelsAgent;
   private proposal: DuelProposal | undefined;
+  /** `--duels-fast`: duels run on their own per-tick loop (`runFast`), so the main loop proposes nothing for them. */
+  private fast = false;
 
-  constructor(client: BazaarClient, dryRun: boolean, stateFile?: string) {
+  constructor(private readonly client: BazaarClient, dryRun: boolean, stateFile?: string) {
     this.agent = new DuelsAgent(duelsApi(client), { dryRun, ...(stateFile ? { stateFile } : {}) });
   }
 
   async propose(): Promise<RouteProposal> {
     const out = empty();
+    if (this.fast) {
+      out.notes.push("duels: on the fast sub-loop (--duels-fast), one step per tick outside this loop");
+      return out;
+    }
     this.proposal = await this.agent.propose();
     const tick = this.proposal.clock.tick;
     for (const p of this.proposal.planned) {
@@ -89,6 +96,41 @@ export class DuelsRoute {
     const messages = new Set(this.proposal.planned.filter((p) => selected.has(`duels:message:${p.duel.id}`)).map((p) => String(p.duel.id)));
     const report = await this.agent.execute(this.proposal, { accepts, messages });
     return report.entries.flatMap((e) => formatDuelEntry(e).split("\n"));
+  }
+
+  /**
+   * One `DuelsAgent.step` per new tick, on its own loop (`--duels-fast`): a full play tick takes ~30 s against 15 s ticks,
+   * which halves our moves in a 12-tick duel. Same client, so the same rate-limit bucket as the rest of play; the
+   * agent's `lastActionTick` keeps it to one action per duel per tick. With `once`, a single step. Never throws.
+   */
+  async runFast(gated: boolean, once = false): Promise<void> {
+    this.fast = true;
+    let lastTick = -1;
+    for (;;) {
+      let waitMs = 1_000;
+      try {
+        const clock = await this.client.clock();
+        const gate = gated ? clockGate(clock) : undefined;
+        if (gate && !gate.run) {
+          waitMs = gate.waitMs;
+        } else if (clock.tick === lastTick) {
+          waitMs = Math.max(200, (clock.next_tick_in ?? 1) * 1000 + 300);
+        } else {
+          lastTick = clock.tick;
+          const started = Date.now();
+          const report = await this.agent.step();
+          const acted = report.entries.filter((e) => e.decision.action !== "wait" || e.outcome !== "skipped");
+          console.log(`[duels] [fast] tick ${report.tick} · ${report.entries.length} live · ${acted.length} acting · ${Date.now() - started} ms`);
+          for (const e of report.entries) for (const l of formatDuelEntry(e).split("\n")) console.log(`[duels] [fast]   ${l}`);
+          waitMs = Math.max(200, (clock.next_tick_in ?? 1) * 1000 - (Date.now() - started) + 300);
+        }
+      } catch (e) {
+        console.error(`[duels] [fast] error: ${e instanceof Error ? e.message : String(e)}`);
+        waitMs = 5_000;
+      }
+      if (once) return;
+      await new Promise<void>((r) => setTimeout(r, waitMs));
+    }
   }
 }
 
