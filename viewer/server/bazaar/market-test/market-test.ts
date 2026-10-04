@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { hindsightOptimum, pairKey, type OptimalPair } from "./optimum.js";
 
 /**
  * «Market test»: our bench sessions (the organisers' synthetic book every venue receives) in AUTO (v04) against BOARD
@@ -74,6 +75,30 @@ export interface OurMatch {
   error: string | null;
 }
 
+/**
+ * «What we did» against «the best possible given what was visible» (quote surplus = bid − ask from bench.jsonl, never
+ * the official efficiency: the book has no private limits). Only board sessions are comparable: on auto the book is
+ * recorded after auto already crossed, so crossed pairs never show up.
+ */
+export interface Hindsight {
+  comparable: boolean;
+  /** Why it is not comparable, or null. */
+  note: string | null;
+  /** False while the session runs (provisional, up to `through_tick`). */
+  final: boolean;
+  through_tick: number | null;
+  /** Our live bench matches (status "sent", not dry-run): pairs and summed quote surplus. */
+  ours: { pairs: number; surplus: number };
+  optimum: { pairs: number; surplus: number };
+  /** ours.surplus / optimum.surplus, only when comparable. */
+  captured: number | null;
+  pairs: OptimalPair[];
+  /** Optimal pairs we did not make. */
+  missed: OptimalPair[];
+  /** Indexes into `our_matches` of our sent pairs that are not in the optimum. */
+  suboptimal: number[];
+}
+
 export interface MarketSession {
   day: string;
   session: number;
@@ -98,6 +123,7 @@ export interface MarketSession {
   /** Book and our matches: only for the last sessions (payload size). */
   traders: Trader[] | null;
   our_matches: OurMatch[] | null;
+  hindsight: Hindsight | null;
 }
 
 export interface MarketTestOut {
@@ -160,6 +186,30 @@ export function parseBrokerLine(line: string): MarketTestOut["now"] {
   return { tick: n(/tick (\d+)/), hour: n(/h ([\d.]+)/), bench: n(/bench (\d+)/), matched: n(/matched (\d+)/), line: line.trim() };
 }
 
+function hindsightOf(s: MarketSession, book: z.infer<typeof BenchLineSchema>[], matches: z.infer<typeof MatchSchema>[]): Hindsight {
+  const through = book.length ? Math.max(...book.map((b) => b.tick)) : null;
+  const sent = matches.flatMap((m, i) => (m.status === "sent" && m.dryRun !== true ? [{ i, sell: strOf(m.sell), buy: strOf(m.buy), surplus: m.surplus ?? 0 }] : []));
+  const ourKeys = new Set(sent.map((m) => pairKey(m.sell, m.buy)));
+  const pairs = hindsightOptimum(book, through, ourKeys);
+  const ours = { pairs: sent.length, surplus: round3(sent.reduce((a, m) => a + m.surplus, 0)) };
+  const optimum = { pairs: pairs.length, surplus: round3(pairs.reduce((a, p) => a + p.surplus, 0)) };
+  const comparable = s.mode === "board";
+  const note = comparable ? null : s.mode === "auto" ? "not comparable (auto: book recorded after auto crossed)" : "not comparable (mechanism unknown)";
+  const optKeys = new Set(pairs.map((p) => pairKey(p.ask_id, p.bid_id)));
+  return {
+    comparable,
+    note,
+    final: s.finished,
+    through_tick: through,
+    ours,
+    optimum,
+    captured: comparable && optimum.surplus > 0 ? round3(ours.surplus / optimum.surplus) : null,
+    pairs,
+    missed: pairs.filter((p) => !ourKeys.has(pairKey(p.ask_id, p.bid_id))),
+    suboptimal: sent.filter((m) => !optKeys.has(pairKey(m.sell, m.buy))).map((m) => m.i),
+  };
+}
+
 export async function marketTestOf(bazaarDir: string, logsDir: string, detailSessions = 8): Promise<MarketTestOut> {
   let days: string[];
   try {
@@ -217,6 +267,7 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
           shadow: shadow ? { shadow_surplus: shadow.shadowSurplus ?? null, auto_surplus: shadow.autoSurplus ?? null, pairs_shadow: shadow.pairsShadow ?? null, pairs_auto: shadow.pairsAuto ?? null } : null,
           traders: null,
           our_matches: null,
+          hindsight: null,
           _book: lines,
           _matches: matches.filter((m) => inWindow(m.tick)),
         });
@@ -244,7 +295,7 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
         traders.set(q.id, t);
       }
     const ours = _matches.map((m) => ({ tick: m.tick, source: m.source ?? null, sell: strOf(m.sell), buy: strOf(m.buy), price: m.price ?? null, ask: m.ask ?? null, bid: m.bid ?? null, surplus: m.surplus ?? m.estSurplus ?? null, status: m.status ?? (m.dryRun ? "dry-run" : null), error: m.error ?? null }));
-    return { ...s, traders: [...traders.values()], our_matches: ours };
+    return { ...s, traders: [...traders.values()], our_matches: ours, hindsight: hindsightOf(s, _book, _matches) };
   });
 
   const log = await readFile(join(logsDir, "broker-live.log"), "utf8").catch(() => "");

@@ -32,6 +32,8 @@ export {
   type BoardMarketSession,
   type BoardMarketTrader,
   type BoardMarketMatch,
+  type BoardMarketHindsight,
+  type BoardMarketOptimalPair,
   type BoardOurEgg,
   type BoardPersonaEggs,
   type BoardVenueBook,

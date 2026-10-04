@@ -6,7 +6,9 @@
   - Nuestros emparejamientos: líneas «match» de `<fecha>/broker.jsonl` (enviado, rechazado o dry-run), si existe.
   - Números de la sombra de las sesiones auto: `results/bazaar-live/bench-sessions.json`.
   - «Ahora»: la última línea de `results/logs/broker-live.log`.
+  - `hindsight` por sesión: lo nuestro (emparejamientos «sent» y no dry-run: pares y excedente de cotización, el campo `surplus`) frente al óptimo a posteriori, con los pares perdidos (`missed`) y los nuestros fuera del óptimo (`suboptimal`); provisional hasta el último tick leído mientras corre, final al acabar. Solo comparable en board (v26): en auto (v04) el libro se graba después de que auto ya cruzó, así que se marca «no comparable» y sin % capturado. Es excedente de cotización (bid − ask), **no** la eficiencia oficial: bench.jsonl no trae límites privados.
   - El libro y los emparejamientos solo se envían para las 8 últimas sesiones. Cada fichero se relee solo si cambia su tamaño. Solo lectura: nunca un POST.
+- **`optimum.ts`** — funciones puras: `hindsightOptimum` (operadores = ids distintos del libro hasta un tick; un par ask × bid es posible si en algún tick ambos están con bid ≥ ask; su peso es el mejor bid − ask en esos ticks; emparejamiento de peso máximo con el algoritmo húngaro, cada operador una vez: primero más excedente, luego más pares y, a igualdad, los nuestros) y `maxWeightAssignment`. Test en [`viewer/test/`](../../../test/AGENTS.md).
 
 ## Links
 

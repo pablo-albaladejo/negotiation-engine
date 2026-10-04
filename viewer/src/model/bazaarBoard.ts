@@ -718,6 +718,30 @@ export interface BoardMarketMatch {
   error: string | null;
 }
 
+export interface BoardMarketOptimalPair {
+  ask_id: string;
+  bid_id: string;
+  tick: number;
+  ask: number;
+  bid: number;
+  surplus: number;
+}
+
+/** Ours vs the hindsight optimum, in quote surplus (bid − ask from bench.jsonl; not the official efficiency). */
+export interface BoardMarketHindsight {
+  comparable: boolean;
+  note: string | null;
+  final: boolean;
+  through_tick: number | null;
+  ours: { pairs: number; surplus: number };
+  optimum: { pairs: number; surplus: number };
+  captured: number | null;
+  pairs: BoardMarketOptimalPair[];
+  missed: BoardMarketOptimalPair[];
+  /** Indexes into `our_matches`. */
+  suboptimal: number[];
+}
+
 export interface BoardMarketSession {
   day: string;
   session: number;
@@ -737,6 +761,8 @@ export interface BoardMarketSession {
   shadow: { shadow_surplus: number | null; auto_surplus: number | null; pairs_shadow: number | null; pairs_auto: number | null } | null;
   traders: BoardMarketTrader[] | null;
   our_matches: BoardMarketMatch[] | null;
+  /** Absent on an older viewer server. */
+  hindsight?: BoardMarketHindsight | null;
 }
 
 export interface BoardMarketTest {

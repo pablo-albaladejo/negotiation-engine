@@ -1,16 +1,19 @@
 import { useState, type ReactNode } from "react";
 import { Card, DataTable } from "@negotiation-ring/design-system";
-import type { Board, BoardMarketSession } from "../../model/index.js";
+import type { Board, BoardMarketHindsight, BoardMarketSession } from "../../model/index.js";
 
 /**
  * «Market test»: our bench sessions in AUTO (v04) against BOARD (v26, our broker matching). A table with the official
  * result per session (efficiency vs the auto baseline, Δ, matches), the selected session's book tick by tick (one line
- * per synthetic trader: asks red, bids green, style by temper) with our matches marked, and a live band while a bench
+ * per synthetic trader: asks red, bids green, style by temper) with our matches #n and the hindsight optimum's ghost
+ * pairs On marked, ours vs optimum in quote surplus with the missed and suboptimal pairs, and a live band while a bench
  * runs. Read-only; every figure comes from the server (`board.market_test`).
  */
 
 const ASK = "var(--bad, #e5484d)";
 const BID = "var(--ok)";
+/** Hindsight optimum ghosts: neutral ink, dashed and hollow. */
+const GHOST = "var(--ink)";
 /** Temper → line style: new and firm solid, relaxing dashed, settled faint. */
 const TEMPER_STYLE: Record<string, { dash?: string; opacity: number }> = {
   new: { opacity: 1 },
@@ -34,7 +37,7 @@ function Key({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
-function Legend({ showOurs }: { showOurs: boolean }) {
+function Legend({ showOurs, showGhosts }: { showOurs: boolean; showGhosts: boolean }) {
   const row = { display: "flex", flexWrap: "wrap" as const, gap: "var(--space-1) var(--space-3)", alignItems: "center" };
   return (
     <div className="nr-muted" style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
@@ -79,8 +82,17 @@ function Legend({ showOurs }: { showOurs: boolean }) {
               <circle cx={13} cy={9.5} r={2.2} fill="none" stroke="var(--us)" strokeWidth={1.5} />
             </g>
           </Key>
-          <Key label="tick with matches (count on top)">
-            <line x1={13} x2={13} y1={0} y2={12} stroke="var(--us)" strokeDasharray="2 3" />
+        </div>
+      ) : null}
+      {showGhosts ? (
+        <div style={row}>
+          <strong>Hindsight optimum</strong>
+          <Key label="best pair given the book (dashed, hollow), On = row below">
+            <g>
+              <line x1={13} x2={13} y1={2} y2={10} stroke={GHOST} strokeWidth={1.5} strokeDasharray="2 2" />
+              <circle cx={13} cy={2.5} r={2.2} fill="none" stroke={GHOST} strokeWidth={1.2} strokeDasharray="1.5 1.5" />
+              <circle cx={13} cy={9.5} r={2.2} fill="none" stroke={GHOST} strokeWidth={1.2} strokeDasharray="1.5 1.5" />
+            </g>
           </Key>
         </div>
       ) : null}
@@ -90,12 +102,15 @@ function Legend({ showOurs }: { showOurs: boolean }) {
 
 function BookChart({ s }: { s: BoardMarketSession }) {
   const [showOurs, setShowOurs] = useState(true);
+  const [showGhosts, setShowGhosts] = useState(true);
   const traders = s.traders ?? [];
   const allMatches = s.our_matches ?? [];
   const matches = showOurs ? allMatches : [];
-  // The traders of our matches stand out; the rest of the book fades while our matches are shown.
-  const matched = new Set(matches.flatMap((m) => [m.sell, m.buy].filter((x): x is string => x !== null)));
-  const fade = (id: string) => (matched.size === 0 ? 1 : matched.has(id) ? 1 : 0.35);
+  const allGhosts = s.hindsight?.pairs ?? [];
+  const ghosts = showGhosts ? allGhosts : [];
+  // The traders of our matches and of the optimum stand out; the rest of the book fades.
+  const matched = new Set([...matches.flatMap((m) => [m.sell, m.buy].filter((x): x is string => x !== null)), ...ghosts.flatMap((g) => [g.ask_id, g.bid_id])]);
+  const fade = (id: string) => (matched.size === 0 ? 1 : matched.has(id) ? 1 : 0.3);
   const quotes = [...traders.flatMap((t) => t.points.map((p) => p.quote)), ...matches.flatMap((m) => [m.ask, m.bid, m.price].filter((x): x is number => x !== null))];
   if (!quotes.length) return <span className="nr-muted">No book lines logged for this session (bench.jsonl).</span>;
   const W = 760;
@@ -108,21 +123,24 @@ function BookChart({ s }: { s: BoardMarketSession }) {
   const x = (t: number) => pad.l + ((t - x0) / Math.max(1, x1 - x0)) * (W - pad.l - pad.r);
   const y = (q: number) => pad.t + (1 - (q - lo) / Math.max(1, hi - lo)) * (H - pad.t - pad.b);
   const yTicks = Array.from({ length: 5 }, (_, i) => lo + ((hi - lo) * i) / 4);
-  const byTick = new Map<number, { sent: number; refused: number; other: number }>();
-  for (const m of matches) {
-    const c = byTick.get(m.tick) ?? { sent: 0, refused: 0, other: 0 };
-    if (m.status === "sent") c.sent += 1;
-    else if (m.status === "refused") c.refused += 1;
-    else c.other += 1;
-    byTick.set(m.tick, c);
-  }
+  const toggle = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" };
   return (
     <figure style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
-      {allMatches.length ? (
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, alignSelf: "flex-start", cursor: "pointer" }}>
-          <input type="checkbox" checked={showOurs} onChange={(e) => setShowOurs(e.target.checked)} />
-          {`Show our matches (${allMatches.length})`}
-        </label>
+      {allMatches.length || allGhosts.length ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-3)" }}>
+          {allMatches.length ? (
+            <label style={toggle}>
+              <input type="checkbox" checked={showOurs} onChange={(e) => setShowOurs(e.target.checked)} />
+              {`Show our matches #n (${allMatches.length})`}
+            </label>
+          ) : null}
+          {allGhosts.length ? (
+            <label style={toggle}>
+              <input type="checkbox" checked={showGhosts} onChange={(e) => setShowGhosts(e.target.checked)} />
+              {`Show hindsight optimum On (${allGhosts.length})`}
+            </label>
+          ) : null}
+        </div>
       ) : null}
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Bench book of session ${s.session}: quotes per trader by tick`} style={{ width: "100%", height: "auto" }}>
         {yTicks.map((q) => (
@@ -140,14 +158,6 @@ function BookChart({ s }: { s: BoardMarketSession }) {
               {t}
             </text>
           ))}
-        {[...byTick].map(([t, c]) => (
-          <g key={`m${t}`}>
-            <line x1={x(t)} x2={x(t)} y1={pad.t} y2={H - pad.b} stroke="var(--us)" strokeDasharray="2 3" />
-            <text x={x(t) + 3} y={pad.t + 10} fontSize="10" fill="var(--us)">
-              {[c.sent ? `${c.sent} sent` : null, c.refused ? `${c.refused} refused` : null, c.other ? `${c.other} dry` : null].filter(Boolean).join(" · ")}
-            </text>
-          </g>
-        ))}
         {traders.map((t) => {
           const color = t.side === "ask" ? ASK : BID;
           return (
@@ -165,6 +175,20 @@ function BookChart({ s }: { s: BoardMarketSession }) {
             </g>
           );
         })}
+        {ghosts.map((g, i) => (
+          <g key={`ghost${i}`}>
+            <line x1={x(g.tick)} x2={x(g.tick)} y1={y(g.ask)} y2={y(g.bid)} stroke={GHOST} strokeWidth={1.5} strokeDasharray="4 3" />
+            <circle cx={x(g.tick)} cy={y(g.ask)} r={8} fill="none" stroke={GHOST} strokeWidth={1.5} strokeDasharray="3 2">
+              <title>{`O${i + 1} optimal ask: ${g.ask_id} at ${g.ask} (t${g.tick})`}</title>
+            </circle>
+            <circle cx={x(g.tick)} cy={y(g.bid)} r={8} fill="none" stroke={GHOST} strokeWidth={1.5} strokeDasharray="3 2">
+              <title>{`O${i + 1} optimal bid: ${g.bid_id} at ${g.bid} (t${g.tick})`}</title>
+            </circle>
+            <text x={x(g.tick) - 10} y={y((g.ask + g.bid) / 2) + 4} textAnchor="end" fontSize="11" fontWeight={700} fill={GHOST}>
+              {`O${i + 1}`}
+            </text>
+          </g>
+        ))}
         {matches.map((m, i) =>
           m.ask !== null && m.bid !== null ? (
             <g key={`pair${i}`}>
@@ -194,9 +218,71 @@ function BookChart({ s }: { s: BoardMarketSession }) {
         )}
       </svg>
       <figcaption>
-        <Legend showOurs={showOurs && allMatches.length > 0} />
+        <Legend showOurs={showOurs && allMatches.length > 0} showGhosts={showGhosts && allGhosts.length > 0} />
       </figcaption>
     </figure>
+  );
+}
+
+const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
+
+/** Ours vs the hindsight optimum, in quote surplus, plus the missed and suboptimal pairs. */
+function HindsightPanel({ s, h }: { s: BoardMarketSession; h: BoardMarketHindsight }) {
+  const ours = s.our_matches ?? [];
+  const status = h.final ? "final" : `provisional (tick ${h.through_tick ?? "?"})`;
+  const optimum = h.comparable
+    ? `optimum ${h.optimum.pairs} pairs · quote surplus ${h.optimum.surplus} · captured ${h.ours.surplus}/${h.optimum.surplus} (${pct(h.captured)})`
+    : `optimum: ${h.note ?? "not comparable"}`;
+  const optIndex = (askId: string, bidId: string) => h.pairs.findIndex((p) => p.ask_id === askId && p.bid_id === bidId);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <div className="nr-card" style={{ padding: "var(--space-2) var(--space-3)", borderLeft: `4px solid ${h.comparable ? "var(--us)" : "var(--line)"}` }}>
+        <strong>{`Ours ${h.ours.pairs} pairs · quote surplus ${h.ours.surplus}`}</strong>
+        <span>{" vs "}</span>
+        <strong style={{ color: h.comparable ? undefined : "var(--muted)" }}>{optimum}</strong>
+        <span className="nr-muted">{` · ${status}`}</span>
+        <div className="nr-muted" style={{ fontSize: 12 }}>
+          Quote surplus = bid − ask as quoted in bench.jsonl (no private limits): not the official efficiency. Optimum = best pairs in hindsight, each trader once, using every tick seen.
+        </div>
+      </div>
+      {h.comparable && (h.missed.length || h.suboptimal.length) ? (
+        <div style={{ overflowX: "auto" }}>
+          <DataTable
+            columns={[
+              { key: "kind", label: "" },
+              { key: "ref", label: "Ref" },
+              { key: "ask", label: "Ask (seller)" },
+              { key: "bid", label: "Bid (buyer)" },
+              { key: "tick", label: "Tick", numeric: true },
+              { key: "surplus", label: "Quote surplus", numeric: true },
+            ]}
+            rows={[
+              ...h.missed.map((p) => ({
+                kind: <strong style={{ color: "var(--warn)" }}>Missed</strong>,
+                ref: `O${optIndex(p.ask_id, p.bid_id) + 1}`,
+                ask: `${p.ask_id} @ ${p.ask}`,
+                bid: `${p.bid_id} @ ${p.bid}`,
+                tick: p.tick,
+                surplus: p.surplus,
+              })),
+              ...h.suboptimal.map((i) => {
+                const m = ours[i];
+                return {
+                  kind: <strong style={{ color: "var(--muted)" }}>Suboptimal</strong>,
+                  ref: `#${i + 1}`,
+                  ask: `${m?.sell ?? "?"} @ ${m?.ask ?? "?"}`,
+                  bid: `${m?.buy ?? "?"} @ ${m?.bid ?? "?"}`,
+                  tick: m?.tick ?? "—",
+                  surplus: m?.surplus ?? "—",
+                };
+              }),
+            ]}
+          />
+        </div>
+      ) : h.comparable && h.optimum.pairs ? (
+        <span className="nr-muted">Every optimal pair was ours: nothing missed, nothing suboptimal.</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -265,9 +351,10 @@ export function MarketTest({ board }: { board: Board }) {
         <Card title={`Session ${selected.session} · h${selected.hour ?? "?"} · ${selected.mode}${selected.hard ? " · hard" : ""} · ticks ${selected.start_tick}–${selected.start_tick + selected.ticks}`}>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
             <span className="nr-muted">
-              {`efficiency ${fmt3(selected.efficiency)} vs auto ${fmt3(selected.auto_baseline)} (Δ ${signed(selected.delta)}) · ${selected.matches ?? "?"} matches · book ${selected.dry_run === null ? "not logged" : selected.dry_run ? "read in shadow (dry-run)" : "live broker"}`}
+              {`official efficiency ${fmt3(selected.efficiency)} vs auto baseline ${fmt3(selected.auto_baseline)} (Δ ${signed(selected.delta)}) · ${selected.matches ?? "?"} matches · book ${selected.dry_run === null ? "not logged" : selected.dry_run ? "read in shadow (dry-run)" : "live broker"}`}
               {selected.shadow ? ` · shadow surplus ${selected.shadow.shadow_surplus ?? "?"} vs auto ${selected.shadow.auto_surplus ?? "?"} (pairs ${selected.shadow.pairs_shadow ?? "?"} vs ${selected.shadow.pairs_auto ?? "?"})` : ""}
             </span>
+            {selected.hindsight ? <HindsightPanel s={selected} h={selected.hindsight} /> : null}
             {selected.traders ? <BookChart s={selected} /> : <span className="nr-muted">Book kept only for the last sessions.</span>}
             {(selected.our_matches ?? []).length ? (
               <div style={{ overflowX: "auto" }}>
