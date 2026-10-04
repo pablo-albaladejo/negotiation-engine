@@ -11,3 +11,5 @@ Estado de los sobres y ruta PACKS: abrir, vender cerrado y comprar (en pausa). T
 - ↑ [`src/`](../AGENTS.md)
 - → [`coordinator/`](../coordinator/AGENTS.md)
 - → [`test/`](../../test/AGENTS.md)
+
+**Venue (Pablo, 4 oct):** la venta de un sobre cerrado se publica solo en v21 (`OFFER_VENUE`, de [`src/shared/offer-venue.ts`](../shared/AGENTS.md)), que tiene comisión del 0 %. El precio sigue saliendo del código, nunca por debajo de nuestro valor.

@@ -7,6 +7,7 @@ import { DEFAULT_VALUE_RULES, readSide, readValueRules, type TradeOffer } from "
 import { nextCopyValue } from "../dealers/planning/plan.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import type { FeedEvent } from "../state/world.js";
+import { OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Packs: the ones we hold sealed, the expected value of each type adjusted for supply, where they are sold and what
@@ -261,8 +262,8 @@ export async function executePacks(client: BazaarClient, selected: readonly Inte
       } else if (i.id.startsWith("packs:sell:")) {
         const price = i.price;
         if (price === undefined) continue;
-        await client.postOffer({ venue: "rastro", give: { assets: [id] }, want: { cash: price } });
-        lines.push(`packs: listed #${id} at ${price} P`);
+        await client.postOffer({ venue: OFFER_VENUE, give: { assets: [id] }, want: { cash: price } });
+        lines.push(`packs: listed #${id} at ${price} P on ${OFFER_VENUE}`);
       } else lines.push(`packs: ${i.id} not executed (pack buys go through the dealers route)`);
     } catch (e) {
       lines.push(`packs: ${i.id} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
