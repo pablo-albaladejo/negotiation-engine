@@ -1,5 +1,5 @@
 import { Card, DataTable } from "@negotiation-ring/design-system";
-import { teamLabel, type Board, type BoardEggCard, type BoardOurEgg } from "../../model/index.js";
+import { teamLabel, type Board, type BoardEggCard, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
 
 /** ASSUMPTION (same as src/state/world.ts): 15 eggs per persona until the API gives a figure. */
 const EGGS_PER_PERSONA = 15;
@@ -24,6 +24,53 @@ function prizeOf(e: BoardOurEgg): string {
   return parts.join(" + ") || "—";
 }
 
+const ROUTE_TEXT: Record<BoardEggPlanRow["route"], string> = { play: "inside play", manual: "manual (probe.sh)", excluded: "excluded" };
+
+function planStatus(r: BoardEggPlanRow) {
+  const color = r.status === "hit" ? "var(--ok)" : r.status === "miss" || r.status === "excluded" ? "var(--muted, inherit)" : r.status === "sent" ? "var(--us)" : undefined;
+  const text =
+    r.status === "hit" ? `hit t${r.hitTick ?? "?"}` : r.status === "miss" ? `miss (sent t${r.sentTick ?? "?"})` : r.status === "sent" ? `sent t${r.sentTick ?? "?"}` : r.status === "pending" && r.nextAllowedTick !== undefined ? `pending · not before t${r.nextAllowedTick}` : r.status;
+  return <span style={{ color, fontWeight: r.status === "hit" ? 800 : undefined }}>{text}</span>;
+}
+
+/** Sunday's approved egg probe plan: literal phrase per dealer, odds, what we stand to win, cost and status. */
+function EggPlan({ rows }: { rows: BoardEggPlanRow[] }) {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+      <strong style={{ fontSize: 16 }}>Probe plan</strong>
+      <span className="nr-muted" style={{ fontSize: 12 }}>
+        An egg fires when our message contains its phrase literally (accents and case ignored). ≥ 5 ticks between probes to the same dealer.
+      </span>
+      <div style={{ overflowX: "auto" }}>
+        <DataTable
+          columns={[
+            { key: "n", label: "#" },
+            { key: "dealer", label: "Dealer" },
+            { key: "line", label: "Literal phrase" },
+            { key: "odds", label: "Odds" },
+            { key: "stake", label: "Stake" },
+            { key: "cost", label: "Cost" },
+            { key: "status", label: "Status" },
+          ]}
+          rows={rows.map((r) => ({
+            n: r.n || "—",
+            dealer: `${r.persona} · ${ROUTE_TEXT[r.route]}`,
+            line: (
+              <span>
+                «{r.line}»{r.note ? <span className="nr-muted">{` · ${r.note}`}</span> : null}
+              </span>
+            ),
+            odds: r.odds,
+            stake: r.stake,
+            cost: r.cost,
+            status: planStatus(r),
+          }))}
+        />
+      </div>
+    </section>
+  );
+}
+
 export function Eggs({ board, title }: { board: Board; title?: string }) {
   const eggs = board.eggs;
   if (!eggs) return null;
@@ -46,6 +93,7 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
   return (
     <Card title={title ?? `Our easter eggs · ${eggs.ours.length} found · ${gifts.length} gifts`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        {eggs.plan?.length ? <EggPlan rows={eggs.plan} /> : null}
         {dealers.length ? (
           dealers.map((d) => {
             const info = persona(d.id);

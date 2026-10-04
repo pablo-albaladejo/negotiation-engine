@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { eggPlanRows, type EggPlanRow } from "../../../../src/hints/egg-plan.js";
 import type { FeedEvent } from "../bazaar-board-core.js";
 
 /**
@@ -75,6 +76,8 @@ export interface EggsOut {
   gifts: OurGift[];
   /** Gifts per persona across the field: how many, to how many teams, and ours. */
   gifts_by_persona: { persona: string; total: number; teams: number; ours: number }[];
+  /** Sunday's approved egg probe plan with each item's status (`GameState.eggPlan`, same rule). */
+  plan: EggPlanRow[];
 }
 
 const PROBE_WINDOW = 6;
@@ -209,5 +212,13 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
     }
   }
   const gifts_by_persona = [...giftCount].map(([persona, c]) => ({ persona, total: c.total, teams: c.teams.size, ours: c.ours })).sort((a, b) => b.total - a.total);
-  return { badges, gifts, gifts_by_persona, ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
+  // The plan's status comes from our own messages to personas (our text) and our eggs, as in `GameState.eggPlan`.
+  const ourMessages = unique.flatMap((e) => {
+    const p = e.payload as { kind?: unknown; sender?: unknown; with?: unknown; text?: unknown } | undefined;
+    return e.type === "thread.message" && p?.kind === "persona" && p.sender === team && typeof p.with === "string" && typeof p.text === "string" && typeof e.tick === "number"
+      ? [{ tick: e.tick, persona: p.with, text: p.text }]
+      : [];
+  });
+  const plan = eggPlanRows({ messages: ourMessages, ourEggs: ours.map((e) => ({ persona: e.persona, tick: e.tick })), tick: Math.max(0, ...unique.map((e) => e.tick ?? 0)) });
+  return { plan, badges, gifts, gifts_by_persona, ours, personas: [...personas.values()].sort((a, b) => b.found.length - a.found.length || a.persona.localeCompare(b.persona)) };
 }

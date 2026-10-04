@@ -20,6 +20,7 @@ import type { MechanismDecision } from "../venue/mechanism.js";
 import { candidateContext, collectRaw, enrichLine, formatHints, hintsByPersona, newLines, type HintLine, type Raw } from "../hints/corpus.js";
 import { applyLabels, type HintLabel } from "../hints/labels.js";
 import { buildPersonas, mergeWorldEvents, parseFeed, recordedWorldEvents, personaTypeOf, resolveProbes, worldFromFeed, formatEggsAndFlags, type FeedEvent, type FlagRecord, type OursWorld, type Persona, type PersonaMemo, type WorldEggs } from "./world.js";
+import { eggPlanRows, recordedOurPersonaMessages, type EggPlanRow } from "../hints/egg-plan.js";
 import { findChains, writeForex, type ForexState } from "../forex/chains.js";
 import { updateDealerLedger } from "../forex/ledger.js";
 import { formatNewsSignals, readNewsSignals, type NewsSignals } from "../news/signals.js";
@@ -95,6 +96,8 @@ export interface GameState {
   /** Personas (dealers and those that appear via `/api/levels` or the feed), with state and unlock progress. */
   personas: Persona[];
   world: { eggs: WorldEggs };
+  /** Sunday's approved egg probe plan (`src/hints/egg-plan.ts`) with each item's status from our messages and eggs. */
+  eggPlan: EggPlanRow[];
   /**
    * News (Radio Rastro, the Bulletin, the notice board) as a HINT: which dealer, set or card is being talked about and
    * in which direction. Read from news-summary.json (`pnpm bazaar:news`), never from the API; may be rumour and never a
@@ -465,6 +468,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     hints: { all: hintsAll, fresh },
     personas,
     world: { eggs: world.eggs },
+    eggPlan: eggPlanRows({ messages: recordedOurPersonaMessages(dayDir, me?.id ?? undefined), ourEggs: world.ours.eggs, tick: clock.tick }),
     news: readNewsSignals(dayDir, clock.tick),
     env: {
       schedule: scheduleSummary(schedule),
@@ -528,6 +532,7 @@ export function formatGameState(g: GameState): string[] {
   const lb = g.env.leaderboard;
   if (lb) lines.push(`leaderboard${lb.tick !== undefined ? ` (tick ${lb.tick})` : ""}: us rank ${lb.ourRank ?? "?"} score ${lb.ourScore ?? "?"} · top ${lb.top.map((t) => `${t.rank ?? "?"}. ${t.name ?? t.team} ${t.score ?? "?"}`).join(", ")}`);
   lines.push(...formatEggsAndFlags(g.world.eggs, g.ours, g.personas));
+  if (g.eggPlan.length) lines.push(`egg plan: ${g.eggPlan.map((r) => `${r.n || "-"} ${r.persona} ${r.status}${r.nextAllowedTick !== undefined ? ` (after t${r.nextAllowedTick})` : ""}`).join(" · ")}`);
   lines.push(...formatHints(g.hints.all));
   if (g.news) lines.push(...formatNewsSignals(g.news));
   lines.push("venues:", ...formatVenues(g.markets.venues));

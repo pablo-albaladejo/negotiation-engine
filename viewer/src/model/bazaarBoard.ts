@@ -621,8 +621,27 @@ export interface BoardPersonaEggs {
   probes: { sent: number; hit: number; miss: number; last: { phrase: string; tick: number; result: string } | null };
 }
 
+/** One item of the approved egg probe plan (`src/hints/egg-plan.ts`) with its status. */
+export interface BoardEggPlanRow {
+  n: number;
+  persona: string;
+  route: "play" | "manual" | "excluded";
+  line: string;
+  key: string;
+  odds: string;
+  stake: string;
+  cost: string;
+  note?: string;
+  status: "pending" | "sent" | "hit" | "miss" | "excluded";
+  sentTick?: number;
+  hitTick?: number;
+  nextAllowedTick?: number;
+}
+
 export interface BoardEggs {
   ours: BoardOurEgg[];
+  /** Sunday's approved egg probe plan; absent on an older server. */
+  plan?: BoardEggPlanRow[];
   personas: BoardPersonaEggs[];
   /** Absent on an older server. */
   badges?: { badge: string; tick: number }[];
