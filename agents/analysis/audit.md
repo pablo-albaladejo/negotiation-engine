@@ -52,6 +52,17 @@ Rearma cada monitor al caducar (30 min). Las rutas de results/ llevan la fecha: 
 - Flags del sábado (4743, 10878, 10965) pendientes de veredicto.
 - Commits suyos: 141e6ca (duel-unanswered con margen real) y ca8b1f4 (already_flagged = enviado).
 
+## Cierre del 4 oct (~t2810)
+
+- Puesto 9, 28,18 puntos, caja 175, escalera 0,174, neg 105.
+- Duelos de la sesión 5: 34 duelos, 27 con acuerdo y +371 P capturados.
+  - 15824 y 15838 se perdieron (~38 P), porque como vendedor no aceptábamos un precio por debajo del límite aunque los días lo hicieran bueno. Lo arregló 44137a1: en la recta final ofrecemos el límite en el día del rival.
+  - Pablo decidió no aceptar precios que crucen el límite.
+  - `you_captured` encaja con precio − límite + w·días (15839 y 16046): el servidor cuenta los días.
+- La comisión resta neg: SAL-11 se vendió a 222 con valor 234 y comisión 13, y neg bajó 25. Lo recoge 4773175 en score-audit.
+- Cambio de SAL-11 por CHA-11: lo hizo Pablo a mano; neg +25 neto y SAL queda a 9/10, aceptado.
+- Los «m…» de El Rastro son equipos anónimos, no bots.
+
 ## Ficheros clave
 
 `AGENTS.md`, `src/AGENTS.md`, `src/audit/{main,conduct,sources}.ts`, `docs/bazaar/kit/RULES.md` (duelos, bench, venues), `results/logs/<hoy>/play.log`, `results/bazaar-live/<hoy>/{stream-public,stream-team,audit,score-audit}.jsonl`, `results/logs/broker-live.log` y `results/bazaar-live/<hoy>/broker.jsonl` (broker en vivo; `broker.log` es solo el shadow), y la memoria del proyecto.
