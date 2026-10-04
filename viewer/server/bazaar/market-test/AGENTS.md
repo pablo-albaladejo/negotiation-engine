@@ -1,7 +1,7 @@
 # viewer/server/bazaar/market-test/ — Market Test (auto frente a board)
 
 - **`market-test.ts`** — `marketTestOf` arma `board.market_test`: nuestras sesiones del Market Test (el libro sintético que reciben todos los venues), en AUTO (v04) frente a BOARD (v26, nuestro broker casando en vivo).
-  - Resultado oficial por sesión: «bench.started» y «bench.finished» del stream de equipo (`results/bazaar-live/<fecha>/stream-team.jsonl`, solo las líneas con «bench.»): hora, eficiencia frente a la base auto, Δ, emparejamientos y si es la versión «hard».
+  - Resultado oficial por sesión: «bench.started» y «bench.finished» del stream de equipo (`results/bazaar-live/<fecha>/stream-team.jsonl`, solo las líneas con «bench.»): hora de juego, inicio y fin reales (`started_at` y `finished_at`, del `recv` del grabador), eficiencia frente a la base auto, Δ, emparejamientos y si es la versión «hard».
   - Libro tick a tick: `results/bazaar-live/<fecha>/bench.jsonl` (cotización y temple de cada operador sintético), por la ventana `start_tick`…+`ticks`. `dryRun` dice si lo leyó la sombra o el broker en vivo.
   - Nuestros emparejamientos: líneas «match» de `<fecha>/broker.jsonl` (enviado, rechazado o dry-run), si existe.
   - El libro y los emparejamientos se juntan de todas las carpetas de fecha (los ticks son globales): un broker lanzado ayer sigue escribiendo en la carpeta de ayer. Si en la ventana hay líneas del broker en vivo (`dryRun` falso), se descartan las de la sombra.

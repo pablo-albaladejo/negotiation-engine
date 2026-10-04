@@ -16,6 +16,8 @@ const num = z.number();
 const str = z.string();
 
 const StreamLineSchema = z.looseObject({
+  /** Wall-clock time the recorder received the event (ISO, UTC). */
+  recv: str.nullish(),
   data: z.looseObject({ tick: num.nullish(), t: num.nullish(), type: str.nullish(), payload: z.record(str, z.unknown()).nullish() }),
 });
 const BenchLineSchema = z.looseObject({
@@ -108,6 +110,9 @@ export interface MarketSession {
   ticks: number;
   /** Game hour the session started (`t` of bench.started). */
   hour: number | null;
+  /** Wall-clock start and end (ISO, from the recorder's `recv` of bench.started / bench.finished). */
+  started_at: string | null;
+  finished_at: string | null;
   /** Our venue in the official result, or null before it finishes. */
   venue: string | null;
   /** auto (v04), board (v26), or the venue id; before the result: board if the broker logged live book lines. */
@@ -265,6 +270,8 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
           start_tick: start,
           ticks,
           hour: d.t ?? null,
+          started_at: l.recv ?? null,
+          finished_at: null,
           venue: null,
           mode: modeOf(null, dry),
           efficiency: null,
@@ -286,7 +293,7 @@ export async function marketTestOf(bazaarDir: string, logsDir: string, detailSes
         const venue = strOf(p.venue);
         const eff = nOf(p.efficiency);
         const base = nOf(p.auto_baseline);
-        Object.assign(s, { venue, mode: modeOf(venue, s.dry_run), efficiency: eff, auto_baseline: base, delta: eff !== null && base !== null ? round3(eff - base) : null, matches: nOf(p.matches), finished: true });
+        Object.assign(s, { venue, mode: modeOf(venue, s.dry_run), efficiency: eff, auto_baseline: base, delta: eff !== null && base !== null ? round3(eff - base) : null, matches: nOf(p.matches), finished: true, finished_at: l.recv ?? null });
       }
     }
     sessions.push(...started.values());

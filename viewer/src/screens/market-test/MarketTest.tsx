@@ -230,6 +230,32 @@ function BookChart({ s, hover = null }: { s: BoardMarketSession; hover?: number 
   );
 }
 
+/** One line answering «did we beat auto?» over the finished sessions, with the caveat on the two means. */
+function VsAutoSummary({ sessions }: { sessions: BoardMarketSession[] }) {
+  const done = sessions.filter((s) => s.delta !== null);
+  if (!done.length) return null;
+  const better = done.filter((s) => s.delta! > 0).length;
+  const worse = done.filter((s) => s.delta! < 0).length;
+  const same = done.length - better - worse;
+  const board = done.filter((s) => s.mode === "board");
+  return (
+    <div className="nr-card" style={{ padding: "var(--space-2) var(--space-3)", borderLeft: `4px solid ${better > worse ? "var(--ok)" : worse > better ? "var(--bad)" : "var(--line)"}` }}>
+      <strong>
+        {`vs auto: `}
+        <span style={{ color: "var(--ok)" }}>{`better ${better}`}</span>
+        {` · same ${same} · `}
+        <span style={{ color: "var(--bad)" }}>{`worse ${worse}`}</span>
+        {` of ${done.length} finished`}
+      </strong>
+      <span className="nr-muted">
+        {same === done.length
+          ? ` · the API's auto baseline equals our efficiency in every session (board ones too: ${board.length}), so officially we are at auto level: half the bench points each time, neither better nor worse. The auto and board means above come from different books and are not comparable.`
+          : " · the auto and board means above come from different books and are not comparable; compare each row with its own baseline."}
+      </span>
+    </div>
+  );
+}
+
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
 
 /** Ours vs the hindsight optimum, in quote surplus, plus the missed and suboptimal pairs. */
@@ -292,6 +318,33 @@ function HindsightPanel({ s, h }: { s: BoardMarketSession; h: BoardMarketHindsig
   );
 }
 
+const when = (iso: string | null | undefined) => (iso ? new Date(iso) : null);
+const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" });
+const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+
+/** «Sat 3 Oct · 09:49–09:57» in the viewer's local time; falls back to the game hour on an older server. */
+function sessionWhen(s: BoardMarketSession): ReactNode {
+  const a = when(s.started_at);
+  const b = when(s.finished_at);
+  const game = s.hour === null ? `t${s.start_tick}` : `game h${s.hour}`;
+  if (!a) return game;
+  return (
+    <span>
+      {`${dayFmt.format(a)} · ${timeFmt.format(a)}${b ? `–${timeFmt.format(b)}` : " (running)"}`}
+      <br />
+      <span className="nr-muted" style={{ fontSize: 12 }}>{`${game} · t${s.start_tick}`}</span>
+    </span>
+  );
+}
+
+/** Better, same or worse than the auto baseline the API reported for that same session. */
+function vsAuto(s: BoardMarketSession): ReactNode {
+  if (s.delta === null) return <span className="nr-muted">{s.finished ? "no baseline" : "running"}</span>;
+  if (s.delta > 0) return <strong style={{ color: "var(--ok)" }}>{`better ${signed(s.delta)}`}</strong>;
+  if (s.delta < 0) return <strong style={{ color: "var(--bad)" }}>{`worse ${signed(s.delta)}`}</strong>;
+  return <span title="Efficiency equal to the auto baseline: half the bench points">= auto (half points)</span>;
+}
+
 export function MarketTest({ board }: { board: Board }) {
   const mt = board.market_test;
   const sessions = mt?.sessions ?? [];
@@ -316,31 +369,34 @@ export function MarketTest({ board }: { board: Board }) {
       <Card title={`Market test · ${sessions.length} sessions · auto mean ${fmt3(mean(auto))} · board mean ${fmt3(mean(board_))}`}>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
           <span className="nr-muted">
-            Official result per session (bench.finished): efficiency vs the auto baseline. Bench points: equal to auto → half; full at the top-3 mean. Click a session to see its book.
+            Official result per session (bench.finished): efficiency vs the auto baseline the API reports for that same book. Bench points: equal to auto → half; full at the top-3 mean. Click a session to see its book.
           </span>
+          <VsAutoSummary sessions={sessions} />
           <div style={{ overflowX: "auto" }}>
             <DataTable
               columns={[
                 { key: "session", label: "Session" },
-                { key: "hour", label: "Hour", numeric: true },
+                { key: "when", label: "When (your time)" },
                 { key: "mode", label: "Mode" },
                 { key: "hard", label: "Hard" },
                 { key: "eff", label: "Efficiency", numeric: true },
                 { key: "base", label: "Auto baseline", numeric: true },
-                { key: "delta", label: "Δ", numeric: true },
+                { key: "delta", label: "vs auto" },
+                { key: "captured", label: "Of hindsight optimum", numeric: true },
                 { key: "matches", label: "Matches", numeric: true },
                 { key: "ours", label: "Our matches (sent / refused)", numeric: true },
               ]}
               rows={sessions.map((s) => {
                 const ours = s.our_matches ?? [];
                 return {
-                  session: `${s.day.slice(5)} · s${s.session}${s.finished ? "" : " (running)"}`,
-                  hour: s.hour === null ? `t${s.start_tick}` : `h${s.hour}`,
+                  session: `s${s.session}${s.finished ? "" : " (running)"}`,
+                  when: sessionWhen(s),
                   mode: <strong style={{ color: s.mode === "board" ? "var(--us)" : undefined }}>{`${s.mode}${s.venue ? ` (${s.venue})` : ""}`}</strong>,
                   hard: s.hard ? "hard" : "—",
                   eff: fmt3(s.efficiency),
                   base: fmt3(s.auto_baseline),
-                  delta: <span style={{ color: (s.delta ?? 0) > 0 ? "var(--ok)" : (s.delta ?? 0) < 0 ? "var(--warn)" : undefined }}>{signed(s.delta)}</span>,
+                  delta: vsAuto(s),
+                  captured: s.hindsight?.comparable && s.hindsight.captured !== null ? pct(s.hindsight.captured) : "—",
                   matches: s.matches ?? "—",
                   ours: s.our_matches === null ? "—" : `${ours.filter((m) => m.status === "sent").length} / ${ours.filter((m) => m.status === "refused").length}`,
                 };

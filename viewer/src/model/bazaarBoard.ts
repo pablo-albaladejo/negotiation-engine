@@ -750,6 +750,9 @@ export interface BoardMarketSession {
   start_tick: number;
   ticks: number;
   hour: number | null;
+  /** Wall-clock start and end (ISO); absent on an older server. */
+  started_at?: string | null;
+  finished_at?: string | null;
   venue: string | null;
   mode: string;
   efficiency: number | null;
