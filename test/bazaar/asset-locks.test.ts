@@ -70,11 +70,17 @@ describe("the dealers agent does not open a sale thread for a busy asset", () =>
     return { posts, records, plan: await agent.plan() };
   };
 
-  it("438 listed in El Rastro (offer 2079): does not offer it to El Chato", async () => {
+  it("438 listed in El Rastro (offer 2079): no copy of SAL-07 goes to El Chato (duplicates go to teams first)", async () => {
     const { posts, records, plan } = await firstOpen({ offers: MY_OFFERS });
     expect(posts).toEqual([]);
     expect(records.map((r) => r.rule)).toEqual(["no-target"]);
-    expect(plan.at(-1)).toBe("not opened: sell SAL-07 (asset 438 busy: offer 2079 on rastro)");
+    expect(plan.join("\n")).not.toMatch(/sell SAL-07|"assets":\[43[78]\]/);
+  });
+
+  it("a duplicate offered to a team (directed offer) is not sold to a dealer either", async () => {
+    const directed = [{ id: 3001, maker: "t02", to: "t07", venue: null, thread: null, status: "open", give: { cash: 0, assets: [{ ...SAL07, id: 437 }], types: [] }, want: { cash: 30, assets: [], types: [] } }];
+    const { posts } = await firstOpen({ offers: directed });
+    expect(posts).toEqual([]);
   });
 
   it("438 already in an open thread with Abuela: does not open another with El Chato", async () => {

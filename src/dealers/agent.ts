@@ -12,7 +12,7 @@ import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./history/thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./negotiation/view.js";
 import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./negotiation/offer-structure.js";
-import { busyAssets, sellBlocked } from "../shared/asset-locks.js";
+import { busyAssets, sellBlocked, teamOfferedAssets } from "../shared/asset-locks.js";
 
 /**
  * Observe → decide → act loop against one dealer, one thread at a time. Every figure comes from
@@ -96,6 +96,11 @@ export interface AgentOptions {
   pastNoDeals?: (key: string) => { n: number; best: number } | undefined;
   /** Asset ids received from another team today: the planner never offers them to this dealer. */
   teamReceived?: () => ReadonlySet<number>;
+  /**
+   * Cards with team demand (Pablo, 4 Oct: duplicates go to teams first), e.g. refs of an intros pair where we hold the
+   * spare. Together with our open offers to teams (venues, directed, team-desk), no copy of such a card goes to a dealer.
+   */
+  teamDemand?: () => ReadonlySet<string>;
   /**
    * Coordinator, 3 Oct: a thread this agent did not open (a probe Pablo opened by hand) is never resumed, countered,
    * accepted or closed. Threads opened in this run always count as ours; this says whether an older one is (the trace).
@@ -265,7 +270,7 @@ export class BazaarAgent {
     this.catalog ??= await this.api.catalog();
     const safety = this.o.safety ?? 0.9;
     const caps = { maxDeals: this.o.maxDeals ?? Infinity, maxSpend: Math.max(0, Math.floor(this.budgetLeft(me.cash))), maxThreads: this.o.maxThreads ?? Infinity, safety };
-    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), ...(this.o.teamReceived ? { teamReceived: this.o.teamReceived() } : {}) });
+    const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety, budget: caps.maxSpend, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), teamReceived: await this.notForDealers(me) });
     const busy = await busyAssets(this.api, me.id);
     const blocked: string[] = [];
     const menu = this.o.menu;
@@ -366,6 +371,20 @@ export class BazaarAgent {
     } catch (e) {
       this.onError(e, tick, ticksPerHour, this.active?.target, emit);
     }
+    return out;
+  }
+
+  /**
+   * Asset ids never offered to a dealer: received from a team today, and every copy of a card we offer to teams now or
+   * that has team demand (duplicates go to teams first). If our offers cannot be read, every card counts (fails closed).
+   */
+  private async notForDealers(me: Me): Promise<ReadonlySet<number>> {
+    const out = new Set<number>(this.o.teamReceived?.() ?? []);
+    const offers = await this.api.myOffers().catch(() => undefined);
+    if (offers === undefined) return new Set(me.assets.map((a) => a.id));
+    const offered = teamOfferedAssets(offers, me.id);
+    const refs = new Set<string>([...(this.o.teamDemand?.() ?? []), ...me.assets.filter((a) => offered.has(a.id)).map((a) => a.ref)]);
+    for (const a of me.assets) if (offered.has(a.id) || refs.has(a.ref)) out.add(a.id);
     return out;
   }
 
@@ -591,7 +610,7 @@ export class BazaarAgent {
     if (this.o.menu) {
       const budget = Math.max(0, Math.floor(this.budgetLeft(me.cash)));
       this.catalog ??= await this.api.catalog();
-      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), ...(this.o.teamReceived ? { teamReceived: this.o.teamReceived() } : {}) });
+      const ranked = await rankCandidates({ me, catalog: this.catalog, dealer: this.o.menu, valueOf: (c) => this.valueOf(c, me), safety: this.o.safety ?? 0.9, budget, cardTopic: this.cardTopicOk, ...this.packInput(), ...this.pageInput(me), teamReceived: await this.notForDealers(me) });
       // One asset, one place: nothing already in another open thread or in an open offer (El Rastro, another dealer).
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };

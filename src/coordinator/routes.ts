@@ -9,6 +9,7 @@ import { TeamBudget } from "../dealers/team.js";
 import { offerCap, RARITY_BOOK } from "../dealers/history/persona-fit.js";
 import { appendLesson, PendingLessons, type LessonEntry } from "../dealers/history/lessons.js";
 import { updateTeamReceived } from "../dealers/history/team-received.js";
+import { loadIntroMemo } from "../intros/intros.js";
 import { forexBuyRoute, forexRoutes, forexSellRoute, setForexRoutes } from "../dealers/planning/forex.js";
 import { expectedShare, formatLadder, LADDER_P_PER_POINT, LADDER_SLOTS, ladderGain, ladderLevels, type LadderLevel } from "../dealers/history/ladder.js";
 import { DuelsAgent, formatDuelEntry, type DuelProposal } from "../duels/agent.js";
@@ -109,6 +110,17 @@ function openedByPlay(thread: number): boolean {
 
 /** Dealers whose ladder level did not move the server's ladder_points after our deals: their ladder gain counts 0. */
 const LADDER_UNVERIFIED: ReadonlySet<string> = new Set(["picaros"]);
+
+/** Intros sent in the last 6 h where we hold the spare: that card has team demand, so it does not go to a dealer. */
+function introDemand(team: string | null | undefined): ReadonlySet<string> {
+  if (!team) return new Set();
+  try {
+    const memo = loadIntroMemo(join(process.cwd(), "results", "bazaar-live", "intros.json"));
+    return new Set(memo.sent.filter((s) => s.holder === team && s.ts >= Date.now() - 6 * 3_600_000).map((s) => s.ref));
+  } catch {
+    return new Set();
+  }
+}
 
 class SwitchableTrace implements TraceSink {
   muted = true;
@@ -297,6 +309,7 @@ export class DealersRoute {
             !this.lessonEntries.some((e) => e.dealer === id && (e.ts ?? "").startsWith(new Date().toISOString().slice(0, 10))),
           teamReceived: () => this.teamReceived,
           ownsThread: (thread) => openedByPlay(thread),
+          teamDemand: () => introDemand(this.state?.ours.team),
           pastNoDeals: (key) => pastNoDeals(this.lessonEntries, id, key, new Date().toISOString().slice(0, 10)),
           herLimitCap: (thread) => {
             const conv = this.state?.conversations.find((c) => c.id === `dealer:${thread}`);

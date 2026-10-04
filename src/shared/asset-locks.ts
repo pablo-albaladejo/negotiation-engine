@@ -53,6 +53,24 @@ export function assetsInThreads(threads: readonly unknown[], excludeThread?: num
  * Busy assets (open threads + open offers), not counting `excludeThread` (our own thread when resuming or accepting).
  * If it cannot be read, `undefined`: no asset is offered.
  */
+/**
+ * Assets we offer to other teams right now (Pablo, 4 Oct: duplicates go to teams first): our open offers on a venue
+ * (El Rastro, our board) or addressed to a team (`to` = tNN: directed sales, team-desk counters).
+ */
+export function teamOfferedAssets(raw: unknown, selfId?: string | null): Set<number> {
+  const out = new Set<number>();
+  for (const x of offersOf(raw)) {
+    const p = StandingOfferSchema.safeParse(x);
+    if (!p.success) continue;
+    const o = p.data as typeof p.data & { venue?: unknown };
+    if (!OPEN.has(o.status ?? "open")) continue;
+    if (selfId && o.maker && o.maker.toLowerCase() !== selfId.toLowerCase()) continue;
+    if (typeof o.venue !== "string" && !(typeof o.to === "string" && /^t\d+$/.test(o.to))) continue;
+    for (const id of assetIdsOf(o.give)) out.add(id);
+  }
+  return out;
+}
+
 export async function busyAssets(api: LocksApi, selfId?: string | null, excludeThread?: number): Promise<BusyAssets | undefined> {
   try {
     const [threads, offers] = await Promise.all([api.myThreads("open"), api.myOffers()]);
