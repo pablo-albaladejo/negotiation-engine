@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { EPIC_BUY_PARAMS, proposeRivalBuy, RIVAL_BUY_PARAMS, type RivalBuyInput } from "../../src/markets/rival-buy.js";
 import { COUNTERPARTY_CAP, counterpartyRoom, MIN_ROOM } from "../../src/markets/room.js";
 import { scanDecision } from "../../src/markets/scanner.js";
+import { OFFER_VENUE } from "../../src/shared/offer-venue.js";
 import type { RivalsState, RivalTeam } from "../../src/state/rivals.js";
 import { DEFAULT_VALUE_RULES, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
 
@@ -54,6 +55,7 @@ describe("counterparty score room", () => {
           const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
           const low = (t: string) => (room.get(t) ?? COUNTERPARTY_CAP) < MIN_ROOM;
           for (const p of plan.posts) expect(low(p.team)).toBe(false);
+          for (const p of plan.posts) expect(p.body.venue).toBe(OFFER_VENUE);
           const cancelled = new Set(plan.cancels.map((c) => c.offerId));
           for (const o of mine) if (low(o.to!)) expect(cancelled.has(o.id)).toBe(true);
         },

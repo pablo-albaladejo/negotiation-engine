@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { isLastFreeCopy } from "../../src/shared/last-copy.js";
+import { OFFER_VENUE } from "../../src/shared/offer-venue.js";
 import { proposeTeamDesk, TEAM_DESK_PARAMS } from "../../src/teamdesk/counter.js";
 import { buildValueModel, tradeFee, RASTRO_FEES, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
 
@@ -27,6 +28,7 @@ describe("team desk · CHA lane", () => {
     const held: HeldAsset[] = [{ id: 1, ref: REF, value: 11, locked: false }];
     const { plan } = proposeTeamDesk({ tick: 50, trade: state(held, 72), room: new Map([["t08", 47.8]]), rebuyable: new Map([[REF, 10]]) }, TEAM_DESK_PARAMS, new Map());
     expect(plan.posts.map((p) => [p.team, p.ref, p.price])).toEqual([["t08", REF, 72]]);
+    expect(plan.posts.every((p) => p.venue === OFFER_VENUE && p.body.venue === OFFER_VENUE)).toBe(true);
   });
 
   it("a last copy only goes with a dealer rebuy ≤ value, scored gain ≥ laneMinGain, at ≥ value + laneMinGain", () => {

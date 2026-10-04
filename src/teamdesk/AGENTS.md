@@ -10,3 +10,5 @@ Contraofertas a las ofertas que **otros equipos nos hacen** (to-me) y que El Ras
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
+
+**Venue (Pablo, 4 oct):** las contraofertas, sus bajadas y la vía CHA se publican solo en v21 (`OFFER_VENUE`, de [`src/shared/offer-venue.ts`](../shared/AGENTS.md)), sea cual sea el venue de la oferta del equipo. Las claves de memoria son equipo:carta.

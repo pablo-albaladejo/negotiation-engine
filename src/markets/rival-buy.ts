@@ -8,6 +8,7 @@ import { buyGain, countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, sl
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
 import { COUNTERPARTY_CAP, MIN_ROOM, roomOf } from "./room.js";
+import { isOurOfferVenue, OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Rival buy: a directed El Rastro bid (`to` = the team, cash for one card) for a page card we lack, sent to a rival
@@ -184,7 +185,7 @@ export interface RivalBuyPost {
   /** Epic test lane post (`--rival-buy-epic`). */
   epic?: boolean;
   /** `to` is missing only on the open epic lane. */
-  body: { venue: "rastro"; to?: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
+  body: { venue: string; to?: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
 }
 
 export interface RivalBuyCancel {
@@ -210,7 +211,7 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 function rastroBids(trade: TradeState, plan: TickPlan | undefined): Set<string> {
   const out = new Set<string>();
   for (const o of trade.mine) {
-    if (o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open") continue;
+    if (o.to || !isOurOfferVenue(o.venue) || o.thread != null || (o.status ?? "open") !== "open") continue;
     const g = readSide(o.give);
     const w = readSide(o.want);
     if (g.cash > 0 && !g.assets.length) for (const c of w.cards) out.add(c);
@@ -268,7 +269,7 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
 /** Our open (no `to`) single-card cash bids on El Rastro for `ref`: the epic open lane's own. */
 export function openBids(trade: TradeState, ref: string): { offer: TradeOffer; team: string; ref: string; price: number }[] {
   return trade.mine.flatMap((o) => {
-    if (o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
+    if (o.to || !isOurOfferVenue(o.venue) || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
     const g = readSide(o.give);
     const w = readSide(o.want);
     if (g.cash <= 0 || g.assets.length || w.cash !== 0 || w.assets.length || w.cards.length !== 1 || w.cards[0] !== ref) return [];
@@ -278,7 +279,7 @@ export function openBids(trade: TradeState, ref: string): { offer: TradeOffer; t
 
 export function directedBids(trade: TradeState): { offer: TradeOffer; team: string; ref: string; price: number }[] {
   return trade.mine.flatMap((o) => {
-    if (!o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
+    if (!o.to || !isOurOfferVenue(o.venue) || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
     const g = readSide(o.give);
     const w = readSide(o.want);
     if (g.cash <= 0 || g.assets.length || w.cash !== 0 || w.assets.length || w.cards.length !== 1) return [];
@@ -430,8 +431,8 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     const post = { ...makePost(p.team, p.ref, p.bid, params, 0, undefined), ...(p.hi ? { hi: true } : {}) };
     plan.posts.push(post);
     if (p.hi) hiUsed += 1;
-    intents.push(postIntent(post, `${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`, p.gain - p.bid - p.fee));
-    notes.push(`${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`);
+    intents.push(postIntent(post, `${TAG} ${describe(p)} · POST ${OFFER_VENUE} to=${p.team} exp ${params.expiresInTicks}`, p.gain - p.bid - p.fee));
+    notes.push(`${TAG} ${describe(p)} · POST ${OFFER_VENUE} to=${p.team} exp ${params.expiresInTicks}`);
     budget -= p.bid + p.fee;
     refs.add(p.ref);
     open += 1;
@@ -536,7 +537,7 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   }
   const post = makeEpicPost(team, price, epic, 0, undefined);
   out.plan.posts.push(post);
-  const line = `${tag} ${epic.ref} ← ${team} · /api/me/value ${value} · bid ${price} (steps ${epicStep(epic, 0)}→${epicStep(epic, epic.maxReprices)}, ceiling ${epic.ceiling}) · cash floor ${epic.cashFloor} · POST rastro to=${team} exp ${epic.expiresInTicks}`;
+  const line = `${tag} ${epic.ref} ← ${team} · /api/me/value ${value} · bid ${price} (steps ${epicStep(epic, 0)}→${epicStep(epic, epic.maxReprices)}, ceiling ${epic.ceiling}) · cash floor ${epic.cashFloor} · POST ${OFFER_VENUE} to=${team} exp ${epic.expiresInTicks}`;
   out.intents.push(postIntent(post, line, value! - price - fee));
   out.notes.push(line);
   return price;
@@ -566,7 +567,7 @@ function proposeOpenEpic(input: RivalBuyInput, epic: EpicBuyParams, mine: Return
   }
   const post = makeEpicPost("open", price, epic, 0, undefined);
   out.plan.posts.push(post);
-  const line = `${tag} ${epic.ref} · /api/me/value ${value} · open bid ${price} (no reprice) · cash floor ${epic.cashFloor} · POST rastro (anyone) exp ${epic.expiresInTicks}`;
+  const line = `${tag} ${epic.ref} · /api/me/value ${value} · open bid ${price} (no reprice) · cash floor ${epic.cashFloor} · POST ${OFFER_VENUE} (anyone) exp ${epic.expiresInTicks}`;
   out.intents.push(postIntent(post, line, value - price - fee));
   out.notes.push(line);
   return price;
@@ -581,7 +582,7 @@ function makeEpicPost(team: string, price: number, epic: EpicBuyParams, reprice:
     reprice,
     epic: true,
     ...(replaces !== undefined ? { replaces } : {}),
-    body: { venue: "rastro", ...(epic.open ? {} : { to: team }), give: { cash: price }, want: { cards: [epic.ref] }, expires_in_ticks: epic.expiresInTicks },
+    body: { venue: OFFER_VENUE, ...(epic.open ? {} : { to: team }), give: { cash: price }, want: { cards: [epic.ref] }, expires_in_ticks: epic.expiresInTicks },
   };
 }
 
@@ -593,7 +594,7 @@ function makePost(team: string, ref: string, price: number, params: RivalBuyPara
     price,
     reprice,
     ...(replaces !== undefined ? { replaces } : {}),
-    body: { venue: "rastro", to: team, give: { cash: price }, want: { cards: [ref] }, expires_in_ticks: params.expiresInTicks },
+    body: { venue: OFFER_VENUE, to: team, give: { cash: price }, want: { cards: [ref] }, expires_in_ticks: params.expiresInTicks },
   };
 }
 
@@ -628,7 +629,7 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
     }
   }
   for (const p of plan.posts.filter((x) => ids.has(x.intentId))) {
-    const what = `POST rastro ${p.body.to ? `to=${p.body.to}` : "(anyone)"} bid ${p.price} P for ${p.ref} exp ${p.body.expires_in_ticks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
+    const what = `POST ${OFFER_VENUE} ${p.body.to ? `to=${p.body.to}` : "(anyone)"} bid ${p.price} P for ${p.ref} exp ${p.body.expires_in_ticks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
     if (dryRun) {
       lines.push(`${TAG} would ${what}`);
       continue;

@@ -25,3 +25,5 @@ Ruta de mercados entre El Rastro y los venues de otros equipos: hueco neto por v
 - ↑ [`src/`](../AGENTS.md)
 - → [`coordinator/`](../coordinator/AGENTS.md)
 - → [`state/`](../state/AGENTS.md)
+
+**Venue de nuestras ofertas (Pablo, 4 oct):** rival-buy (con las vías épicas), rival-page y rival-swap publican solo en v21 (`OFFER_VENUE`, de [`src/shared/offer-venue.ts`](../shared/AGENTS.md)). v21 es el mercado de Team 9, nuestros aliados (comisión 0 %, board). Siguen gestionando como propias las que quedaron en El Rastro. El escáner y los mercados solo aceptan ofertas ajenas en su venue.

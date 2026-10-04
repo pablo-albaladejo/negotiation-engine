@@ -3,6 +3,7 @@ import type { Intent } from "../coordinator/coordinator.js";
 import { isLastFreeCopy } from "../shared/last-copy.js";
 import type { RivalsState, RivalTeam } from "../state/rivals.js";
 import { applyCards, countHoldings, MAKER_FEES, pageRisk, RASTRO_FEES, readSide, setOf, tradeFee, unscoredPageBonus, valueDelta, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
+import { isOurOfferVenue, OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Rival swap: a directed El Rastro offer (`to` = the team) of one of our spare copies X for any copy of a card Y the
@@ -81,7 +82,7 @@ export interface RivalSwapPost {
   give: string;
   get: string;
   assetId: number;
-  body: { venue: "rastro"; to: string; give: { assets: number[] }; want: { cards: string[] }; expires_in_ticks: number };
+  body: { venue: string; to: string; give: { assets: number[] }; want: { cards: string[] }; expires_in_ticks: number };
 }
 
 export interface RivalSwapCancel {
@@ -103,7 +104,7 @@ export const swapKey = (give: string, team: string, get: string) => `${give}>${t
 /** Our directed one-card-for-one-card offers on El Rastro (open, not expired). */
 export function directedSwaps(trade: TradeState): { offer: TradeOffer; team: string; assetId: number; give: string; get: string }[] {
   return trade.mine.flatMap((o) => {
-    if (!o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
+    if (!o.to || !isOurOfferVenue(o.venue) || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
     const g = readSide(o.give);
     const w = readSide(o.want);
     if (g.assets.length !== 1 || g.cash !== 0 || w.cash !== 0 || w.assets.length || w.cards.length !== 1) return [];
@@ -283,10 +284,10 @@ export function proposeRivalSwap(input: RivalSwapInput, params: RivalSwapParams 
       give: p.give,
       get: p.get,
       assetId: copy.id,
-      body: { venue: "rastro", to: p.team, give: { assets: [copy.id] }, want: { cards: [p.get] }, expires_in_ticks: params.expiresInTicks },
+      body: { venue: OFFER_VENUE, to: p.team, give: { assets: [copy.id] }, want: { cards: [p.get] }, expires_in_ticks: params.expiresInTicks },
     };
     plan.posts.push(post);
-    const summary = `${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`;
+    const summary = `${TAG} ${describe(p)} · POST ${OFFER_VENUE} to=${p.team} exp ${params.expiresInTicks}`;
     intents.push({ id: post.intentId, route: "markets", kind: "listing", ev: r1(p.gain), ref: p.give, locks: [`asset:${copy.id}`, `sell:${p.give}`, `buy:${p.get}`], summary });
     notes.push(summary);
     chosen.add(copy.id);
@@ -320,7 +321,7 @@ export async function executeRivalSwap(client: Pick<BazaarClient, "postOffer" | 
     }
   }
   for (const p of plan.posts.filter((x) => ids.has(x.intentId))) {
-    const what = `POST rastro to=${p.team} give ${p.give} (asset ${p.assetId}) want ${p.get} exp ${params.expiresInTicks}`;
+    const what = `POST ${OFFER_VENUE} to=${p.team} give ${p.give} (asset ${p.assetId}) want ${p.get} exp ${params.expiresInTicks}`;
     if (dryRun) {
       lines.push(`${TAG} would ${what}`);
       continue;

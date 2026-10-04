@@ -20,6 +20,7 @@ import {
   type ValueModel,
 } from "../trades/trades.js";
 import { fairPrice, RIVAL_PENALTY } from "./markets.js";
+import { isOurOfferVenue, OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Rival page: a directed El Rastro listing (`to` = the team) of a card a rival team lacks to complete an album page.
@@ -160,7 +161,7 @@ export interface RivalPagePost {
   replaces?: number;
   /** n-th reprice (0 for a new listing). */
   reprice: number;
-  body: { venue: "rastro"; to: string; give: { assets: number[] }; want: { cash: number }; expires_in_ticks: number };
+  body: { venue: string; to: string; give: { assets: number[] }; want: { cash: number }; expires_in_ticks: number };
 }
 
 export interface RivalPageCancel {
@@ -228,7 +229,7 @@ export function assessRivalPage(team: RivalTeam, ref: string, input: RivalPageIn
 export function directedListings(trade: TradeState, foreignOfferIds?: ReadonlySet<number>): { offer: TradeOffer; team: string; assetId: number; ref: string; price: number }[] {
   return trade.mine.flatMap((o) => {
     if (foreignOfferIds?.has(o.id)) return [];
-    if (!o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
+    if (!o.to || !isOurOfferVenue(o.venue) || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
     const g = readSide(o.give);
     const w = readSide(o.want);
     if (g.assets.length !== 1 || g.cash !== 0 || w.cash <= 0 || w.cards.length || w.assets.length) return [];
@@ -381,8 +382,8 @@ export function proposeRivalPage(input: RivalPageInput, params: RivalPageParams 
     }
     const post = makePost(p.team, p.ref, f.assetId, p.ask, params, 0, undefined, (byTeam.get(p.team)?.board?.pagesComplete));
     plan.posts.push(post);
-    intents.push(postIntent(post, `${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`, p.ask - p.fee - (p.cost + p.option + p.rankPen)));
-    notes.push(`${TAG} ${describe(p)} · POST rastro to=${p.team} exp ${params.expiresInTicks}`);
+    intents.push(postIntent(post, `${TAG} ${describe(p)} · POST ${OFFER_VENUE} to=${p.team} exp ${params.expiresInTicks}`, p.ask - p.fee - (p.cost + p.option + p.rankPen)));
+    notes.push(`${TAG} ${describe(p)} · POST ${OFFER_VENUE} to=${p.team} exp ${params.expiresInTicks}`);
     open += 1;
   }
   if (!plan.posts.length && !plan.cancels.length && !notes.some((n) => n.includes(" skip "))) notes.push(`${TAG} no team lacks exactly one page card we hold`);
@@ -399,7 +400,7 @@ function makePost(team: string, ref: string, assetId: number, price: number, par
     reprice,
     ...(replaces !== undefined ? { replaces } : {}),
     ...(pagesComplete !== undefined ? { pagesComplete } : {}),
-    body: { venue: "rastro", to: team, give: { assets: [assetId] }, want: { cash: price }, expires_in_ticks: params.expiresInTicks },
+    body: { venue: OFFER_VENUE, to: team, give: { assets: [assetId] }, want: { cash: price }, expires_in_ticks: params.expiresInTicks },
   };
 }
 
@@ -430,7 +431,7 @@ export async function executeRivalPage(client: Pick<BazaarClient, "postOffer" | 
     }
   }
   for (const p of plan.posts.filter((x) => ids.has(x.intentId))) {
-    const what = `POST rastro to=${p.team} ${p.ref} (asset ${p.assetId}) @ ${p.price} P exp ${params.expiresInTicks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
+    const what = `POST ${OFFER_VENUE} to=${p.team} ${p.ref} (asset ${p.assetId}) @ ${p.price} P exp ${params.expiresInTicks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
     if (dryRun) {
       lines.push(`${TAG} would ${what}`);
       continue;

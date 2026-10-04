@@ -3,3 +3,6 @@
  * Team 9 being our allies; feeding their Market-making score is deliberate.
  */
 export const OFFER_VENUE = "v21";
+
+/** Our own offers still count as ours on El Rastro (posted before the switch), so the lanes keep managing them. */
+export const isOurOfferVenue = (venue: string | null | undefined): boolean => venue === OFFER_VENUE || venue === "rastro";

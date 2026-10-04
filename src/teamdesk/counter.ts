@@ -19,6 +19,7 @@ import {
   type TradeOffer,
   type TradeState,
 } from "../trades/trades.js";
+import { OFFER_VENUE } from "../shared/offer-venue.js";
 
 /**
  * Team desk: a structural counter-offer to an offer another team made TO us that play rejects. Only sales: the team
@@ -204,12 +205,12 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
 
   // Existing counters: step down while the team's offer is open, cancel when the floor rose above the ask.
   for (const c of counters) {
-    const key = `${c.team}:${c.ref}:${c.venue}`;
+    const key = `${c.team}:${c.ref}`;
     answered.add(key);
     const asset = trade.held.find((a) => a.id === c.assetId);
     if (!asset) continue;
     const laneCounter = trade.held.filter((a) => a.ref === c.ref).length === 1;
-    const priced = priceFor(key, asset.value, c.venue);
+    const priced = priceFor(key, asset.value, OFFER_VENUE);
     const floor = laneCounter ? Math.max(priced.floor, Math.ceil(asset.value + params.laneMinGain)) : priced.floor;
     const anchor = priced.anchor;
     memo.set(key, Math.min(memo.get(key) ?? c.price, c.price));
@@ -224,7 +225,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
       intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${TAG} cancel #${c.offer.id} ${c.ref} → ${c.team} (floor rose)` });
       continue;
     }
-    const req = requests.find((r) => r.team === c.team && r.ref === c.ref && r.venue === c.venue);
+    const req = requests.find((r) => r.team === c.team && r.ref === c.ref);
     // Age from created_tick, or from expires_tick minus the expiry we post with.
     const created = c.offer.created_tick ?? (c.offer.expires_tick != null ? c.offer.expires_tick - params.expiresInTicks : input.tick);
     const age = input.tick - created;
@@ -236,7 +237,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     if (next >= c.price) continue;
     plan.cancels.push({ intentId, offerId: c.offer.id, team: c.team, venue: c.venue, ref: c.ref, reason: `step ${c.price} → ${next}` });
     intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${TAG} cancel #${c.offer.id} to step down` });
-    const post = makePost("step", c.team, c.venue, c.ref, c.assetId, next, floor, anchor, asset.value, fees(c.venue), req.offer.id, params, c.offer.id);
+    const post = makePost("step", c.team, OFFER_VENUE, c.ref, c.assetId, next, floor, anchor, asset.value, fees(OFFER_VENUE), req.offer.id, params, c.offer.id);
     plan.posts.push(post);
     intents.push(postIntent(post));
     memo.set(key, next);
@@ -247,7 +248,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
   for (const r of requests) {
     const wanted = r.lane ? [r.ref] : [r.ref, ...[...(input.rivals?.demand ?? new Map<string, string[]>())].filter(([ref, teams]) => ref !== r.ref && teams.includes(r.team)).map(([ref]) => ref)];
     for (const ref of wanted) {
-      const key = `${r.team}:${ref}:${r.venue}`;
+      const key = `${r.team}:${ref}`;
       if (answered.has(key)) continue;
       answered.add(key);
       if (open >= params.maxOpen) {
@@ -285,7 +286,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
       }
       if (lastCopy) {
         // CHA lane: sold at the team's own offer, only when a dealer sells it back at ≤ our value and the gain scores.
-        const gain = r.offered - tradeFee(r.offered, 1, fees(r.venue)) - asset.value;
+        const gain = r.offered - tradeFee(r.offered, 1, fees(OFFER_VENUE)) - asset.value;
         const scored = Math.min(gain, roomOf(input.room, r.team));
         const quote = input.rebuyable?.get(ref);
         if (quote === undefined || quote > asset.value || scored < params.laneMinGain) {
@@ -293,24 +294,24 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
           continue;
         }
         const price = enforceGuardrails({ role: "seller", reservation: Math.ceil(asset.value + params.laneMinGain) }, r.offered);
-        const post = makePost("counter", r.team, r.venue, ref, asset.id, price, Math.ceil(asset.value + params.laneMinGain), price, asset.value, fees(r.venue), r.offer.id, params);
+        const post = makePost("counter", r.team, OFFER_VENUE, ref, asset.id, price, Math.ceil(asset.value + params.laneMinGain), price, asset.value, fees(OFFER_VENUE), r.offer.id, params);
         plan.posts.push(post);
         intents.push(postIntent(post));
         memo.set(key, price);
         busy.add(asset.id);
         open += 1;
-        notes.push(`${TAG} [cha-lane] counter #${r.offer.id}: last copy of ${ref} → ${r.team} @ ${price} P on ${r.venue} (value ${asset.value}, gain ${Math.round(gain)}, room ${roomOf(input.room, r.team)}, dealer rebuy ≤ ${quote})`);
+        notes.push(`${TAG} [cha-lane] counter #${r.offer.id}: last copy of ${ref} → ${r.team} @ ${price} P on ${OFFER_VENUE} (value ${asset.value}, gain ${Math.round(gain)}, room ${roomOf(input.room, r.team)}, dealer rebuy ≤ ${quote})`);
         continue;
       }
-      const { floor, anchor, price } = priceFor(key, asset.value, r.venue);
+      const { floor, anchor, price } = priceFor(key, asset.value, OFFER_VENUE);
       if (ref === r.ref && r.offered >= price) continue;
-      const post = makePost("counter", r.team, r.venue, ref, asset.id, price, floor, anchor, asset.value, fees(r.venue), r.offer.id, params);
+      const post = makePost("counter", r.team, OFFER_VENUE, ref, asset.id, price, floor, anchor, asset.value, fees(OFFER_VENUE), r.offer.id, params);
       plan.posts.push(post);
       intents.push(postIntent(post));
       memo.set(key, price);
       busy.add(asset.id);
       open += 1;
-      notes.push(`${TAG} counter #${r.offer.id} (${r.team} offers ${r.offered} P for ${r.ref}) → ${ref} @ ${price} P on ${r.venue} (floor ${floor}, anchor ${anchor})`);
+      notes.push(`${TAG} counter #${r.offer.id} (${r.team} offers ${r.offered} P for ${r.ref}) → ${ref} @ ${price} P on ${OFFER_VENUE} (floor ${floor}, anchor ${anchor})`);
     }
   }
   if (!plan.posts.length && !plan.cancels.length && !notes.length) notes.push(`${TAG} no rejected sale request to counter (${evals.length} to-me)`);
