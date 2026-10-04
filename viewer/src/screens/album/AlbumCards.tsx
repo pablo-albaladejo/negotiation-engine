@@ -4,15 +4,17 @@ import { RARITY_COLOR, type Board, type BoardAlbumCard, type BoardAlbumPage } fr
 
 /**
  * The album as cards, like the game's /cards page: one band per set (color, theme, have/of) and a tile per page card,
- * held in full color or missing in grey with our value and the book price; copies in circulation under each tile, and
+ * held in full color or missing in grey; under each tile the book price, the API value (`your_value`) and ours (our value model); copies in circulation under each tile, and
  * the shinies (off the page) apart. The art is our own drawing (sun + a skyline seeded by the ref), not the game's.
  * Read-only: no figure is computed here.
  */
 
 const FALLBACK = "#8A6F9E";
 const NOT_LOGGED = "Not logged yet.";
+const fmtV = (v: number) => (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
 
 /** Same ref → same skyline: a few buildings whose heights come from the ref's characters. */
+
 function Skyline({ seed, dark }: { seed: string; dark: string }) {
   const codes = [...seed].map((c) => c.charCodeAt(0));
   const h = (i: number) => 18 + ((codes[i % codes.length]! * (i + 7)) % 34);
@@ -108,7 +110,14 @@ function Tile({ c, color, set }: { c: BoardAlbumCard; color: string; set: string
       ) : null}
       <span className="nr-muted" style={{ fontSize: 11, display: "flex", justifyContent: "space-between", gap: 4, fontVariantNumeric: "tabular-nums" }}>
         <span>{c.minted !== null && c.print_run ? `${c.minted}/${c.print_run}` : ""}</span>
-        <span style={have ? undefined : { color: "var(--us)", fontWeight: 700 }}>{`${c.value !== null ? `v ${c.value >= 10 ? Math.round(c.value) : Math.round(c.value * 10) / 10}` : "v ?"}${have || c.book === null ? "" : ` · book ${c.book}`}`}</span>
+        <span>{c.book !== null ? `book ${c.book}` : ""}</span>
+      </span>
+      <span
+        style={{ fontSize: 11, display: "flex", justifyContent: "space-between", gap: 4, fontVariantNumeric: "tabular-nums" }}
+        title={`API: your_value from the Bazaar${have ? " (this copy)" : " (/api/me/value, first copy)"}. Ours: our value model, ${have ? "what losing one copy costs (page risk included)" : "what one more copy adds (page bonus included)"}.`}
+      >
+        <span className="nr-muted">{`API ${c.value !== null ? fmtV(c.value) : "?"}`}</span>
+        <span style={{ color: "var(--us)", fontWeight: 700 }}>{`ours ${c.our_value != null ? fmtV(c.our_value) : "?"}`}</span>
       </span>
     </li>
   );
