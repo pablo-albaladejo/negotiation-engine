@@ -50,7 +50,9 @@ export interface DealerLadderInfo {
 export function dealShare(kind: "buy" | "sell", open: number, price: number, limit: number | undefined): number | undefined {
   if (limit === undefined) return undefined;
   const span = kind === "sell" ? limit - open : open - limit;
-  if (span <= 0) return 1;
+  // No range (a fixed price: her opening is her limit): the server scores it 0 (audit, 4 Oct: LAT-05 @5 to Abuela, SAL-03
+  // and MAL-08 to Picaros, all at her opening, added nothing).
+  if (span <= 0) return 0;
   return Math.max(0, Math.min(1, (kind === "sell" ? price - open : open - price) / span));
 }
 

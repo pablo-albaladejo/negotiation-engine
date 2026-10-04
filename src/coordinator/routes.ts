@@ -110,6 +110,8 @@ function openedByPlay(thread: number): boolean {
 
 /** Dealers whose ladder level did not move the server's ladder_points after our deals: their ladder gain counts 0. */
 const LADDER_UNVERIFIED: ReadonlySet<string> = new Set(["picaros"]);
+/** Dealer sales earn no ladder bonus nor ladder discount (audit, 4 Oct: SAL-03, MAL-08, LAT-05 at her opening scored 0). */
+const LADDER_SALES_UNSCORED = true;
 
 class SwitchableTrace implements TraceSink {
   muted = true;
@@ -288,7 +290,8 @@ export class DealersRoute {
           // Pablo, 3 Oct: a duplicate may go below its value when the ladder gain (P) covers the value given up.
           ladderSellDiscount: () => {
             const lvl = this.state?.personas.find((p) => p.id === id)?.model?.public.level;
-            return lvl === undefined || LADDER_UNVERIFIED.has(id) ? 0 : ladderGain(this.ladderNow, lvl, expectedShare(this.ladderNow, id)) * LADDER_P_PER_POINT;
+            // A sale earns no ladder (see the open bonus), so a duplicate's minimum is never lowered for it.
+            return lvl === undefined || LADDER_UNVERIFIED.has(id) || LADDER_SALES_UNSCORED ? 0 : ladderGain(this.ladderNow, lvl, expectedShare(this.ladderNow, id)) * LADDER_P_PER_POINT;
           },
           eggOpen: () =>
             this.o.eggOpen === id &&
@@ -373,7 +376,8 @@ export class DealersRoute {
         const share = expectedShare(ladder, i.dealer);
         // Audit, 3 Oct: our Picaros sales at t1311 (SAL-03 @4) and t1355 (MAL-08 @10) left the server's ladder_points at
         // 0.27 (modelled +10.8 P at share 0.82): until her level is shown to score, no ladder bonus with her.
-        const bonus = ev !== undefined && lvl !== undefined && !LADDER_UNVERIFIED.has(i.dealer) ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
+        // Audit, 4 Oct: our dealer SALES never moved the server's ladder (all closed at her opening: share 0); buys did.
+        const bonus = ev !== undefined && lvl !== undefined && i.side === "buy" && !LADDER_UNVERIFIED.has(i.dealer) ? ladderGain(ladder, lvl, share) * LADDER_P_PER_POINT : 0;
         // Dealer deals score only through the ladder (RULES: best three per level by share of her range), never neg_points.
         // Pablo, 3 Oct: open with a dealer only if it raises her level's ladder (empty slot, or beats the weakest of the
         // top three) or we really want the card (a buy of a card we don't hold). Abuela L1 and Chato L2 are 3/3 at ~1.0.
