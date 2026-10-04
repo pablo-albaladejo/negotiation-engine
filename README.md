@@ -1,22 +1,22 @@
 # negotiation-ring
 
-Agente del **Equipo 2** para **El Bazaar** (hackathon Causa Prima): cromos de Madrid, dealers, El Rastro y duelos entre equipos.
+**Team 2** agent for **El Bazaar** (Causa Prima hackathon): Madrid trading cards, dealers, El Rastro and duels between teams.
 
-> **La cifra la decide siempre el código.** El texto es una plantilla con esa misma cifra; del rival solo se lee la estructura de sus ofertas.
+> **The code always decides the figure.** The text is a template carrying that same figure; from the rival we read only the structure of their offers.
 
-## Empezar
+## Getting started
 
 ```bash
 pnpm i --frozen-lockfile
 pnpm test
-pnpm bazaar:status                                   # solo lectura
-pnpm bazaar --serious --cash-floor 20 --dry-run --once   # plan de dealers, sin POST
+pnpm bazaar:status                                   # read-only
+pnpm bazaar --serious --cash-floor 20 --dry-run --once   # dealer plan, no POST
 ```
 
-Necesita `.env` con `BAZAAR_URL` y `BAZAAR_KEY` (ver `.env.example`).
+Needs `.env` with `BAZAAR_URL` and `BAZAAR_KEY` (see `.env.example`).
 
-## Más
+## More
 
-- [`AGENTS.md`](AGENTS.md) — reglas, arquitectura y comandos.
-- [`DAY1.md`](DAY1.md) — estado del torneo y prioridades.
-- [`src/AGENTS.md`](src/AGENTS.md) — cada pieza del agente.
+- [`AGENTS.md`](AGENTS.md) — rules, architecture and commands.
+- [`DAY1.md`](DAY1.md) — tournament status and priorities.
+- [`src/AGENTS.md`](src/AGENTS.md) — each piece of the agent.

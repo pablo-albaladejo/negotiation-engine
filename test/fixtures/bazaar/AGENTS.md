@@ -1,7 +1,7 @@
-# test/fixtures/bazaar/ — Fichas e hilos reales
+# test/fixtures/bazaar/ — Real profiles and threads
 
-- **`dealer-abuela.json`**, **`dealer-chato.json`** — fichas reales de Abuela Carmen y El Chato (`GET /api/dealers/{id}`), referencia de sus rasgos.
-- **`thread-56.json`** — el hilo 56 completo (de donde sale el precio fijo del negociador).
+- **`dealer-abuela.json`**, **`dealer-chato.json`** — real profiles of Abuela Carmen and El Chato (`GET /api/dealers/{id}`), reference for their traits.
+- **`thread-56.json`** — the full thread 56 (where the negotiator's fixed price comes from).
 
 ## Links
 

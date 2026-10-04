@@ -1,16 +1,16 @@
-# design-system/src/components/controls/ — Controles y etiquetas
+# design-system/src/components/controls/ — Controls and labels
 
-Componentes de presentación: muestran valores, no calculan métricas. Exportados desde `../../index.ts`.
+Presentation components: they display values, they do not compute metrics. Exported from `../../index.ts`.
 
-## Archivos
+## Files
 
-- **`Button.tsx`** — `PrimaryButton`, `SecondaryButton`, `BackLink` y `TableLink`: `<button type="button">` con la clase del sistema (`nr-btn-primary`, `nr-btn-secondary`, `nr-link-back`, `nr-link-table`).
-- **`Filters.tsx`** — `Filters`: selectores y casillas de filtro.
-- **`Pill.tsx`** — `Pill`: etiqueta corta.
-- **`ModeBadge.tsx`** — `ModeBadge`: insignia de modo.
-- **`Flag.tsx`** — `Flag`: marca de un mensaje (neutral, inyección, decisión, walk, fallback).
+- **`Button.tsx`** — `PrimaryButton`, `SecondaryButton`, `BackLink` and `TableLink`: `<button type="button">` with the system class (`nr-btn-primary`, `nr-btn-secondary`, `nr-link-back`, `nr-link-table`).
+- **`Filters.tsx`** — `Filters`: filter selectors and checkboxes.
+- **`Pill.tsx`** — `Pill`: short label.
+- **`ModeBadge.tsx`** — `ModeBadge`: mode badge.
+- **`Flag.tsx`** — `Flag`: mark on a message (neutral, injection, decision, walk, fallback).
 
 ## Links
 
 - ↑ [`components/`](../AGENTS.md)
-- → Ejemplos: [`examples/controls/`](../../../examples/controls/AGENTS.md)
+- → Examples: [`examples/controls/`](../../../examples/controls/AGENTS.md)

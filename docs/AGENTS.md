@@ -1,8 +1,8 @@
-# docs/ — Documentación
+# docs/ — Documentation
 
-Lecciones de los dealers, mapa del sitio y kit oficial del Bazaar. Nada de aquí se ejecuta en el agente.
+Dealer lessons, site map and the official Bazaar kit. Nothing here is executed by the agent.
 
-- **[`bazaar/`](bazaar/AGENTS.md)** — lecciones (`bazaar/lessons.json`), mapa de bazaar.causaprima.ai y kit oficial.
+- **[`bazaar/`](bazaar/AGENTS.md)** — lessons (`bazaar/lessons.json`), map of bazaar.causaprima.ai and official kit.
 
 ## Links
 

@@ -1,16 +1,16 @@
-# design-system/src/components/data/ — Datos y mensajes
+# design-system/src/components/data/ — Data and messages
 
-Componentes de presentación: muestran valores, no calculan métricas. Exportados desde `../../index.ts`.
+Presentation components: they display values, they do not compute metrics. Exported from `../../index.ts`.
 
-## Archivos
+## Files
 
-- **`DataTable.tsx`** — `DataTable`: tabla con celdas tonales y fila seleccionable.
-- **`KpiStrip.tsx`** — `KpiStrip`: fila de indicadores.
-- **`Scoreboard.tsx`** — `Scoreboard`: marcador de una partida.
-- **`StatFigure.tsx`** — `StatFigure`: una cifra grande con leyenda.
-- **`ChatMessage.tsx`** — `ChatMessage`: mensaje de chat (nuestro o del rival; texto del rival en plano, nunca HTML).
+- **`DataTable.tsx`** — `DataTable`: table with tonal cells and a selectable row.
+- **`KpiStrip.tsx`** — `KpiStrip`: row of indicators.
+- **`Scoreboard.tsx`** — `Scoreboard`: scoreboard of a game.
+- **`StatFigure.tsx`** — `StatFigure`: one big figure with a caption.
+- **`ChatMessage.tsx`** — `ChatMessage`: chat message (ours or the rival's; rival text as plain text, never HTML).
 
 ## Links
 
 - ↑ [`components/`](../AGENTS.md)
-- → Ejemplos: [`examples/data/`](../../../examples/data/AGENTS.md)
+- → Examples: [`examples/data/`](../../../examples/data/AGENTS.md)

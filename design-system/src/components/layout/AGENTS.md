@@ -1,16 +1,16 @@
-# design-system/src/components/layout/ — Estructura de pantalla
+# design-system/src/components/layout/ — Screen structure
 
-Componentes de presentación: muestran valores, no calculan métricas. Exportados desde `../../index.ts`.
+Presentation components: they show values, they do not compute metrics. Exported from `../../index.ts`.
 
-## Archivos
+## Files
 
-- **`Root.tsx`** — `Root`: raíz que fija fondo, fuentes, números tabulares y tema.
-- **`Card.tsx`** — `Card`: tarjeta con título.
-- **`Tabs.tsx`** — `Tabs`: pestañas (grupo o navegación).
-- **`MatchSelector.tsx`** — `MatchSelector`: selector de partida o conversación.
-- **`WarningBanner.tsx`** — `WarningBanner`: aviso destacado.
+- **`Root.tsx`** — `Root`: root that sets background, fonts, tabular numbers and theme.
+- **`Card.tsx`** — `Card`: card with a title.
+- **`Tabs.tsx`** — `Tabs`: tabs (group or navigation).
+- **`MatchSelector.tsx`** — `MatchSelector`: match or conversation selector.
+- **`WarningBanner.tsx`** — `WarningBanner`: prominent warning.
 
 ## Links
 
 - ↑ [`components/`](../AGENTS.md)
-- → Ejemplos: [`examples/layout/`](../../../examples/layout/AGENTS.md)
+- → Examples: [`examples/layout/`](../../../examples/layout/AGENTS.md)

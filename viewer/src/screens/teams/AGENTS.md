@@ -1,9 +1,9 @@
-# viewer/src/screens/teams/ — Equipos
+# viewer/src/screens/teams/ — Teams
 
-- **`TeamsView.tsx`** — la pestaña «Teams»: todo lo que sabemos de cada equipo en un sitio. Una sola tabla hace de selector: la clasificación (score, negociación, mercado, álbum, páginas, tratos) junto a lo que se ve de cada equipo (evolución del score, página más cercana, lo que pide y repetidas); del equipo elegido, sus partes del score (rank, score, negociación, mercado, álbum, páginas, nivel, tratos) y su evolución, lo que hemos hecho con él (tratos, ofertas y duelos: cada uno abre su conversación), sus tratos con otros equipos, los eggs que ha encontrado y su colección según la estructura pública; debajo, las oportunidades: cartas nuestras que otros piden (`Rivals`, que antes vivía en «Model»).
-- **`TeamLink.tsx`** — `TeamName`: el nombre de un equipo como enlace que abre «Teams» en ese equipo desde cualquier pestaña (contexto de `viewer/src/screens/nav/Links.tsx`); el nuestro va con el color «us» y el id de un dealer se pinta como `DealerName`.
+- **`TeamsView.tsx`** — the «Teams» tab: everything we know about each team in one place. A single table works as the selector: the ranking (score, negotiation, market, album, pages, deals) next to what is seen of each team (score evolution, closest page, what it asks for and duplicates); for the chosen team, its score parts (rank, score, negotiation, market, album, pages, level, deals) and their evolution, what we have done with it (deals, offers and duels: each opens its conversation), its deals with other teams, the eggs it has found and its collection according to the public structure; below, the opportunities: cards of ours that others ask for (`Rivals`, which used to live in «Model»).
+- **`TeamLink.tsx`** — `TeamName`: a team's name as a link that opens «Teams» on that team from any tab (context from `viewer/src/screens/nav/Links.tsx`); ours goes with the «us» color and a dealer's id is drawn as `DealerName`.
 
-Solo lectura: del rival solo se muestra estructura, nunca su texto; aquí nada envía.
+Read-only: from the rival only structure is shown, never their text; nothing here sends.
 
 ## Links
 

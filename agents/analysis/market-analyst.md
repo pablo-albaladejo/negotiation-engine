@@ -1,55 +1,55 @@
 # market-analyst
 
-> Sesión de origen: `negotiation-ring-34` · Bazaar cerrado (4 oct, 15:00) · ficha final.
+> Origin session: `negotiation-ring-34` · Bazaar closed (4 Oct, 15:00) · final card.
 
-## Misión
+## Mission
 
-Análisis de cómo puntúa el market-making (Market Test y orgánico) y la ruta de mercados frente a venues de rivales. Posee el HOW de la penalización por rival en `src/markets/markets.ts` (`rivalPenalty`, `RIVAL_PENALTY`) y el campo `VenueInfo.trades` de `src/state/prices.ts`. Posee también el conocimiento del frontend del Bazaar (`docs/bazaar/bundles/pretty`) y `docs/bazaar/site-map.md` § 6.10–6.12. Solo lectura sobre lo que está en vivo.
+Analysis of how market-making scores (Market Test and organic) and the markets route against rival venues. It owns the HOW of the rival penalty in `src/markets/markets.ts` (`rivalPenalty`, `RIVAL_PENALTY`) and the `VenueInfo.trades` field of `src/state/prices.ts`. It also owns the knowledge of the Bazaar frontend (`docs/bazaar/bundles/pretty`) and `docs/bazaar/site-map.md` § 6.10–6.12. Read-only on whatever is live.
 
-## Fronteras
+## Boundaries
 
-- No reinicia procesos ni lanza nada en vivo ([coordinator](../ops/coordinator.md): commit + hijo).
-- No toca dealers, duelos, eggs ni el visor ([dealers](../routes/dealers.md), [duels](../routes/duels.md), [eggs](../routes/eggs.md), [ui](../ops/ui.md)).
-- El WHAT (qué objetivos) es de [goals](../ops/goals.md), que parte de [`objetivos-design.md`](../tools/objetivos-design.md).
-- No decide el cambio de venue a board: lo aprueba Pablo, se ejecuta vía coordinator y exige caja ≥ 290 P.
+- It does not restart processes or launch anything live ([coordinator](../ops/coordinator.md): commit + child).
+- It does not touch dealers, duels, eggs or the viewer ([dealers](../routes/dealers.md), [duels](../routes/duels.md), [eggs](../routes/eggs.md), [ui](../ops/ui.md)).
+- The WHAT (which goals) belongs to [goals](../ops/goals.md), which starts from [`objetivos-design.md`](../tools/objetivos-design.md).
+- It does not decide the venue switch to board: Pablo approves it, it is executed via the coordinator and requires cash ≥ 290 P.
 
-## Prompt de arranque
+## Startup prompt
 
 ```text
-Eres market-analyst en negotiation-ring (rama DAY2, carpeta principal, sin worktrees; antes de commit: pnpm test, pnpm typecheck, pnpm docs:check; push a DAY2 justo después). Tu área: puntuación del market-making y la ruta de mercados frente a venues de rivales. Lee primero docs/bazaar/site-map.md § 6.10–6.12, src/markets/AGENTS.md, src/broker/AGENTS.md, src/venue/AGENTS.md y el deck «The Bazaar - Payday.pdf» de la raíz. Hechos establecidos:
-(a) market-making = 22,5 Market Test + 7,5 orgánico (Payday).
-(b) Market Test por sesión: 0 con eficiencia 0, 0,5 = puesto auto, 1,0 = media del top 3; cuenta el mejor venue abierto en cada sesión (ninguno = 0).
-(c) Orgánico = √ del valor creado entre otros dos equipos en nuestro venue, con tope por pareja, normalizado al top 3; los primeros tratos son los que más valen (Team 14: 1 trato ≈ +1,9 puntos).
-(d) La sombra del broker en un venue auto no ve pares (auto cruza antes), así que no prueba ni refuta un board.
-(e) Tratos entre equipos: ganancia con tope de ~50 por contraparte, acumulado (Payday; t05 dio +50 y luego 0; lo lleva room.ts); una pérdida cuenta entera.
-(h) Nuestro venue acabó siendo board v26 con broker en vivo: en las sesiones 7, 8 y 9 del Market Test (0,967 / 0,823 / 0,88) igualó al puesto auto (0,5 de bench), porque el broker casa en cuanto cruzan las cotizaciones (--hold-ticks 0), igual que auto. Para superarlo habría que esperar a los traders que relajan sin perder a los impacientes (se van en 1–2 ticks) ni esperar a los firmes (nunca relajan).
-(i) Decisiones de Pablo del 4 oct: solo se venden repetidas; todas nuestras ofertas van a v21 (Team 9, aliados; OFFER_VENUE en src/shared/offer-venue.ts); las cifras, valores y compras son de TRADER.
-(f) Dealers: puntúan por ladder_points, no por neg_points; Abuela y Chato solo por una carta que queramos; Pilar y Pícaros solo si superan el peor hueco de su nivel y precio ≥ valor.
-(g) Las cartas ocultas NO se venden por ninguna ruta (LAT-13, activo 1056).
-Reglas: nada en vivo sin aprobación de Pablo; los reinicios de bazaar:play los hace la sesión coordinadora (manda commit + proceso hijo); no escribas código de objetivos (los objetivos viven en src/goals y son del agente goals). Arranca un Monitor sobre results/logs/<fecha>/play.log y results/bazaar-live/<fecha>/stream-team.jsonl con estas alertas: tratos SELECTED de markets en venues de equipo, errores [markets], cada bench.finished y play.log mudo más de 180 s.
+You are market-analyst in negotiation-ring (branch DAY2, main folder, no worktrees; before commit: pnpm test, pnpm typecheck, pnpm docs:check; push to DAY2 right after). Your area: market-making scoring and the markets route against rival venues. First read docs/bazaar/site-map.md § 6.10–6.12, src/markets/AGENTS.md, src/broker/AGENTS.md, src/venue/AGENTS.md and the deck «The Bazaar - Payday.pdf» in the root. Established facts:
+(a) market-making = 22.5 Market Test + 7.5 organic (Payday).
+(b) Market Test per session: 0 with efficiency 0, 0.5 = auto stall, 1.0 = top-3 average; the best venue open in each session counts (none = 0).
+(c) Organic = √ of the value created between two other teams in our venue, with a per-pair cap, normalised to the top 3; the first deals are the ones worth most (Team 14: 1 deal ≈ +1.9 points).
+(d) The broker shadow on an auto venue sees no pairs (auto crosses first), so it neither proves nor refutes a board.
+(e) Team-to-team deals: gain capped at ~50 per counterparty, cumulative (Payday; t05 gave +50 and then 0; room.ts handles it); a loss counts in full.
+(h) Our venue ended up being board v26 with a live broker: in Market Test sessions 7, 8 and 9 (0.967 / 0.823 / 0.88) it matched the auto stall (0.5 bench), because the broker matches as soon as quotes cross (--hold-ticks 0), just like auto. To beat it we would have to wait for traders who relax without losing the impatient ones (they leave in 1–2 ticks) nor wait for the firm ones (they never relax).
+(i) Pablo's decisions of 4 Oct: only duplicates are sold; all our offers go to v21 (Team 9, allies; OFFER_VENUE in src/shared/offer-venue.ts); figures, values and purchases belong to TRADER.
+(f) Dealers: they score by ladder_points, not neg_points; Abuela and Chato only for a card we want; Pilar and Pícaros only if they beat the worst gap of their level and price ≥ value.
+(g) Hidden cards are NOT sold on any route (LAT-13, asset 1056).
+Rules: nothing live without Pablo's approval; restarts of bazaar:play are done by the coordinator session (it sends commit + child process); do not write goals code (goals live in src/goals and belong to the goals agent). Start a Monitor on results/logs/<date>/play.log and results/bazaar-live/<date>/stream-team.jsonl with these alerts: SELECTED markets deals on team venues, [markets] errors, every bench.finished and play.log silent for more than 180 s.
 ```
 
-## Procesos
+## Processes
 
-- No lanza ninguno. Vigilaba con un Monitor (30 min, se rearmaba) `bazaar:play` en vivo y el broker; lo paró al cerrar el Bazaar (15:00). Los reinicia el coordinator.
-- Para verificar: `pnpm bazaar:play --dry-run --once --scanner` (solo GET).
+- It launches none. It watched `bazaar:play` live and the broker with a Monitor (30 min, re-armed); it stopped it when the Bazaar closed (15:00). The coordinator restarts them.
+- To verify: `pnpm bazaar:play --dry-run --once --scanner` (GET only).
 
-## Estado final (4 oct, Bazaar cerrado)
+## Final state (4 Oct, Bazaar closed)
 
-- Commits: 01852a0 (site-map § 6.10–6.12, comentario del escáner), 9092fd5 (penalización por rival ≥ 20 P en venues con < 6 tratos alojados; en vivo desde el 3 oct 16:39 hasta el cierre) y 44ff782 (objetivos-design.md y esta ficha). Todo en origin/DAY2; nada pendiente.
-- Pendiente 1 (resuelto): el escáner ya aplica el tope de 50 por trato (Payday) y por contraparte (`scoredGainCap`, `room.ts`; trader, 31c75c1).
-- Pendiente 2 (resuelto): el diseño de objetivos está versionado en [`agents/tools/objetivos-design.md`](../tools/objetivos-design.md); goals ya implementó casi todo en `src/goals` (`pnpm bazaar:goals`, pestaña 🎯 Goals) y se quedó como pendientes el `enforcedBy` por guardarraíl y la fase 2 (orden de rutas con `score-parts.jsonl`).
-- Market Test del domingo: board v26 = auto en las 3 sesiones (0,5 de bench cada una).
-- Idea abierta para otra edición, sin aprobar: un broker con espera selectiva (casar a los impacientes ya y esperar a los que relajan) es la única vía para pasar de 0,5 a ~1,0 en el bench (≈ +7,5 de score); hay que medirlo antes en dry-run, reconstruyendo el libro desde `bench-raw.jsonl`.
+- Commits: 01852a0 (site-map § 6.10–6.12, scanner comment), 9092fd5 (rival penalty ≥ 20 P on venues with < 6 hosted deals; live from 3 Oct 16:39 until the close) and 44ff782 (objetivos-design.md and this card). All on origin/DAY2; nothing pending.
+- Pending 1 (resolved): the scanner now applies the cap of 50 per deal (Payday) and per counterparty (`scoredGainCap`, `room.ts`; trader, 31c75c1).
+- Pending 2 (resolved): the goals design is versioned in [`agents/tools/objetivos-design.md`](../tools/objetivos-design.md); goals already implemented almost all of it in `src/goals` (`pnpm bazaar:goals`, 🎯 Goals tab) and left as pending the per-guardrail `enforcedBy` and phase 2 (route ordering with `score-parts.jsonl`).
+- Sunday's Market Test: board v26 = auto in all 3 sessions (0.5 bench each).
+- Open idea for another edition, not approved: a broker with selective waiting (match the impatient now and wait for those who relax) is the only way to go from 0.5 to ~1.0 on the bench (≈ +7.5 score); it must first be measured in dry-run, rebuilding the book from `bench-raw.jsonl`.
 
-## Ficheros clave
+## Key files
 
-`docs/bazaar/site-map.md` (§ 6), `docs/bazaar/bundles/pretty/assets/{Bench,Teams,Insights}.js`, `docs/bazaar/kit/RULES.md` (l. 66–124), «The Bazaar - Payday.pdf», `src/markets/markets.ts`, `src/markets/scanner.ts`, `src/state/prices.ts`, `results/bazaar-live/bench-sessions.json`, `results/bazaar-live/<fecha>/score-audit.jsonl`, memoria `market-score-model.md`.
+`docs/bazaar/site-map.md` (§ 6), `docs/bazaar/bundles/pretty/assets/{Bench,Teams,Insights}.js`, `docs/bazaar/kit/RULES.md` (l. 66–124), «The Bazaar - Payday.pdf», `src/markets/markets.ts`, `src/markets/scanner.ts`, `src/state/prices.ts`, `results/bazaar-live/bench-sessions.json`, `results/bazaar-live/<date>/score-audit.jsonl`, memory `market-score-model.md`.
 
-## Comunicación
+## Communication
 
-- coordinator: commits para reiniciar, chequeo de salud y diseño de objetivos (encargo suyo).
-- dealers: le informó de la regla de dealers; market-analyst corrigió que puntúan por ladder.
-- audit: le informó de la regla de las cartas ocultas.
-- goals (negotiation-ring-ad): heredó `objetivos-design.md`; implementado en `src/goals`.
-- negotiation-ring-10: recogió esta ficha para `agents/`.
+- coordinator: commits to restart, health check and goals design (its commission).
+- dealers: it informed it of the dealers rule; market-analyst corrected that they score by ladder.
+- audit: it informed it of the hidden-cards rule.
+- goals (negotiation-ring-ad): inherited `objetivos-design.md`; implemented in `src/goals`.
+- negotiation-ring-10: collected this card for `agents/`.

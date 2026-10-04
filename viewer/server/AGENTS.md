@@ -1,14 +1,14 @@
-# viewer/server/ — Servidor Node del Visor
+# viewer/server/ — Viewer Node server
 
-Servidor node:http (`http.ts`) que sirve `/api/bazaar/*` y delega el resto en Vite. Solo 127.0.0.1, solo GET/HEAD, Host comprobado (DNS rebinding); cualquier otra ruta `/api` da 404.
+A node:http server (`http.ts`) that serves `/api/bazaar/*` and delegates the rest to Vite. 127.0.0.1 only, GET/HEAD only, Host checked (DNS rebinding); any other `/api` route returns 404.
 
-## Archivos
+## Files
 
-- **`api.ts`** — tipo `ApiResponse` (`{ data, errors }`). **`read.ts`** / **`paths.ts`** — lectura JSONL validada con Zod y rutas resueltas dentro de su raíz.
-- **`main.ts`** — Entry point: arranca servidor en http://127.0.0.1:5199 (puerto configurable con `VIEWER_PORT`, dirección fija `127.0.0.1`; `VIEWER_BAZAAR_DIR` la de los `score.jsonl` del Bazaar).
-- **[`bazaar/`](bazaar/AGENTS.md)** — los endpoints `/api/bazaar/*`: puntuación, en vivo, hilos, duelos, tablero (`/api/bazaar/board`) y modelo (`/api/bazaar/model`).
+- **`api.ts`** — `ApiResponse` type (`{ data, errors }`). **`read.ts`** / **`paths.ts`** — JSONL reading validated with Zod and paths resolved inside their root.
+- **`main.ts`** — Entry point: starts the server at http://127.0.0.1:5199 (port configurable with `VIEWER_PORT`, address fixed to `127.0.0.1`; `VIEWER_BAZAAR_DIR` for the Bazaar `score.jsonl` directory).
+- **[`bazaar/`](bazaar/AGENTS.md)** — the `/api/bazaar/*` endpoints: score, live, threads, duels, board (`/api/bazaar/board`) and model (`/api/bazaar/model`).
 
-## Cómo trabajar
+## How to work
 
 ```bash
 pnpm --dir viewer start
@@ -17,5 +17,5 @@ pnpm --dir viewer start
 ## Links
 
 - ↑ [`viewer/`](../AGENTS.md)
-- → [`bazaar/`](bazaar/AGENTS.md) — endpoints del Bazaar
-- → Datos: `results/bazaar-live/` (trazas de `src/`)
+- → [`bazaar/`](bazaar/AGENTS.md) — Bazaar endpoints
+- → Data: `results/bazaar-live/` (traces from `src/`)

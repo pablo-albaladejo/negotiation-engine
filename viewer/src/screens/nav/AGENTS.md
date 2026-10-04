@@ -1,7 +1,7 @@
-# viewer/src/screens/nav/ — Enlaces entre pestañas
+# viewer/src/screens/nav/ — Links between tabs
 
-- **`Links.tsx`** — el contexto `NavCtx` (lo pone `viewer/src/screens/BazaarScreen.tsx`) y los enlaces que lo usan: `TickLink` («t1231» abre el cajón «Tick 1231») y `DealerName` (abre la pestaña «Dealers» con ese dealer elegido). `TeamName` (en `teams/`) usa el mismo contexto y, si recibe el id de un dealer, lo pinta como `DealerName`. Sin el contexto se pintan como texto.
-- **`TickPanel.tsx`** — el cajón «Tick N»: lo que el tablero vio a ±2 ticks de N, del más antiguo al más nuevo (nuestras conversaciones: abierta, mensaje y cierre; tratos entre otros equipos, ofertas dirigidas, feed público, eggs encontrados, el Taller y los grants), con ← → para moverse de tick. Cada conversación abre su cajón. Solo lectura.
+- **`Links.tsx`** — the `NavCtx` context (set by `viewer/src/screens/BazaarScreen.tsx`) and the links that use it: `TickLink` («t1231» opens the «Tick 1231» drawer) and `DealerName` (opens the «Dealers» tab with that dealer selected). `TeamName` (in `teams/`) uses the same context and, if it receives a dealer's id, renders it as `DealerName`. Without the context they render as text.
+- **`TickPanel.tsx`** — the «Tick N» drawer: what the board saw within ±2 ticks of N, oldest to newest (our conversations: opened, message and close; deals between other teams, directed offers, public feed, eggs found, the Taller and the grants), with ← → to move between ticks. Each conversation opens its drawer. Read-only.
 
 ## Links
 

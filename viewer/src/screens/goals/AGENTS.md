@@ -1,8 +1,8 @@
-# viewer/src/screens/goals/ — Objetivos y registro de estrategias
+# viewer/src/screens/goals/ — Goals and strategy registry
 
-- **`GoalsView.tsx`** — la pestaña «Goals»: lo que lleva `GameState.goals` (goals.json y strategies.json, que escribe la sesión «goals»). Arriba los huecos y los conflictos; luego los objetivos por prioridad (peso, ahora, Δ del día y del tick, estado, hasta qué tick, objetivo, por qué y los «do not» plegados), las propuestas abiertas (proposed o approved: pros, contras, recomendación, quién da el OK) y todas las estrategias agrupadas por objetivo (dueño, estado, OK de Pablo, commit y flag, evidencia, conflictos).
+- **`GoalsView.tsx`** — the "Goals" tab: what `GameState.goals` carries (goals.json and strategies.json, written by the "goals" session). At the top the gaps and conflicts; then the goals by priority (weight, now, Δ of the day and of the tick, status, until which tick, target, why and the collapsed "do not"s), the open proposals (proposed or approved: pros, cons, recommendation, who gives the OK) and all the strategies grouped by goal (owner, status, Pablo's OK, commit and flag, evidence, conflicts).
 
-Solo se muestra: ninguna ruta decide con esto. `figures_for_humans` va como texto con la etiqueta «for humans, not a price»; la cifra de una oferta sale siempre del código de la ruta.
+Display only: no route decides with this. `figures_for_humans` is shown as text with the label "for humans, not a price"; an offer's figure always comes from the route's code.
 
 ## Links
 

@@ -1,19 +1,19 @@
-# viewer/src/ — App React
+# viewer/src/ — React app
 
-Una sola pantalla: la pestaña del Bazaar (`#/bazaar`, filtros en la query del hash).
+A single screen: the Bazaar tab (`#/bazaar`, filters in the hash query).
 
-- **`App.tsx`** — cabecera (tema claro/oscuro) y `BazaarScreen`; captura errores de render.
+- **`App.tsx`** — header (light/dark theme) and `BazaarScreen`; catches render errors.
 - **`route.ts`** — `parseRoute` / `routeTo.bazaar`.
-- **`api.ts`** (`fetchApi`: siempre `{ data, errors }`), **`theme.ts`** (tema guardado en localStorage o, si no hay, el del sistema) y **`focus.ts`** (foco del título al navegar).
-- **`bazaarBoardLive.ts`** — `useBazaarBoard`: lee `/api/bazaar/board` y `/api/bazaar/score` una vez por tick.
-- **`bazaarModelLive.ts`** — `useBazaarModel`: lee `/api/bazaar/model` con la pestaña Now, la vista Model o un cajón abierto; si el servidor está reconstruyendo, enseña la última construcción y vuelve a pedir a los 10 s.
-- **`model/gameModel.ts`** — tipos tolerantes del modelo y funciones puras: resumen de tiempo, línea de tiempo, personas, pistas (filtros), precios, venues, sobres, flags, camino previsto sobre la curva (`withPlannedPath`, `modelCurve`).
-- **`model/dealerFit.ts`** — ajuste por persona: predicción del dealer sobre la curva y estimaciones por persona.
-- **`screens/ModelView.tsx`** — la vista Model y `ConversationModelPanel` (estado y estrategia en el cajón).
-- **`model/`** — `model/bazaarBoard.ts` (lista unificada, filtros, línea temporal), `model/bazaar.ts` (historia de la cifra), `model/bazaarConversations.ts`, `model/cockpit.ts` (puesto, lo abierto ahora, tratos que movieron la cifra, agentes, calendario, historial y quién es quién: `partyOf`, `teamLabel`, `bookMakerLabel`; curva de la negociación: `offerCurve`, `niceScale`, `curveRoundLines`).
-- **`screens/now/`** — la pestaña «Now» (primera): qué está pasando ahora mismo.
-- **`screens/BazaarScreen.tsx`** — la cabina (cifra, próximas citas, ahora, álbum, Δ de la cifra, agentes, historial y mercado plegados).
-- **`ui/`** — piezas pequeñas (títulos, estados vacíos, botones, rejilla).
+- **`api.ts`** (`fetchApi`: always `{ data, errors }`), **`theme.ts`** (theme saved in localStorage or, if none, the system's) and **`focus.ts`** (title focus when navigating).
+- **`bazaarBoardLive.ts`** — `useBazaarBoard`: reads `/api/bazaar/board` and `/api/bazaar/score` once per tick.
+- **`bazaarModelLive.ts`** — `useBazaarModel`: reads `/api/bazaar/model` with the Now tab, the Model view or an open drawer; if the server is rebuilding, it shows the last build and asks again after 10 s.
+- **`model/gameModel.ts`** — tolerant model types and pure functions: time summary, timeline, personas, hints (filters), prices, venues, packs, flags, planned path over the curve (`withPlannedPath`, `modelCurve`).
+- **`model/dealerFit.ts`** — per-persona fit: the dealer's prediction over the curve and per-persona estimates.
+- **`screens/ModelView.tsx`** — the Model view and `ConversationModelPanel` (state and strategy in the drawer).
+- **`model/`** — `model/bazaarBoard.ts` (unified list, filters, timeline), `model/bazaar.ts` (history of the figure), `model/bazaarConversations.ts`, `model/cockpit.ts` (post, what is open now, deals that moved the figure, agents, calendar, history and who is who: `partyOf`, `teamLabel`, `bookMakerLabel`; negotiation curve: `offerCurve`, `niceScale`, `curveRoundLines`).
+- **`screens/now/`** — the «Now» tab (first): what is happening right now.
+- **`screens/BazaarScreen.tsx`** — the cockpit (figure, upcoming appointments, now, album, Δ of the figure, agents, history and market folded).
+- **`ui/`** — small pieces (titles, empty states, buttons, grid).
 
 ## Links
 

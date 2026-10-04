@@ -1,132 +1,132 @@
-# Diseño: lista explícita de objetivos en `GameState`
+# Design: explicit list of goals in `GameState`
 
-*Propuesta para revisar con Pablo. No hay código. 4 oct 2026.*
+*Proposal to review with Pablo. No code. 4 Oct 2026.*
 
-## Problema
+## Problem
 
-Los objetivos reales del equipo están repartidos:
+The team's real goals are scattered:
 
-- `pageTargets` en el estado;
-- `goal.why` por conversación (`src/state/conversation.ts:25`);
-- los disparadores de la agenda;
+- `pageTargets` in the state;
+- `goal.why` per conversation (`src/state/conversation.ts:25`);
+- the agenda triggers;
 - `ACCEPT_PRIORITY` (`src/coordinator/coordinator.ts:22`);
-- los `LEVERS` del visor (`viewer/server/bazaar/bazaar-model.ts:237`), que son texto fijo y ya están desfasados: dicen «Duels I h 6.5» y «SAL-09 +50…+77 con bonus»;
-- los flags de `bazaar:play` y la memoria del proyecto.
+- the viewer's `LEVERS` (`viewer/server/bazaar/bazaar-model.ts:237`), which are fixed text and already outdated: they say "Duels I h 6.5" and "SAL-09 +50…+77 with bonus";
+- the `bazaar:play` flags and the project memory.
 
-Nadie ve en un solo sitio **qué puntúa, cuánto pesa, cómo vamos y qué ruta lo mueve**.
+Nobody sees in one place **what scores, how much it weighs, how we are doing and which route moves it**.
 
-## Base: qué puntúa (Payday + RULES.md)
+## Basis: what scores (Payday + RULES.md)
 
-| Bloque | Peso (de 100) | Parte | Métrica en `/api/me` | Nota |
+| Block | Weight (of 100) | Part | Metric in `/api/me` | Note |
 |---|---|---|---|---|
-| Negotiating | 30 | Duelos | `duel_points` | parte del pastel en cada duelo; sin trato, 0 para los dos; el pastel encoge un 6 % por ronda |
-| | | Ladder de dealers | `ladder_points` | los 3 mejores tratos por nivel; más nivel, más peso; una pérdida cuenta entera |
-| | | Tratos con equipos | `neg_points` | ganancia con **tope de 50 por trato** (Payday) y por contraparte; una pérdida cuenta entera |
-| Market-making | 22,5 | Market Test | `bench_points` (0–1), `bench_efficiency` | 0,5 = puesto auto; 1,0 = media del top 3 |
-| | 7,5 | Tratos reales en nuestro venue | `mm_points` | √ del valor creado entre otros dos equipos, con tope por pareja |
-| Jueces | 40 | Ideas y oficio | — | fuera de la API: no entra en el estado |
-| **Nunca** | 0 | nº de tratos, comisiones, suerte de sobres, regalos, eggs, subvenciones, **caja y cartas que tengas** | — | «a card counts by the deal that brought it» |
+| Negotiating | 30 | Duels | `duel_points` | share of the pie in each duel; no deal, 0 for both; the pie shrinks 6 % per round |
+| | | Dealer ladder | `ladder_points` | the 3 best deals per level; higher level, more weight; a loss counts in full |
+| | | Team deals | `neg_points` | gain with a **cap of 50 per deal** (Payday) and per counterparty; a loss counts in full |
+| Market-making | 22.5 | Market Test | `bench_points` (0–1), `bench_efficiency` | 0.5 = auto rank; 1.0 = top-3 average |
+| | 7.5 | Real deals in our venue | `mm_points` | √ of the value created between two other teams, capped per pair |
+| Judges | 40 | Ideas and craft | — | outside the API: does not enter the state |
+| **Never** | 0 | number of deals, commissions, pack luck, gifts, eggs, subsidies, **cash and cards you hold** | — | "a card counts by the deal that brought it" |
 
-Cada día es una ronda (viernes 0,5; sábado y domingo 1). Las partes de `/api/me` son las **de la ronda actual**. `negotiating` y `market` ya salen normalizados al top 3 y ponderados por rondas.
+Each day is a round (Friday 0.5; Saturday and Sunday 1). The `/api/me` parts are those **of the current round**. `negotiating` and `market` already come normalized to the top 3 and weighted by rounds.
 
-## Tipo
+## Type
 
 ```ts
-// src/objectives/objectives.ts (carpeta nueva, con su AGENTS.md)
+// src/objectives/objectives.ts (new folder, with its AGENTS.md)
 export type ObjectiveId =
   | "duels" | "dealer-ladder" | "team-trades"     // Negotiating 30
   | "market-test" | "organic"                     // Market-making 30
-  | "spend-cash" | "album" | "eggs";              // instrumentales: 0 puntos directos
+  | "spend-cash" | "album" | "eggs";              // instrumental: 0 direct points
 
 export interface ObjectiveGuardrail {
   id: string;            // "hidden-never-sold", "only-spares", "dealer-loss-full"…
-  text: string;          // en inglés (UI)
-  enforcedBy: string;    // fichero que lo hace cumplir: "src/shared/asset-locks.ts"
+  text: string;          // in English (UI)
+  enforcedBy: string;    // file that enforces it: "src/shared/asset-locks.ts"
 }
 
 export interface Objective {
   id: ObjectiveId;
-  goal: string;                          // una frase: qué queremos
+  goal: string;                          // one sentence: what we want
   block: "negotiating" | "market-making" | "none";
-  weight: number;                        // puntos de 100 (30 compartido entre las tres partes de negotiating; 22,5; 7,5; 0)
+  weight: number;                        // points out of 100 (30 shared among the three negotiating parts; 22.5; 7.5; 0)
   metric: { field: keyof ScoreFields | "derived"; label: string };
   progress: {
-    now: number | null;                  // valor de la ronda, de /api/me
-    dayStart: number | null;             // primera foto del día (score-parts)
+    now: number | null;                  // value of the round, from /api/me
+    dayStart: number | null;             // first snapshot of the day (score-parts)
     prevTick: number | null;
     detail: string[];                    // "L1 3/3 (worst 1.00) · L2 3/3 · L3 2/3 (worst 0.46)"
     status: "open" | "saturated" | "behind" | "blocked" | "no-data";
   };
   owners: Route[];                       // duels | dealers | trades | markets | team-desk | broker | venue | eggs
   guardrails: ObjectiveGuardrail[];
-  levers: string[];                      // qué lo mueve hoy (sustituye a LEVERS)
+  levers: string[];                      // what moves it today (replaces LEVERS)
 }
 
 // GameState
 objectives: Objective[];
 ```
 
-Los guardarraíles **solo se citan**, nunca se reimplementan: cada uno apunta al fichero que lo hace cumplir. Si un guardarraíl no tiene `enforcedBy`, el visor lo marca en rojo («regla sin código»).
+The guardrails are **only cited**, never reimplemented: each one points to the file that enforces it. If a guardrail has no `enforcedBy`, the viewer marks it red ("rule without code").
 
-## Catálogo inicial
+## Initial catalog
 
-| id | Objetivo | Progreso (de dónde sale) | Rutas | Guardarraíles |
+| id | Goal | Progress (where it comes from) | Routes | Guardrails |
 |---|---|---|---|---|
-| `duels` | Cerrar todos los duelos dentro del límite, pronto | `duel_points`; duelos vivos, pendientes y sin respuesta de `env.duels` | duels | nunca fuera del límite; contestar todos (sin respuesta = 0); abrir con una oferta aceptable |
-| `dealer-ladder` | Llenar y mejorar los 3 huecos por nivel | `ladder_points`; huecos por nivel y la peor share (`src/dealers/history/ladder.ts`, como `DealersRoute`) | dealers | una pérdida cuenta entera; Abuela y Chato solo por una carta que queramos; Pilar y Pícaros solo si superan el peor hueco y precio ≥ valor; dealer a dealer no gana nada |
-| `team-trades` | Ganar valor privado con otros equipos (hasta 50 por trato) | `neg_points`; tratos y contrapartes de la ronda (`score-audit.jsonl`) | trades, markets (escáner, rival-*), team-desk | nunca vender bajo valor; solo repetidas (una 2.ª copia vale ¼ para nosotros); **las cartas ocultas no se venden**; nunca la última carta de una página; ≤ 2 por contraparte y hora; sin alimentar a nadie |
-| `market-test` | Igualar o superar al puesto auto en cada sesión | `bench_points`, `bench_efficiency`; sesiones de `bench-sessions.json` | venue, broker | venue abierto en cada sesión (sin venue = 0); sin cambio de mecanismo a < N ticks de un bench; broker vivo si es board |
-| `organic` | Que otros dos equipos ganen en nuestro venue | `mm_points`; `trades` de nuestro venue (`markets.venues`) | venue, broker | no podemos operar en nuestro venue; nada de tratos amañados |
-| `spend-cash` | Convertir la caja en tratos con valor antes del cierre | caja frente al tiempo que queda de ronda y torneo | todas las de compra | `--cash-floor`; solo compras con valor > precio |
-| `album` | Páginas como medio, no como fin | páginas y huecos; `pageTargets` | trades, markets | nunca vender la última carta de una página; comprar la que cierra página si la ganancia > precio |
-| `eggs` | Gloria: nunca puntúa | eggs encontrados (`world.eggs`) | eggs, dealers | sonda solo a caballo de una contraoferta; nunca sacrificar una cifra |
+| `duels` | Close all duels within the limit, early | `duel_points`; live, pending and unanswered duels from `env.duels` | duels | never outside the limit; answer all (no answer = 0); open with an acceptable offer |
+| `dealer-ladder` | Fill and improve the 3 slots per level | `ladder_points`; slots per level and the worst share (`src/dealers/history/ladder.ts`, like `DealersRoute`) | dealers | a loss counts in full; Abuela and Chato only for a card we want; Pilar and Pícaros only if they beat the worst slot and price ≥ value; dealer to dealer earns nothing |
+| `team-trades` | Win private value with other teams (up to 50 per deal) | `neg_points`; deals and counterparties of the round (`score-audit.jsonl`) | trades, markets (scanner, rival-*), team-desk | never sell below value; duplicates only (a 2nd copy is worth ¼ to us); **hidden cards are not sold**; never the last card of a page; ≤ 2 per counterparty and hour; feed nobody |
+| `market-test` | Match or beat the auto rank in every session | `bench_points`, `bench_efficiency`; sessions from `bench-sessions.json` | venue, broker | venue open in every session (no venue = 0); no mechanism change within < N ticks of a bench; broker live if board |
+| `organic` | Get two other teams to win in our venue | `mm_points`; `trades` of our venue (`markets.venues`) | venue, broker | we cannot trade in our venue; no rigged deals |
+| `spend-cash` | Convert cash into valuable deals before the close | cash versus the time left in the round and tournament | all buying routes | `--cash-floor`; only purchases with value > price |
+| `album` | Pages as a means, not an end | pages and slots; `pageTargets` | trades, markets | never sell the last card of a page; buy the one that closes a page if the gain > price |
+| `eggs` | Glory: never scores | eggs found (`world.eggs`) | eggs, dealers | probe only piggybacked on a counteroffer; never sacrifice a figure |
 
-`status` sale de reglas fijas:
-- `saturated`: el ladder de un nivel está en 3/3 con la peor share ≥ 0,95; o `organic` está en el tope (normalizado ≥ 1).
-- `behind`: hay duelos sin contestar a menos de N ticks del final.
-- `blocked`: falta caja para lo que exige el objetivo (p. ej. cambiar a board con caja < 290).
-- `no-data`: la métrica no está en `/api/me`.
+`status` comes from fixed rules:
+- `saturated`: the ladder of a level is at 3/3 with the worst share ≥ 0.95; or `organic` is at the cap (normalized ≥ 1).
+- `behind`: there are unanswered duels fewer than N ticks from the end.
+- `blocked`: not enough cash for what the goal requires (e.g. switching to board with cash < 290).
+- `no-data`: the metric is not in `/api/me`.
 
-## Dónde se calcula
+## Where it is computed
 
-- **`buildObjectives(state, ctx)`**, pura, en `src/objectives/objectives.ts`. La llama `buildGameState` al final, cuando el resto del estado ya existe, y la rellena en `GameState.objectives`.
-- **Entradas:** sin GET nuevos. Usa `ours.score` (`/api/me`), `env.duels`, la escalera (`ladder.ts`), `markets.venues` (tratos alojados), las sesiones de la sombra del broker y `score-parts.jsonl` para `dayStart` y `prevTick`.
-- **El catálogo**, es decir objetivo, peso, guardarraíles y `enforcedBy`, es una constante en ese fichero. Cambiarlo es un commit, no un flag.
+- **`buildObjectives(state, ctx)`**, pure, in `src/objectives/objectives.ts`. `buildGameState` calls it at the end, when the rest of the state already exists, and fills `GameState.objectives` with it.
+- **Inputs:** no new GETs. It uses `ours.score` (`/api/me`), `env.duels`, the ladder (`ladder.ts`), `markets.venues` (hosted deals), the broker shadow's sessions and `score-parts.jsonl` for `dayStart` and `prevTick`.
+- **The catalog**, i.e. goal, weight, guardrails and `enforcedBy`, is a constant in that file. Changing it is a commit, not a flag.
 
-## Cómo lo enseña el visor
+## How the viewer shows it
 
-- `/api/bazaar/model` ya construye el `GameState`, así que el campo llega solo. No hace falta un endpoint nuevo.
-- **Panel «Objetivos»** en la cabina, encima de «Now». Una fila por objetivo:
-  - peso en puntos (barra);
-  - métrica: ahora, Δ del día y Δ del tick;
-  - chip de estado;
-  - chips de las rutas dueñas;
-  - guardarraíles plegados, cada uno con su fichero.
-- Los instrumentales (peso 0) salen atenuados, con la etiqueta «no puntúa».
-- En «Now», cada intención ya lleva un objetivo global (`intentGoals` en `bazaar-now.ts`). Pasaría a llevar el `ObjectiveId`, para poder filtrar por objetivo.
-- `goals.levers` desaparece del modelo: lo sustituye `objectives[].levers`, así que hay una sola fuente.
+- `/api/bazaar/model` already builds the `GameState`, so the field arrives on its own. No new endpoint is needed.
+- **"Goals" panel** in the cockpit, above "Now". One row per goal:
+  - weight in points (bar);
+  - metric: now, day Δ and tick Δ;
+  - status chip;
+  - chips of the owning routes;
+  - collapsed guardrails, each with its file.
+- Instrumental goals (weight 0) appear dimmed, with the label "does not score".
+- In "Now", each intent already carries a global goal (`intentGoals` in `bazaar-now.ts`). It would carry the `ObjectiveId` instead, so it can be filtered by goal.
+- `goals.levers` disappears from the model: `objectives[].levers` replaces it, so there is a single source.
 
-## ¿Debe ordenar las rutas? Todavía no
+## Should it order the routes? Not yet
 
-**Fase 1, la que propongo ahora: solo mostrar.** Motivos:
+**Phase 1, the one I propose now: display only.** Reasons:
 
-1. **No conocemos la conversión entre métricas.** Para el ladder está medida (≈ 19 de negotiating por 1,0 de ladder). Para `neg_points` frente a score, no, y además se normaliza al top 3, así que cambia durante el día. Ordenar con pesos inventados sería peor que el `ACCEPT_PRIORITY` actual, que es explícito.
-2. **La saturación ya se aplica a mano:** dealers solo abre hilo con ganancia de ladder o por una carta que queremos (`b5dfc5c`), y está la penalización orgánica por rival (`9092fd5`). Primero conviene ver en el visor que `status` coincide con esas reglas.
+1. **We do not know the conversion between metrics.** For the ladder it is measured (≈ 19 of negotiating per 1.0 of ladder). For `neg_points` versus score it is not, and it is also normalized to the top 3, so it changes during the day. Ordering with invented weights would be worse than the current `ACCEPT_PRIORITY`, which is explicit.
+2. **Saturation is already applied by hand:** dealers only opens a thread with ladder gain or for a card we want (`b5dfc5c`), and there is the organic per-rival penalty (`9092fd5`). First it is worth seeing in the viewer that `status` matches those rules.
 
-**Fase 2, cuando `score-parts.jsonl` tenga datos para estimar puntos por unidad de cada parte:**
-- cada `Intent` lleva un `objective`;
-- `arbitrate` ordena por Δscore esperado = Δmétrica × puntos por unidad de esa métrica, en lugar de por clase fija;
-- un objetivo `saturated` deja sus intenciones en `other`, o las bloquea si el guardarraíl lo dice.
+**Phase 2, when `score-parts.jsonl` has data to estimate points per unit of each part:**
+- each `Intent` carries an `objective`;
+- `arbitrate` orders by expected Δscore = Δmetric × points per unit of that metric, instead of by fixed class;
+- a `saturated` goal leaves its intents in `other`, or blocks them if the guardrail says so.
 
-`ACCEPT_PRIORITY` se mantendría como desempate.
+`ACCEPT_PRIORITY` would be kept as a tiebreaker.
 
-## Coste y riesgos
+## Cost and risks
 
-- **Coste:** un fichero puro más su AGENTS.md, un campo en `GameState`, un panel en el visor y quitar `LEVERS`. Unas 2–3 horas.
-- **Riesgo 1:** que el catálogo se desfase como `LEVERS`. Para evitarlo, `docs:check` puede comprobar que cada `enforcedBy` existe.
-- **Riesgo 2:** que el estado se lea como orden en la fase 1. No pasa: ninguna ruta lo lee hasta la fase 2.
+- **Cost:** one more pure file plus its AGENTS.md, one field in `GameState`, one panel in the viewer and removing `LEVERS`. About 2–3 hours.
+- **Risk 1:** the catalog drifting out of date like `LEVERS`. To avoid it, `docs:check` can verify that every `enforcedBy` exists.
+- **Risk 2:** the state being read as an order in phase 1. It does not happen: no route reads it until phase 2.
 
-## Aparte: dos datos del deck que corrigen el código
+## Aside: two deck facts that correct the code
 
-- **Tope de 50 por trato entre equipos.** `src/markets/scanner.ts` tiene un `ASSUMPTION` con «cifra desconocida»: ya se conoce, es 50. Es relevante solo si un trato pasa de 50 de ganancia.
-- **Market-making = 22,5 Market Test + 7,5 tratos reales.** Confirma el peso de 0,75 que había inferido (site-map § 6.11).
+- **Cap of 50 per deal between teams.** `src/markets/scanner.ts` has an `ASSUMPTION` with "unknown figure": it is now known, it is 50. It matters only if a deal exceeds 50 of gain.
+- **Market-making = 22.5 Market Test + 7.5 real deals.** It confirms the 0.75 weight I had inferred (site-map § 6.11).

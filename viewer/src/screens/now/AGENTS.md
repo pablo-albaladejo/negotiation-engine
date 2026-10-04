@@ -1,21 +1,21 @@
-# viewer/src/screens/now/ — Pestaña «Now»
+# viewer/src/screens/now/ — «Now» tab
 
-Qué está pasando ahora mismo, en una pantalla (primera pestaña del Bazaar):
+What is happening right now, on one screen (the first Bazaar tab):
 
-0. **Radio Rastro** (justo bajo la cabecera): resumen de las noticias (insignia llm/rules y edad) y las ~6 últimas (fuente, tick, titular, cuerpo y menciones), de `/api/bazaar/news` cada 15 s. Solo mostrar: unas son ciertas, otras rumores y otras solo Madrid.
-1. **Cabecera del tick**: hora de juego, tick, ronda y peso, cuenta atrás al siguiente tick (o puertas cerradas y cuándo abren), edad del modelo y de los datos de la API, y la marca DRY-RUN (no se envía nada). «rebuilding…» si el servidor está construyendo otro modelo: se ve el último sin esperar.
-2. **Plan del tick**: intenciones SELECTED del coordinador en orden de arbitraje, con acción, a qué conversación u oferta toca, la cifra decidida por código y el objetivo (`goal.why` → objetivo global). Cupos frente a `clock.limits`; las DROPPED, plegadas con su motivo.
-3. **Conversaciones vivas**: dealers, duelos, El Rastro y venues; rondas usadas y estimadas, último precio de cada lado, turno, nuestra siguiente cifra, su siguiente precio previsto («her next ≈», ajuste por persona, solo dealers), plazo en ticks y estado (our move, waiting for them, accept pending, cooloff). Las terminadas, en una línea plegada. Cada fila abre el cajón de la conversación.
-4. **Nuestras ofertas publicadas**: venue, precio, edad, comisión y si cruzan algo; estado de nuestro venue.
-5. **Qué cambió desde el tick anterior**: foto en memoria del cliente (sobrevive al cambio de pestaña, no a recargar).
+0. **Radio Rastro** (just under the header): summary of the news (llm/rules badge and age) and the latest ~6 (source, tick, headline, body and mentions), from `/api/bazaar/news` every 15 s. Display only: some are true, some are rumors and some are Madrid-only.
+1. **Tick header**: game time, tick, round and weight, countdown to the next tick (or gates closed and when they open), age of the model and of the API data, and the DRY-RUN mark (nothing is sent). «rebuilding…» if the server is building another model: the latest one is shown without waiting.
+2. **Tick plan**: SELECTED intents from the coordinator in arbitration order, with action, which conversation or offer it targets, the figure decided by code and the goal (`goal.why` → global goal). Quotas against `clock.limits`; the DROPPED ones, collapsed with their reason.
+3. **Live conversations**: dealers, duels, El Rastro and venues; rounds used and estimated, last price of each side, turn, our next figure, their expected next price («her next ≈», per-persona fit, dealers only), deadline in ticks and status (our move, waiting for them, accept pending, cooloff). Finished ones, on a collapsed line. Each row opens the conversation drawer.
+4. **Our published offers**: venue, price, age, fee and whether they cross anything; status of our venue.
+5. **What changed since the previous tick**: in-memory snapshot on the client (survives a tab change, not a reload).
 
-- **`NowView.tsx`** — la pantalla.
-- **`RadioRastro.tsx`** — el panel «Radio Rastro» y su lectura de `/api/bazaar/news`; se muestra en la pestaña «News» ([`news/`](../news/AGENTS.md)).
-- **`nowModel.ts`** — funciones puras (`tickHeader`, `planRows`, `quotas`, `liveConversations`, `offerLines`, `snapshotOf`, `diffSnapshots`).
+- **`NowView.tsx`** — the screen.
+- **`RadioRastro.tsx`** — the «Radio Rastro» panel and its reading of `/api/bazaar/news`; shown in the «News» tab ([`news/`](../news/AGENTS.md)).
+- **`nowModel.ts`** — pure functions (`tickHeader`, `planRows`, `quotas`, `liveConversations`, `offerLines`, `snapshotOf`, `diffSnapshots`).
 
-Datos: el tablero (`/api/bazaar/board`, cada tick) y el campo `now` de `/api/bazaar/model` (solo GET). Ni valores privados ni límites; todo texto plano.
+Data: the board (`/api/bazaar/board`, every tick) and the `now` field of `/api/bazaar/model` (GET only). No private values or limits; all plain text.
 
 ## Links
 
 - ↑ [`viewer/src/screens/`](../AGENTS.md)
-- → Servidor: [`viewer/server/bazaar/`](../../../server/bazaar/AGENTS.md) (el núcleo `now` del modelo)
+- → Server: [`viewer/server/bazaar/`](../../../server/bazaar/AGENTS.md) (the model's `now` core)

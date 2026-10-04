@@ -1,27 +1,27 @@
-# test/markets/ — Guardarraíles de las rutas de mercados
+# test/markets/ — Guardrails for the market routes
 
-- **`rival-buy-epic.test.ts`** — vía épica de prueba de rival-buy (`EPIC_BUY_PARAMS`, `--rival-buy-epic`; aprobada por Pablo el 4 oct para SAL-11). Con caja, pujas abiertas, valores y titulares aleatorios, comprueba que cada puja:
-  - nunca supera el techo;
-  - solo va a los equipos de la lista;
-  - deja la caja por encima del suelo;
-  - es la única puja épica abierta a la vez.
-  - con la comisión incluida, nunca supera `--max-spend`.
+- **`rival-buy-epic.test.ts`** — rival-buy epic lane test (`EPIC_BUY_PARAMS`, `--rival-buy-epic`; approved by Pablo on 4 Oct for SAL-11). With random cash, open bids, values and holders, it checks that every bid:
+  - never exceeds the ceiling;
+  - only goes to teams on the list;
+  - leaves cash above the floor;
+  - is the only open epic bid at a time.
+  - with the commission included, never exceeds `--max-spend`.
 
-  Si ya tenemos la carta o su valor queda por debajo del techo, no sale ninguna puja nueva. Los escalones de precio son inicio, punto medio y techo. Con varias vías (`EPIC_BUY_LANES`: SAL-11 y RET-11), cada puja respeta el techo y la lista de su vía, hay una abierta como mucho por carta, y todas las que quedan abiertas juntas dejan la caja por encima del suelo. La vía abierta (RET-11) publica una sola puja sin `to` al techo, nunca por encima, y El Rastro no la cancela (sin la exención sí lo haría).
+  If we already own the card or its value is below the ceiling, no new bid is produced. The price steps are start, midpoint and ceiling. With several lanes (`EPIC_BUY_LANES`: SAL-11 and RET-11), each bid respects the ceiling and the list of its lane, at most one is open per card, and all those left open together keep cash above the floor. The open lane (RET-11) posts a single bid without `to` at the ceiling, never above it, and El Rastro does not cancel it (without the exemption it would).
 
-- **`cha-lane.test.ts`** — vía CHA de team-desk (`src/teamdesk/counter.ts`). Caso medido: con una copia de valor 11, una oferta de 72 y recompra a 10, sale una contraoferta a 72. Con copias, valores, ofertas, margen y recompra aleatorios, la última copia solo sale si hay recompra ≤ valor, si la ganancia con tope es ≥ 20 y si se vende al precio del equipo, ≥ valor + 20. Con la página completa no sale ninguna.
+- **`cha-lane.test.ts`** — team-desk CHA lane (`src/teamdesk/counter.ts`). Measured case: with one copy of value 11, an offer of 72 and a rebuy at 10, a counteroffer at 72 is produced. With random copies, values, offers, margin and rebuy, the last copy only goes out if there is a rebuy ≤ value, if the capped gain is ≥ 20 and if it is sold at the team's price, ≥ value + 20. With the page complete, none goes out.
 
-- **`room.test.ts`** — tope de Payday por contraparte (`src/markets/room.ts`). Con el caso medido (t05: +50 y luego 0), el margen queda en 0. Con registros aleatorios, el margen siempre está entre 0 y 50. Una vía épica nunca puja a un equipo con margen < `MIN_ROOM`, y cancela la puja que ya tuviera con él. La ventaja del escáner nunca supera el margen que queda con la contraparte.
+- **`room.test.ts`** — Payday cap per counterparty (`src/markets/room.ts`). With the measured case (t05: +50 and then 0), the room stays at 0. With random records, the room is always between 0 and 50. An epic lane never bids to a team with room < `MIN_ROOM`, and cancels any bid it already had with it. The scanner's edge never exceeds the room left with the counterparty.
 
-- **`workshop.test.ts`** — El Taller (`src/workshop/workshop.ts`). Con manos aleatorias (copias libres, en un anuncio nuestro, en un hilo o en otro venue), comprueba que el Taller:
-  - nunca entrega la última copia libre, una copia ocupada ni una oculta;
-  - nunca mezcla rarezas;
-  - solo cancela anuncios nuestros de las copias que entrega;
-  - propone como mucho una por tick;
-  - sin `send`, nunca llama a la API;
-  - en vivo, si en la nueva lectura una copia elegida está ocupada, ya no es nuestra o sería la última libre, no cancela nada ni hace el POST.
+- **`workshop.test.ts`** — El Taller (`src/workshop/workshop.ts`). With random hands (free copies, in one of our listings, in a thread or in another venue), it checks that the Workshop:
+  - never hands over the last free copy, a locked copy or a hidden one;
+  - never mixes rarities;
+  - only cancels our listings of the copies it hands over;
+  - proposes at most one per tick;
+  - without `send`, never calls the API;
+  - live, if in the new read a chosen copy is locked, is no longer ours or would be the last free one, it cancels nothing and makes no POST.
 
 ## Links
 
 - ↑ [`test/`](../AGENTS.md)
-- `room.test.ts` también comprueba la vía de página de rival-buy: ninguna puja supera `/api/me/value` − `pageLaneEdge`, ninguna deja la caja por debajo del suelo y todas van a `OFFER_VENUE`.
+- `room.test.ts` also checks the rival-buy page lane: no bid exceeds `/api/me/value` − `pageLaneEdge`, none leaves cash below the floor and all go to `OFFER_VENUE`.

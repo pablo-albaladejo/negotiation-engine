@@ -1,15 +1,15 @@
-# viewer/src/ui/ — Piezas pequeñas
+# viewer/src/ui/ — Small pieces
 
-- **`page-title.tsx`** — títulos de página.
-- **`states.tsx`** — estados vacíos, de carga y de error.
-- **`buttons.tsx`** — botones.
-- **`grid.ts`** — rejilla.
-- **`fold.tsx`** — sección plegable (`Fold`).
-- **`meter.tsx`** — barra de uso de un cupo (`Meter`).
-- **`sparkline.tsx`** — `Sparkline`: línea mínima de una serie (cómo converge una estimación).
-- **`use-now.ts`** — `useNow`: hora actual que se refresca sola (edades y cuentas atrás).
+- **`page-title.tsx`** — page titles.
+- **`states.tsx`** — empty, loading and error states.
+- **`buttons.tsx`** — buttons.
+- **`grid.ts`** — grid.
+- **`fold.tsx`** — collapsible section (`Fold`).
+- **`meter.tsx`** — usage bar of a quota (`Meter`).
+- **`sparkline.tsx`** — `Sparkline`: minimal line of a series (how an estimate converges).
+- **`use-now.ts`** — `useNow`: current time that refreshes itself (ages and countdowns).
 
-Lo reutilizable de verdad va en el sistema de diseño.
+Anything truly reusable goes in the design system.
 
 ## Links
 

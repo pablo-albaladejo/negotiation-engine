@@ -1,17 +1,17 @@
-# test/bazaar/ — Guardarraíles del agente
+# test/bazaar/ — Agent guardrails
 
-Un fichero por guardarraíl; ninguno llama a la API (clientes falsos en memoria).
+One file per guardrail; none calls the API (in-memory fake clients).
 
-- **`messages.test.ts`** — la única cifra del texto es la decidida (`textMatchesPrice`), también con un probe de egg (sin dígitos); toda plantilla de dealer y de duelo es amable y sin frases de la lista negra; nunca dos mensajes sin oferta seguidos.
-- **`offer-structure.test.ts`** — forma de la oferta (`checkStructure`); en una compra por rareza+set, la carta que ella nombra y ya tenemos nunca se acepta ni se oferta por encima de su valor de repetida (hilo 493, `named-card-revalue`).
-- **`asset-locks.test.ts`** — un activo en un solo sitio; El Rastro nunca anuncia un activo ocupado ni la última copia libre (la del álbum).
-- **`caps.test.ts`**, **`spend.test.ts`** — topes de gasto y caja mínima.
-- **`menu-guard.test.ts`** — no se pide lo que el menú del dealer no ofrece.
-- **`coordinator.test.ts`** — cupos de `clock.limits` (aceptaciones, mensajes por conversación, hilos, altas), un activo en un solo sitio entre rutas (y una sola venta de cada carta por tick: la puja de mercados gana al anuncio de El Rastro), y duelos v2: nunca aceptar fuera del límite, nunca dos concesiones sin contraoferta, siempre `days` si el duelo los negocia.
-- **`flags.test.ts`** — el detector de flags nunca marca cuando texto y estructura coinciden ni sin una contradicción estructural (solo tono, sin oferta); nunca por una carta de otro set que la ofrecida ni por un nombre de carta que el dealer repite de nuestra sonda o de una frase de egg (mensaje 4743); una frase de presión solo con coincidencia de la lista cerrada más contraoferta, y el detector nunca devuelve un número.
-- **`packs.test.ts`** — la ruta de sobres nunca lista un sobre cerrado por debajo de nuestro valor ni propone comprar a un dealer a la apertura o por encima, ni bajo el suelo de caja.
+- **`messages.test.ts`** — the only figure in the text is the decided one (`textMatchesPrice`), also with an egg probe (no digits); every dealer and duel template is friendly and free of blacklisted phrases; never two messages without an offer in a row.
+- **`offer-structure.test.ts`** — offer shape (`checkStructure`); in a rarity+set purchase, the card it names that we already have is never accepted or offered above its duplicate value (thread 493, `named-card-revalue`).
+- **`asset-locks.test.ts`** — an asset in one place only; El Rastro never lists a locked asset or the last free copy (the album's).
+- **`caps.test.ts`**, **`spend.test.ts`** — spending caps and minimum cash.
+- **`menu-guard.test.ts`** — we never ask for what the dealer's menu does not offer.
+- **`coordinator.test.ts`** — `clock.limits` quotas (accepts, messages per conversation, threads, sign-ups), an asset in one place only across routes (and a single sale of each card per tick: the markets bid beats the El Rastro listing), and duels v2: never accept outside the limit, never two concessions without a counteroffer, always `days` if the duel negotiates them.
+- **`flags.test.ts`** — the flag detector never flags when text and structure agree, nor without a structural contradiction (tone only, no offer); never for a card from a different set than the one offered, nor for a card name the dealer repeats from our probe or from an egg phrase (message 4743); a pressure phrase only with a match from the closed list plus a counteroffer, and the detector never returns a number.
+- **`packs.test.ts`** — the packs route never lists a sealed pack below our value nor proposes buying from a dealer at the opening price or above, nor below the cash floor.
 
 ## Links
 
 - ↑ [`test/`](../AGENTS.md)
-- → [`src/`](../../src/AGENTS.md) — lo que se prueba
+- → [`src/`](../../src/AGENTS.md) — what is tested

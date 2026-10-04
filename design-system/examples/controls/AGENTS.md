@@ -1,8 +1,8 @@
-# design-system/examples/controls/ — Ejemplos: controles y etiquetas
+# design-system/examples/controls/ — Examples: controls and labels
 
-Un ejemplo por componente, importado por el alias del paquete (`@negotiation-ring/design-system`).
+One example per component, imported through the package alias (`@negotiation-ring/design-system`).
 
-## Archivos
+## Files
 
 - **`Filters.tsx`**
 - **`Pill.tsx`**
@@ -12,4 +12,4 @@ Un ejemplo por componente, importado por el alias del paquete (`@negotiation-rin
 ## Links
 
 - ↑ [`examples/`](../AGENTS.md)
-- → Componentes: [`components/controls/`](../../src/components/controls/AGENTS.md)
+- → Components: [`components/controls/`](../../src/components/controls/AGENTS.md)

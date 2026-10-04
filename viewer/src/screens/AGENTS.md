@@ -1,26 +1,26 @@
-# viewer/src/screens/ — Pantallas
+# viewer/src/screens/ — Screens
 
-- **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Duels, Goals, Teams, Dealers), con etiquetas cortas con icono y una frase bajo las pestañas que dice qué responde; cajón de cada conversación con la curva y el camino previsto.
-- **[`now/`](now/AGENTS.md)** — la pestaña «Now»: qué está pasando ahora mismo (tick, plan del tick, conversaciones vivas, nuestras ofertas, qué cambió).
-- **[`market-test/`](market-test/AGENTS.md)** — la pestaña «Market test»: nuestras sesiones de bench en auto (v04) frente a board (v26), con el libro tick a tick y nuestros emparejamientos.
-- **[`profile/`](profile/AGENTS.md)** — nuestro perfil bajo el marcador: los easter eggs que hemos encontrado (sondeo y premio) y los de cada persona.
-- **[`venues/`](venues/AGENTS.md)** — la pestaña «Venues»: el libro de todos los venues abiertos, cada oferta marcada frente a nuestra mano y nuestros valores (NEG como quien acepta, dup, última copia), con filtros.
-- **[`forex/`](forex/AGENTS.md)** — la pestaña «Forex»: las cadenas A → B → C de `bazaar:play` (comprar, guardar, vender) con el paso actual resaltado, margen neto y peor caso.
-- **[`news/`](news/AGENTS.md)** — la pestaña «News»: señales de noticias y Radio Rastro.
-- **[`goals/`](goals/AGENTS.md)** — la pestaña «Goals»: objetivos, propuestas y registro de estrategias de `GameState.goals` (solo se muestra).
-- **[`nav/`](nav/AGENTS.md)** — enlaces entre pestañas: cualquier «tN» abre el cajón «Tick N», un equipo su perfil en Teams y un dealer su fila en Dealers.
-- **[`teams/`](teams/AGENTS.md)** — la pestaña «Teams»: todo lo que sabemos de cada equipo; cualquier nombre de equipo del visor abre esta pestaña en ese equipo.
-- **[`album/`](album/AGENTS.md)** — la pestaña «Cards»: el álbum como cromos, igual que /cards del juego: una banda por set y un cromo por carta (las que tenemos y las que faltan), con el valor, la tirada y las shinies.
-- **`DealerEstimates.tsx`** — panel «Dealer estimates» de la vista Model: por persona, parámetros (valor, intervalo, n y su convergencia), límites por banda (marca *fewSamples*); solo el lado del dealer.
-- **`Rivals.tsx`** — lo que cada equipo tiene y pide según la estructura pública (`GameState.rivals`): el panel «Opportunities» de la pestaña Teams (cartas nuestras que otro equipo pide o que lo dejan a ≤ 2 de una página), `rivalCells` (evolución del score, página más cercana, lo que pide y repetidas de cada fila de la tabla de Teams) y `TeamDetail` (score, rank y álbum en el tiempo; cada carta vista con el tick en que `/api/cards` confirmó que sigue siendo suya) para el perfil. Solo lectura.
-- **`DealerFitStrip.tsx`** — `PersonaStrategy` (dentro de la tarjeta «Strategy» del cajón: parámetros de la persona según el modelo de hoy, límite de la banda con su book, `welcome`) y la tira «Dealer fit» del cajón, junto a la tabla de ofertas: β, max_rounds, markup, espejo y ronda de retirada de esa persona (intervalo y n), límite medido de esa banda (*fewSamples*) y, si es la primera conversación con ese dealer, la marca `welcome` («limit only, not the curve»).
-- **`NewsSignals.tsx`** — tarjeta «News signals» de la pestaña News (`GameState.news`): tick y edad, fuente, titular, dirección (demand, supply, event, unknown), menciones por tipo, la marca «unverified» y el resumen del LLM. Pista, nunca una cifra.
-- **`ScoreTree.tsx`** — árbol de la puntuación en la tarjeta «Score» (valor, Δ día, Δ tick; MARKET solo nuestro venue) y `ComponentChip`, el chip de color con la parte que alimenta cada acción (columna «Feeds» del historial y detalle del trato).
-- **`TeamDesk.tsx`** — tarjeta «Team desk» de la cabina, bajo «Right now»: por equipo, cada oferta que nos hacen (to-me) → nuestra contraoferta de venta y sus bajadas → resultado, con chip NEG (`negIfFilled`, o `negDelta` al llenarse), color por estado (would, sent, filled, expired…) y total de neg ganado por equipo. Suelo y valor de servidor solo como texto secundario («local only»). Solo lectura.
-- **`Workshop.tsx`** — tarjeta «The Workshop» (El Taller) de la cabina, bajo «Our agents»: repetidas libres por rareza frente a las 3 necesarias (`ready → <siguiente>`), copias ocupadas que no cuentan, los «taller.crafted» públicos y una línea «Strategy» por rareza con la decisión de `GameState.workshop` (craft, hold o short, y por qué). Solo lectura: el POST `/api/taller` sale de `bazaar:play --workshop --confirm`.
-- **`ModelView.tsx`** — la vista Model (entorno → estado → decisión, línea de tiempo, coordinador, objetivos, mercados, venues y sobres) y `ConversationModelPanel`; además exporta las tarjetas que usan otras pestañas: `Hints` (pistas: chips por dealer, etiquetas de por qué es candidata y texto completo) y `EggsAndFlags` (plan de sondeos en tarjetas, huevos y flags uno debajo del otro) para Eggs, `Personas` para Dealers y `Prices` para Cards.
+- **`BazaarScreen.tsx`** — the Bazaar cockpit and its tabs (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Duels, Goals, Teams, Dealers), with short labels with an icon and a sentence under the tabs saying what each answers; drawer for each conversation with the curve and the planned path.
+- **[`now/`](now/AGENTS.md)** — the "Now" tab: what is happening right now (tick, tick plan, live conversations, our offers, what changed).
+- **[`market-test/`](market-test/AGENTS.md)** — the "Market test" tab: our bench sessions on auto (v04) versus board (v26), with the book tick by tick and our matches.
+- **[`profile/`](profile/AGENTS.md)** — our profile under the scoreboard: the easter eggs we have found (probe and prize) and those of each persona.
+- **[`venues/`](venues/AGENTS.md)** — the "Venues" tab: the book of all open venues, each offer marked against our hand and our values (NEG as the acceptor, dup, last copy), with filters.
+- **[`forex/`](forex/AGENTS.md)** — the "Forex" tab: the A → B → C chains of `bazaar:play` (buy, hold, sell) with the current step highlighted, net margin and worst case.
+- **[`news/`](news/AGENTS.md)** — the "News" tab: news signals and Radio Rastro.
+- **[`goals/`](goals/AGENTS.md)** — the "Goals" tab: goals, proposals and strategy registry from `GameState.goals` (display only).
+- **[`nav/`](nav/AGENTS.md)** — links between tabs: any "tN" opens the "Tick N" drawer, a team its profile in Teams and a dealer its row in Dealers.
+- **[`teams/`](teams/AGENTS.md)** — the "Teams" tab: everything we know about each team; any team name in the viewer opens this tab on that team.
+- **[`album/`](album/AGENTS.md)** — the "Cards" tab: the album as trading cards, like the game's /cards: a band per set and a card per card (those we have and those missing), with value, print run and shinies.
+- **`DealerEstimates.tsx`** — "Dealer estimates" panel of the Model view: per persona, parameters (value, interval, n and their convergence), limits per band (mark *fewSamples*); the dealer side only.
+- **`Rivals.tsx`** — what each team has and asks for according to public structure (`GameState.rivals`): the "Opportunities" panel of the Teams tab (our cards that another team asks for or that leave it within ≤ 2 of a page), `rivalCells` (score evolution, closest page, what they ask for and duplicates of each row of the Teams table) and `TeamDetail` (score, rank and album over time; each card seen with the tick at which `/api/cards` confirmed it is still theirs) for the profile. Read only.
+- **`DealerFitStrip.tsx`** — `PersonaStrategy` (inside the drawer's "Strategy" card: the persona's parameters according to today's model, band limit with its book, `welcome`) and the drawer's "Dealer fit" strip, next to the offers table: β, max_rounds, markup, mirror and withdrawal round of that persona (interval and n), measured limit of that band (*fewSamples*) and, if it is the first conversation with that dealer, the `welcome` mark ("limit only, not the curve").
+- **`NewsSignals.tsx`** — "News signals" card of the News tab (`GameState.news`): tick and age, source, headline, direction (demand, supply, event, unknown), mentions by type, the "unverified" mark and the LLM summary. A hint, never a figure.
+- **`ScoreTree.tsx`** — score tree in the "Score" card (value, Δ day, Δ tick; MARKET only our venue) and `ComponentChip`, the colored chip with the part each action feeds (the "Feeds" column of the history and the deal detail).
+- **`TeamDesk.tsx`** — "Team desk" card of the cockpit, under "Right now": per team, each offer made to us (to-me) → our sell counter-offer and its drops → outcome, with a NEG chip (`negIfFilled`, or `negDelta` once filled), color by status (would, sent, filled, expired…) and total neg earned per team. Floor and server value only as secondary text ("local only"). Read only.
+- **`Workshop.tsx`** — "The Workshop" (El Taller) card of the cockpit, under "Our agents": free duplicates by rarity versus the 3 needed (`ready → <next>`), occupied copies that do not count, the public "taller.crafted" and a "Strategy" line per rarity with the decision from `GameState.workshop` (craft, hold or short, and why). Read only: the POST `/api/taller` comes from `bazaar:play --workshop --confirm`.
+- **`ModelView.tsx`** — the Model view (environment → state → decision, timeline, coordinator, goals, markets, venues and packs) and `ConversationModelPanel`; it also exports the cards used by other tabs: `Hints` (hints: chips per dealer, labels for why it is a candidate and full text) and `EggsAndFlags` (probe plan as cards, eggs and flags one under the other) for Eggs, `Personas` for Dealers and `Prices` for Cards.
 
-Solo texto plano: nada de HTML inyectado.
+Plain text only: no injected HTML.
 
 ## Links
 
@@ -35,4 +35,4 @@ Solo texto plano: nada de HTML inyectado.
 - ↓ [`nav/`](nav/AGENTS.md)
 - ↓ [`teams/`](teams/AGENTS.md)
 - ↓ [`forex/`](forex/AGENTS.md)
-- → Lógica: [`model/`](../model/AGENTS.md) · Piezas: [`ui/`](../ui/AGENTS.md)
+- → Logic: [`model/`](../model/AGENTS.md) · Pieces: [`ui/`](../ui/AGENTS.md)

@@ -1,118 +1,118 @@
-# El Bazaar — Semana 1, Sábado 3 de octubre
+# El Bazaar — Week 1, Saturday 3 October
 
-**Entrada para el día 2** — resumen de dónde estamos, cómo jugar y qué viene. Detalles en [`handoff/2026-10-02/HANDOFF.md`](handoff/2026-10-02/HANDOFF.md).
+**Entry point for day 2** — summary of where we are, how to play and what comes next. Details in [`handoff/2026-10-02/HANDOFF.md`](handoff/2026-10-02/HANDOFF.md).
 
-## Estado
+## Status
 
-- **Equipo 2:** rango **17 de 18**, puntuación **6.84** (toda en negociación; mercado 0, duelos 0, escalera 0.047).
-- **Cartera:** efectivo 40, nivel 2, 7 tratos hechos, álbum 19/40 (0 páginas completas).
-- **Urgencia:** página SAL necesita solo **SAL-09** (rara, valor ~177). Los 3 líderes ya tienen páginas completas.
+- **Team 2:** rank **17 of 18**, score **6.84** (all of it in negotiation; market 0, duels 0, ladder 0.047).
+- **Portfolio:** cash 40, level 2, 7 deals done, album 19/40 (0 complete pages).
+- **Urgency:** the SAL page needs only **SAL-09** (rare, value ~177). The 3 leaders already have complete pages.
 
-## Cómo se juega
+## How it is played
 
-El Bazaar es un torneo de cromos de Madrid. Negociamos con dealers (Abuela Carmen, El Chato) para comprar cartas que faltan y vender repetidas. Un agente por dealer (código, HTTP); duelos 1 contra 1 contra otros equipos (precio y fechas de entrega). Las decisiones salen del motor (números), el texto es una plantilla. Nunca se revela la valoración privada.
+El Bazaar is a trading-card tournament set in Madrid. We negotiate with dealers (Abuela Carmen, El Chato) to buy missing cards and sell duplicates. One agent per dealer (code, HTTP); 1-on-1 duels against other teams (price and delivery dates). Decisions come from the engine (numbers), the text is a template. The private valuation is never revealed.
 
-- **Dealers:** cada uno tiene paciencia, límite de precios y un menú de cartas que compra/vende. Negociamos hasta cerrar.
-- **Duelos:** mensaje + oferta por tick, una aceptación por tick. Los números juegan en excedente (cuánto ganamos vs. el rival).
-- **Puntuación:** relativa al campo, se refresca cada 5 tics. Hay neg_points (comparación con una referencia de mercado), puntos de escalera (nivel, cartas) y del mercado si abrimos uno.
+- **Dealers:** each has patience, a price limit and a menu of cards it buys/sells. We negotiate until we close.
+- **Duels:** message + offer per tick, one acceptance per tick. The numbers play on surplus (how much we gain vs. the rival).
+- **Scoring:** relative to the field, refreshed every 5 ticks. There are neg_points (comparison against a market reference), ladder points (level, cards) and market points if we open one.
 
-## El juego mañana (sábado)
+## The game tomorrow (Saturday)
 
-| Hora | Evento |
+| Time | Event |
 |---|---|
-| **4.0** | Ronda 2: el efectivo se mantiene, se libera el set El Retiro |
-| **4.05** | **+150 P para cada equipo** (gastar en SAL-09) |
-| 6.5 | Duelos I (solo precio) |
-| 13.0 | Duelos II (precio + fechas) |
-| 18.0 | Ronda 3 y set Chamberi |
-| 20.0 | Duelos III |
+| **4.0** | Round 2: cash carries over, the El Retiro set is released |
+| **4.05** | **+150 P for every team** (spend on SAL-09) |
+| 6.5 | Duels I (price only) |
+| 13.0 | Duels II (price + dates) |
+| 18.0 | Round 3 and the Chamberi set |
+| 20.0 | Duels III |
 | 23.0 | Grand Final |
-| 24.0 | Congelación |
+| 24.0 | Freeze |
 
-**Tick:** sábado 30 s, domingo 15 s. Límites por tick: 1 aceptación, 1 mensaje por hilo, 6 hilos abiertos, 30 ofertas y 12 nuevas.
+**Tick:** Saturday 30 s, Sunday 15 s. Limits per tick: 1 acceptance, 1 message per thread, 6 open threads, 30 offers and 12 new ones.
 
-## Cómo empezar el sábado por la mañana
+## How to start on Saturday morning
 
-En una máquina nueva:
+On a new machine:
 ```bash
 git clone https://github.com/pablo-albaladejo/negotiation-ring.git && cd negotiation-ring
 pnpm i --frozen-lockfile
-pnpm test            # esperar 314/314
+pnpm test            # expect 314/314
 ```
 
-Antes de las 09:00 (hora de Madrid), arrancar **todos** (el juego fue pausado):
+Before 09:00 (Madrid time), start **everything** (the game was paused):
 ```bash
-pnpm bazaar:duels                                    # duelos
+pnpm bazaar:duels                                    # duels
 pnpm bazaar:trades --confirm --min-margin 3 --max-spend 40 --max-offers 8   # El Rastro
-pnpm bazaar --serious --cash-floor 20 --dry-run --once   # revisar el plan
-pnpm bazaar --serious --cash-floor 20                    # dealers, si el plan es correcto
+pnpm bazaar --serious --cash-floor 20 --dry-run --once   # review the plan
+pnpm bazaar --serious --cash-floor 20                    # dealers, if the plan is correct
 set -a && . ./.env && set +a && VIEWER_RESULTS_DIR="$PWD/results/eval-dummy" pnpm viewer   # http://127.0.0.1:5199/#bazaar
 ```
 
-Para ver las conversaciones en vivo:
+To watch the conversations live:
 ```bash
-set -a && . ./.env && set +a && pnpm bazaar:feed   # solo lectura
+set -a && . ./.env && set +a && pnpm bazaar:feed   # read-only
 ```
 
-## Cambios hoy (viernes)
+## Changes today (Friday)
 
-Se arreglaron los duelos (leer `from`, no solo `sender`), se añadieron guardarraíles de seguridad (estructura de oferta, locks de activos, precio real), se midieron rasgos de El Chato (paciencia 8, máximo paso 1 P, ancla ~22 para infrecuentes), y se mejoró el planificador:
-- Nunca vender la única copia de una carta en una página ≥ 70 % completa.
-- Ancla de venta capped a 1,3× precio de lista del dealer.
-- Nuevo: regla "opening-last-chance" para negociar hasta el final.
+The duels were fixed (read `from`, not just `sender`), safety guardrails were added (offer structure, asset locks, real price), El Chato's traits were measured (patience 8, maximum step 1 P, anchor ~22 for uncommons), and the planner was improved:
+- Never sell the only copy of a card on a page that is ≥ 70 % complete.
+- Sale anchor capped at 1.3× the dealer's list price.
+- New: "opening-last-chance" rule to negotiate until the end.
 
-El visor está unificado en la pestaña `#bazaar` con `/api/bazaar/board`.
+The viewer is unified in the `#bazaar` tab with `/api/bazaar/board`.
 
-## Prioridades sábado
+## Saturday priorities
 
-1. A hora **4.05**, con los **+150 P**, comprar **SAL-09**. Vender repetidas en El Rastro.
-2. Duelos: desde el primer tic que puntúa (Duelos I, hora 6.5). Verificar que aceptaciones y matches atraviesan.
-3. **Mercado v04:** decidir si cambiamos a `board` para que el broker capture valor en el Market Test.
-4. Modo serio: El Chato solo donde mejora la escalera; todo lo demás a El Rastro.
-5. Monitor: reducir uso de disco, verificar ≤ 300 eventos de feed por ciclo.
+1. At **4.05**, with the **+150 P**, buy **SAL-09**. Sell duplicates at El Rastro.
+2. Duels: from the first tick that scores (Duels I, hour 6.5). Verify that acceptances and matches go through.
+3. **Market v04:** decide whether we switch to `board` so the broker captures value in the Market Test.
+4. Serious mode: El Chato only where it improves the ladder; everything else to El Rastro.
+5. Monitor: reduce disk usage, verify ≤ 300 feed events per cycle.
 
-## Datos medidos (dealers)
+## Measured data (dealers)
 
-- **Abuela:** lista común 10, infrecuente 25, pack 26; cae a precio de lista en 1–3 mensajes; se va si repetimos precio.
-- **El Chato:** solo infrecuentes y raras; infrecuente 13→16 P en 3–5 mensajes; rara 39→46 P; vende infrecuentes a 28–32, raras a 82–93.
-- **El Rastro:** infrecuentes a 18–21, comisión 5 % + 1 P. Paga más por nuestras repetidas.
+- **Abuela:** list common 10, uncommon 25, pack 26; falls to list price in 1–3 messages; leaves if we repeat a price.
+- **El Chato:** only uncommons and rares; uncommon 13→16 P in 3–5 messages; rare 39→46 P; sells uncommons at 28–32, rares at 82–93.
+- **El Rastro:** uncommons at 18–21, fee 5 % + 1 P. It pays more for our duplicates.
 
-## Dónde está todo
+## Where everything is
 
-- **Planes y trazas:** `results/bazaar-live/2026-10-02/` (decisions.jsonl, thread-*.jsonl, score.jsonl, duels-state.json).
-- **Traspaso del día 1:** `handoff/2026-10-02/HANDOFF.md` (sesiones y scratchpad solo en la máquina de Pablo, fuera de git).
-- **Código:** `src/` (dealers, duels, trades, broker, venue…).
-- **Lecciones:** `docs/bazaar/lessons.json`, actualizado tras cada hilo.
-- **Original del Bazaar:** `docs/bazaar/kit/`.
+- **Plans and traces:** `results/bazaar-live/2026-10-02/` (decisions.jsonl, thread-*.jsonl, score.jsonl, duels-state.json).
+- **Day 1 handoff:** `handoff/2026-10-02/HANDOFF.md` (sessions and scratchpad only on Pablo's machine, outside git).
+- **Code:** `src/` (dealers, duels, trades, broker, venue…).
+- **Lessons:** `docs/bazaar/lessons.json`, updated after every thread.
+- **Bazaar original:** `docs/bazaar/kit/`.
 
-## Problemas abiertos
+## Open problems
 
-- Dedupe de eventos del feed (el sniffer ya no está en este árbol; se ejecuta en la vieja Mac).
-- Decidir si v04 pasa a `board` (entonces el broker gana).
-- Vigilar que El Rastro no cae del límite de 300 req/s.
+- Feed event dedupe (the sniffer is no longer in this tree; it runs on the old Mac).
+- Decide whether v04 moves to `board` (then the broker wins).
+- Make sure El Rastro does not fall below the 300 req/s limit.
 
 ---
 
-**Próximo paso:** `pnpm test && pnpm docs:check` para verificar que el árbol está limpio. Luego seguir con duelos, traders y el agente serio.
+**Next step:** `pnpm test && pnpm docs:check` to verify that the tree is clean. Then continue with duels, traders and the serious agent.
 
-Para contexto completo de la arquitectura, leer [`AGENTS.md`](AGENTS.md) y [`src/AGENTS.md`](src/AGENTS.md).
+For the full architecture context, read [`AGENTS.md`](AGENTS.md) and [`src/AGENTS.md`](src/AGENTS.md).
 
-## Escaneo de la API (sábado 00:11, partida en pausa, tick 159)
+## API scan (Saturday 00:11, game paused, tick 159)
 
-`pnpm bazaar:scan` (con `.env` y `.env.broker` cargados) hace GET a todos los endpoints y guarda las respuestas en `results/bazaar-live/<fecha>/api-scan-HHMM.json`. Primeros escaneos: `results/bazaar-live/2026-10-03/api-scan-0011.json` y `results/bazaar-live/2026-10-02/api-scan-0016.json`. Todos los endpoints dan 200.
+`pnpm bazaar:scan` (with `.env` and `.env.broker` loaded) makes a GET to every endpoint and saves the responses in `results/bazaar-live/<date>/api-scan-HHMM.json`. First scans: `results/bazaar-live/2026-10-03/api-scan-0011.json` and `results/bazaar-live/2026-10-02/api-scan-0016.json`. All endpoints return 200.
 
-- **`/api/cards/{id}`** pide el **id numérico del asset** (p. ej. `/api/cards/438` → SAL-07 con su historial), no la ref: `/api/cards/SAL-09` da 422. Para el valor de una ref usa `/api/me/value?card=SAL-09`.
-- **`/api/flags`** solo admite POST (GET da 404). **`/api/broker/book`** pide `X-Broker-Key` (con la de equipo da 401): devuelve `offers`, `bench_offers` y `recent`.
-- **`/api/dealers`** devuelve la lista en la clave `personas`.
-- **Market Test en la hora 3, antes de la ronda 2:** el mismo libro sintético para todos los venues (10 traders, 16 ticks). Un venue `auto` saca la mitad de los puntos; para los puntos completos hace falta `board` y un broker activo.
-- **Hora 4.05:** todos reciben un sobre de El Retiro y 150 P.
-- **Afinidad por set:** RET 1,6 · SAL 1,3 · CHA 1,1 · MAL 0,9 · LAT 0,7 · LAV 0,5. El Retiro es el set que más nos vale.
-- **Reglas de valor (`/api/catalog`):** la 2.ª copia vale el 25 % y la 3.ª el 10 %; página completa +25 %; todas las versiones de una carta +10 %. Existe un **sobre de oro** (valor esperado 410).
-- **SAL-09:** en El Rastro solo hay ofertas de compra (7 y 8 P). Nadie la vende y no hay ninguna rara a la venta.
-- **Duelos vivos durante la pausa:** 177 (vendemos, límite 66), 178 (compramos, límite 78), 300 (compramos, límite 116; el rival pide 119).
+- **`/api/cards/{id}`** wants the asset's **numeric id** (e.g. `/api/cards/438` → SAL-07 with its history), not the ref: `/api/cards/SAL-09` returns 422. For a ref's value use `/api/me/value?card=SAL-09`.
+- **`/api/flags`** only accepts POST (GET returns 404). **`/api/broker/book`** wants `X-Broker-Key` (with the team key it returns 401): it returns `offers`, `bench_offers` and `recent`.
+- **`/api/dealers`** returns the list under the key `personas`.
+- **Market Test at hour 3, before round 2:** the same synthetic book for all venues (10 traders, 16 ticks). An `auto` venue gets half the points; for full points you need `board` and an active broker.
+- **Hour 4.05:** everyone receives an El Retiro pack and 150 P.
+- **Set affinity:** RET 1.6 · SAL 1.3 · CHA 1.1 · MAL 0.9 · LAT 0.7 · LAV 0.5. El Retiro is the set most valuable to us.
+- **Value rules (`/api/catalog`):** the 2nd copy is worth 25 % and the 3rd 10 %; complete page +25 %; all versions of a card +10 %. There is a **gold pack** (expected value 410).
+- **SAL-09:** at El Rastro there are only buy offers (7 and 8 P). Nobody sells it and no rare is for sale.
+- **Duels live during the pause:** 177 (we sell, limit 66), 178 (we buy, limit 78), 300 (we buy, limit 116; the rival asks 119).
 
-## Venue v04: no se puede pasar a `board`
+## Venue v04: it cannot be switched to `board`
 
-- `PATCH /api/venues/v04` solo cambia comisiones. Sin `fee_bps` da 400 ("send fee_bps"). Con `fee_bps` da 200, pero **ignora `rules`**: v04 sigue en `auto`. (Quedó anunciado un cambio de comisión 0 → 0, efectivo en el tick 161, sin efecto.)
-- **Solo se puede reabriendo:** cerrar v04 y abrir otro venue con `{"rules": {"mechanism": "board"}}`. Cuesta 250 de fianza (se devuelve) + 20 P. La fianza de v04 vuelve solo tras un periodo de espera, y cada Market Test cuenta solo el venue abierto durante la sesión.
-- **Decisión pendiente para el sábado:** con 40 P de caja no llegamos. Para la prueba de la hora 3 nos quedamos en `auto` (mitad segura). Después, con los +150 de la hora 4.05 y las ventas de repetidas, elegir entre comprar **SAL-09** y abrir un venue **`board`** con el broker (`pnpm bazaar:broker --confirm`). Si se abre el nuevo, cerrar v04 después, nunca antes.
+- `PATCH /api/venues/v04` only changes fees. Without `fee_bps` it returns 400 ("send fee_bps"). With `fee_bps` it returns 200, but it **ignores `rules`**: v04 stays `auto`. (A fee change 0 → 0, effective at tick 161, was announced, with no effect.)
+- **It can only be done by reopening:** close v04 and open another venue with `{"rules": {"mechanism": "board"}}`. It costs 250 deposit (refunded) + 20 P. v04's deposit only comes back after a waiting period, and each Market Test counts only the venue open during the session.
+- **Pending decision for Saturday:** with 40 P of cash we cannot afford it. For the hour-3 test we stay on `auto` (safe half). Afterwards, with the +150 from hour 4.05 and duplicate sales, choose between buying **SAL-09** and opening a **`board`** venue with the broker (`pnpm bazaar:broker --confirm`). If the new one is opened, close v04 afterwards, never before.

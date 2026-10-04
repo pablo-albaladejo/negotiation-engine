@@ -1,10 +1,10 @@
-# src/packs/ — Sobres
+# src/packs/ — Packs
 
-Estado de los sobres y ruta PACKS: abrir, vender cerrado y comprar (en pausa). Toda cifra por `enforceGuardrails`.
+State of the packs and the PACKS route: open, sell sealed and buy (paused). Every figure through `enforceGuardrails`.
 
-## Archivos
+## Files
 
-- **`packs.ts`** — `buildPacks` (`GameState.packs`): sobres cerrados nuestros (id, tipo, `your_value`) y, por tipo, huecos del catálogo ajustados al suministro con `adjustSlots` (si una rareza llega a su tirada, `PRINT_RUNS`, el hueco cae a la inferior), book esperado, nuestro valor estimado (carta a carta: media por rareza de nuestros valores, y una carta que ya tenemos a su valor de la copia siguiente con `nextCopyValue`), dealers que lo venden (lista y apertura), mejor ask y bid en El Rastro y último trato del feed. `proposePacks`: COMPRAR a un dealer está **en pausa** (compra a ciegas: lo que sale de un sobre puntúa como *luck*, RULES.md:122; decisión del 3 oct): solo deja una nota con el trato esperado y el camino del negociador por `enforceGuardrails`, y el agente de dealers solo propone `{buy: {pack}}` con `blindBuys`, que `bazaar:play` no pasa (ver [`src/dealers/`](../dealers/AGENTS.md)); ABRIR cada sobre cerrado salvo que venderlo cerrado gane; VENDER cerrado en El Rastro cuando la mejor puja supera nuestro valor (nunca por debajo). Los sobres del grant_all de la agenda y del premio de desbloqueo se anuncian para abrirse al llegar. `executePacks` (solo en vivo con --confirm): abrir con `POST /api/packs/{id}/open` y listar. **ASSUMPTIONS** (`PACK_ASSUMPTIONS`): `/api/me/value` no acepta sobres (comprobado: unknown_card), así que el valor de un sobre ajeno es una media por rareza (sigue llevando el bonus de página de las cartas que faltan: cota alta, no cifra de compra); abrir no gasta el cupo de aceptaciones (sin verificar).
+- **`packs.ts`** — `buildPacks` (`GameState.packs`): our sealed packs (id, type, `your_value`) and, per type, catalog slots adjusted to supply with `adjustSlots` (if a rarity reaches its print run, `PRINT_RUNS`, the slot falls to the lower one), expected book, our estimated value (card by card: average per rarity of our values, and a card we already have at the value of the next copy with `nextCopyValue`), dealers that sell it (list and opening), best ask and bid at El Rastro and last deal from the feed. `proposePacks`: BUYING from a dealer is **paused** (blind buy: what comes out of a pack scores as *luck*, RULES.md:122; decision of 3 Oct): it only leaves a note with the expected deal and the negotiator's path through `enforceGuardrails`, and the dealers agent only proposes `{buy: {pack}}` with `blindBuys`, which `bazaar:play` does not pass (see [`src/dealers/`](../dealers/AGENTS.md)); OPEN each sealed pack unless selling it sealed wins; SELL sealed at El Rastro when the best bid exceeds our value (never below). Packs from the agenda's grant_all and from the unlock prize are announced to be opened on arrival. `executePacks` (live only with --confirm): open with `POST /api/packs/{id}/open` and list. **ASSUMPTIONS** (`PACK_ASSUMPTIONS`): `/api/me/value` does not accept packs (verified: unknown_card), so the value of someone else's pack is an average per rarity (it still carries the page bonus of the missing cards: an upper bound, not a buying figure); opening does not spend the acceptance quota (unverified).
 
 ## Links
 
@@ -12,4 +12,4 @@ Estado de los sobres y ruta PACKS: abrir, vender cerrado y comprar (en pausa). T
 - → [`coordinator/`](../coordinator/AGENTS.md)
 - → [`test/`](../../test/AGENTS.md)
 
-**Venue (Pablo, 4 oct):** la venta de un sobre cerrado se publica solo en v21 (`OFFER_VENUE`, de [`src/shared/offer-venue.ts`](../shared/AGENTS.md)), que tiene comisión del 0 %. El precio sigue saliendo del código, nunca por debajo de nuestro valor.
+**Venue (Pablo, 4 Oct):** the sale of a sealed pack is posted only at v21 (`OFFER_VENUE`, from [`src/shared/offer-venue.ts`](../shared/AGENTS.md)), which has a 0 % fee. The price still comes from the code, never below our value.

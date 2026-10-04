@@ -1,8 +1,8 @@
-# design-system/examples/ — Ejemplos de uso
+# design-system/examples/ — Usage examples
 
-Ejemplos de la interfaz del visor (datos de ejemplo en inglés), uno por componente y por familia, como en `../src/components/`. Solo importan del paquete (`@negotiation-ring/design-system`).
+Examples of the viewer interface (sample data in English), one per component and per family, as in `../src/components/`. They only import from the package (`@negotiation-ring/design-system`).
 
-- **`ViewerScreen.tsx`** — la pantalla completa del visor compuesta con los componentes.
+- **`ViewerScreen.tsx`** — the viewer's full screen composed from the components.
 - [`layout/`](layout/AGENTS.md) · [`controls/`](controls/AGENTS.md) · [`charts/`](charts/AGENTS.md) · [`data/`](data/AGENTS.md)
 
 ## Links

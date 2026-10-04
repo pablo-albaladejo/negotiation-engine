@@ -1,12 +1,12 @@
 # docs/bazaar/ — El Bazaar
 
-- **`lessons.json`** — una lección por conversación con un dealer (la escribe `src/dealers/history/lessons.ts`; solo añade; hoy solo la lee el visor, el coordinador no).
-- **[`site-map.md`](site-map.md)** — mapa de bazaar.causaprima.ai: páginas, los 84 endpoints de la API, eventos, datos del juego (calendario, programa, catálogo, dealers, venues) y hallazgos.
-- **[`personas.md`](personas.md)** — personas reconstruidas desde el frontend: esquema YAML, rasgos y frases del prompt, estrategia de precio, plantillas, juez, regalos, eggs, pistas, tricksters, voz y métricas.
-- **[`dealer-fit-2026-10-03.md`](dealer-fit-2026-10-03.md)** — ajuste offline de Abuela y El Chato con nuestros hilos y el feed público: parámetros, bandas, error de predicción, lo no identificable y sorpresas. Prior del ajuste por persona (src/dealers/history).
-- **[`neg-points-formula.md`](neg-points-formula.md)** — fórmula medida de neg_points (valor ganado a valor privado, sin tope, comisión no restada): tabla de contraste, ejemplo RET-02 y cautelas.
-- **[`bundles/`](bundles/AGENTS.md)** — copia del frontend público (3 oct), fuente del modelo de precio de los dealers (site-map § 8).
-- **[`kit/`](kit/AGENTS.md)** — kit oficial del Bazaar: reglas, SDK de Python y agentes de ejemplo.
+- **`lessons.json`** — one lesson per conversation with a dealer (written by `src/dealers/history/lessons.ts`; append-only; today only the viewer reads it, the coordinator does not).
+- **[`site-map.md`](site-map.md)** — map of bazaar.causaprima.ai: pages, the 84 API endpoints, events, game data (calendar, program, catalog, dealers, venues) and findings.
+- **[`personas.md`](personas.md)** — personas reconstructed from the frontend: YAML schema, prompt traits and phrases, price strategy, templates, judge, gifts, eggs, hints, tricksters, voice and metrics.
+- **[`dealer-fit-2026-10-03.md`](dealer-fit-2026-10-03.md)** — offline fit of Abuela and El Chato with our threads and the public feed: parameters, bands, prediction error, what is not identifiable and surprises. Per-persona prior of the fit (src/dealers/history).
+- **[`neg-points-formula.md`](neg-points-formula.md)** — measured neg_points formula (value gained at private value, uncapped, fee not subtracted): contrast table, RET-02 example and caveats.
+- **[`bundles/`](bundles/AGENTS.md)** — copy of the public frontend (3 Oct), source of the dealers' price model (site-map § 8).
+- **[`kit/`](kit/AGENTS.md)** — official Bazaar kit: rules, Python SDK and example agents.
 
 ## Links
 

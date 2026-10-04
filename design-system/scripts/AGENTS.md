@@ -1,6 +1,6 @@
 # design-system/scripts/ — Build
 
-- **`build.mjs`** — `pnpm --dir design-system build`: esbuild de `../src/index.ts` a ESM y CommonJS y de `../src/styles.css`, todo en `dist/` (ignorado por git); los tipos los emite TypeScript después.
+- **`build.mjs`** — `pnpm --dir design-system build`: esbuild of `../src/index.ts` to ESM and CommonJS and of `../src/styles.css`, all into `dist/` (ignored by git); the types are emitted by TypeScript afterwards.
 
 ## Links
 

@@ -1,19 +1,19 @@
-# Visor del Bazaar
+# Bazaar viewer
 
-Visor local de la partida del Bazaar: conversaciones con dealers, duelos, El Rastro, nuestra cifra y el mercado.
+Local viewer of the Bazaar game: conversations with dealers, duels, El Rastro, our figure and the market.
 
 ```bash
-pnpm --dir viewer install   # una vez
-set -a && . ./.env && set +a && pnpm viewer   # http://127.0.0.1:5199/#bazaar (VIEWER_PORT cambia el puerto)
+pnpm --dir viewer install   # once
+set -a && . ./.env && set +a && pnpm viewer   # http://127.0.0.1:5199/#bazaar (VIEWER_PORT changes the port)
 pnpm viewer:typecheck
 ```
 
-## Seguridad
+## Security
 
-- Escucha **solo en `127.0.0.1`**; la dirección no es configurable, solo el puerto (`VIEWER_PORT`).
-- **Sin autenticación**, a propósito: nadie fuera de esta máquina puede conectarse. Un `Host` distinto de `127.0.0.1:<puerto>` o `localhost:<puerto>` recibe 403 (DNS rebinding).
-- Solo `GET` y `HEAD` (405 para el resto). Hacia el Bazaar solo hace GET, a ≤ 2 req/s, y nunca devuelve la clave.
-- El texto de los rivales se muestra como texto, nunca como HTML.
+- Listens **only on `127.0.0.1`**; the address is not configurable, only the port (`VIEWER_PORT`).
+- **No authentication**, on purpose: nobody outside this machine can connect. A `Host` other than `127.0.0.1:<port>` or `localhost:<port>` gets 403 (DNS rebinding).
+- Only `GET` and `HEAD` (405 for the rest). Towards the Bazaar it only does GET, at ≤ 2 req/s, and never returns the key.
+- Rivals' text is shown as text, never as HTML.
 
 ## API
 

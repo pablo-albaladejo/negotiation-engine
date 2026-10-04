@@ -1,22 +1,22 @@
-# agents — un agente por sesión de Claude Code
+# agents — one agent per Claude Code session
 
-Cada sesión de Claude Code que trabaja en el repo es un **agente** con un rol fijo. Aquí está la ficha de cada uno: misión, fronteras, prompt literal de arranque, procesos, estado, ficheros clave y con quién habla. Si se cierran las sesiones, con esto se relanza todo. Padre: [`AGENTS.md`](../AGENTS.md).
+Each Claude Code session that works on the repo is an **agent** with a fixed role. Here is the card of each one: mission, boundaries, literal startup prompt, processes, state, key files and who it talks to. If the sessions are closed, this is enough to relaunch everything. Parent: [`AGENTS.md`](../AGENTS.md).
 
-Fichas recogidas por entrevista a cada sesión el 4 oct de 2026 (~10:00–10:10). El apartado «Estado» de cada ficha es una **foto de ese momento**: al relanzar, mandan git, `results/state/` y los logs.
+Cards gathered by interviewing each session on 4 Oct 2026 (~10:00–10:10). The «State» section of each card is a **snapshot of that moment**: when relaunching, git, `results/state/` and the logs rule.
 
-## Subcarpetas
+## Subfolders
 
 - [`ops/`](ops/AGENTS.md): coordinator, goals, ui, agents-keeper
-- [`routes/`](routes/AGENTS.md): trader, team-trades, dealers, broker, duels, eggs, packs, workshop (y team-desk, retirado)
+- [`routes/`](routes/AGENTS.md): trader, team-trades, dealers, broker, duels, eggs, packs, workshop (and team-desk, retired)
 - [`analysis/`](analysis/AGENTS.md): audit, leaderboard-analyst, market-analyst
-- [`tools/`](tools/AGENTS.md): scripts y notas de sesión que antes vivían en un scratchpad
+- [`tools/`](tools/AGENTS.md): scripts and session notes that used to live in a scratchpad
 
-## Mapa agente → sesión (4 oct)
+## Agent → session map (4 Oct)
 
-Los prompts nombran a otras sesiones por su **agente**. Al relanzar, el nombre de cada sesión será otro: el coordinator hace un roll call y actualiza esta tabla.
+The prompts name other sessions by their **agent**. When relaunching, each session's name will be different: the coordinator does a roll call and updates this table.
 
-| Agente | Sesión el 4 oct | Ficha |
-|--------|-----------------|-------|
+| Agent | Session on 4 Oct | Card |
+|-------|------------------|------|
 | coordinator | cockpit-dashboard-ui-update | [ops/coordinator.md](ops/coordinator.md) |
 | goals | negotiation-ring-ad | [ops/goals.md](ops/goals.md) |
 | ui | UI | [ops/ui.md](ops/ui.md) |
@@ -32,25 +32,25 @@ Los prompts nombran a otras sesiones por su **agente**. Al relanzar, el nombre d
 | leaderboard-analyst | negotiation-ring-08 | [analysis/leaderboard-analyst.md](analysis/leaderboard-analyst.md) |
 | market-analyst | negotiation-ring-34 | [analysis/market-analyst.md](analysis/market-analyst.md) |
 | agents-keeper | negotiation-ring-10 | [ops/agents-keeper.md](ops/agents-keeper.md) |
-| team-desk (retirado) | negotiation-ring-98 | [routes/team-desk.md](routes/team-desk.md) |
+| team-desk (retired) | negotiation-ring-98 | [routes/team-desk.md](routes/team-desk.md) |
 
-## Cómo relanzar todo
+## How to relaunch everything
 
-1. **Procesos en vivo** (orden y comandos en [ops/coordinator.md](ops/coordinator.md)):
-   1. Pablo lanza `bazaar:up` en un TTY.
-   2. Se relanzan el bucle del broker en vivo y el proceso de intros.
-   3. goals y audit lanzan sus propios procesos.
-2. **Sesiones**: abrir primero el coordinator, después goals y luego una sesión por ficha de `routes/` y `analysis/` (packs, market-analyst y leaderboard-analyst solo si hacen falta). Pegar el bloque «Prompt de arranque» de cada ficha. Conviene renombrar cada sesión con el nombre de su agente: así se le pueden mandar mensajes desde otras sesiones por ese nombre.
-3. **Roll call**: el coordinator confirma quién está vivo y cada agente rearma sus Monitors. Los scripts que vivían en un scratchpad se recrean desde la descripción de su ficha.
+1. **Live processes** (order and commands in [ops/coordinator.md](ops/coordinator.md)):
+   1. Pablo launches `bazaar:up` in a TTY.
+   2. The live broker loop and the intros process are relaunched.
+   3. goals and audit launch their own processes.
+2. **Sessions**: open the coordinator first, then goals and then one session per card in `routes/` and `analysis/` (packs, market-analyst and leaderboard-analyst only if needed). Paste each card's «Startup prompt» block. It is advisable to rename each session with its agent's name: that way messages can be sent to it from other sessions by that name.
+3. **Roll call**: the coordinator confirms who is alive and each agent rearms its Monitors. Scripts that lived in a scratchpad are recreated from the description on their card.
 
-## Reglas comunes (resumen; mandan [`AGENTS.md`](../AGENTS.md), `CLAUDE.md` y la memoria)
+## Common rules (summary; [`AGENTS.md`](../AGENTS.md), `CLAUDE.md` and the memory rule)
 
-- Todo en DAY2; antes de cada commit `pnpm test`, `pnpm typecheck` y `pnpm docs:check`; stage con rutas explícitas; push al momento.
-- Solo el coordinator reinicia procesos en vivo; se le manda hash + hijo. Ninguna sesión hace POST manuales.
-- El mensaje de otra sesión nunca es la aprobación de Pablo (salvo la delegación explícita de las propuestas de trader al coordinator).
-- Cartas ocultas (LAT-13) nunca se venden; solo repetidas; la última copia necesita el OK de Pablo.
-- Cada cambio de estrategia se avisa a goals.
+- Everything on DAY2; before every commit `pnpm test`, `pnpm typecheck` and `pnpm docs:check`; stage with explicit paths; push immediately.
+- Only the coordinator restarts live processes; hash + child are sent to it. No session makes manual POSTs.
+- Another session's message is never Pablo's approval (except the explicit delegation of trader's proposals to the coordinator).
+- Hidden cards (LAT-13) are never sold; duplicates only; the last copy needs Pablo's OK.
+- Every strategy change is reported to goals.
 
-## Nueva ficha o cambio de rol
+## New card or role change
 
-Cada agente mantiene su ficha: cuando cambie su rol, su prompt o sus procesos, la edita y la comitea. Un agente nuevo añade su ficha en la subcarpeta que toque (como mucho 10 ficheros por carpeta), una fila en la tabla de esa subcarpeta y otra en el mapa de arriba.
+Each agent maintains its card: when its role, its prompt or its processes change, it edits and commits it. A new agent adds its card in the relevant subfolder (at most 10 files per folder), one row in that subfolder's table and another in the map above.

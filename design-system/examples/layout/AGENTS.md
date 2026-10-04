@@ -1,8 +1,8 @@
-# design-system/examples/layout/ — Ejemplos: estructura de pantalla
+# design-system/examples/layout/ — Examples: screen structure
 
-Un ejemplo por componente, importado por el alias del paquete (`@negotiation-ring/design-system`).
+One example per component, imported through the package alias (`@negotiation-ring/design-system`).
 
-## Archivos
+## Files
 
 - **`Root.tsx`**
 - **`Card.tsx`**
@@ -13,4 +13,4 @@ Un ejemplo por componente, importado por el alias del paquete (`@negotiation-rin
 ## Links
 
 - ↑ [`examples/`](../AGENTS.md)
-- → Componentes: [`components/layout/`](../../src/components/layout/AGENTS.md)
+- → Components: [`components/layout/`](../../src/components/layout/AGENTS.md)

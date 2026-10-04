@@ -1,25 +1,25 @@
 # src/workshop/ — El Taller
 
-El Taller (`POST /api/taller {assets: [a, b, c]}`) cambia tres repetidas de una rareza por una carta al azar de la siguiente. El resultado se ve, pero **nunca puntúa**: no da `neg_points` ni escalera. Solo gana lo que valga para nosotros la carta nueva, y una carta de página que nos falta vale mucho más que una repetida.
+El Taller (`POST /api/taller {assets: [a, b, c]}`) exchanges three duplicates of one rarity for a random card of the next. The result is visible, but it **never scores**: it gives no `neg_points` or ladder. It only gains whatever the new card is worth to us, and a missing page card is worth much more than a duplicate.
 
-## Archivos
+## Files
 
 - **`workshop.ts`**:
-  - **`buildWorkshop`** construye `GameState.workshop`.
-    - Repetidas por rareza, con los mismos guardarraíles que una venta: nunca la última copia libre, nada en un hilo ni en una oferta abiertos, y nunca una carta oculta ni de recuerdo (`isKeepsake`; regla de Pablo: las ocultas no se venden).
-    - **Las repetidas van antes a los equipos** (Pablo, 4 oct; el mismo criterio que los dealers): no se usa ninguna copia de una carta que ofrecemos a equipos (oferta abierta en El Rastro, en un venue o dirigida a un equipo, `teamOfferedAssets`) ni de una carta que una presentación de las últimas 6 h nos da como poseedores (`introDemand` de [`src/intros/`](../intros/AGENTS.md)), ni de una carta que le falta a un rival para cerrar una página (`nearPageDemand`: le falta una). Además, el arbitraje descarta el craft si otra ruta vende o anuncia esa copia o esa carta en el mismo tick (locks `ref:` frente a `sell:`); caso de origen: el 4 oct, a las 10:48, un craft se llevó tres copias que El Rastro iba a anunciar. El Taller nunca cancela un anuncio. Si no se pueden leer nuestras ofertas, no hay nada que convertir (`blocked`: falla cerrado).
-    - Coste de cada repetida: el máximo entre perder la copia a nuestro valor (`loseCopy`) y la mejor puja por ella ahora.
-    - Valor esperado: la media de lo que suma una copia más (`nextCopy`) entre las cartas publicadas y no ocultas de la rareza siguiente.
-    - Decisión por rareza:
-      - `craft` si el valor esperado supera el coste en ≥ max(2 P, 10 % del coste);
-      - `hold` si no;
-      - `short` si faltan repetidas.
-    - También guarda los «taller.crafted» del feed y las cartas retenidas para equipos (`demand`).
-  - **`proposeWorkshop`**: como mucho una intención `craft` por tick, la de más neto, con los activos como locks. Sin `--workshop` no hay intención, solo la nota «would craft …», así no le quita los locks a los anuncios de esas copias.
-  - **`executeWorkshop`**: solo en vivo, con `--confirm` y `--workshop`. Vuelve a leer `/api/me`, los hilos y las ofertas, comprueba todos los guardarraíles (demanda de equipos incluida) y solo entonces hace el POST. Si algo cambió, aborta.
-  - **ASSUMPTIONS** (`WORKSHOP_ASSUMPTIONS`): la carta sale uniforme entre las de la rareza siguiente (el reparto real no se publica), y el Taller no gasta el cupo de aceptaciones (sin verificar).
+  - **`buildWorkshop`** builds `GameState.workshop`.
+    - Duplicates by rarity, with the same guardrails as a sale: never the last free copy, nothing in an open thread or offer, and never a hidden or keepsake card (`isKeepsake`; Pablo's rule: hidden cards are not sold).
+    - **Duplicates go to the teams first** (Pablo, 4 Oct; the same criterion as the dealers): no copy is used of a card we offer to teams (open offer in El Rastro, in a venue or targeted at a team, `teamOfferedAssets`) nor of a card that an introduction in the last 6 h gives us as holders (`introDemand` of [`src/intros/`](../intros/AGENTS.md)), nor of a card that a rival lacks to close a page (`nearPageDemand`: one missing). In addition, arbitrage discards the craft if another route sells or lists that copy or that card in the same tick (`ref:` locks against `sell:`); origin case: on 4 Oct, at 10:48, a craft took three copies that El Rastro was about to list. El Taller never cancels a listing. If our offers cannot be read, there is nothing to convert (`blocked`: fails closed).
+    - Cost of each duplicate: the maximum between losing the copy at our value (`loseCopy`) and the best bid for it right now.
+    - Expected value: the mean of what one more copy adds (`nextCopy`) across the published, non-hidden cards of the next rarity.
+    - Decision per rarity:
+      - `craft` if the expected value exceeds the cost by ≥ max(2 P, 10% of the cost);
+      - `hold` otherwise;
+      - `short` if duplicates are missing.
+    - It also keeps the feed's «taller.crafted» entries and the cards held back for teams (`demand`).
+  - **`proposeWorkshop`**: at most one `craft` intent per tick, the one with the highest net, with the assets as locks. Without `--workshop` there is no intent, only the note «would craft …», so it does not take the locks away from the listings of those copies.
+  - **`executeWorkshop`**: live only, with `--confirm` and `--workshop`. It re-reads `/api/me`, the threads and the offers, checks all the guardrails (team demand included) and only then makes the POST. If something changed, it aborts.
+  - **ASSUMPTIONS** (`WORKSHOP_ASSUMPTIONS`): the card comes out uniformly among those of the next rarity (the real distribution is not published), and El Taller does not spend the acceptance quota (unverified).
 
-Lo leen el coordinador (ruta `workshop`, ver [`src/coordinator/`](../coordinator/AGENTS.md)) y el visor (cromos de la pestaña «Cards» y panel «The Workshop»).
+It is read by the coordinator (`workshop` route, see [`src/coordinator/`](../coordinator/AGENTS.md)) and the viewer (cards of the «Cards» tab and «The Workshop» panel).
 
 ## Links
 

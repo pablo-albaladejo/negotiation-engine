@@ -1,36 +1,36 @@
-# design-system/ — Componentes React
+# design-system/ — React components
 
-Paquete independiente: componentes React reutilizables (botones, tablas, temas). Publicable, versionado, separado del resto.
+Independent package: reusable React components (buttons, tables, themes). Publishable, versioned, separate from the rest.
 
-## Propósito
+## Purpose
 
-Biblioteca de componentes compartida entre visor y posibles otros clientes. Build: TypeScript + esbuild → CommonJS + ESM + types.
+Component library shared between the viewer and possible other clients. Build: TypeScript + esbuild → CommonJS + ESM + types.
 
-## Estructura
+## Structure
 
-- **[`src/`](src/AGENTS.md)** — código fuente; entrada pública `src/index.ts` (el visor la usa por alias, sin build).
-- **[`test/`](test/AGENTS.md)** — solo `no-dangerous-html` (nada de HTML inyectado).
-- **[`.design-sync/`](.design-sync/AGENTS.md)** — Sincronización con Claude Design (previews, config, convenciones).
-- **[`examples/`](examples/AGENTS.md)** — ejemplos de uso por familia.
+- **[`src/`](src/AGENTS.md)** — source code; public entry point `src/index.ts` (the viewer uses it via alias, without a build).
+- **[`test/`](test/AGENTS.md)** — only `no-dangerous-html` (no injected HTML).
+- **[`.design-sync/`](.design-sync/AGENTS.md)** — Sync with Claude Design (previews, config, conventions).
+- **[`examples/`](examples/AGENTS.md)** — usage examples per family.
 - **[`scripts/`](scripts/AGENTS.md)** — build.
-- **`README.md`**, **`package.json`**, **`pnpm-lock.yaml`**, `tsconfig.json`, `vitest.config.ts` — paquete independiente (`@negotiation-ring/design-system`) y su configuración.
+- **`README.md`**, **`package.json`**, **`pnpm-lock.yaml`**, `tsconfig.json`, `vitest.config.ts` — independent package (`@negotiation-ring/design-system`) and its configuration.
 
 ## Build
 
 ```bash
-pnpm --dir design-system build   # genera dist/
+pnpm --dir design-system build   # generates dist/
 ```
 
 Outputs:
 - **`dist/index.js`** — ESM.
 - **`dist/index.cjs`** — CommonJS.
 - **`dist/index.d.ts`** — TypeScript types.
-- **`dist/styles.css`** — CSS compilado.
+- **`dist/styles.css`** — compiled CSS.
 
-## Cómo trabajar
+## How to work
 
 ```bash
-# Instalar dependencias
+# Install dependencies
 pnpm --dir design-system install
 
 # Build
@@ -43,16 +43,16 @@ pnpm --dir design-system test
 pnpm --dir design-system typecheck
 ```
 
-## Invariantes
+## Invariants
 
-- **Independiente**: puede publicarse por npm sin el resto del proyecto.
-- **Versiones peer de React**: `react@^18.3.0`, `react-dom@^18.3.0`.
-- **Sin dependencias de negocio**: solo componentes genéricos.
+- **Independent**: can be published to npm without the rest of the project.
+- **React peer versions**: `react@^18.3.0`, `react-dom@^18.3.0`.
+- **No business dependencies**: generic components only.
 
 ## Links
 
 - ↑ [`AGENTS.md`](../AGENTS.md)
-- → Usado por: [`viewer/`](../viewer/AGENTS.md)
-- → [`src/`](src/AGENTS.md) — componentes
+- → Used by: [`viewer/`](../viewer/AGENTS.md)
+- → [`src/`](src/AGENTS.md) — components
 - → [`test/`](test/AGENTS.md) — tests
 - → [`examples/`](examples/AGENTS.md) · [`scripts/`](scripts/AGENTS.md) · [`.design-sync/`](.design-sync/AGENTS.md)

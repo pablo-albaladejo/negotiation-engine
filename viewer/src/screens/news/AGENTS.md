@@ -1,8 +1,8 @@
-# viewer/src/screens/news/ — Noticias
+# viewer/src/screens/news/ — News
 
-- **`NewsView.tsx`** — la pestaña «News»: las señales de noticias (`NewsSignals`, de `GameState.news`: de qué dealer, set o carta se habla, con el resumen) y el panel «Radio Rastro» (`RadioRastro`, de `/api/bazaar/news`). Salen de «Model» y de «Now» para no repetirse.
+- **`NewsView.tsx`** — the "News" tab: the news signals (`NewsSignals`, from `GameState.news`: which dealer, set or card is being talked about, with the summary) and the "Radio Rastro" panel (`RadioRastro`, from `/api/bazaar/news`). They come out of "Model" and "Now" so as not to repeat.
 
-Las noticias son una pista y pueden ser rumor: nunca una cifra ni una decisión.
+News is a hint and may be rumor: never a figure or a decision.
 
 ## Links
 

@@ -1,8 +1,8 @@
-# design-system/examples/charts/ — Ejemplos: gráficas svg
+# design-system/examples/charts/ — Examples: SVG charts
 
-Un ejemplo por componente, importado por el alias del paquete (`@negotiation-ring/design-system`).
+One example per component, imported through the package alias (`@negotiation-ring/design-system`).
 
-## Archivos
+## Files
 
 - **`OfferChart.tsx`**
 - **`Scatter2D.tsx`**
@@ -11,4 +11,4 @@ Un ejemplo por componente, importado por el alias del paquete (`@negotiation-rin
 ## Links
 
 - ↑ [`examples/`](../AGENTS.md)
-- → Componentes: [`components/charts/`](../../src/components/charts/AGENTS.md)
+- → Components: [`components/charts/`](../../src/components/charts/AGENTS.md)

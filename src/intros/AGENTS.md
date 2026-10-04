@@ -1,15 +1,15 @@
-# src/intros/ — presentaciones por hilo
+# src/intros/ — per-thread introductions
 
-Mitad uno a uno del emparejador del market: para cada pareja de repetida y carta que falta del registro de rivales (`matchPairs` de [`broker/`](../broker/AGENTS.md)), **puja primero** (Pablo, 4 oct: 8 presentaciones a dos bandas, 0 órdenes): solo se escribe al equipo al que le falta la carta, en un hilo en El Rastro (en nuestro venue el juego lo rechaza con self_venue) que se cierra en el acto, para que puje ya en **nuestro venue** (se lee de `/api/me`; si no hay venue abierto, no sale nada). En cuanto su puja está en el libro, las presentaciones de libro avisan a quien tiene la carta, que así siempre ve una puja viva; el broker las cruza. El valor creado entre otros equipos en nuestro venue es la parte orgánica del market.
+One-to-one half of the market matcher: for each pair of duplicate and missing card from the rivals registry (`matchPairs` of [`broker/`](../broker/AGENTS.md)), **bid first** (Pablo, 4 Oct: 8 two-sided introductions, 0 orders): we only write to the team that lacks the card, in a thread in El Rastro (in our venue the game rejects it with self_venue) that is closed on the spot, so that it bids right away in **our venue** (read from `/api/me`; if there is no open venue, nothing goes out). As soon as its bid is in the book, the book introductions notify whoever holds the card, who thus always sees a live bid; the broker crosses them. The value created between other teams in our venue is the organic part of the market.
 
-- **Presentaciones de libro:** antes que las parejas, si otro equipo tiene una orden abierta en nuestro venue (venta de una carta o puja por cualquier copia; el libro público muestra al autor con seudónimo), se avisa a quien puede casarla: a quien tiene la carta si es una puja, y a quien la busca si es una venta. Como mucho 2 equipos por orden y 4 mensajes por hora.
-- **Sin cifras:** el texto nombra carta, equipos y venue; es texto del juego (`// game text`). Del rival solo se lee estructura (ofertas, feed, `/api/cards`).
-- **Topes** (`INTRO_PARAMS`): 3 parejas por hora, 1 por pasada, un equipo como mucho cada 2 h, al mismo equipo no se le habla de la misma carta más de una vez cada 6 h; deja libres ≥ 3 huecos de conversación (dealers y team desk los comparten).
-- Registro de enviadas en `results/bazaar-live/intros.json`.
+- **Book introductions:** before the pairs, if another team has an open order in our venue (a sale of a card or a bid for any copy; the public book shows the author under a pseudonym), whoever can match it is notified: whoever holds the card if it is a bid, and whoever is looking for it if it is a sale. At most 2 teams per order and 4 messages per hour.
+- **No figures:** the text names card, teams and venue; it is game text (`// game text`). From the rival only structure is read (offers, feed, `/api/cards`).
+- **Caps** (`INTRO_PARAMS`): 3 pairs per hour, 1 per pass, one team at most every 2 h, the same team is not told about the same card more than once every 6 h; it leaves ≥ 3 conversation slots free (dealers and team desk share them).
+- Record of those sent in `results/bazaar-live/intros.json`.
 
-## Archivos
+## Files
 
-- **`intros.ts`** — puro: `planIntros`, `bidFirstMessage`, `INTRO_PARAMS`; memoria con `loadIntroMemo`/`saveIntroMemo`. `introDemand`: cartas de presentaciones de las últimas 6 h en las que tenemos la repetida; ni los dealers ni El Taller las usan (las repetidas van antes a los equipos).
-- **`main.ts`** — `pnpm bazaar:intros` (`--dry-run --once`; en vivo con `--confirm`, cada `--every-s` segundos, 300 por defecto).
+- **`intros.ts`** — pure: `planIntros`, `bidFirstMessage`, `INTRO_PARAMS`; memory with `loadIntroMemo`/`saveIntroMemo`. `introDemand`: cards from introductions in the last 6 h where we hold the duplicate; neither dealers nor El Taller use them (duplicates go to teams first).
+- **`main.ts`** — `pnpm bazaar:intros` (`--dry-run --once`; live with `--confirm`, every `--every-s` seconds, 300 by default).
 
-Padre: [`src/`](../AGENTS.md)
+Parent: [`src/`](../AGENTS.md)

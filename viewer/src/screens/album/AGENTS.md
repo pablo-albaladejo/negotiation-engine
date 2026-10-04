@@ -1,23 +1,23 @@
-# viewer/src/screens/album/ — El álbum como cromos
+# viewer/src/screens/album/ — The album as trading cards
 
-La pestaña «Cards» (la tarjeta «Album», fuera de la cabina), con el aspecto de la página /cards del juego:
+The «Cards» tab (the «Album» card, outside the cockpit), looking like the game's /cards page:
 
-- **Chips arriba:** todas las páginas o una sola (color del set y have/of), y el filtro «only missing».
-- **Por set:** una banda con su color y su tema del catálogo, have/of y una barra de progreso.
-- **Un cromo por cada carta de la página:**
-  - las que tenemos, a todo color, con borde de su rareza y «×N» si hay repetidas;
-  - las que faltan, en gris y con borde discontinuo, sin valores encima;
-  - debajo de cada cromo: las copias en circulación frente a la tirada (`minted`/`print_run`) y el precio de libro; y en otra línea el valor de la API («API», `your_value`: el de la copia que tenemos o el de `/api/me/value` para la primera copia) frente al nuestro, leído de `GameState.valuation` (`src/state/valuation.ts`): si la tenemos, «lose» (lo que cuesta perder una copia, con el riesgo de página) y «+1» (lo que suma otra copia); si falta, «+1» (con el bonus de página si la completa) y «~» si la base es estimada. Al pasar el ratón: API, base y su origen, +1 y lose.
-- **Banda de cada set:** el bonus de página («page bonus N · ours» si está completa, «at stake» si no).
-- **El Taller:** cada cromo con repetidas en el Taller lleva «⚒ N spare · decisión», o «⚒ craft N → rareza» si la estrategia las entrega este tick; arriba, una línea por rareza y las cartas retenidas para equipos («kept for teams»). Sale de `GameState.workshop` ([`src/workshop/`](../../../../src/workshop/AGENTS.md)).
-- **Shinies:** las cartas fuera de la página van aparte. Las ocultas solo aparecen si las tenemos, y entonces con la etiqueta «never sold».
+- **Chips on top:** all pages or just one (set color and have/of), and the «only missing» filter.
+- **Per set:** a band with its color and its catalog theme, have/of and a progress bar.
+- **One sticker for each card on the page:**
+  - the ones we have, in full color, with a border of their rarity and «×N» if there are duplicates;
+  - the missing ones, in gray with a dashed border, with no values on top;
+  - below each sticker: the copies in circulation versus the print run (`minted`/`print_run`) and the book price; and on another line the API's value («API», `your_value`: that of the copy we hold or that of `/api/me/value` for the first copy) versus ours, read from `GameState.valuation` (`src/state/valuation.ts`): if we have it, «lose» (what losing a copy costs, with the page risk) and «+1» (what another copy adds); if it is missing, «+1» (with the page bonus if it completes it) and «~» if the base is estimated. On hover: API, base and its origin, +1 and lose.
+- **Each set's band:** the page bonus («page bonus N · ours» if complete, «at stake» if not).
+- **El Taller:** each sticker with duplicates in El Taller carries «⚒ N spare · decision», or «⚒ craft N → rarity» if the strategy hands them in this tick; on top, one line per rarity and the cards held back for teams («kept for teams»). It comes from `GameState.workshop` ([`src/workshop/`](../../../../src/workshop/AGENTS.md)).
+- **Shinies:** the cards outside the page go separately. Hidden ones only appear if we have them, and then with the label «never sold».
 
-El dibujo es nuestro: un sol y un perfil de edificios que sale de la referencia de la carta. No se copia el arte del juego.
+The artwork is ours: a sun and a skyline derived from the card's reference. The game's art is not copied.
 
-- **`AlbumCards.tsx`** — la tarjeta.
-- **`CardsView.tsx`** — la pestaña «Cards»: el álbum y, debajo, la tabla «Prices» (`Prices` de `viewer/src/screens/ModelView.tsx`, salida de «Model»): libro, mercado, nuestro valor, «Next copy» (lo que suma una copia más) y los huecos (buy edge = next copy − ask).
+- **`AlbumCards.tsx`** — the card.
+- **`CardsView.tsx`** — the «Cards» tab: the album and, below, the «Prices» table (`Prices` from `viewer/src/screens/ModelView.tsx`, output of «Model»): book, market, our value, «Next copy» (what one more copy adds) and the gaps (buy edge = next copy − ask).
 
-Datos: `board.album.pages[].cards` y `.shinies`, de `albumOf` en [`viewer/server/bazaar/`](../../../server/bazaar/AGENTS.md). Solo lectura; aquí no se calcula ninguna cifra.
+Data: `board.album.pages[].cards` and `.shinies`, from `albumOf` in [`viewer/server/bazaar/`](../../../server/bazaar/AGENTS.md). Read-only; no figure is computed here.
 
 ## Links
 

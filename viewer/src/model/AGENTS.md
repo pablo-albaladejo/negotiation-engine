@@ -1,16 +1,16 @@
-# viewer/src/model/ — Lógica pura del visor
+# viewer/src/model/ — Pure logic of the viewer
 
-Funciones puras sin React: leen JSON tolerante y devuelven lo que pinta la pantalla.
+Pure functions without React: they read tolerant JSON and return what the screen draws.
 
-- **`bazaarBoard.ts`** — lista unificada, filtros y línea temporal del tablero.
-- **`bazaar.ts`** — historia de la cifra.
-- **`bazaarConversations.ts`** — conversaciones del tablero.
-- **`cockpit.ts`** — cabina: puesto, lo abierto ahora, quién es quién (`partyOf`, `teamLabel`), curva (`offerCurve`, `niceScale`) y colores de rareza. `originOf`: la columna «Posted by» de «Right now» (ruta, «posted 6 P (t1079) → reprice 8 P (t1093)», neg si se llena y ticks que quedan).
-- **`gameModel.ts`** — nuestro modelo interno (`/api/bazaar/model`): tiempo, personas, pistas, precios, venues, sobres, flags y camino previsto (`withPlannedPath`).
-- **`dealerFit.ts`** — ajuste de la curva por persona (solo el lado del dealer): `predictionOf`, `withPrediction` (su camino previsto con banda, su límite y la ronda de retirada sobre la curva), `predictionCaption`, `predictionLines` `dealerFitStrip` (tira del cajón: persona y banda de la conversación, `welcome` si el ajuste lo marca) y `dealerEstimates` (parámetros, límites por banda e historia por persona).
-- **`personaModel.ts`** — lo que el modelo de HOY sabe de la persona de una conversación (también vieja o cerrada): `personas[].model` si está, si no `estimates`/`fit`. `strategyLines` («value [lo–hi] · n · source» o «unknown»), `bandView` (suelo/techo medido de su banda con book), `herWalkText`, `sideLabel` («we sell · she buys») y `currentPrediction` (su curva con la fórmula del ajuste cuando el servidor no trae *prediction*).
-- **`scoreTree.ts`** — qué alimenta cada acción: `componentOf` (dealer → LADDER con nivel, share y si entra en el top 3 si el modelo está cargado; duelo → DUEL; trato con otro equipo fuera de nuestro venue → NEG; trato entre OTROS equipos en nuestro venue → MARKET; ofertas abiertas, sobres, Taller, álbum, regalos → no score) y `scoreTree` (ladder/duel/neg → NEGOTIATING /30, bench/organic → MARKET /30 → SCORE → rank, con Δ del día y del tick de `board.score_parts`).
-- **`index.ts`** — reexporta lo anterior.
+- **`bazaarBoard.ts`** — unified list, filters and timeline of the board.
+- **`bazaar.ts`** — history of the figure.
+- **`bazaarConversations.ts`** — conversations of the board.
+- **`cockpit.ts`** — cockpit: standing, what is open now, who is who (`partyOf`, `teamLabel`), curve (`offerCurve`, `niceScale`) and rarity colours. `originOf`: the «Posted by» column of «Right now» (route, «posted 6 P (t1079) → reprice 8 P (t1093)», neg if it fills and ticks remaining).
+- **`gameModel.ts`** — our internal model (`/api/bazaar/model`): time, personas, hints, prices, venues, packs, flags and expected path (`withPlannedPath`).
+- **`dealerFit.ts`** — curve fit per persona (dealer side only): `predictionOf`, `withPrediction` (its expected path with band, its limit and the withdrawal round on the curve), `predictionCaption`, `predictionLines`, `dealerFitStrip` (drawer strip: persona and band of the conversation, `welcome` if the fit flags it) and `dealerEstimates` (parameters, limits per band and history per persona).
+- **`personaModel.ts`** — what TODAY's model knows about the persona of a conversation (even an old or closed one): `personas[].model` if present, otherwise `estimates`/`fit`. `strategyLines` («value [lo–hi] · n · source» or «unknown»), `bandView` (measured floor/ceiling of its band with book), `herWalkText`, `sideLabel` («we sell · she buys») and `currentPrediction` (its curve with the fit formula when the server brings no *prediction*).
+- **`scoreTree.ts`** — what feeds each action: `componentOf` (dealer → LADDER with level, share and whether it makes the top 3 if the model is loaded; duel → DUEL; deal with another team outside our venue → NEG; deal between OTHER teams in our venue → MARKET; open offers, packs, El Taller, album, gifts → no score) and `scoreTree` (ladder/duel/neg → NEGOTIATING /30, bench/organic → MARKET /30 → SCORE → rank, with Δ of the day and of the tick from `board.score_parts`).
+- **`index.ts`** — re-exports the above.
 
 ## Links
 

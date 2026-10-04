@@ -1,8 +1,8 @@
-# test/fixtures/ — Datos de prueba
+# test/fixtures/ — Test data
 
-Datos reales guardados como referencia; ningún test ni código los lee ahora.
+Real data kept as reference; no test or code reads it now.
 
-- **[`bazaar/`](bazaar/AGENTS.md)** — fichas de dealers e hilo 56.
+- **[`bazaar/`](bazaar/AGENTS.md)** — dealer sheets and thread 56.
 
 ## Links
 

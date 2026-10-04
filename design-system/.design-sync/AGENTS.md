@@ -1,20 +1,20 @@
-# design-system/.design-sync/ — Sincronización con Claude Design
+# design-system/.design-sync/ — Sync with Claude Design
 
-Contrato para exportar los componentes de [`design-system/`](../AGENTS.md) al proyecto Claude Design (`projectId` en `config.json`, fijo: no cambiarlo). Carpeta exenta del tope de 10 ficheros (generada y mantenida con la herramienta de sync).
+Contract for exporting the components of [`design-system/`](../AGENTS.md) to the Claude Design project (`projectId` in `config.json`, fixed: do not change it). Folder exempt from the 10-file cap (generated and maintained by the sync tool).
 
-## Archivos
+## Files
 
-- **`config.json`** — `pkg` (`@negotiation-ring/design-system`), `globalName` (`NegotiationRing`), `buildCmd` (`pnpm build`), `cssEntry` (`dist/styles.css`), `provider` (`Root` envuelve cada celda), `overrides` (`cardMode:"column"` en componentes anchos), `dtsPropsFor` (props tipadas inline por componente) y `readmeHeader`.
-- **`conventions.md`** — README en inglés que lee el agente de Claude Design: envolver en `<Root>`, tokens CSS (`--us` azul = nosotros, `--them` ámbar = rival, `--ok`, `--warn`), números en formato inglés (`formatNumber(v, {locale:"en"})`), texto del rival literal, UI solo de presentación.
-- **`NOTES.md`** — gotchas y riesgos de re-sync (render warns, bugs conocidos, Playwright 1.60.0 fijado).
-- **`previews/*.tsx`** — una celda de preview por componente exportado (22; nunca una compartida, aunque compartan fuente, p. ej. los cuatro botones), a mano y sin marcador `@ds-preview generated`.
-- Ignorados por git: `.cache/`, `ds-bundle/`, `learnings/` y `.ds-sync/`; `dist/` también (hay que ejecutar `pnpm build` antes de sincronizar).
+- **`config.json`** — `pkg` (`@negotiation-ring/design-system`), `globalName` (`NegotiationRing`), `buildCmd` (`pnpm build`), `cssEntry` (`dist/styles.css`), `provider` (`Root` wraps each cell), `overrides` (`cardMode:"column"` on wide components), `dtsPropsFor` (inline typed props per component) and `readmeHeader`.
+- **`conventions.md`** — README in English read by the Claude Design agent: wrap in `<Root>`, CSS tokens (`--us` blue = us, `--them` amber = rival, `--ok`, `--warn`), numbers in English format (`formatNumber(v, {locale:"en"})`), rival text verbatim, presentation-only UI.
+- **`NOTES.md`** — gotchas and re-sync risks (render warns, known bugs, Playwright 1.60.0 pinned).
+- **`previews/*.tsx`** — one preview cell per exported component (22; never a shared one, even if they share source, e.g. the four buttons), hand-written and without the `@ds-preview generated` marker.
+- Ignored by git: `.cache/`, `ds-bundle/`, `learnings/` and `.ds-sync/`; `dist/` too (run `pnpm build` before syncing).
 
-## Cómo re-sincronizar
+## How to re-sync
 
-1. Cambiar un componente en `src/`: actualizar su preview y `dtsPropsFor` en `config.json`.
-2. Desde Claude Code en `design-system/`: `/design-sync`.
-3. Cambiar el JSX de un preview o las claves de `config.json` obliga a re-grade; `cardMode` y el texto de UI en inglés no.
+1. Change a component in `src/`: update its preview and `dtsPropsFor` in `config.json`.
+2. From Claude Code in `design-system/`: `/design-sync`.
+3. Changing a preview's JSX or the keys of `config.json` forces a re-grade; `cardMode` and English UI text do not.
 
 ## Links
 

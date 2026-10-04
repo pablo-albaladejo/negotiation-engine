@@ -1,8 +1,8 @@
-# design-system/examples/data/ — Ejemplos: datos y mensajes
+# design-system/examples/data/ — Examples: data and messages
 
-Un ejemplo por componente, importado por el alias del paquete (`@negotiation-ring/design-system`).
+One example per component, imported through the package alias (`@negotiation-ring/design-system`).
 
-## Archivos
+## Files
 
 - **`DataTable.tsx`**
 - **`KpiStrip.tsx`**
@@ -12,4 +12,4 @@ Un ejemplo por componente, importado por el alias del paquete (`@negotiation-rin
 ## Links
 
 - ↑ [`examples/`](../AGENTS.md)
-- → Componentes: [`components/data/`](../../src/components/data/AGENTS.md)
+- → Components: [`components/data/`](../../src/components/data/AGENTS.md)

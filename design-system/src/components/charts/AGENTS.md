@@ -1,14 +1,14 @@
-# design-system/src/components/charts/ — Gráficas SVG
+# design-system/src/components/charts/ — SVG charts
 
-Componentes de presentación: muestran valores, no calculan métricas. Exportados desde `../../index.ts`.
+Presentation components: they display values, they do not compute metrics. Exported from `../../index.ts`.
 
-## Archivos
+## Files
 
-- **`OfferChart.tsx`** — `OfferChart` y `Legend`: curva de ofertas por ronda (las nuestras, las del rival, reservas, final); opcionales: `planned` (nuestro camino previsto), `predicted` (el camino previsto del rival con banda), su límite con banda (`theirLimit`) y la ronda de retirada (`walkMarker`).
-- **`Scatter2D.tsx`** — `Scatter2D`: ofertas en dos ejes con isolíneas, mandato y trato.
-- **`Heatmap.tsx`** — `Heatmap` y `heatmapBand`: mapa de calor por filas y columnas.
+- **`OfferChart.tsx`** — `OfferChart` and `Legend`: offer curve per round (ours, the rival's, reserves, final); optional: `planned` (our planned path), `predicted` (the rival's predicted path with a band), their limit with a band (`theirLimit`) and the walk-away round (`walkMarker`).
+- **`Scatter2D.tsx`** — `Scatter2D`: offers on two axes with isolines, mandate and deal.
+- **`Heatmap.tsx`** — `Heatmap` and `heatmapBand`: heat map by rows and columns.
 
 ## Links
 
 - ↑ [`components/`](../AGENTS.md)
-- → Ejemplos: [`examples/charts/`](../../../examples/charts/AGENTS.md)
+- → Examples: [`examples/charts/`](../../../examples/charts/AGENTS.md)

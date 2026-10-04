@@ -1,6 +1,6 @@
-# handoff/2026-10-02/ — Fin del día 1
+# handoff/2026-10-02/ — End of day 1
 
-- **[`HANDOFF.md`](HANDOFF.md)** — estado al cerrar el viernes (puesto, cartas, calendario, qué quedó pendiente). Es una foto: lo vigente está en `DAY2.md` y en el código.
+- **[`HANDOFF.md`](HANDOFF.md)** — status at Friday's close (standing, cards, calendar, what was left pending). It is a snapshot: what is current lives in `DAY2.md` and in the code.
 
 ## Links
 

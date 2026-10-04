@@ -1,21 +1,21 @@
-# agents/tools — herramientas de sesión que hay que conservar
+# agents/tools — session tools to keep
 
-Scripts y notas que cada agente usaba desde su scratchpad (que se pierde al cerrar la sesión). Aquí quedan versionados para poder relanzar el agente tal cual. Padre: [`agents/`](../AGENTS.md).
+Scripts and notes that each agent used from its scratchpad (which is lost when the session closes). Here they are versioned so the agent can be relaunched as it was. Parent: [`agents/`](../AGENTS.md).
 
-Reglas: solo lectura (GET) salvo que la ficha del agente diga otra cosa; las claves se leen de `.env` y nunca se escriben aquí; comentarios del código en inglés. Cada agente añade su fichero; la tabla de abajo la mantiene la sesión que lleva `agents/`.
+Rules: read-only (GET) unless the agent's sheet says otherwise; keys are read from `.env` and never written here; code comments in English. Each agent adds its file; the table below is maintained by the session that runs `agents/`.
 
-| Fichero | Agente | Qué es |
-|---------|--------|--------|
-| [duels-table.mjs](duels-table.mjs) | [duels](../routes/duels.md) | Tabla en vivo (solo GET) de una sesión de duelos: trato, result y Δduel_points por duelo cada 15 s (`node agents/tools/duels-table.mjs 4`) |
-| [duels-sim.ts](duels-sim.ts) | [duels](../routes/duels.md) | Simulación de latencia de duelos sin la API: servidor falso con ticks reales, 4 duelos concurrentes cuyos rivales repiten ofertas reales, el sub-bucle `--duels-fast` de play y una carga que imita al resto de play en el mismo cubo; mide cuánto tardamos en ver y en contestar cada oferta del rival (`pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50`; salida en `results/duels/sim-*.json`) |
-| [audit-tick-eval.py](audit-tick-eval.py) | [audit](../analysis/audit.md) | Una línea por tick de `play.log` con los Δ (score, escalera, neg, duelos, caja) y los FLAG |
-| [audit-alerts.sh](audit-alerts.sh) | [audit](../analysis/audit.md) | Alertas: caídas de play, banco/Pícaros, desajustes de score-audit, bench, nuestro venue y nuestros tratos |
-| [objetivos-design.md](objetivos-design.md) | [market-analyst](../analysis/market-analyst.md) → [goals](../ops/goals.md) | Diseño de partida de los objetivos del equipo |
-| [workshop-opps.mjs](workshop-opps.mjs) | [workshop](../routes/workshop.md) | Chequeo de solo lectura (GET) de tríos para el Taller y candidatas a Pilar L3, sin copias en ofertas o hilos ni cartas ocultas; se lanza con `.env` cargado (ver la ficha) |
-| [bench-model-v2.md](bench-model-v2.md) | [broker](../routes/broker.md) | Informe del modelo offline del Market Test: ninguna política que solo ve el presente supera a auto de forma robusta; en vivo, greedy sin espera |
-| [broker-thin.patch](broker-thin.patch) | [broker](../routes/broker.md) | Parche de la política «thin» para el broker (casi neutra, de +0,000 a +0,002); solo se guarda, no se aplica sin OK de Pablo |
-| [bench-model/](bench-model/AGENTS.md) | [broker](../routes/broker.md) | Scripts y priors para reproducir el modelo (calibración ABC, replays, evaluación sintética) |
+| File | Agent | What it is |
+|------|-------|------------|
+| [duels-table.mjs](duels-table.mjs) | [duels](../routes/duels.md) | Live table (GET only) of a duel session: deal, result and Δduel_points per duel every 15 s (`node agents/tools/duels-table.mjs 4`) |
+| [duels-sim.ts](duels-sim.ts) | [duels](../routes/duels.md) | Duel latency simulation without the API: fake server with real ticks, 4 concurrent duels whose rivals repeat real offers, play's `--duels-fast` sub-loop and a load that mimics the rest of play in the same bucket; it measures how long we take to see and answer each of the rival's offers (`pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50`; output in `results/duels/sim-*.json`) |
+| [audit-tick-eval.py](audit-tick-eval.py) | [audit](../analysis/audit.md) | One line per `play.log` tick with the Δs (score, ladder, neg, duels, cash) and the FLAGs |
+| [audit-alerts.sh](audit-alerts.sh) | [audit](../analysis/audit.md) | Alerts: play outages, bank/Pícaros, score-audit mismatches, bench, our venue and our deals |
+| [objetivos-design.md](objetivos-design.md) | [market-analyst](../analysis/market-analyst.md) → [goals](../ops/goals.md) | Starting design of the team goals |
+| [workshop-opps.mjs](workshop-opps.mjs) | [workshop](../routes/workshop.md) | Read-only (GET) check of trios for El Taller and Pilar L3 candidates, with no copies in offers or threads and no hidden cards; launched with `.env` loaded (see the sheet) |
+| [bench-model-v2.md](bench-model-v2.md) | [broker](../routes/broker.md) | Report of the Market Test offline model: no policy that only sees the present beats auto robustly; live, greedy with no waiting |
+| [broker-thin.patch](broker-thin.patch) | [broker](../routes/broker.md) | Patch of the «thin» policy for the broker (almost neutral, from +0.000 to +0.002); only stored, not applied without Pablo's OK |
+| [bench-model/](bench-model/AGENTS.md) | [broker](../routes/broker.md) | Scripts and priors to reproduce the model (ABC calibration, replays, synthetic evaluation) |
 
 ## Links
 
-- [bench-model/](bench-model/AGENTS.md) — modelo offline del Market Test (broker)
+- [bench-model/](bench-model/AGENTS.md) — offline Market Test model (broker)

@@ -1,6 +1,6 @@
-# test/engine/ — Generadores del motor
+# test/engine/ — Engine generators
 
-- **`arbitraries.ts`** — generadores de fast-check (issues normalizados, ofertas y mandatos) que usa `../guardrails.test.ts`.
+- **`arbitraries.ts`** — fast-check generators (normalized issues, offers and mandates) used by `../guardrails.test.ts`.
 
 ## Links
 

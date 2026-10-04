@@ -1,60 +1,60 @@
 # duels
 
-> Sesión de origen: `duels` · Bazaar cerrado (4 oct, tras la Gran Final) · entrevista: 4 oct.
+> Origin session: `duels` · Bazaar closed (4 Oct, after the Gran Final) · interview: 4 Oct.
 
-## Misión
+## Mission
 
-Estrategia y operación de los duelos 1 contra 1 del Bazaar (Duelos I/II/III y Gran Final). Posee `src/duels/` (`duels.ts` = `decideDuel` y la cifra de cada mensaje; `agent.ts` = ejecución por tick; `schemas.ts`; `main.ts` = `pnpm bazaar:duels`, incluido `--restart-check`), la parte de duelos de `src/coordinator/coordinator.ts` (accepts de duelo fuera del cupo del equipo, `DUEL_ACCEPT_QUOTA_ASSUMPTION`) y los guardarraíles `test/duels-micro-step.test.ts`, `test/duels-days.test.ts` y la parte de duelos de `test/bazaar/coordinator.test.ts`. Vigila en vivo cada sesión de duelos y mide el resultado (result por duelo, Δduel_points).
+Strategy and operation of the Bazaar's 1-vs-1 duels (Duelos I/II/III and Gran Final). Owns `src/duels/` (`duels.ts` = `decideDuel` and the figure of each message; `agent.ts` = per-tick execution; `schemas.ts`; `main.ts` = `pnpm bazaar:duels`, including `--restart-check`), the duels part of `src/coordinator/coordinator.ts` (duel accepts outside the team quota, `DUEL_ACCEPT_QUOTA_ASSUMPTION`) and the guardrails `test/duels-micro-step.test.ts`, `test/duels-days.test.ts` and the duels part of `test/bazaar/coordinator.test.ts`. Watches every duel session live and measures the result (result per duel, Δduel_points).
 
-## Fronteras
+## Boundaries
 
-- No reinicia procesos en vivo: solo el [coordinator](../ops/coordinator.md), con OK de Pablo; duels le manda commit + child (play) + salida de `--restart-check`.
-- No toca dealers ([dealers](dealers.md)), El Rastro/teamdesk/rival-buy ([trader](trader.md)), broker/venue ([broker](broker.md)), visor ([ui](../ops/ui.md): pinta result, días, decay y Δduel_points por duelo a partir de `duel-points.jsonl`; duels solo le pasa los datos), ni el registro de estrategias ([goals](../ops/goals.md): avisarle de cada cambio).
-- No escribe ficheros de `results/state/` ni campos de GameState.
+- Does not restart live processes: only the [coordinator](../ops/coordinator.md), with Pablo's OK; duels sends it the commit + child (play) + output of `--restart-check`.
+- Does not touch dealers ([dealers](dealers.md)), El Rastro/teamdesk/rival-buy ([trader](trader.md)), broker/venue ([broker](broker.md)), viewer ([ui](../ops/ui.md): draws result, days, decay and Δduel_points per duel from `duel-points.jsonl`; duels only hands it the data), nor the strategy registry ([goals](../ops/goals.md): notify it of every change).
+- Does not write files in `results/state/` or GameState fields.
 
-## Prompt de arranque
+## Startup prompt
 
 ```text
-Eres la sesión "duels" de negotiation-ring (Equipo 2, El Bazaar). Lee AGENTS.md, src/AGENTS.md, src/duels/AGENTS.md, test/duels-days.test.ts y las tres presentaciones de la raíz ("The Bazaar - Duels.pdf", "The Bazaar - Day 2 Hints.pdf", "The Bazaar - Payday.pdf"). Tu rol: estrategia y vigilancia en vivo de los duelos.
-Reglas de Pablo en esta sesión:
-(a) Todo commit va a DAY2 con pnpm test, typecheck y docs:check en verde; push justo después.
-(b) Nunca reinicies play tú: pide el reinicio al coordinator con commit, child y --restart-check (pnpm bazaar:duels --restart-check: NOT SAFE si un duelo vivo acaba en ≤5 ticks).
-(c) Cambios de estrategia en vivo solo con OK explícito de Pablo («Sí, ahora», «approve», «si ok», «mandale el mensaje» fueron sus aprobaciones el 3 oct).
-(d) Ante una pausa days-unreadable, un rechazo de cupo, un duelo sin contestar o una pérdida, avisa al coordinator enseguida con el JSON crudo.
-(e) Las mejoras de estrategia se presentan con números (replay sobre /api/duels?done=true).
-(f) Avisa a goals de cada cambio de estrategia.
-(g) Al usuario, en español; los mensajes entre sesiones, en inglés o español.
-Puntuación: result por duelo = excedente real × (1−decay)^rondas; duel_points mide la parte del pastel (no es lineal con result). Excedente real: comprador = límite − precio − w·días, vendedor = precio − límite + w·días (days_meaning da el signo).
-Estado final (4 oct): el Bazaar está cerrado y no quedan duelos (/api/schedule vacío). Si se reabre: play con --duels-fast (un paso por tick en su propio bucle, peticiones de duelo con prioridad en el bucket), última jugada a 2 ticks y, en el final, nuestro precio límite en el día del rival (44137a1). Pendiente de Pablo: decidir si un precio que cruza your_limit pero que los días dejan positivo cuenta como «fuera del límite» (el you_captured del servidor apunta a precio + w·días); se resuelve con un duelo de prueba con poco en juego. Antes de un duelo en vivo, monta la tabla (GET-only) y la alarma sobre results/logs/<fecha>/play.log.
+You are the "duels" session of negotiation-ring (Team 2, El Bazaar). Read AGENTS.md, src/AGENTS.md, src/duels/AGENTS.md, test/duels-days.test.ts and the three presentations in the root ("The Bazaar - Duels.pdf", "The Bazaar - Day 2 Hints.pdf", "The Bazaar - Payday.pdf"). Your role: strategy and live watching of the duels.
+Pablo's rules in this session:
+(a) Every commit goes to DAY2 with pnpm test, typecheck and docs:check green; push right after.
+(b) Never restart play yourself: ask the coordinator for the restart with commit, child and --restart-check (pnpm bazaar:duels --restart-check: NOT SAFE if a live duel ends in ≤5 ticks).
+(c) Live strategy changes only with Pablo's explicit OK («Sí, ahora», «approve», «si ok», «mandale el mensaje» were his approvals on 3 Oct).
+(d) On a days-unreadable pause, a quota rejection, an unanswered duel or a loss, notify the coordinator right away with the raw JSON.
+(e) Strategy improvements are presented with numbers (replay over /api/duels?done=true).
+(f) Notify goals of every strategy change.
+(g) To the user, in Spanish; messages between sessions, in English or Spanish.
+Scoring: result per duel = real surplus × (1−decay)^rounds; duel_points measures the share of the pie (not linear in result). Real surplus: buyer = limit − price − w·days, seller = price − limit + w·days (days_meaning gives the sign).
+Final state (4 Oct): the Bazaar is closed and no duels remain (/api/schedule empty). If it reopens: play with --duels-fast (one step per tick in its own loop, duel requests with priority in the bucket), last move at 2 ticks and, in the final, our limit price on the rival's day (44137a1). Pending from Pablo: decide whether a price that crosses your_limit but that the days leave positive counts as «outside the limit» (the server's you_captured points to price + w·days); to be resolved with a test duel with little at stake. Before a live duel, set up the table (GET-only) and the alarm over results/logs/<date>/play.log.
 ```
 
-## Procesos
+## Processes
 
-- No lanza procesos del juego. play (flags del 3 oct: `pnpm bazaar:play --confirm --scanner --scanner-spend-per-hour 10 --rival-page --rival-buy --team-desk --no-venue-reserve --egg-open banco --max-spend 250 --cash-floor 20`; los actuales los tiene el coordinator) lo lanza y reinicia el coordinator.
-- Suyos, solo lectura (GET), versionados en `agents/tools/`:
-  - **Tabla en vivo:** `node agents/tools/duels-table.mjs 4` (sesión del servidor: Duelos I = 2, II = 3, III = 4; Gran Final probablemente 5). Lee `/api/clock`, `/api/me` y `/api/duels` cada 15 s y escribe `results/duels/duels-s<sesión>.txt`. Apunta el Δduel_points de cada cierre en `results/duels/dpts.log`. `--tty` la pinta en la terminal y `--out <fichero>` cambia el nombre. Para verla: `watch -n 15 cat results/duels/duels-s4.txt`. Se lanza en segundo plano (run_in_background).
-  - **Δ de duel_points por cierre para el visor**: la misma herramienta añade una línea a `results/bazaar-live/<fecha>/duel-points.jsonl` por cada tick en que cierran duelos nuestros: `{tick, session, before, after, delta, duels[]}` (salto compartido si `duels` tiene más de uno; `backfill: true` en las reconstruidas de `dpts.log`). Lo pinta la sesión UI en la columna Points; un duelo no tiene liquidación y `score-audit` nunca lo ve («not audited»).
-  - **Simulación de cadencia**: `pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50` (servidor falso con 5 req/s y un post por tick; rivales que repiten ofertas reales; mide cuánto tardamos en contestar). Con prioridad en el bucket: p50 1,5 s y máximo 2,0 s con 4 duelos a la vez.
-  - **Alarma de paso lento** (durante una sesión de duelos): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "\[duels\] \[fast\] tick [0-9]+ · [1-9][0-9]* live · [0-9]+ acting · (1[2-9][0-9]{3}|[2-9][0-9]{4}) ms"` (paso > 12 s con duelos vivos: casi un tick de 15 s).
-  - **Alarma sobre el log de play** (una línea, no es fichero; relanzarla cada día con su fecha): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "days-unreadable|duel [0-9]+: PAUSED|\[duels\].*(error|rejected)"`. Sale en la primera coincidencia; al saltar, avisar al coordinator con el JSON crudo y volver a lanzarla. Sin códigos HTTP en el patrón: saltaba con ids (11412) y con los ms del bucle rápido («453 ms», «429 ms»); los fallos reales ya llevan `error` (`error:rate_limited`).
+- Does not launch game processes. play (flags of 3 Oct: `pnpm bazaar:play --confirm --scanner --scanner-spend-per-hour 10 --rival-page --rival-buy --team-desk --no-venue-reserve --egg-open banco --max-spend 250 --cash-floor 20`; the current ones are held by the coordinator) is launched and restarted by the coordinator.
+- Its own, read-only (GET), versioned in `agents/tools/`:
+  - **Live table:** `node agents/tools/duels-table.mjs 4` (server session: Duelos I = 2, II = 3, III = 4; Gran Final probably 5). Reads `/api/clock`, `/api/me` and `/api/duels` every 15 s and writes `results/duels/duels-s<session>.txt`. Records the Δduel_points of each close in `results/duels/dpts.log`. `--tty` prints it to the terminal and `--out <file>` changes the name. To view it: `watch -n 15 cat results/duels/duels-s4.txt`. Launched in the background (run_in_background).
+  - **Δ of duel_points per close for the viewer**: the same tool appends a line to `results/bazaar-live/<date>/duel-points.jsonl` for every tick in which our duels close: `{tick, session, before, after, delta, duels[]}` (shared jump if `duels` has more than one; `backfill: true` on those reconstructed from `dpts.log`). The UI session draws it in the Points column; a duel has no settlement and `score-audit` never sees it («not audited»).
+  - **Cadence simulation**: `pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50` (fake server with 5 req/s and one post per tick; rivals that repeat real offers; measures how long we take to answer). With priority in the bucket: p50 1.5 s and maximum 2.0 s with 4 duels at once.
+  - **Slow-step alarm** (during a duel session): `tail -n0 -F results/logs/<date>/play.log | grep -m1 -E "\[duels\] \[fast\] tick [0-9]+ · [1-9][0-9]* live · [0-9]+ acting · (1[2-9][0-9]{3}|[2-9][0-9]{4}) ms"` (step > 12 s with live duels: almost a 15 s tick).
+  - **Alarm over the play log** (one line, not a file; relaunch it every day with its date): `tail -n0 -F results/logs/<date>/play.log | grep -m1 -E "days-unreadable|duel [0-9]+: PAUSED|\[duels\].*(error|rejected)"`. Exits on the first match; when it fires, notify the coordinator with the raw JSON and launch it again. No HTTP codes in the pattern: it fired on ids (11412) and on the fast loop's ms («453 ms», «429 ms»); real failures already carry `error` (`error:rate_limited`).
 
-## Estado final (4 oct, Bazaar cerrado)
+## Final state (4 Oct, Bazaar closed)
 
-- **Duelos II:** 68 duelos, 51 tratos de 60 a las 22:15, +905,7 P.
-- **Duelos III (sesión 4):** 68 duelos, 55 tratos, ~+1300 P. 4 de los 13 sin trato se perdieron por cadencia (~93 P; 11594 ~64 P): play miraba los duelos cada ~30 s. Arreglos: `lastMoveTicks` 2 (5e7c9c1), `--duels-fast` (348be3c) y prioridad de los duelos en el bucket (480bacf).
-- **Gran Final (sesión 5):** 34 duelos, 27 tratos, +370,7 P (vendedor +248,0, comprador +122,7). Hubo un paso en 25 de 26 ticks (el 2595 se saltó porque el paso del 2593 tardó 14,3 s) y 0 errores. Pérdidas evitables:
-  - 15824 y 15838: vendedor con días; el final ofreció límite + 1 / día 0 en vez del límite en el día del rival. Corregido en 44137a1, con el test arreglado en 04bf57c.
-  - 15839: una carrera en el mismo tick, ~15 P.
-- **Abierto:**
-  - la cuestión de your_limit con días (ver el prompt);
-  - ofrecer escribir en el hub la decisión de la escalera a callados, el day-stand y el bucle rápido (con permiso).
+- **Duelos II:** 68 duels, 51 deals out of 60 at 22:15, +905.7 P.
+- **Duelos III (session 4):** 68 duels, 55 deals, ~+1300 P. 4 of the 13 without a deal were lost to cadence (~93 P; 11594 ~64 P): play looked at the duels every ~30 s. Fixes: `lastMoveTicks` 2 (5e7c9c1), `--duels-fast` (348be3c) and duel priority in the bucket (480bacf).
+- **Gran Final (session 5):** 34 duels, 27 deals, +370.7 P (seller +248.0, buyer +122.7). There was a step in 25 of 26 ticks (2595 was skipped because the step of 2593 took 14.3 s) and 0 errors. Avoidable losses:
+  - 15824 and 15838: seller with days; the final offered limit + 1 / day 0 instead of the limit on the rival's day. Fixed in 44137a1, with the test fixed in 04bf57c.
+  - 15839: a race in the same tick, ~15 P.
+- **Open:**
+  - the your_limit-with-days question (see the prompt);
+  - offer to write into the hub the decision on the ladder to silent ones, the day-stand and the fast loop (with permission).
 
-## Ficheros clave
+## Key files
 
-`src/duels/duels.ts` (`decideDuel`, `dayStand`, `dayHold`, `DEFAULT_DUEL_PARAMS`), `src/duels/agent.ts`, `src/duels/schemas.ts`, `src/duels/main.ts`, `src/duels/AGENTS.md`, `src/coordinator/coordinator.ts` (`arbitrate`, duelos), `src/coordinator/routes.ts` (`DuelsRoute`, bucle rápido), `src/shared/client.ts` (`TokenBucket` con prioridad), `agents/tools/duels-sim.ts`, `test/duels-days.test.ts`, `test/duels-micro-step.test.ts`, `docs/bazaar/kit/RULES.md` (Duels, Negotiating 30) y los tres PDF de la raíz.
+`src/duels/duels.ts` (`decideDuel`, `dayStand`, `dayHold`, `DEFAULT_DUEL_PARAMS`), `src/duels/agent.ts`, `src/duels/schemas.ts`, `src/duels/main.ts`, `src/duels/AGENTS.md`, `src/coordinator/coordinator.ts` (`arbitrate`, duels), `src/coordinator/routes.ts` (`DuelsRoute`, fast loop), `src/shared/client.ts` (`TokenBucket` with priority), `agents/tools/duels-sim.ts`, `test/duels-days.test.ts`, `test/duels-micro-step.test.ts`, `docs/bazaar/kit/RULES.md` (Duels, Negotiating 30) and the three PDFs in the root.
 
-## Comunicación
+## Communication
 
-- coordinator: reinicios con commit, child y restart-check; resultados por duelo, alarmas y propuestas con números. Le pide health checks y paquetes de propuesta.
-- audit: le avisa de duelos dudosos (WAIT con oferta positiva, pasos grandes); duels responde con el cálculo real.
-- goals: estrategia en una línea y cada cambio.
+- coordinator: restarts with commit, child and restart-check; results per duel, alarms and proposals with numbers. It asks it for health checks and proposal packages.
+- audit: it notifies duels of doubtful duels (WAIT with a positive offer, large steps); duels answers with the real calculation.
+- goals: strategy in one line and every change.

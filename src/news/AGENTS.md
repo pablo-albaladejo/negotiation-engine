@@ -1,19 +1,19 @@
-# src/news/ — Noticias del Bazaar (Radio Rastro)
+# src/news/ — Bazaar news (Radio Rastro)
 
-Vigila las noticias del Bazaar (Radio Rastro, el Boletín del Bazar y El Tablón) y deja un resumen para el panel «Radio Rastro» de la pestaña Now del visor. Además alimenta `GameState.news` como **pista** (excepción estrecha aprobada, como las pistas de eggs): de qué dealer, set o carta se habla y en qué dirección.
+Watches the Bazaar's news (Radio Rastro, the Boletín del Bazar and El Tablón) and leaves a summary for the «Radio Rastro» panel of the viewer's Now tab. It also feeds `GameState.news` as a **hint** (approved narrow exception, like egg hints): which dealer, set or card is being talked about and in which direction.
 
-**NUNCA UNA CIFRA.** Nada de esta carpeta se importa desde `coordinator/`, `dealers/`, `duels/`, `trades/`, `broker/` ni `engine/`, ninguna de esas carpetas lee `GameState.news` (lo comprueba `test/news-signals.test.ts`), y nunca produce una cifra ni una decisión. Unas noticias son ciertas, otras son rumores que no pasan y otras son solo Madrid: nada dice cuál es cuál.
+**NEVER A FIGURE.** Nothing in this folder is imported from `coordinator/`, `dealers/`, `duels/`, `trades/`, `broker/` or `engine/`, none of those folders reads `GameState.news` (checked by `test/news-signals.test.ts`), and it never produces a figure or a decision. Some news items are true, others are rumours that do not come to pass and others are just Madrid colour: nothing says which is which.
 
-## Archivos
+## Files
 
-- **`main.ts`** — `pnpm bazaar:news [--once] [--poll-ms 30000] [--no-llm] [--no-file-log]` (`--poll-ms` mínimo 30000). Cada vuelta lee lo nuevo del `stream-public.jsonl` del recorder (eventos news.posted) y, como mucho cada 30 s, `GET /api/news` (solo GET, cliente de [`shared/`](../shared/AGENTS.md)). Añade lo nuevo (sin repetir id) a `results/bazaar-live/<fecha local>/news.jsonl` y reescribe news-summary.json de forma atómica (tmp + rename). Log en `results/logs/<fecha>/news.log` (con `--no-file-log`, solo stdout: lo usa `bazaar:up`, que ya lo guarda ahí). Nunca sale del bucle por un error: lo apunta y sigue.
-- **`news.ts`** — funciones puras: esquema de `/api/news`, `itemFromStreamLine`, `tagMentions` (nombres de sets, cartas, dealers y venues; solo etiqueta), `rulesSummary`, `summaryPrompt` y `buildSummaryFile`.
-- **`signals.ts`** — `readNewsSignals(dir, nowTick)`: lee news-summary.json y devuelve `NewsSignals` (`available`, `updatedAt`, `summary`, `items`); nunca lanza (sin fichero o roto: vacío). Cada `NewsSignal` lleva id, tick, `ageTicks`, fuente, titular, cuerpo, menciones por tipo (sets, cards, dealers por id de persona, venues), `direction` por palabras clave en inglés y castellano (demand, supply, event, unknown) y `unverified: true`. Ningún campo de precio. `formatNewsSignals`: la línea «news» de la salida de play.
+- **`main.ts`** — `pnpm bazaar:news [--once] [--poll-ms 30000] [--no-llm] [--no-file-log]` (`--poll-ms` minimum 30000). Each lap reads what is new in the recorder's `stream-public.jsonl` (news.posted events) and, at most every 30 s, `GET /api/news` (GET only, client from [`shared/`](../shared/AGENTS.md)). It appends what is new (without repeating ids) to `results/bazaar-live/<local date>/news.jsonl` and rewrites news-summary.json atomically (tmp + rename). Log in `results/logs/<date>/news.log` (with `--no-file-log`, stdout only: used by `bazaar:up`, which already saves it there). It never leaves the loop on an error: it records it and carries on.
+- **`news.ts`** — pure functions: schema of `/api/news`, `itemFromStreamLine`, `tagMentions` (names of sets, cards, dealers and venues; tags only), `rulesSummary`, `summaryPrompt` and `buildSummaryFile`.
+- **`signals.ts`** — `readNewsSignals(dir, nowTick)`: reads news-summary.json and returns `NewsSignals` (`available`, `updatedAt`, `summary`, `items`); never throws (missing or broken file: empty). Each `NewsSignal` carries id, tick, `ageTicks`, source, headline, body, mentions by kind (sets, cards, dealers by persona id, venues), `direction` by keywords in English and Spanish (demand, supply, event, unknown) and `unverified: true`. No price field. `formatNewsSignals`: the «news» line of play's output.
 
-El resumen lo pide `claudeOnce` (de [`shared/`](../shared/AGENTS.md)) solo cuando llegan noticias nuevas; si falla, tarda más de 60 s o va con `--no-llm`, se usa el resumen por reglas.
+The summary is requested from `claudeOnce` (from [`shared/`](../shared/AGENTS.md)) only when new news arrives; if it fails, takes more than 60 s or runs with `--no-llm`, the rules-based summary is used.
 
 ## Links
 
 - ↑ [`src/`](../AGENTS.md)
-- → Visor: [`viewer/server/bazaar/`](../../viewer/server/bazaar/AGENTS.md) (`GET /api/bazaar/news` y `news` en `/api/bazaar/model`)
+- → Viewer: [`viewer/server/bazaar/`](../../viewer/server/bazaar/AGENTS.md) (`GET /api/bazaar/news` and `news` in `/api/bazaar/model`)
 - → [`state/`](../state/AGENTS.md) (`GameState.news`)

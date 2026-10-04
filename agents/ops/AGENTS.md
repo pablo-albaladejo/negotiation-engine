@@ -1,10 +1,10 @@
-# agents/ops — coordinación, objetivos y visor
+# agents/ops — coordination, goals and viewer
 
-Agentes transversales: no poseen una ruta de juego. Padre: [`agents/`](../AGENTS.md).
+Cross-cutting agents: they do not own a game route. Parent: [`agents/`](../AGENTS.md).
 
-| Agente | Qué posee |
-|--------|-----------|
-| [coordinator](coordinator.md) | El CÓMO: reinicios, relevos y aprobaciones; único que reinicia procesos en vivo |
-| [goals](goals.md) | El QUÉ: objetivos y registro de estrategias (`bazaar:goals`) |
-| [ui](ui.md) | El visor (solo lectura) |
-| [agents-keeper](agents-keeper.md) | Esta colección: fichas, mapa agente → sesión y tabla de `tools/` |
+| Agent | What it owns |
+|-------|--------------|
+| [coordinator](coordinator.md) | The HOW: restarts, handoffs and approvals; the only one that restarts live processes |
+| [goals](goals.md) | The WHAT: goals and the strategy registry (`bazaar:goals`) |
+| [ui](ui.md) | The viewer (read-only) |
+| [agents-keeper](agents-keeper.md) | This collection: cards, agent → session map and the `tools/` table |

@@ -1,10 +1,10 @@
-# viewer/src/screens/forex/ — Pestaña «Forex»
+# viewer/src/screens/forex/ — "Forex" tab
 
-Las cadenas A → B → C que encuentra `bazaar:play` cada tick: comprar en A, guardar la copia y vender en B, neto de comisiones. Cabecera con tick, hora, tratos de la ventana y cartas escaneadas.
+The A → B → C chains that `bazaar:play` finds every tick: buy at A, hold the copy and sell at B, net of fees. Header with tick, time, deals in the window and cards scanned.
 
-- **`Forex.tsx`** — la pantalla. Cada cadena es un flujo horizontal «Buy at A» → «Hold carta» → «Sell to B» → margen neto (y peor caso); cada nodo con su valor esperado, rango de precios (lo–hi, n, comisión si la hay) y `maxBuy`/`minSell`. El paso actual va resaltado; en reposo, el siguiente (el primero) va punteado. Muestra el estado, las hechas hoy y si es «automated» (la ejecuta el agente de dealers) o «shown only». En pantallas estrechas el flujo se apila en vertical. Cada paso es clicable y lleva un contador («2 threads», «1 spare»): abre debajo de la cadena sus conversaciones de hoy, de la más reciente a la más antigua, con estado, escalera de precios ella → nosotros, outcome y regla, y los flags; el número del hilo abre el cajón de conversación que ya existe (fila `thread:<id>` del tablero). En el paso de guardar, las copias de sobra. Sin hilos: «No conversations for this step today».
+- **`Forex.tsx`** — the screen. Each chain is a horizontal flow "Buy at A" → "Hold card" → "Sell to B" → net margin (and worst case); each node with its expected value, price range (lo–hi, n, fee if any) and `maxBuy`/`minSell`. The current step is highlighted; at rest, the next one (the first) is dotted. It shows the status, those done today and whether it is "automated" (executed by the dealers agent) or "shown only". On narrow screens the flow stacks vertically. Each step is clickable and carries a counter ("2 threads", "1 spare"): it opens below the chain its conversations of today, from the most recent to the oldest, with status, price ladder her → us, outcome and rule, and the flags; the thread number opens the conversation drawer that already exists (row `thread:<id>` of the board). In the hold step, the spare copies. Without threads: "No conversations for this step today".
 
-Datos: `board.forex` de `/api/bazaar/board` (ver [`viewer/server/bazaar/forex/`](../../../server/bazaar/forex/AGENTS.md)). Solo lectura: nada se envía.
+Data: `board.forex` from `/api/bazaar/board` (see [`viewer/server/bazaar/forex/`](../../../server/bazaar/forex/AGENTS.md)). Read only: nothing is sent.
 
 ## Links
 

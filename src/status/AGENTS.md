@@ -1,10 +1,10 @@
 # src/status/ — Status
 
-Resumen de solo lectura; nunca hace un POST.
+Read-only summary; it never makes a POST.
 
-## Archivos
+## Files
 
-- **`main.ts`** — CLI de `pnpm bazaar:status`: equipo, activos, desglose de la cifra, reloj, límites, dealers, niveles e hilos (solo GET).
+- **`main.ts`** — CLI for `pnpm bazaar:status`: team, assets, figure breakdown, clock, limits, dealers, levels and threads (GET only).
 
 ## Links
 

@@ -1,21 +1,21 @@
-# viewer/src/screens/venues/ — Pestaña «Venues»
+# viewer/src/screens/venues/ — «Venues» tab
 
-Todos los venues abiertos con su libro, en una pestaña del Bazaar: El Rastro primero y luego por profundidad. Por venue, dueño, comisión y mecanismo, con la insignia «off-limits» en v01, v02, v07 y v14 (no operamos ahí: sube el mercado de un rival) y «ours» en el nuestro. Debajo, asks (venden) y bids (compran) ordenados por precio, y aparte los cambios y las ofertas mixtas.
+All open venues with their book, in a Bazaar tab: El Rastro first and then by depth. For each venue, owner, commission and mechanism, with the «off-limits» badge on v01, v02, v07 and v14 (we do not operate there: it would raise a rival's market) and «ours» on ours. Below, asks (selling) and bids (buying) sorted by price, and separately the swaps and the mixed offers.
 
-Cada oferta va marcada frente a nosotros con NEG a nuestros valores como quien acepta (comisión incluida). Es una guía, nunca una cifra del agente:
+Each offer is marked against us with the NEG at our values as the one who accepts (commission included). It is a guide, never an agent figure:
 
-- **Bid por una carta que tenemos**: precio − valor − comisión. Solo en verde si es positivo y es repetida (mano ≥ 2); con una sola copia, «our last copy». Las cartas ocultas nunca se venden: un bid por una de ellas sale como «never sold (hidden/keepsake)» y sin cifra.
-- **Ask por una carta que nos falta**: valor − precio − comisión.
-- **Ask por una carta que ya tenemos**: «dup», sin cifra (una segunda copia vale ~3–4, no nuestro valor).
-- **Ofertas dirigidas a nosotros**: resaltadas (también salen en «Team desk»).
+- **Bid for a card we have**: price − value − commission. Green only if positive and it is a duplicate (hand ≥ 2); with a single copy, «our last copy». Hidden cards are never sold: a bid for one of them shows as «never sold (hidden/keepsake)» and without a figure.
+- **Ask for a card we lack**: value − price − commission.
+- **Ask for a card we already have**: «dup», without a figure (a second copy is worth ~3–4, not our value).
+- **Offers targeted at us**: highlighted (they also appear in «Team desk»).
 
-Filtros: solo cartas que nos faltan, solo bids por nuestras cartas, solo NEG > 0, ocultar off-limits y buscar una carta.
+Filters: only cards we lack, only bids for our cards, only NEG > 0, hide off-limits and search for a card.
 
-- **`VenueBooks.tsx`** — la pantalla.
-- **`DirectedOffers.tsx`** — la sección «Between other teams», arriba de los libros: ofertas dirigidas entre otros equipos (quién → a quién, lado, cartas, precio, estado), los pares más activos y en verde las cartas que tenemos repetidas, con el filtro «only cards we hold as spares». Solo estructura.
-- **`venuesModel.ts`** — funciones puras (`filterVenues`, `keepRow`, `markLabel`, `summaryOf`).
+- **`VenueBooks.tsx`** — the screen.
+- **`DirectedOffers.tsx`** — the «Between other teams» section, above the books: targeted offers between other teams (who → to whom, side, cards, price, status), the most active pairs and, in green, the cards we hold as duplicates, with the filter «only cards we hold as spares». Structure only.
+- **`venuesModel.ts`** — pure functions (`filterVenues`, `keepRow`, `markLabel`, `summaryOf`).
 
-Datos: `board.venue_books` de `/api/bazaar/board` (lo arma el servidor, ver [`viewer/server/bazaar/venues/`](../../../server/bazaar/venues/AGENTS.md)). Solo lectura: nada se envía.
+Data: `board.venue_books` from `/api/bazaar/board` (built by the server, see [`viewer/server/bazaar/venues/`](../../../server/bazaar/venues/AGENTS.md)). Read-only: nothing is sent.
 
 ## Links
 

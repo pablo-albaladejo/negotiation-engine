@@ -1,19 +1,19 @@
-# design-system/src/ — Componentes React
+# design-system/src/ — React components
 
-Componentes reutilizables: botones, tablas, temas, utilidades.
+Reusable components: buttons, tables, themes, utilities.
 
-## Propósito
+## Purpose
 
-Biblioteca base de UI. Componentes genéricos tipados, sin dependencias de negocio (sin conocimiento del motor, ring, etc.).
+Base UI library. Generic typed components with no business dependencies (no knowledge of the engine, ring, etc.).
 
-## Archivos
+## Files
 
-- **`index.ts`** — entrada pública: exporta cada componente (el visor la importa por alias).
-- **`styles.css`** / **`tokens.css`** — estilos y tokens CSS (`--us`, `--them`, `--ok`, `--warn`…).
-- **`format.ts`** — `formatNumber` y formato de cifras.
-- **[`components/`](components/AGENTS.md)** — componentes React por familia.
+- **`index.ts`** — public entry point: exports every component (the viewer imports it by alias).
+- **`styles.css`** / **`tokens.css`** — styles and CSS tokens (`--us`, `--them`, `--ok`, `--warn`…).
+- **`format.ts`** — `formatNumber` and number formatting.
+- **[`components/`](components/AGENTS.md)** — React components by family.
 
-## Cómo trabajar
+## How to work
 
 ```bash
 pnpm --dir design-system build
