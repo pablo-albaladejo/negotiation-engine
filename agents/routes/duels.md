@@ -1,6 +1,6 @@
 # duels
 
-> Sesión de origen: `duels` · vivo · entrevista: 4 oct.
+> Sesión de origen: `duels` · Bazaar cerrado (4 oct, tras la Gran Final) · entrevista: 4 oct.
 
 ## Misión
 
@@ -9,7 +9,7 @@ Estrategia y operación de los duelos 1 contra 1 del Bazaar (Duelos I/II/III y G
 ## Fronteras
 
 - No reinicia procesos en vivo: solo el [coordinator](../ops/coordinator.md), con OK de Pablo; duels le manda commit + child (play) + salida de `--restart-check`.
-- No toca dealers ([dealers](dealers.md)), El Rastro/teamdesk/rival-buy ([trader](trader.md)), broker/venue ([broker](broker.md)), visor ([ui](../ops/ui.md); el visor aún no muestra result ni duel_points por duelo: falta decidir quién lo hace), ni el registro de estrategias ([goals](../ops/goals.md): avisarle de cada cambio).
+- No toca dealers ([dealers](dealers.md)), El Rastro/teamdesk/rival-buy ([trader](trader.md)), broker/venue ([broker](broker.md)), visor ([ui](../ops/ui.md): pinta result, días, decay y Δduel_points por duelo a partir de `duel-points.jsonl`; duels solo le pasa los datos), ni el registro de estrategias ([goals](../ops/goals.md): avisarle de cada cambio).
 - No escribe ficheros de `results/state/` ni campos de GameState.
 
 ## Prompt de arranque
@@ -25,7 +25,7 @@ Reglas de Pablo en esta sesión:
 (f) Avisa a goals de cada cambio de estrategia.
 (g) Al usuario, en español; los mensajes entre sesiones, en inglés o español.
 Puntuación: result por duelo = excedente real × (1−decay)^rondas; duel_points mide la parte del pastel (no es lineal con result). Excedente real: comprador = límite − precio − w·días, vendedor = precio − límite + w·días (days_meaning da el signo).
-Estado: Duelos III a h15.367 (sesión 4 del servidor, 2 rondas, 12 ticks, decay 0,10, máximo 4 a la vez) y Gran Final a h18.367. f17fd27 (day-hold + day-stand con una sola oferta) está en DAY2, pendiente del OK de Pablo y de un reinicio de play antes de h15.3. Monta la tabla en vivo (GET-only) y una alarma sobre results/logs/<fecha>/play.log (days-unreadable | duel N: PAUSED | errores de [duels]).
+Estado final (4 oct): el Bazaar está cerrado y no quedan duelos (/api/schedule vacío). Si se reabre: play con --duels-fast (un paso por tick en su propio bucle, peticiones de duelo con prioridad en el bucket), última jugada a 2 ticks y, en el final, nuestro precio límite en el día del rival (44137a1). Pendiente de Pablo: decidir si un precio que cruza your_limit pero que los días dejan positivo cuenta como «fuera del límite» (el you_captured del servidor apunta a precio + w·días); se resuelve con un duelo de prueba con poco en juego. Antes de un duelo en vivo, monta la tabla (GET-only) y la alarma sobre results/logs/<fecha>/play.log.
 ```
 
 ## Procesos
@@ -34,18 +34,24 @@ Estado: Duelos III a h15.367 (sesión 4 del servidor, 2 rondas, 12 ticks, decay 
 - Suyos, solo lectura (GET), versionados en `agents/tools/`:
   - **Tabla en vivo:** `node agents/tools/duels-table.mjs 4` (sesión del servidor: Duelos I = 2, II = 3, III = 4; Gran Final probablemente 5). Lee `/api/clock`, `/api/me` y `/api/duels` cada 15 s y escribe `results/duels/duels-s<sesión>.txt`. Apunta el Δduel_points de cada cierre en `results/duels/dpts.log`. `--tty` la pinta en la terminal y `--out <fichero>` cambia el nombre. Para verla: `watch -n 15 cat results/duels/duels-s4.txt`. Se lanza en segundo plano (run_in_background).
   - **Δ de duel_points por cierre para el visor**: la misma herramienta añade una línea a `results/bazaar-live/<fecha>/duel-points.jsonl` por cada tick en que cierran duelos nuestros: `{tick, session, before, after, delta, duels[]}` (salto compartido si `duels` tiene más de uno; `backfill: true` en las reconstruidas de `dpts.log`). Lo pinta la sesión UI en la columna Points; un duelo no tiene liquidación y `score-audit` nunca lo ve («not audited»).
+  - **Simulación de cadencia**: `pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50` (servidor falso con 5 req/s y un post por tick; rivales que repiten ofertas reales; mide cuánto tardamos en contestar). Con prioridad en el bucket: p50 1,5 s y máximo 2,0 s con 4 duelos a la vez.
+  - **Alarma de paso lento** (durante una sesión de duelos): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "\[duels\] \[fast\] tick [0-9]+ · [1-9][0-9]* live · [0-9]+ acting · (1[2-9][0-9]{3}|[2-9][0-9]{4}) ms"` (paso > 12 s con duelos vivos: casi un tick de 15 s).
   - **Alarma sobre el log de play** (una línea, no es fichero; relanzarla cada día con su fecha): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "days-unreadable|duel [0-9]+: PAUSED|\[duels\].*(error|rejected)"`. Sale en la primera coincidencia; al saltar, avisar al coordinator con el JSON crudo y volver a lanzarla. Sin códigos HTTP en el patrón: saltaba con ids (11412) y con los ms del bucle rápido («453 ms», «429 ms»); los fallos reales ya llevan `error` (`error:rate_limited`).
 
-## Estado al 4 oct (instantánea)
+## Estado final (4 oct, Bazaar cerrado)
 
-- Duelos II cerrado: 68 duelos (34 vendedor, 34 comprador); a las 22:15, 51 tratos de 60 y +905,7 P. Una pérdida (5615, −14,7) por la tabla de días desplazada (corregida en 745ab32). Primer day-stand (6045) cerró a +14,3.
-- En vivo desde el 3 oct 22:11 (play en 9fe381f): 1601981 (escalera a callados, ancla 0,35), 08ddf27 (accepts fuera del cupo), 745ab32 (valor real de los días), b4d8d8e (reparar oferta vigente con pérdida), e52a437 + b0ca5de (day-stand).
-- Pendiente de Pablo: f17fd27 para Duelos III (day-hold antes del endgame cuando el día pesa ≥ 0,4 del excedente de referencia; day-stand con una sola oferta). Paquete enviado al coordinator con Δ, riesgo y dry-run.
-- Otras: visor con result por duelo y duel_points (¿ui o duels?); ofrecer escribir en el hub la decisión de la escalera a callados y del day-stand (con permiso).
+- **Duelos II:** 68 duelos, 51 tratos de 60 a las 22:15, +905,7 P.
+- **Duelos III (sesión 4):** 68 duelos, 55 tratos, ~+1300 P. 4 de los 13 sin trato se perdieron por cadencia (~93 P; 11594 ~64 P): play miraba los duelos cada ~30 s. Arreglos: `lastMoveTicks` 2 (5e7c9c1), `--duels-fast` (348be3c) y prioridad de los duelos en el bucket (480bacf).
+- **Gran Final (sesión 5):** 34 duelos, 27 tratos, +370,7 P (vendedor +248,0, comprador +122,7). Hubo un paso en 25 de 26 ticks (el 2595 se saltó porque el paso del 2593 tardó 14,3 s) y 0 errores. Pérdidas evitables:
+  - 15824 y 15838: vendedor con días; el final ofreció límite + 1 / día 0 en vez del límite en el día del rival. Corregido en 44137a1, con el test arreglado en 04bf57c.
+  - 15839: una carrera en el mismo tick, ~15 P.
+- **Abierto:**
+  - la cuestión de your_limit con días (ver el prompt);
+  - ofrecer escribir en el hub la decisión de la escalera a callados, el day-stand y el bucle rápido (con permiso).
 
 ## Ficheros clave
 
-`src/duels/duels.ts` (`decideDuel`, `dayStand`, `dayHold`, `DEFAULT_DUEL_PARAMS`), `src/duels/agent.ts`, `src/duels/schemas.ts`, `src/duels/main.ts`, `src/duels/AGENTS.md`, `src/coordinator/coordinator.ts` (`arbitrate`, duelos), `test/duels-days.test.ts`, `test/duels-micro-step.test.ts`, `docs/bazaar/kit/RULES.md` (Duels, Negotiating 30) y los tres PDF de la raíz.
+`src/duels/duels.ts` (`decideDuel`, `dayStand`, `dayHold`, `DEFAULT_DUEL_PARAMS`), `src/duels/agent.ts`, `src/duels/schemas.ts`, `src/duels/main.ts`, `src/duels/AGENTS.md`, `src/coordinator/coordinator.ts` (`arbitrate`, duelos), `src/coordinator/routes.ts` (`DuelsRoute`, bucle rápido), `src/shared/client.ts` (`TokenBucket` con prioridad), `agents/tools/duels-sim.ts`, `test/duels-days.test.ts`, `test/duels-micro-step.test.ts`, `docs/bazaar/kit/RULES.md` (Duels, Negotiating 30) y los tres PDF de la raíz.
 
 ## Comunicación
 
