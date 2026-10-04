@@ -23,6 +23,7 @@
     "bazaar:play": "tsx src/coordinator/main.ts",
     "bazaar:news": "tsx src/news/main.ts",
     "bazaar:audit": "tsx src/audit/main.ts",
+    "bazaar:intros": "tsx src/intros/main.ts",
     "bazaar:scan": "node scripts/bazaar-api-scan.mjs",
     "bazaar:feed": "node scripts/bazaar-convo-feed.mjs",
     "bazaar:dump": "node scripts/bazaar-dump.mjs",
