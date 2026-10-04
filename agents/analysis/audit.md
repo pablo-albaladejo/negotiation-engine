@@ -22,15 +22,16 @@ Reglas de Pablo:
 - Solo se venden repetidas; la última copia o una página completa necesitan OK de Pablo.
 - Commits solo en DAY2, con git add explícito de tus rutas, y pnpm test, typecheck y docs:check en verde. Mensaje en castellano terminando en "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"; fetch, y pull --rebase solo si el remoto avanzó; luego push.
 Cómo auditar:
-- Duelos: margen real = precio + w·días. Comprador: limit − price − w·days; vendedor: price − limit + w·days. w sale de play.log, en "[duels] duel N (role, …) X P per day".
+- Duelos: margen real = precio + w·días. Comprador: limit − price − w·days; vendedor: price − limit + w·days. w sale de play.log, en la línea "assumption: X P per day" que sigue a "duel N · role · …". El servidor puntúa así (you_captured lo confirma). Pablo decidió no aceptar precios que crucen el límite aunque los días los hagan buenos: no es fallo.
 - La puntuación va ~9 ticks por detrás y es relativa al resto de equipos.
 - Escalera: se reinicia cada día y cuenta los 3 mejores tratos por nivel. Las compras puntúan; las ventas a la cifra de apertura del dealer (precio fijo) dan 0.
-- Las ventas a equipos puntúan neg = precio − valor del servidor.
+- Las ventas a equipos puntúan neg = precio − valor del servidor − comisión (la comisión resta, también en compras), con un tope de ~50 por contraparte, acumulado.
+- Los movimientos manuales de Pablo (p. ej. results/trader/last-move.ts) no pasan por play.log: antes de dar la alarma, pregunta al coordinator.
 - Board empata con auto si el broker casa todo (bench h13 del sábado: 0,696 = 0,696).
 Al arrancar:
 (a) Arranca el auditor: pnpm bazaar:audit --watch >> results/logs/<hoy>/audit-standalone.log (run_in_background). Fija la fecha al arrancar: reinícialo tras medianoche.
-(b) Monitor por tick con un script que lea results/logs/<hoy>/play.log y saque, por tick: score/rank/caja/escalera/neg/duelos y sus Δ, el margen real de cada duelo (nuestra oferta y la del rival), acciones con dealers y los flags one-sided-concession, rank-down, deal-scored-0, error y cartas ocultas.
-(c) Monitor de alertas: en play.log, crash/exited/Error, banco/Pícaros y "score audit: … mismatch"; en stream-public, clock.changed paused, bench.finished y venue.opened/closed de t02; las líneas HIGH/MEDIUM del auditor; en stream-team, settlements de t02: compra a dealer > 60 P, LAT-13 saliendo y cada trato con equipos (vigila que no se venda una última copia).
+(b) Monitor por tick: python3 -u agents/tools/audit-tick-eval.py --from-end (Monitor, 30 min).
+(c) Monitor de alertas: bash agents/tools/audit-alerts.sh (Monitor, 30 min).
 Rearma cada monitor al caducar (30 min). Las rutas de results/ llevan la fecha: cámbialas a medianoche.
 ```
 
@@ -43,7 +44,7 @@ Rearma cada monitor al caducar (30 min). Las rutas de results/ llevan la fecha: 
   - La fecha por defecto es la de hoy en UTC (la de las carpetas de `results/`); pasada la medianoche hay que relanzarlos, y también el auditor.
 - No lanza nada de `bazaar:up`.
 
-## Estado al 4 oct (instantánea, ~t1625)
+## Estado al 4 oct (instantánea histórica, ~t1625; lo vigente está en «Cierre del 4 oct»)
 
 - Rank 11, 21,74 puntos, caja 620, escalera 0,042, neg 50.
 - Pendiente: recomprar CHA-05 a la Abuela (~10 P): se vendió la única copia a t05 @72 (+50 neg) y Chamberí bajó a 7/10; lo tiene el coordinator para trader/dealers.
