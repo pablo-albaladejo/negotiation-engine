@@ -361,7 +361,7 @@ const RETRACTABLE: ReadonlySet<Detector> = new Set<Detector>(["dup-buy", "album-
 const RETRACT_WHY: Partial<Record<Detector, string>> = {
   "dup-buy": "no longer qualifies: the next copy valued as of the trade's tick covers its cost",
   "album-copy-lost": "no longer qualifies: valued as of the trade's tick, the sale covered the card's value",
-  "repeated-price": "no longer qualifies: the repeated price was our floor (no room to move)",
+  "repeated-price": "no longer qualifies: the repeated price was our floor (no room to move), a change of delivery day, or a hold the rival answered with concessions",
 };
 
 /** A line of audit.jsonl that withdraws an earlier alert; the last line of a key wins. */
