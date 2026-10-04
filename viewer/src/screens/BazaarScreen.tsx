@@ -728,12 +728,12 @@ function Agents({ board }: { board: Board }) {
   );
 }
 
-function History({ board, rows, title, filters, onFiltersChange, ladder }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void; ladder?: ModelLadderLevel[] }) {
+function History({ board, rows, title, filters, onFiltersChange, ladder, open = false }: { board: Board; rows: BoardRow[]; title: string; filters: BoardFilters; onFiltersChange: (f: BoardFilters) => void; ladder?: ModelLadderLevel[]; open?: boolean }) {
   // "Whose" only applies where other teams' trades are listed (duels are always ours).
   const shown = filterBoardRows(rows, rows.some((r) => r.kind === "other-trade") ? filters : { ...filters, scope: "all" });
   const select = (id: string) => onFiltersChange({ ...filters, row: id });
   return (
-    <Fold title={`${title} (${rows.length})`}>
+    <Fold title={`${title} (${rows.length})`} open={open}>
       <FiltersBar board={board} rows={rows} filters={filters} onChange={onFiltersChange} />
       {shown.length === 0 ? (
         <span className="nr-muted">Nothing matches these filters.</span>
@@ -804,7 +804,7 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news" | "teams" | "goals";
+type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news" | "teams" | "goals" | "duels";
 
 /** Tab label (what it is) and hint (what it answers), shown under the tabs for the selected view. */
 const VIEWS: { id: View; label: string; hint: string }[] = [
@@ -817,6 +817,7 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: "market-test", label: "🧪 Market test", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
   { id: "eggs", label: "🥚 Eggs", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
   { id: "news", label: "📻 News", hint: "Radio Rastro, the Bulletin and the notice board: which dealer, set or card is being talked about, with a summary. Unverified, may be rumour, never a figure." },
+  { id: "duels", label: "⚔️ Duels", hint: "Every 1-on-1 duel by session (I, II, III, Grand Final): rival, item, price vs our limit, result and the duel points each one brought." },
   { id: "goals", label: "🎯 Goals", hint: "What we aim at and how: gaps and conflicts, goals by priority, open proposals (pros, cons, recommendation) and every strategy by goal. From the goals session; shown only." },
   { id: "teams", label: "👥 Teams", hint: "Every team in one place: score parts, what we did with it, its trades with others, eggs it found and its collection. Click any team name in the viewer to land here." },
   { id: "personas", label: "🧑‍🎤 Dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },
@@ -915,6 +916,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <MarketTest board={board} />
         ) : view === "eggs" ? (
           <EggsView board={board} model={model} loading={loading} onOpenThread={(t) => openModel(`dealer:${t}`)} />
+        ) : view === "duels" ? (
+          <History open board={board} rows={duels} title={`Duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
         ) : view === "goals" ? (
           <GoalsView model={model} loading={loading} />
         ) : view === "teams" ? (
@@ -951,7 +954,6 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         </div>
       </div>
       <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
-      <History board={board} rows={duels} title={`History · duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
       <Fold title="Market · leaderboard, feed, El Rastro, our venue">
         <MarketPanel board={board} />
       </Fold>

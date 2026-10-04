@@ -57,6 +57,8 @@ export interface BoardRow {
   d_shared?: number;
   /** The ladder Δ arrived on a later tick and was given to this deal: not an exact attribution. */
   d_lagged?: boolean;
+  /** Duel only: its points line was rebuilt afterwards (duel-points.jsonl `backfill`). */
+  d_backfill?: boolean;
   duel_result: number | null;
   /** Duel only: number, session (1 = I, 2 = II, 3 = III, 4 = Grand Final), agreed delivery days, issues, decay per round. */
   duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
@@ -336,9 +338,9 @@ export function pointsLabel(r: BoardRow): { value: string; tone?: "better" | "wo
   const sign = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 1000) / 1000}`;
   const shown = Object.entries(PART_LABEL).filter(([k]) => p[k] !== undefined && (k === "neg_points" || k === "ladder_points" || p[k] !== 0));
   const text = shown.map(([k, label]) => `${label} ${sign(p[k]!)}`).join(" · ");
-  const net = p.score ?? (p.neg_points ?? 0) + (p.ladder_points ?? 0);
+  const net = p.score ?? Object.entries(p).reduce((s, [k, v]) => (k === "score" ? s : s + v), 0);
   const tone = net > 0 ? "better" : net < 0 ? "worse" : undefined;
-  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} deals)` : ""}${r.d_lagged ? " · ladder lagged (not exact)" : ""}`;
+  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} ${r.duel ? "duels" : "deals"})` : ""}${r.d_lagged ? " · ladder lagged (not exact)" : ""}${r.d_backfill ? " · backfilled" : ""}`;
   return tone ? { value, tone } : { value };
 }
 

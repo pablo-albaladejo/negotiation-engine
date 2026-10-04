@@ -243,6 +243,8 @@ export interface BoardRow {
   d_shared: number;
   /** The ladder Δ came on a later tick with no deal of ours (it lands a few ticks after the settlement): not exact. */
   d_lagged: boolean;
+  /** Duel only: its points line was rebuilt afterwards (`backfill` in duel-points.jsonl). */
+  d_backfill?: boolean;
   duel_result: number | null;
   /** Duel only: the game's duel number, its session (1 = Duels I, 2 = II, 3 = III, 4 = Grand Final), the agreed delivery days and the decay per round (absent elsewhere). */
   duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
@@ -278,6 +280,8 @@ export interface BoardInput {
   scoreLines: ScoreLine[];
   /** `score-audit.jsonl` lines (optional: absent before bazaar:play ran live). */
   audit?: ScoreAuditLine[];
+  /** `duel-points.jsonl` lines (written by the duels session from Duels III on; absent before). */
+  duelPoints?: DuelPointsLine[];
   lessons: Lesson[];
   cache: VerdictCache;
   /** `/api/me/value?card=REF` already queried this cycle (only for just-settled sales). */
@@ -733,6 +737,7 @@ export function buildRows(input: BoardInput): { rows: BoardRow[]; newValues: Rec
     if (row && deal.settlement != null) row.settlement = deal.settlement;
   }
   applyScoreAudit(rows, input.audit ?? []);
+  applyDuelPoints(rows, input.duelPoints ?? []);
   const key = (r: BoardRow) => r.tick_opened ?? r.tick_settled ?? -1;
   rows.sort((a, b) => key(b) - key(a));
   return { rows, newValues };
@@ -784,6 +789,34 @@ export function applyScoreAudit(rows: BoardRow[], audit: readonly ScoreAuditLine
       row.d_neg_points = parts.neg_points ?? null;
       row.d_ladder_points = parts.ladder_points ?? row.d_ladder_points;
       if (parts.score !== undefined) row.d_score = parts.score;
+    }
+  }
+}
+
+/**
+ * One line of `duel-points.jsonl`: the duel_points jump of the first tick we saw it, and the duels of ours that closed
+ * then (the API gives no closing tick). With more than one duel the jump is theirs together (`d_shared`).
+ */
+export const DuelPointsSchema = z.looseObject({
+  tick: num,
+  delta: num,
+  duels: z.array(num),
+  backfill: z.boolean().optional(),
+});
+export type DuelPointsLine = z.infer<typeof DuelPointsSchema>;
+
+/** Puts each duel_points jump on its duels; duels without a line (Duels I and II) stay not audited. */
+export function applyDuelPoints(rows: BoardRow[], lines: readonly DuelPointsLine[]): void {
+  const byDuel = new Map<number, BoardRow>();
+  for (const r of rows) if (r.duel) byDuel.set(r.duel.no, r);
+  for (const l of lines) {
+    for (const id of l.duels) {
+      const row = byDuel.get(id);
+      if (!row) continue;
+      row.d_parts = { duel_points: l.delta };
+      row.d_shared = l.duels.length;
+      row.d_score = null;
+      if (l.backfill) row.d_backfill = true;
     }
   }
 }

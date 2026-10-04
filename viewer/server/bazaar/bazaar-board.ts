@@ -28,6 +28,7 @@ import {
   leaderLines,
   LessonSchema,
   ScoreAuditSchema,
+  DuelPointsSchema,
   OUR_TEAM_FALLBACK,
   feedSettlements,
   otherTradeRows,
@@ -325,6 +326,7 @@ export class BazaarBoard {
     const decisions: Decision[] = await readAllJsonl(this.bazaarDir, (f) => f === "decisions.jsonl" || /^thread-\d+\.jsonl$/.test(f), DecisionSchema);
     const scoreLines: ScoreLine[] = await readAllJsonl(this.bazaarDir, (f) => f === "score.jsonl", ScoreLineSchema);
     const audit = await readAllJsonl(this.bazaarDir, (f) => f === "score-audit.jsonl", ScoreAuditSchema);
+    const duelPoints = await readAllJsonl(this.bazaarDir, (f) => f === "duel-points.jsonl", DuelPointsSchema);
     const lessons = parseList(LessonSchema, field(await readJsonFile(this.deps.lessonsFile), "conversations"));
 
     const apiValues = new Map<string, number>();
@@ -339,6 +341,7 @@ export class BazaarBoard {
       decisions,
       scoreLines,
       audit,
+      duelPoints,
       lessons,
       cache,
       apiValues,

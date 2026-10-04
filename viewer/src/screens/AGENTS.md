@@ -1,6 +1,6 @@
 # viewer/src/screens/ — Pantallas
 
-- **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Goals, Teams, Dealers), con etiquetas cortas con icono y una frase bajo las pestañas que dice qué responde; cajón de cada conversación con la curva y el camino previsto.
+- **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Duels, Goals, Teams, Dealers), con etiquetas cortas con icono y una frase bajo las pestañas que dice qué responde; cajón de cada conversación con la curva y el camino previsto.
 - **[`now/`](now/AGENTS.md)** — la pestaña «Now»: qué está pasando ahora mismo (tick, plan del tick, conversaciones vivas, nuestras ofertas, qué cambió).
 - **[`market-test/`](market-test/AGENTS.md)** — la pestaña «Market test»: nuestras sesiones de bench en auto (v04) frente a board (v26), con el libro tick a tick y nuestros emparejamientos.
 - **[`profile/`](profile/AGENTS.md)** — nuestro perfil bajo el marcador: los easter eggs que hemos encontrado (sondeo y premio) y los de cada persona.
