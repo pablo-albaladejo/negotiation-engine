@@ -13,6 +13,7 @@ prev = {}
 RECENT = []
 threads = {}  # thread -> (her, ours) last seen
 DUELW, OURS = {}, {}
+LASTDUEL = [None]  # duel whose "assumption: W P per day" line comes next
 
 
 def evaluate(tick, lines):
@@ -39,9 +40,12 @@ def evaluate(tick, lines):
         if m: DUELW[m.group(1)] = float(m.group(3))
         m = re.search(r"\[duels\] message: duel (\d+): COUNTER (\d+) P day (\d+)", l)
         if m: OURS[m.group(1)] = (int(m.group(2)), int(m.group(3)))
+        m = re.search(r"\s+assumption: ([\d.]+) P per day", l)
+        if m and LASTDUEL[0]: DUELW[LASTDUEL[0]] = float(m.group(1))
         m = re.search(r"duel (\d+) · (\w+) · .*limit (\d+) · rival (\S+)(?: P/day (\d+))?", l)
         if m:
             did, role, lim, riv, rday = m.groups()
+            LASTDUEL[0] = did
             lim = int(lim)
             w = DUELW.get(did)
             if w is None:
@@ -91,6 +95,10 @@ with open(L, errors="ignore") as f0:
     for l0 in f0:
         m0 = re.search(r"\[duels\] duel (\d+) \((\w+),.*?([\d.]+) P per day", l0)
         if m0: DUELW[m0.group(1)] = float(m0.group(3))
+        m0 = re.search(r"duel (\d+) · (?:buyer|seller) · ", l0)
+        if m0: LASTDUEL[0] = m0.group(1)
+        m0 = re.search(r"\s+assumption: ([\d.]+) P per day", l0)
+        if m0 and LASTDUEL[0]: DUELW[LASTDUEL[0]] = float(m0.group(1))
 pos = os.path.getsize(L) if "--from-end" in sys.argv else max(0, os.path.getsize(L) - 400000)
 buf, cur = [], None
 while True:
