@@ -7,6 +7,7 @@
 - **[`venues/`](venues/AGENTS.md)** — la pestaña «Venues»: el libro de todos los venues abiertos, cada oferta marcada frente a nuestra mano y nuestros valores (NEG como quien acepta, dup, última copia), con filtros.
 - **[`forex/`](forex/AGENTS.md)** — la pestaña «Forex»: las cadenas A → B → C de `bazaar:play` (comprar, guardar, vender) con el paso actual resaltado, margen neto y peor caso.
 - **[`news/`](news/AGENTS.md)** — la pestaña «News»: señales de noticias y Radio Rastro.
+- **[`nav/`](nav/AGENTS.md)** — enlaces entre pestañas: cualquier «tN» abre el cajón «Tick N», un equipo su perfil en Teams y un dealer su fila en Dealers.
 - **[`teams/`](teams/AGENTS.md)** — la pestaña «Teams»: todo lo que sabemos de cada equipo; cualquier nombre de equipo del visor abre esta pestaña en ese equipo.
 - **[`album/`](album/AGENTS.md)** — la pestaña «Cards»: el álbum como cromos, igual que /cards del juego: una banda por set y un cromo por carta (las que tenemos y las que faltan), con el valor, la tirada y las shinies.
 - **`DealerEstimates.tsx`** — panel «Dealer estimates» de la vista Model: por persona, parámetros (valor, intervalo, n y su convergencia), límites por banda (marca *fewSamples*); solo el lado del dealer.
@@ -29,6 +30,7 @@ Solo texto plano: nada de HTML inyectado.
 - ↓ [`market-test/`](market-test/AGENTS.md)
 - ↓ [`album/`](album/AGENTS.md)
 - ↓ [`news/`](news/AGENTS.md)
+- ↓ [`nav/`](nav/AGENTS.md)
 - ↓ [`teams/`](teams/AGENTS.md)
 - ↓ [`forex/`](forex/AGENTS.md)
 - → Lógica: [`model/`](../model/AGENTS.md) · Piezas: [`ui/`](../ui/AGENTS.md)

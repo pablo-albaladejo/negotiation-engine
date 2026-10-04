@@ -2,6 +2,7 @@ import { Card, DataTable, TableLink } from "@negotiation-ring/design-system";
 import type { ReactNode } from "react";
 import { teamLabel, type Board, type BoardEggCard, type BoardEggFlow, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
 import { TeamName } from "../teams/TeamLink.js";
+import { DealerName, TickLink } from "../nav/Links.js";
 
 /** ASSUMPTION (same as src/state/world.ts): 15 eggs per persona until the API gives a figure. */
 const EGGS_PER_PERSONA = 15;
@@ -237,7 +238,15 @@ export function Eggs({ board, title, onOpenThread }: { board: Board; title?: str
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-3)" }}>
           <span>
             <span className="nr-muted">Badges: </span>
-            {badges.length ? badges.map((b) => `${b.badge} (t${b.tick})`).join(" · ") : "none"}
+            {badges.length
+              ? badges.map((b, i) => (
+                  <span key={`${b.badge}-${b.tick}`}>
+                    {i ? " · " : ""}
+                    {`${b.badge} (`}
+                    <TickLink tick={b.tick} />)
+                  </span>
+                ))
+              : "none"}
           </span>
           <span>
             <span className="nr-muted">Hidden cards held: </span>
@@ -260,7 +269,7 @@ export function Eggs({ board, title, onOpenThread }: { board: Board; title?: str
               { key: "last", label: "Our last probe" },
             ]}
             rows={eggs.personas.map((p) => ({
-              persona: `${p.persona_name ?? p.persona}${p.persona_name ? ` (${p.persona})` : ""}`,
+              persona: <DealerName id={p.persona}>{`${p.persona_name ?? p.persona}${p.persona_name ? ` (${p.persona})` : ""}`}</DealerName>,
               finds: p.found.length,
               left: `${Math.max(0, EGGS_PER_PERSONA - p.found.length)}*`,
               who: p.found.length ? (
@@ -268,7 +277,7 @@ export function Eggs({ board, title, onOpenThread }: { board: Board; title?: str
                   {p.found.map((f, i) => (
                     <span key={`${f.team}-${f.tick}`} style={f.team === board.team ? { color: "var(--us)", fontWeight: 800 } : undefined}>
                       {i ? " · " : ""}
-                      <TeamName board={board} team={f.team} /> t{f.tick}
+                      <TeamName board={board} team={f.team} /> <TickLink tick={f.tick} />
                     </span>
                   ))}
                 </span>
@@ -276,7 +285,15 @@ export function Eggs({ board, title, onOpenThread }: { board: Board; title?: str
                 "—"
               ),
               probes: p.probes.sent ? `${p.probes.sent} sent · ${p.probes.hit} hit · ${p.probes.miss} miss` : "—",
-              last: p.probes.last ? `«${p.probes.last.phrase}» t${p.probes.last.tick} · ${p.probes.last.result}` : "—",
+              last: p.probes.last ? (
+                <span>
+                  {`«${p.probes.last.phrase}» `}
+                  <TickLink tick={p.probes.last.tick} />
+                  {` · ${p.probes.last.result}`}
+                </span>
+              ) : (
+                "—"
+              ),
             }))}
           />
         </div>

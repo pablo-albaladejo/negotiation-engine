@@ -4,6 +4,7 @@ import { teamLabel } from "../model/cockpit.js";
 import type { GameModel, ModelRivalTeam, ModelRivals } from "../model/gameModel.js";
 import { Sparkline } from "../ui/sparkline.js";
 import { TeamName } from "./teams/TeamLink.js";
+import { TickLink } from "./nav/Links.js";
 
 const TeamList = ({ board, teams }: { board: Board; teams: string[] }) => (
   <span>
@@ -95,7 +96,7 @@ export function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
           { key: "tick", label: "Tick", numeric: true },
           { key: "confirmed", label: "Still theirs at", numeric: true },
         ]}
-        rows={t.seen.map((s) => ({ ref: s.ref, source: s.source, tick: s.tick, confirmed: s.confirmedTick ?? "—" }))}
+        rows={t.seen.map((s) => ({ ref: s.ref, source: s.source, tick: <TickLink tick={s.tick} prefix="" />, confirmed: s.confirmedTick !== undefined && s.confirmedTick !== null ? <TickLink tick={s.confirmedTick} prefix="" /> : "—" }))}
       />
     </div>
   );

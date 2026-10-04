@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Card, DataTable } from "@negotiation-ring/design-system";
 import type { Board, BoardMarketHindsight, BoardMarketSession } from "../../model/index.js";
+import { TickLink } from "../nav/Links.js";
 
 /**
  * «Market test»: our bench sessions in AUTO (v04) against BOARD (v26, our broker matching). A table with the official
@@ -378,7 +379,7 @@ export function MarketTest({ board }: { board: Board }) {
                   ]}
                   rows={(selected.our_matches ?? []).map((m, i) => ({
                     n: <strong style={{ color: "var(--us)" }}>{`#${i + 1}`}</strong>,
-                    tick: m.tick,
+                    tick: <TickLink tick={m.tick} prefix="" />,
                     pair: `${m.sell ?? "?"} asks ${m.ask ?? "?"} × ${m.buy ?? "?"} bids ${m.bid ?? "?"}`,
                     price: m.price ?? "—",
                     quotes: `${m.ask ?? "?"} / ${m.bid ?? "?"}`,

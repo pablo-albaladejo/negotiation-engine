@@ -2,6 +2,7 @@ import { Card } from "@negotiation-ring/design-system";
 import { teamLabel, type Board, type BoardDeskChain } from "../model/index.js";
 import { ComponentChip } from "./ScoreTree.js";
 import { TeamName } from "./teams/TeamLink.js";
+import { TickLink } from "./nav/Links.js";
 
 /**
  * «Team desk»: offers other teams make to us (to-me), the counter we answer with (sell only: the requested card or a
@@ -64,11 +65,19 @@ function Chain({ c }: { c: BoardDeskChain }) {
             <span key={i} title={s.reason ?? undefined}>
               {i > 0 ? <span className="nr-muted">{" → "}</span> : null}
               {s.event === "cancel" ? <span className="nr-muted">cancel</span> : `${s.ref ?? "?"} @ ${s.price ?? "?"} P`}
-              <span className="nr-muted">{` t${s.tick ?? "?"} `}</span>
+              <span className="nr-muted">
+                {" "}
+                <TickLink tick={s.tick} />{" "}
+              </span>
               {statusChip(s.status)}
             </span>
           ))}
-          {c.outcome ? <span className="nr-muted">{` → ${c.outcome.status ?? "?"}${c.outcome.tick !== null ? ` t${c.outcome.tick}` : ""}`}</span> : null}
+          {c.outcome ? (
+            <span className="nr-muted">
+              {` → ${c.outcome.status ?? "?"} `}
+              {c.outcome.tick !== null ? <TickLink tick={c.outcome.tick} /> : null}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {secondary ? <span className="nr-muted" style={{ fontSize: 11 }}>{`${secondary} (local only)`}</span> : null}

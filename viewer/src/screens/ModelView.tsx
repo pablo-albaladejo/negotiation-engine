@@ -9,6 +9,7 @@ import { PersonaStrategy } from "./DealerFitStrip.js";
 import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 import { TeamName } from "./teams/TeamLink.js";
+import { DealerName, TickLink } from "./nav/Links.js";
 import {
   arr,
   assetLabel,
@@ -458,8 +459,9 @@ export function Hints({ model }: { model: GameModel }) {
   );
 }
 
-export function Personas({ model }: { model: GameModel }) {
+export function Personas({ model, picked = "", onPick }: { model: GameModel; picked?: string; onPick?: (id: string) => void }) {
   const personas = personasOf(model);
+  const pickedIndex = personas.findIndex((p) => p.id === picked);
   return (
     <Card title={`Personas (${personas.length})`}>
       {personas.length > 0 ? (
@@ -485,6 +487,8 @@ export function Personas({ model }: { model: GameModel }) {
               probes: p.eggProbes.length ? p.eggProbes.map(textOf).join("; ") : "—",
               eggs: `${p.eggsByOthers.length ? p.eggsByOthers.map(textOf).join("; ") : "none"}${p.eggsLeft ? ` · ${p.eggsLeft} left` : ""}`,
             }))}
+            {...(onPick ? { onRowClick: (i: number) => onPick(personas[i]?.id ?? "") } : {})}
+            {...(pickedIndex >= 0 ? { selectedRowIndex: pickedIndex } : {})}
           />
           {personas.some((p) => p.teaser) ? (
             <ul style={list}>
@@ -911,8 +915,8 @@ function flagRow(f: unknown, nowTick: number | null) {
   const result = typeof r.result === "string" ? r.result : "pending";
   const points = n(r.points);
   return {
-    tick: tick ?? "?",
-    persona: typeof r.persona === "string" ? r.persona : "—",
+    tick: <TickLink tick={tick} prefix="" />,
+    persona: typeof r.persona === "string" ? <DealerName id={r.persona} /> : "—",
     message: r.messageId != null ? `#${String(r.messageId)}` : "—",
     reason: typeof r.reason === "string" ? r.reason : "—",
     result: (

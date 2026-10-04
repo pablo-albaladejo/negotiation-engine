@@ -8,7 +8,9 @@ import { Forex } from "./forex/Forex.js";
 import { MarketTest } from "./market-test/MarketTest.js";
 import { CardsView } from "./album/CardsView.js";
 import { NewsView } from "./news/NewsView.js";
-import { TeamNav, TeamName } from "./teams/TeamLink.js";
+import { TeamName } from "./teams/TeamLink.js";
+import { NavCtx, TickLink, type Nav } from "./nav/Links.js";
+import { TickPanel } from "./nav/TickPanel.js";
 import { TeamsView } from "./teams/TeamsView.js";
 import { EggsView } from "./profile/EggsView.js";
 import { PersonasView } from "./profile/PersonasView.js";
@@ -56,7 +58,7 @@ import {
   type OfferCurve,
 } from "../model/index.js";
 import { useBazaarModel } from "../bazaarModelLive.js";
-import { boardRowIdFor, modelConversationFor, modelCurve, withPlannedPath, type GameModel, type ModelConversation } from "../model/gameModel.js";
+import { boardRowIdFor, modelConversationFor, modelCurve, personasOf, withPlannedPath, type GameModel, type ModelConversation } from "../model/gameModel.js";
 import { predictionCaption, predictionLines, withPrediction, type PredictionOverlay } from "../model/dealerFit.js";
 import { currentPrediction, isWelcome, sideLabel } from "../model/personaModel.js";
 import { ConversationModelPanel, ModelView } from "./ModelView.js";
@@ -279,7 +281,7 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
                 { key: "final", label: "Final" },
                 { key: "status", label: "Status" },
               ]}
-              rows={row.offers.map((o) => ({ tick: show(o.tick, "?"), maker: maker(o.maker), give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
+              rows={row.offers.map((o) => ({ tick: <TickLink tick={o.tick} prefix="" />, maker: maker(o.maker), give: o.give, want: o.want, final: o.final ? "final" : "", status: o.status }))}
             />
           ) : (
             <span />
@@ -587,7 +589,9 @@ function Grants({ board }: { board: Board }) {
         const fresh = tick !== null && g.tick !== null && tick - g.tick <= 30;
         return (
           <span key={i} className={fresh ? undefined : "nr-muted"} style={{ fontSize: 12, fontWeight: fresh ? 700 : 400 }}>
-            {`${fresh ? "NEW · " : ""}t${g.tick ?? "?"} · ${[...(g.cash ? [`+${g.cash} P`] : []), ...g.packs.map((x) => `pack ${x}`), ...g.cards].join(" + ")}${g.actor ? ` · ${g.actor}` : ""}${g.reason ? ` · ${g.reason}` : ""}`}
+            {fresh ? "NEW · " : ""}
+            <TickLink tick={g.tick} />
+            {` · ${[...(g.cash ? [`+${g.cash} P`] : []), ...g.packs.map((x) => `pack ${x}`), ...g.cards].join(" + ")}${g.actor ? ` · ${g.actor}` : ""}${g.reason ? ` · ${g.reason}` : ""}`}
           </span>
         );
       })}
@@ -682,7 +686,7 @@ function ScoreMovers({ board, onOpen }: { board: Board; onOpen: (id: string) => 
             { key: "delta", label: "Δ score", numeric: true },
           ]}
           rows={rows.map((r) => ({
-            tick: show(r.tick_settled, "?"),
+            tick: <TickLink tick={r.tick_settled} prefix="" />,
             deal: (
               <TableLink aria-label={`Open ${r.id}`} onClick={() => onOpen(r.id)}>
                 {`${KIND_LABEL[r.kind] ?? r.kind} · ${r.item} · ${partyOf(board, r).label}`}
@@ -836,6 +840,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
     setTeam(t);
     setView("teams");
   };
+  const [tick, setTick] = useState<number | null>(null);
+  const [dealer, setDealer] = useState("");
   const pick = (id: string) => setView(VIEWS.find((v) => v.id === id)?.id ?? "now");
   const { model, loading } = useBazaarModel(view !== "cockpit" || filters.row !== "");
   const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? board.others.find((r) => r.id === filters.row) ?? null;
@@ -846,6 +852,28 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   const { trades, duels } = historyGroups(board.rows);
   const duelPoints = board.header?.duel_points;
   const close = () => onFiltersChange({ ...filters, row: "" });
+  const dealers = new Map<string, string>([
+    ...(board.eggs?.personas ?? []).map((p): [string, string] => [p.persona, p.persona_name ?? p.persona]),
+    ...(model?.available ? personasOf(model).map((p): [string, string] => [p.id, p.name]) : []),
+  ]);
+  const nav: Nav = {
+    tick: (t) => {
+      close();
+      setTick(t);
+    },
+    team: (t) => {
+      setTick(null);
+      close();
+      openTeam(t);
+    },
+    dealer: (id) => {
+      setTick(null);
+      close();
+      setDealer(id);
+      setView("personas");
+    },
+    dealers,
+  };
   const drawer = selected ? (
     <Drawer label={`Conversation ${selected.id}`} onClose={close}>
       <ConversationDetail board={board} row={selected} conv={conv} model={model} />
@@ -854,10 +882,22 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
     <Drawer label={`Conversation ${conv.id}`} onClose={close}>
       <ModelOnlyDetail conv={conv} model={model} />
     </Drawer>
+  ) : tick !== null ? (
+    <Drawer label={`Tick ${tick}`} onClose={() => setTick(null)}>
+      <TickPanel
+        board={board}
+        tick={tick}
+        onTick={setTick}
+        onOpen={(id) => {
+          setTick(null);
+          openModel(id);
+        }}
+      />
+    </Drawer>
   ) : null;
   if (view !== "cockpit") {
     return (
-      <TeamNav.Provider value={openTeam}>
+      <NavCtx.Provider value={nav}>
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
         <ViewHint view={view} />
@@ -878,17 +918,17 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         ) : view === "news" ? (
           <NewsView model={model} loading={loading} />
         ) : view === "personas" ? (
-          <PersonasView model={model} loading={loading} />
+          <PersonasView model={model} loading={loading} picked={dealer} onPick={setDealer} />
         ) : (
           <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
         )}
         {drawer}
       </section>
-      </TeamNav.Provider>
+      </NavCtx.Provider>
     );
   }
   return (
-    <TeamNav.Provider value={openTeam}>
+    <NavCtx.Provider value={nav}>
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
       <ViewHint view={view} />
@@ -913,6 +953,6 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       </Fold>
       {drawer}
     </section>
-    </TeamNav.Provider>
+    </NavCtx.Provider>
   );
 }

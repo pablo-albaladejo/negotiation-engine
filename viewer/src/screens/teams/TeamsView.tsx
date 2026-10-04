@@ -5,6 +5,7 @@ import { Fold } from "../../ui/fold.js";
 import { Sparkline } from "../../ui/sparkline.js";
 import { Rivals, TeamDetail, rivalCells } from "../Rivals.js";
 import { TeamName } from "./TeamLink.js";
+import { DealerName, TickLink } from "../nav/Links.js";
 
 /**
  * «Teams» tab: everything we know about each team in one place. The leaderboard as a picker; for the picked team its
@@ -34,10 +35,10 @@ function TeamProfile({ board, model, team, onOpen }: { board: Board; model: Game
   const rival = model?.state?.rivals?.teams.find((t) => t.team === team);
   const ours = board.rows.filter((r) => involves(r, team));
   const others = board.others.filter((r) => involves(r, team));
-  const eggs = (board.eggs?.personas ?? []).flatMap((p) => p.found.filter((f) => f.team === team).map((f) => ({ persona: p.persona_name ?? p.persona, tick: f.tick, name: f.name })));
+  const eggs = (board.eggs?.personas ?? []).flatMap((p) => p.found.filter((f) => f.team === team).map((f) => ({ id: p.persona, persona: p.persona_name ?? p.persona, tick: f.tick, name: f.name })));
   const history = (rival?.history ?? []).flatMap((h) => (typeof h.score === "number" ? [h.score] : []));
   const dealRow = (r: BoardRow) => ({
-    tick: r.tick_settled ?? r.tick_opened ?? "—",
+    tick: <TickLink tick={r.tick_settled ?? r.tick_opened} prefix="" />,
     what: (
       <TableLink aria-label={`Open ${r.id}`} onClick={() => onOpen(r.id)}>
         {KIND_LABEL[r.kind] ?? r.kind}
@@ -88,7 +89,18 @@ function TeamProfile({ board, model, team, onOpen }: { board: Board; model: Game
           <span className="nr-muted">No trades with other teams seen.</span>
         )}
         <strong>{`Easter eggs found · ${eggs.length}`}</strong>
-        <span>{eggs.length ? eggs.map((e) => `${e.persona} t${e.tick}`).join(" · ") : <span className="nr-muted">none seen</span>}</span>
+        <span>
+          {eggs.length ? (
+            eggs.map((e, i) => (
+              <span key={`${e.id}-${e.tick}`}>
+                {i ? " · " : ""}
+                <DealerName id={e.id}>{e.persona}</DealerName> <TickLink tick={e.tick} />
+              </span>
+            ))
+          ) : (
+            <span className="nr-muted">none seen</span>
+          )}
+        </span>
         <strong>Collection (public structure)</strong>
         {rival ? <TeamDetail board={board} t={rival} /> : <span className="nr-muted">{model ? "Not located yet in GameState.rivals." : "Loading our model…"}</span>}
       </div>
