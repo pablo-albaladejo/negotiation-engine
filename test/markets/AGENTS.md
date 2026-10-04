@@ -24,3 +24,4 @@
 ## Links
 
 - ↑ [`test/`](../AGENTS.md)
+- `room.test.ts` también comprueba la vía de página de rival-buy: ninguna puja supera `/api/me/value` − `pageLaneEdge`, ninguna deja la caja por debajo del suelo y todas van a `OFFER_VENUE`.

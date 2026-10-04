@@ -72,3 +72,25 @@ describe("counterparty score room", () => {
     );
   });
 });
+
+describe("rival-buy page lane (Pablo, 4 Oct: negotiable bids for missing page cards)", () => {
+  it("never bids above /api/me/value − pageLaneEdge, and only for a card we lack", async () => {
+    const { buildValueModel } = await import("../../src/trades/trades.js");
+    const REF = "MAL-09";
+    const catalog = { sets: [{ id: "MAL", released: true, cards: [{ id: "MAL-01", rarity: "common", book: 10 }, { id: REF, rarity: "rare", book: 70 }] }], packs: [] } as never;
+    fc.assert(
+      fc.property(fc.integer({ min: 2, max: 150 }), fc.integer({ min: 1, max: 3 }), fc.integer({ min: 0, max: 400 }), (value, copies, cash) => {
+        const held = [{ id: 1, ref: "MAL-01", value: 9, locked: false }];
+        const trade = { ...tradeState(cash, []), held, pageSets: ["MAL"], model: buildValueModel(catalog, held as never, new Map()) } as unknown as TradeState;
+        const holder: RivalTeam = { team: "t07", seen: Array.from({ length: copies }, (_, i) => ({ assetId: 5000 + i, ref: REF, tick: TICK - 1, source: "board" as never })), distinct: 1, spares: [], pages: [], wants: [] };
+        const rivals: RivalsState = { teams: [holder], byRef: { [REF]: { holders: ["t07"], wantedBy: [] } }, seenAssets: copies, lastEventId: 0 };
+        const { plan } = proposeRivalBuy({ tick: TICK, trade, rivals, maxSpend: 1000, cashFloor: 50, apiValues: new Map([[REF, value]]), room: new Map() }, RIVAL_BUY_PARAMS, new Map(), []);
+        for (const p of plan.posts) {
+          expect(p.price).toBeLessThanOrEqual(Math.floor(value - RIVAL_BUY_PARAMS.pageLaneEdge));
+          expect(p.price + 50).toBeLessThanOrEqual(cash);
+          expect(p.body.venue).toBe(OFFER_VENUE);
+        }
+      }),
+    );
+  });
+});

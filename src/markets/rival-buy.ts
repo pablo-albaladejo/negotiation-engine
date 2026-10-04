@@ -26,11 +26,15 @@ import { isOurOfferVenue, OFFER_VENUE } from "../shared/offer-venue.js";
 export const RIVAL_BUY_PARAMS = {
   shareOfGap: 0.3,
   minGap: 2,
-  maxOpen: 2,
+  maxOpen: 4,
   expiresInTicks: 20,
   repriceAfterTicks: 10,
-  repriceFrac: 0.1,
-  maxReprices: 2,
+  repriceFrac: 0.3,
+  maxReprices: 3,
+  /** Page lane (Pablo, 4 Oct: negotiable bids for missing page cards): ceiling = /api/me/value − this, never above value. */
+  pageLaneEdge: 1,
+  /** Page lane: first bid = this share of the ceiling when the holder's estimated floor leaves no gap. */
+  pageLaneStart: 0.6,
   backoffTicks: 40,
   /** A spare seen (or confirmed) longer ago than this is not bid for. */
   maxStaleTicks: 60,
@@ -43,7 +47,7 @@ export const RIVAL_BUY_PARAMS = {
   /** One game hour at 30 s a tick. A restart forgets the window (at most one extra window's worth). */
   hiWindowTicks: 120,
   /** `/api/me/value` lookups per tick for candidate cards (cached for an hour by the client). */
-  valueLookups: 8,
+  valueLookups: 30,
 };
 export type RivalBuyParams = typeof RIVAL_BUY_PARAMS;
 
@@ -247,7 +251,11 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   const modelGain = pageCard ? buyGain(counts, ref, model, new Set(input.pageBonusScored ? (input.pageTargets ?? []).map(setOf) : [])) : 0;
   const normalCap = pageCard && spare ? Math.min(params.maxBid, maxBid(modelGain, MIN_MARGIN, MAKER_FEES)) : 0;
   const hiCap = apiValue !== undefined ? Math.min(params.hiMaxBid, Math.floor(apiValue - params.hiMinEdge)) : 0;
-  const cap = Math.max(normalCap, hiCap);
+  // Page lane: a page card we lack, bid for even from a single copy, conceding up to value − pageLaneEdge (gain ≥ 1).
+  const pageCap = pageCard && apiValue !== undefined ? Math.max(0, Math.floor(apiValue - params.pageLaneEdge)) : 0;
+  // Never above the server value when we know it (Pablo, 4 Oct: price ≤ value); the model may run above it.
+  const cap = Math.min(Math.max(normalCap, hiCap, pageCap), apiValue !== undefined ? Math.max(0, Math.floor(apiValue - params.pageLaneEdge)) : Infinity);
+  const pageLane = pageCap > 0 && pageCap >= hiCap && pageCap >= normalCap;
   const gain = apiValue ?? modelGain;
   const book = model.meta.get(ref)?.book ?? 0;
   const mHat = median([...setMultipliers(model).values()]) ?? 1;
@@ -255,12 +263,13 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
   const theirFloor = Math.max(1, Math.ceil(mHat * book * second) + 1);
   const base: Partial<RivalBuyPricing> = { team: team.team, ref, copies: mine.length, freshAt, gain, cap, theirFloor, ...(apiValue !== undefined ? { apiValue } : {}) };
   if (cap < 1) return { ok: false, reason: `no bid fits our value (gain ${r1(gain)})`, p: base };
-  if (cap - theirFloor < params.minGap) return { ok: false, reason: `cap ${cap} − their floor ${theirFloor} < ${params.minGap}`, p: base };
-  const raw = theirFloor + Math.round(params.shareOfGap * (cap - theirFloor));
+  const gap = cap - theirFloor >= params.minGap;
+  if (!gap && !pageLane) return { ok: false, reason: `cap ${cap} − their floor ${theirFloor} < ${params.minGap}`, p: base };
+  const raw = gap ? theirFloor + Math.round(params.shareOfGap * (cap - theirFloor)) : Math.max(1, Math.floor(cap * params.pageLaneStart));
   const bid = enforceGuardrails({ role: "buyer", reservation: cap }, raw);
   const fee = tradeFee(bid, 1, MAKER_FEES);
   if (!fairPrice("buy", bid, book || undefined)) return { ok: false, reason: `bid ${bid} above fair play (twice the book)`, p: base };
-  const hi = bid > normalCap;
+  const hi = bid > normalCap && !pageLane;
   if (hi && (apiValue === undefined || apiValue - bid < params.hiMinEdge)) return { ok: false, reason: `bid ${bid} above the normal cap ${normalCap} without /api/me/value − bid ≥ ${params.hiMinEdge}`, p: base };
   return { ok: true, p: { ...(base as RivalBuyPricing), bid, fee, hi } };
 }
@@ -660,7 +669,9 @@ export async function rivalBuyValues(client: Pick<BazaarClient, "value">, trade:
   const counts = countHoldings(trade.held);
   const held = new Set(rivals.teams.flatMap((t) => t.seen.map((s) => s.ref)));
   const refs = [...held].filter((r) => (counts.get(r) ?? 0) === 0);
-  refs.sort((a, b) => (trade.model.meta.get(b)?.book ?? 0) - (trade.model.meta.get(a)?.book ?? 0) || a.localeCompare(b));
+  // Page cards we lack first (page lane), then highest book first.
+  const page = (r: string) => (trade.pageSets.includes(setOf(r)) && (trade.model.pages.get(setOf(r)) ?? []).includes(r) ? 0 : 1);
+  refs.sort((a, b) => page(a) - page(b) || (trade.model.meta.get(b)?.book ?? 0) - (trade.model.meta.get(a)?.book ?? 0) || a.localeCompare(b));
   // `always` (the epic card) is looked up first and on top of the per-call budget.
   for (const ref of [...always.filter((r) => (counts.get(r) ?? 0) === 0), ...refs.filter((r) => !always.includes(r)).slice(0, params.valueLookups)]) {
     try {

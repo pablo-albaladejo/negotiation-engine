@@ -27,3 +27,5 @@ Ruta de mercados entre El Rastro y los venues de otros equipos: hueco neto por v
 - → [`state/`](../state/AGENTS.md)
 
 **Venue de nuestras ofertas (Pablo, 4 oct):** rival-buy (con las vías épicas), rival-page y rival-swap publican solo en v21 (`OFFER_VENUE`, de [`src/shared/offer-venue.ts`](../shared/AGENTS.md)). v21 es el mercado de Team 9, nuestros aliados (comisión 0 %, board). Siguen gestionando como propias las que quedaron en El Rastro. El escáner y los mercados solo aceptan ofertas ajenas en su venue.
+
+**Vía de página de rival-buy (Pablo, 4 oct: «se puede negociar»):** se puja dirigido por una carta de página que no tenemos, aunque el equipo solo tenga una copia. La primera puja es el 60 % del techo y sube con `slowReprice` (30 %, hasta 3 veces). Techo: `/api/me/value` − 1. Si sabemos el valor del servidor, ninguna puja lo pasa, sea cual sea la vía. Hasta 4 pujas abiertas, con `--cash-floor` y `--max-spend` de presupuesto. Las cartas de página que nos faltan se consultan primero en `/api/me/value` (`valueLookups` 30). Sin prima de página: medido el 4 oct, el bonus de página no puntúa (score = negotiating + market en los 18 equipos).
