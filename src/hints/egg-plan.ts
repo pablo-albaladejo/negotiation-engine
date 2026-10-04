@@ -46,12 +46,13 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
   {
     n: 1,
     persona: "chato",
-    route: "play",
-    line: "Y cuando cerremos, Plaza Mayor, con caña, que usted conoce Madrid.", // game text
-    key: "plaza mayor, con caña", // game text
-    odds: "high unless the egg ran out",
+    route: "manual",
+    // Chato's echo to t16's hit (t1609, 4 Oct) was in English; our Spanish "con caña" missed at t1475 inside a haggle.
+    line: "Plaza Mayor, with a caña. You know Madrid. Plaza Mayor, con una caña.", // game text
+    key: "plaza mayor, with a caña", // game text
+    odds: "high: echo of t16's hit at t1609; the egg is still alive",
     stake: "sobre_barrio",
-    cost: "0 P; rides on a real haggle (203c5ef)",
+    cost: "0 P, 1 probe",
   },
   {
     n: 2,
@@ -59,8 +60,8 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
     route: "manual",
     line: "Abuela, cocido con tres vuelcos; cocido madrileño con sus tres vuelcos, como Dios manda.", // game text
     key: "cocido con tres vuelcos", // game text
-    odds: "~50 % (cap risk)",
-    stake: "a card (MAL-06 is missing)",
+    odds: "high: 3 finds today (t18, t09, t16), still alive",
+    stake: "a card (rivals got LAV-08, SAL-06, LAT-06)",
     cost: "0 P, 1 probe",
   },
   {
