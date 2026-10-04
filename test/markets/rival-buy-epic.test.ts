@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { EPIC_BUY_PARAMS, epicStep, proposeRivalBuy, RIVAL_BUY_PARAMS, type RivalBuyInput, type RivalBuyMemo } from "../../src/markets/rival-buy.js";
+import { EPIC_BUY_LANES, EPIC_BUY_PARAMS, epicStep, proposeRivalBuy, RIVAL_BUY_PARAMS, type RivalBuyInput, type RivalBuyMemo } from "../../src/markets/rival-buy.js";
 import type { RivalsState, RivalTeam } from "../../src/state/rivals.js";
 import { DEFAULT_VALUE_RULES, MAKER_FEES, tradeFee, type HeldAsset, type TradeOffer, type TradeState, type ValueModel } from "../../src/trades/trades.js";
 
@@ -98,5 +98,47 @@ describe("rival buy · epic test lane", () => {
     const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals(["t08"]), maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
     expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", 150]]);
+  });
+
+  it("several lanes: each post ≤ its ceiling, to its listed holders, one open per card, and all of them together leave cash ≥ floor", () => {
+    const [a, b] = EPIC_BUY_LANES as [typeof EPIC, typeof EPIC];
+    const lanes = [a, b];
+    const laneBids = fc.array(fc.record({ lane: fc.constantFrom(0, 1), to: fc.constantFrom(...TEAMS), price: fc.integer({ min: 1, max: 400 }), age: fc.integer({ min: 0, max: 30 }) }), { maxLength: 4 });
+    fc.assert(
+      fc.property(arb.cash, fc.subarray(TEAMS), fc.subarray(TEAMS), laneBids, arb.reprices, arb.committed, (cash, ha, hb, bids, reprices, committed) => {
+        const mine = bids.map((x, k) => ({ ...bid(2000 + k, x.to, x.price, x.age), want: { cards: [lanes[x.lane]!.ref] } }));
+        const memo: RivalBuyMemo = new Map(bids.map((x) => [`${x.to}:${lanes[x.lane]!.ref}`, { reprices }]));
+        const team = (id: string): RivalTeam => ({ team: id, seen: [...(ha.includes(id) ? [a.ref] : []), ...(hb.includes(id) ? [b.ref] : [])].map((ref, k) => ({ assetId: 9000 + Number(id.slice(1)) * 10 + k, ref, tick: TICK - 5, source: "board" as never })), distinct: 1, spares: [], pages: [], wants: [] });
+        const ids = [...new Set([...ha, ...hb])];
+        const input: RivalBuyInput = {
+          tick: TICK,
+          trade: tradeState(cash, [], mine),
+          tradePlan: { committedAfter: committed } as never,
+          rivals: { teams: ids.map(team), byRef: { [a.ref]: { holders: ha, wantedBy: [] }, [b.ref]: { holders: hb, wantedBy: [] } }, seenAssets: ids.length, lastEventId: 0 },
+          maxSpend: 0,
+          cashFloor: 20,
+          epic: EPIC_BUY_LANES,
+          apiValues: new Map([[a.ref, 234], [b.ref, 288]]),
+        };
+        const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, memo, []);
+        const cancelled = new Set(plan.cancels.map((c) => c.offerId));
+        const kept = mine.filter((o) => !cancelled.has(o.id) && (o.expires_tick ?? Infinity) > TICK);
+        for (const lane of lanes) {
+          const posts = plan.posts.filter((p) => p.ref === lane.ref);
+          for (const p of posts) {
+            expect(p.price).toBeLessThanOrEqual(lane.ceiling);
+            expect(lane.teams).toContain(p.team);
+            expect(p.body.want).toEqual({ cards: [lane.ref] });
+          }
+          expect(posts.length + kept.filter((o) => (o.want as { cards: string[] }).cards[0] === lane.ref).length).toBeLessThanOrEqual(1);
+        }
+        // Open bids hold no cash server side: every new epic post counts the bids of every lane that stay open.
+        if (plan.posts.length) {
+          const open = [...plan.posts.map((p) => p.price + tradeFee(p.price, 1, MAKER_FEES)), ...kept.map((o) => o.give!.cash!)].reduce((s, x) => s + x, 0);
+          expect(cash - committed - open).toBeGreaterThanOrEqual(EPIC.cashFloor);
+        }
+      }),
+      { numRuns: 400 },
+    );
   });
 });
