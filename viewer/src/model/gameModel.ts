@@ -812,7 +812,8 @@ export function priceRows(model: GameModel): PriceRow[] {
         holdings,
         nextValue: n(o, "nextValue", "next_value") ?? (holdings === 0 ? value : null),
         // A held card's value carries the page bonus we already have: never value − ask for it.
-        buyEdge: n(o, "buyEdge", "buy_edge") ?? (value !== null && ask !== null && holdings === 0 ? Math.round((value - ask) * 10) / 10 : null),
+        // An older GameState (no nextValue) computed it as value − ask on held cards too: drop it for those.
+        buyEdge: holdings > 0 && n(o, "nextValue", "next_value") === null ? null : (n(o, "buyEdge", "buy_edge") ?? (value !== null && ask !== null && holdings === 0 ? Math.round((value - ask) * 10) / 10 : null)),
         sellEdge: n(o, "sellEdge", "sell_edge") ?? (value !== null && bid !== null && holdings > 0 ? Math.round((bid - value) * 10) / 10 : null),
         completesPage: pick(o, "completesPage", "completes_page") === true,
       },
