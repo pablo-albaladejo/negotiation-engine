@@ -25,6 +25,7 @@ import {
 const TONE: Record<Exclude<Tone, null>, string> = {
   ok: "var(--ok)",
   warn: "var(--warn)",
+  bad: "var(--bad)",
   muted: "var(--muted)",
   us: "var(--us)",
 };
@@ -44,12 +45,7 @@ function rowsOf(board: Board, rows: BoardBookRow[]) {
       ) : (
         <span
           style={{
-            color:
-              r.neg > 0 && m.tone === "ok"
-                ? "var(--ok)"
-                : r.neg > 0
-                  ? undefined
-                  : "var(--warn)",
+            color: r.neg > 0 ? "var(--ok)" : r.neg < 0 ? "var(--bad)" : undefined,
             fontWeight: 700,
           }}
         >

@@ -68,9 +68,9 @@ export function filterVenues(
     );
 }
 
-export type Tone = "ok" | "warn" | "muted" | "us" | null;
+export type Tone = "ok" | "warn" | "bad" | "muted" | "us" | null;
 
-/** What the mark means for us, and its tone (green only on a positive NEG we could take: a lacking card or a spare). */
+/** What the mark means for us, and its tone (green on a positive NEG we could take, red on a loss or a copy we must not sell). */
 export function markLabel(r: BoardBookRow): { text: string; tone: Tone } {
   switch (r.mark) {
     case "ours":
@@ -78,7 +78,7 @@ export function markLabel(r: BoardBookRow): { text: string; tone: Tone } {
     case "lack":
       return {
         text: "we lack it",
-        tone: r.neg !== null && r.neg > 0 ? "ok" : "muted",
+        tone: r.neg !== null && r.neg > 0 ? "ok" : r.neg !== null && r.neg < 0 ? "bad" : "muted",
       };
     case "spare":
       return {
@@ -86,9 +86,9 @@ export function markLabel(r: BoardBookRow): { text: string; tone: Tone } {
         tone: r.neg !== null && r.neg > 0 ? "ok" : "muted",
       };
     case "last":
-      return { text: "our last copy", tone: "warn" };
+      return { text: "our last copy", tone: "bad" };
     case "keep":
-      return { text: "never sold (hidden/keepsake)", tone: "warn" };
+      return { text: "never sold (hidden/keepsake)", tone: "bad" };
     case "dup":
       return { text: `dup (we hold ×${r.hand ?? "?"})`, tone: "muted" };
     default:

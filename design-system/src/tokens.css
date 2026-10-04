@@ -13,6 +13,7 @@
   --ok: #1f7a4d;
   --ok-soft: #e3f2ea;
   --warn: #a8421e;
+  --bad: #c62828;
   --warn-soft: #f8e6df;
   --zopa: rgba(31, 122, 77, 0.1);
 }
@@ -30,6 +31,7 @@
   --ok: #5bc48e;
   --ok-soft: #173327;
   --warn: #f08a64;
+  --bad: #ff6b6b;
   --warn-soft: #3a2019;
   --zopa: rgba(91, 196, 142, 0.12);
 }
@@ -48,6 +50,7 @@
     --ok: #5bc48e;
     --ok-soft: #173327;
     --warn: #f08a64;
+    --bad: #ff6b6b;
     --warn-soft: #3a2019;
     --zopa: rgba(91, 196, 142, 0.12);
   }
