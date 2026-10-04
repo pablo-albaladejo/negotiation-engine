@@ -752,7 +752,7 @@ function History({ board, rows, title, filters, onFiltersChange, ladder, open = 
       {shown.length === 0 ? (
         <span className="nr-muted">Nothing matches these filters.</span>
       ) : shown.some((r) => r.duel) ? (
-        // Duels grouped by session (Duels I, II, III, Grand Final), newest session first.
+        // Duels grouped by session (practice, Duels I, II, III, Grand Final), newest session first.
         [...new Set(shown.map((r) => r.duel?.session ?? null))]
           .sort((a, b) => (b ?? -1) - (a ?? -1))
           .map((session, i) => {
@@ -847,7 +847,7 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: "market-test", label: "🧪 Market test", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
   { id: "eggs", label: "🥚 Eggs", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
   { id: "news", label: "📻 News", hint: "Radio Rastro, the Bulletin and the notice board: which dealer, set or card is being talked about, with a summary. Unverified, may be rumour, never a figure." },
-  { id: "duels", label: "⚔️ Duels", hint: "Every 1-on-1 duel by session (I, II, III, Grand Final): rival, item, price vs our limit, result and the duel points each one brought." },
+  { id: "duels", label: "⚔️ Duels", hint: "Every 1-on-1 duel by session (practice, I, II, III, Grand Final): rival, item, price vs our limit, result and the duel points each one brought." },
   { id: "goals", label: "🎯 Goals", hint: "What we aim at and how: gaps and conflicts, goals by priority, open proposals (pros, cons, recommendation) and every strategy by goal. From the goals session; shown only." },
   { id: "teams", label: "👥 Teams", hint: "Every team in one place: score parts, what we did with it, its trades with others, eggs it found and its collection. Click any team name in the viewer to land here." },
   { id: "personas", label: "🧑‍🎤 Dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },

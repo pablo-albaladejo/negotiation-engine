@@ -60,7 +60,7 @@ export interface BoardRow {
   /** Duel only: its points line was rebuilt afterwards (duel-points.jsonl `backfill`). */
   d_backfill?: boolean;
   duel_result: number | null;
-  /** Duel only: number, session (1 = I, 2 = II, 3 = III, 4 = Grand Final), agreed delivery days, issues, decay per round. */
+  /** Duel only: number, session (1 = practice, 2 = Duels I, 3 = II, 4 = III, 5 = Grand Final), agreed delivery days, issues, decay per round. */
   duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
   tick_opened: number | null;
   tick_settled: number | null;
@@ -682,12 +682,13 @@ export interface BoardGrant {
   reason: string | null;
 }
 
-/** Duel session name as the schedule calls it (4 is the Grand Final, the last wave). */
+/** Duel session name as the schedule calls it (1 was practice; 5 is the Grand Final, the last wave). */
 export function duelSessionName(session: number | null | undefined): string {
-  if (session === 1) return "Duels I";
-  if (session === 2) return "Duels II";
-  if (session === 3) return "Duels III";
-  if (session === 4) return "Grand Final (duels IV)";
+  if (session === 1) return "Practice";
+  if (session === 2) return "Duels I";
+  if (session === 3) return "Duels II";
+  if (session === 4) return "Duels III";
+  if (session === 5) return "Grand Final";
   return session == null ? "Duels (session unknown)" : `Duels ${session}`;
 }
 

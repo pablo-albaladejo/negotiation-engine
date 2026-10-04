@@ -246,7 +246,7 @@ export interface BoardRow {
   /** Duel only: its points line was rebuilt afterwards (`backfill` in duel-points.jsonl). */
   d_backfill?: boolean;
   duel_result: number | null;
-  /** Duel only: the game's duel number, its session (1 = Duels I, 2 = II, 3 = III, 4 = Grand Final), the agreed delivery days and the decay per round (absent elsewhere). */
+  /** Duel only: the game's duel number, its session (1 = practice, 2 = Duels I, 3 = II, 4 = III, 5 = Grand Final), the agreed delivery days and the decay per round (absent elsewhere). */
   duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
   tick_opened: number | null;
   tick_settled: number | null;
@@ -805,7 +805,7 @@ export const DuelPointsSchema = z.looseObject({
 });
 export type DuelPointsLine = z.infer<typeof DuelPointsSchema>;
 
-/** Puts each duel_points jump on its duels; duels without a line (Duels I and II) stay not audited. */
+/** Puts each duel_points jump on its duels; duels without a line (practice, Duels I and II) stay not audited. */
 export function applyDuelPoints(rows: BoardRow[], lines: readonly DuelPointsLine[]): void {
   const byDuel = new Map<number, BoardRow>();
   for (const r of rows) if (r.duel) byDuel.set(r.duel.no, r);
