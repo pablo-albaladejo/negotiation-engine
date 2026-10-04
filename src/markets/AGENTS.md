@@ -12,7 +12,7 @@ Ruta de mercados entre El Rastro y los venues de otros equipos: hueco neto por v
   - `EPIC_BUY_PARAMS` (test A): SAL-11, solo a t18/t08/t17/t04, 150 → 165 → 180.
   - `EPIC_BUY_RET11`: RET-11, solo a t05/t12/t10, 200 → 220 → 240.
   - El valor de las épicas es book × multiplicador de set (RET 1,6; SAL 1,3) y **no lleva bonus de página**: las épicas no son cartas de página. Así que el test mide si una compra con un hueco grande puntúa el hueco entero, no el bonus de página.
-  - Funcionamiento (`proposeEpicBuy`): una sola puja abierta por carta, y la cifra pasa por `enforceGuardrails` con reserva = techo. El suelo de caja de cada vía descuenta lo que comprometen las demás (una puja abierta no retiene caja en el servidor). Si un equipo no la llena al techo, queda descartado para la ejecución y la siguiente puja va al siguiente titular.
+  - Funcionamiento (`proposeEpicBuy`): una sola puja abierta por carta, y la cifra pasa por `enforceGuardrails` con reserva = techo. El suelo de caja de cada vía descuenta lo que comprometen las demás (una puja abierta no retiene caja en el servidor). Si un equipo no la llena al techo, queda descartado (también en el mismo tick) y la siguiente puja va al siguiente titular. Los descartados se guardan en `results/bazaar-live/epic-done.json` (`defaultEpicDoneFile`, solo en vivo) y `seedEpicDone` los carga al arrancar, así que un reinicio no les vuelve a pujar.
   - Cuándo no puja: si ya tenemos la carta, si `/api/me/value` no se conoce o si queda por debajo del techo.
   - Va fuera de `--max-spend`, con su propio techo y suelo. La carta comprada no se revende.
   - Objetivo: medir en `score-audit.jsonl` si el bonus de página puntúa.

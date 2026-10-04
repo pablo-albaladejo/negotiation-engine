@@ -25,7 +25,7 @@ import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/pric
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeWorkshop, proposeWorkshop } from "../workshop/workshop.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
-import { EPIC_BUY_LANES, executeRivalBuy, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
+import { defaultEpicDoneFile, EPIC_BUY_LANES, executeRivalBuy, seedEpicDone, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
 import { executeRivalSwap, proposeRivalSwap, type RivalSwapPlan } from "../markets/rival-swap.js";
 import { ScannerLedger } from "../markets/scanner.js";
@@ -110,6 +110,12 @@ async function main() {
   const pageBonusScored = values["page-bonus-scored"] === true;
   const leaderboardEvery = num(values["leaderboard-every"], "--leaderboard-every");
   const client = new BazaarClient({ url: env.url, key: env.key });
+  // Epic-lane holders already done survive a restart (written only live, on a done cancel).
+  const epicDoneFile = defaultEpicDoneFile(process.cwd());
+  if (values["rival-buy-epic"]) {
+    const done = seedEpicDone(epicDoneFile);
+    if (done.length) console.log(`[rival-buy] [epic] done holders from ${epicDoneFile}: ${done.join(", ")}`);
+  }
   const root = process.cwd();
   const duels = new DuelsRoute(client, dryRun, live ? defaultDuelsStateFile(root) : undefined);
   const dealers = new DealersRoute(client, {
@@ -464,7 +470,7 @@ async function main() {
     // Rival-page listings go out only live AND with the opt-in --rival-page; otherwise "would" lines.
     report("markets", await executeRivalPage(client, selectedIntents, rivalPlan, dryRun || !values["rival-page"], undefined, undefined, state.tick));
     // Rival-buy bids go out only live AND with the opt-in --rival-buy; otherwise "would" lines.
-    report("markets", await executeRivalBuy(client, selectedIntents, rivalBuyPlan, dryRun || !values["rival-buy"], undefined, undefined, state.tick));
+    report("markets", await executeRivalBuy(client, selectedIntents, rivalBuyPlan, dryRun || !values["rival-buy"], undefined, undefined, state.tick, undefined, epicDoneFile));
     // Rival-swap offers go out only live AND with the opt-in --rival-swap (proposed only with it).
     report("markets", await executeRivalSwap(client, selectedIntents, rivalSwapPlan, dryRun || !rivalSwap, undefined, undefined, state.tick));
     // Team-desk counters go out only live AND with the opt-in --team-desk; otherwise "would" lines (and the log).

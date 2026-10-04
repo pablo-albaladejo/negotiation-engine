@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Intent } from "../coordinator/coordinator.js";
 import { enforceGuardrails } from "../engine/guardrails.js";
@@ -123,6 +125,32 @@ export interface RivalBuyMemoEntry {
 }
 export type RivalBuyMemo = Map<string, RivalBuyMemoEntry>;
 const defaultMemo: RivalBuyMemo = new Map();
+
+/** Epic-lane holders marked done (`<team>:<ref>`), kept on disk so a restart of `pnpm bazaar:play` does not bid them again. */
+export const defaultEpicDoneFile = (root: string): string => join(root, "results", "bazaar-live", "epic-done.json");
+
+/** Loads the done holders into `memo` (missing or unreadable file: nothing). Returns the keys loaded. */
+export function seedEpicDone(file: string, memo: RivalBuyMemo = defaultMemo): string[] {
+  if (!existsSync(file)) return [];
+  try {
+    const keys = Object.keys(JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>);
+    for (const k of keys) memo.set(k, { reprices: 0, backoffUntil: Infinity });
+    return keys;
+  } catch {
+    return [];
+  }
+}
+
+function saveEpicDone(file: string, key: string, tick: number): void {
+  let all: Record<string, unknown> = {};
+  try {
+    if (existsSync(file)) all = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    // An unreadable file is rewritten with this key.
+  }
+  all[key] = { tick, at: new Date().toISOString() };
+  writeFileSync(file, JSON.stringify(all, null, 1));
+}
 /** Ticks at which high-value bids were posted (new ones, not reprices). */
 export type HiBuyLedger = number[];
 const defaultHiLedger: HiBuyLedger = [];
@@ -493,7 +521,7 @@ function postIntent(p: RivalBuyPost, summary: string, ev: number): Intent {
  * Sends the selected cancels and directed bids. `dryRun` (also when `--rival-buy` is off) only prints "would" lines.
  * A reprice is posted only if its cancel went through.
  */
-export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "cancelOffer">, selected: readonly Intent[], plan: RivalBuyPlan, dryRun: boolean, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo, tick = 0, hiLedger: HiBuyLedger = defaultHiLedger): Promise<string[]> {
+export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "cancelOffer">, selected: readonly Intent[], plan: RivalBuyPlan, dryRun: boolean, params: RivalBuyParams = RIVAL_BUY_PARAMS, memo: RivalBuyMemo = defaultMemo, tick = 0, hiLedger: HiBuyLedger = defaultHiLedger, epicDoneFile?: string): Promise<string[]> {
   const lines: string[] = [];
   const ids = new Set(selected.map((i) => i.id));
   const cancelled = new Set<number>();
@@ -505,7 +533,10 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
     try {
       await client.cancelOffer(c.offerId);
       cancelled.add(c.offerId);
-      if (c.done) memo.set(c.key, { reprices: 0, backoffUntil: Infinity });
+      if (c.done) {
+        memo.set(c.key, { reprices: 0, backoffUntil: Infinity });
+        if (epicDoneFile) saveEpicDone(epicDoneFile, c.key, tick);
+      }
       else if (c.backoff) memo.set(c.key, { reprices: 0, backoffUntil: tick + params.backoffTicks });
       lines.push(`${TAG} cancelled #${c.offerId} (${c.reason})`);
     } catch (e) {
