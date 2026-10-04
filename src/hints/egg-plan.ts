@@ -47,7 +47,7 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
     n: 1,
     persona: "chato",
     route: "manual",
-    // Hit at t1814 (4 Oct, thread 2684): t12's hit showed Chato reacting to "bocadillo, caña bien tirada"; the
+    // Hit at t1814 (4 Oct, thread 2684): t12's hit showed Chato reacting to the phrase in `line` (game text); the
     // "Plaza Mayor, con caña" line rivals saw was the egg's fixed reply, and sending it missed four times.
     line: "Plaza Mayor, bocadillo, caña bien tirada. Un bocadillo de calamares en la Plaza Mayor y una caña bien tirada.", // game text
     key: "caña bien tirada", // game text
