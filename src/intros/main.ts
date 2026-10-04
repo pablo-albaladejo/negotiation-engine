@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { ledgerNow, loadLedgerFile, matchPairs } from "../broker/matchmaker.js";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
-import { INTRO_PARAMS, loadIntroMemo, planIntros, saveIntroMemo, type IntroPlan } from "./intros.js";
+import { bookOrders, INTRO_PARAMS, loadIntroMemo, planBookIntros, planIntros, saveIntroMemo, type BookIntro, type IntroPlan } from "./intros.js";
 
 /**
  * `pnpm bazaar:intros --dry-run --once`: reads our venue, the rivals ledger and our open conversations (GET only) and
@@ -11,7 +11,7 @@ import { INTRO_PARAMS, loadIntroMemo, planIntros, saveIntroMemo, type IntroPlan 
  * every `--every-s` seconds. Each introduction opens a team thread with the holder and one with the wanter, says one
  * message and closes it at once, so it holds a conversation slot for one call only.
  */
-type IntrosApi = Pick<BazaarClient, "me" | "venues" | "clock" | "myThreads" | "raw" | "say" | "closeThread">;
+type IntrosApi = Pick<BazaarClient, "me" | "venues" | "clock" | "myThreads" | "raw" | "say" | "closeThread" | "board">;
 
 /** Our open venue id from `/api/me` (string or object), confirmed open in the public listing; undefined otherwise. */
 async function ourOpenVenue(api: IntrosApi): Promise<string | undefined> {
@@ -83,21 +83,37 @@ export async function runIntrosCli(argv: string[], log: (line: string) => void =
   }
   const everyMs = Math.max(30, Number(values["every-s"]) || 300) * 1000;
   const memoFile = resolve(values["memo-file"]!);
-  log(`intros: ${dryRun ? "DRY-RUN" : "LIVE"} · ${INTRO_PARAMS.perHour} pairs/h · one intro per team every ${INTRO_PARAMS.teamCooldownMs / 3600_000} h · keep ${INTRO_PARAMS.minFreeSlots} conversation slots free`);
+  log(`intros: ${dryRun ? "DRY-RUN" : "LIVE"} · ${INTRO_PARAMS.perHour} pairs/h · book intros ${INTRO_PARAMS.bookPerHour}/h (≤ ${INTRO_PARAMS.bookTargetsPerOrder} per order) · one intro per team every ${INTRO_PARAMS.teamCooldownMs / 3600_000} h · keep ${INTRO_PARAMS.minFreeSlots} conversation slots free`);
   for (;;) {
-    const venue = await ourOpenVenue(client);
+    try {
+      await pass();
+    } catch (e) {
+      // A failed read (rate limit, network) skips this pass; the loop keeps running.
+      log(`[intros] pass failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (values.once) return 0;
+    await new Promise((r) => setTimeout(r, everyMs));
+  }
+
+  async function pass(): Promise<void> {
+    const venue = await ourOpenVenue(client!);
     const ledger = loadLedgerFile(values["rivals-file"]!);
     if (!venue) log("[intros] off: we run no open venue");
     else if (!ledger) log(`[intros] off: no rivals ledger at ${values["rivals-file"]}`);
     else {
       const memo = loadIntroMemo(memoFile);
+      // Live orders on our venue first: a counterparty is already waiting there.
+      const raw = await client!.board(venue).catch((e: unknown) => log(`[intros] book of ${venue} unreadable: ${e instanceof Error ? e.message : String(e)}`));
+      const orders = bookOrders(raw, "t02");
+      const book = planBookIntros(orders, ledger, "t02", memo, venue, Date.now(), ledgerNow(ledger));
+      if (orders.length) log(`[intros] book: ${orders.length} open order(s) by other teams on ${venue}`);
+      for (const n of book.notes) log(n);
+      for (const b of book.intros) await introduceBook(client!, b, dryRun, memo, memoFile, log);
       const pairs = matchPairs(ledger, "t02", ledgerNow(ledger));
       const { plans, notes } = planIntros(pairs, memo, venue, Date.now());
       for (const n of notes) log(n);
-      for (const p of plans) await introduce(client, p, venue, dryRun, memo, memoFile, log);
+      for (const p of plans) await introduce(client!, p, venue, dryRun, memo, memoFile, log);
     }
-    if (values.once) return 0;
-    await new Promise((r) => setTimeout(r, everyMs));
   }
 }
 
@@ -116,6 +132,24 @@ async function introduce(api: IntrosApi, p: IntroPlan, venue: string, dryRun: bo
   for (const m of p.messages) if (await sendOne(api, m.team, m.text, log)) sent += 1;
   if (sent) {
     memo.sent.push({ ts: Date.now(), ref: p.ref, holder: p.holder, wanter: p.wanter });
+    saveIntroMemo(memoFile, memo);
+  }
+}
+
+async function introduceBook(api: IntrosApi, b: BookIntro, dryRun: boolean, memo: ReturnType<typeof loadIntroMemo>, memoFile: string, log: (l: string) => void): Promise<void> {
+  const o = b.order;
+  log(`[intros] book #${o.id}: ${o.maker} ${o.side} ${o.ref} → tell ${b.team}`);
+  if (dryRun) {
+    log(`[intros] would tell ${b.team}: ${b.text}`);
+    return;
+  }
+  if ((await freeSlots(api)) <= INTRO_PARAMS.minFreeSlots) {
+    log(`[intros] book #${o.id}: skipped, fewer than ${INTRO_PARAMS.minFreeSlots + 1} free conversation slots`);
+    return;
+  }
+  if (await sendOne(api, b.team, b.text, log)) {
+    const [holder, wanter] = o.side === "bid" ? [b.team, o.maker] : [o.maker, b.team];
+    memo.sent.push({ ts: Date.now(), ref: o.ref, holder, wanter, target: b.team });
     saveIntroMemo(memoFile, memo);
   }
 }
