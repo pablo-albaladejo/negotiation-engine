@@ -55,6 +55,7 @@ docs/        lecciones de los dealers y kit oficial del Bazaar
 viewer/         visor local del Bazaar (paquete independiente; server/bazaar/ = /api/bazaar/*)
 design-system/  componentes React del visor (por alias, sin build; components/ y examples/ por familia)
 handoff/     traspasos entre días (en git solo HANDOFF.md y AGENTS.md)
+agents/      un agente por sesión de Claude Code: ficha, prompt de arranque y orden de relanzamiento
 results/     trazas en vivo (fuera de git)
 ```
 
@@ -114,6 +115,7 @@ BAZAAR_KEY=                               # clave del equipo (X-Team-Key), solo 
 - [`viewer/`](viewer/AGENTS.md) — visor
 - [`design-system/`](design-system/AGENTS.md) — componentes React del visor
 - [`handoff/`](handoff/AGENTS.md) — traspasos entre días
+- [`agents/`](agents/AGENTS.md) — un agente por sesión de Claude Code: ficha y prompt para relanzar cada una
 
 ---
 
