@@ -763,7 +763,7 @@ function DuelWaves({ board, rows }: { board: Board; rows: BoardRow[] }) {
       ) : (
         <strong style={{ color: "var(--ok)" }}>✓ No duel open: every wave so far is closed</strong>
       )}
-      <span className="nr-muted">{next ? ` · next wave: ${next.note}${when}` : " · no more duel waves on the schedule"}</span>
+      <span className="nr-muted">{next ? ` · next wave: ${next.note}${when}` : live.length ? " · the last wave on the schedule" : " · no more duel waves on the schedule"}</span>
     </div>
   );
 }
@@ -916,7 +916,9 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   const open = (id: string) => onFiltersChange({ ...filters, row: id });
   /** From the model: the board row if it exists; otherwise the model conversation. */
   const openModel = (id: string) => open(board.rows.some((r) => r.id === boardRowIdFor(id)) ? boardRowIdFor(id) : id);
-  const { trades, duels } = historyGroups(board.rows);
+  const { trades } = historyGroups(board.rows);
+  // The Duels tab lists live duels too (historyGroups keeps only closed ones), so a running wave shows up.
+  const duels = board.rows.filter((r) => r.kind.startsWith("duel"));
   const duelPoints = board.header?.duel_points;
   const close = () => onFiltersChange({ ...filters, row: "" });
   const dealers = new Map<string, string>([
