@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Card, DataTable } from "@negotiation-ring/design-system";
 import type { Board, BoardMarketSession } from "../../model/index.js";
 
@@ -22,9 +22,70 @@ const TEMPER_STYLE: Record<string, { dash?: string; opacity: number }> = {
 const fmt3 = (x: number | null) => (x === null ? "—" : x.toFixed(3));
 const signed = (x: number | null) => (x === null ? "—" : `${x > 0 ? "+" : ""}${x.toFixed(3)}`);
 
+/** One legend entry: a tiny drawn sample next to its meaning. */
+function Key({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+      <svg width={26} height={12} viewBox="0 0 26 12" aria-hidden="true">
+        {children}
+      </svg>
+      {label}
+    </span>
+  );
+}
+
+function Legend({ showOurs }: { showOurs: boolean }) {
+  const row = { display: "flex", flexWrap: "wrap" as const, gap: "var(--space-1) var(--space-3)", alignItems: "center" };
+  return (
+    <div className="nr-muted" style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+      <div style={row}>
+        <strong>Side</strong>
+        <Key label="ask (seller)">
+          <line x1={1} x2={25} y1={6} y2={6} stroke={ASK} strokeWidth={2} />
+        </Key>
+        <Key label="bid (buyer)">
+          <line x1={1} x2={25} y1={6} y2={6} stroke={BID} strokeWidth={2} />
+        </Key>
+      </div>
+      <div style={row}>
+        <strong>Trader mood</strong>
+        <Key label="new quote">
+          <circle cx={13} cy={6} r={4} fill="var(--muted)" />
+        </Key>
+        <Key label="firm (holds the price)">
+          <line x1={1} x2={25} y1={6} y2={6} stroke="var(--muted)" strokeWidth={2} />
+        </Key>
+        <Key label="relaxing (moves toward the other side)">
+          <line x1={1} x2={25} y1={6} y2={6} stroke="var(--muted)" strokeWidth={2} strokeDasharray="4 3" />
+        </Key>
+        <Key label="settled (done trading)">
+          <circle cx={13} cy={6} r={3} fill="none" stroke="var(--muted)" opacity={0.6} />
+        </Key>
+        <span>· a line that stops: the trader left or was matched</span>
+      </div>
+      {showOurs ? (
+        <div style={row}>
+          <strong>Our broker</strong>
+          <Key label="match sent (at its price)">
+            <rect x={9} y={2} width={8} height={8} fill="var(--us)" />
+          </Key>
+          <Key label="refused or dry-run">
+            <rect x={9} y={2} width={8} height={8} fill="none" stroke="var(--us)" strokeWidth={2} />
+          </Key>
+          <Key label="tick with matches (count on top)">
+            <line x1={13} x2={13} y1={0} y2={12} stroke="var(--us)" strokeDasharray="2 3" />
+          </Key>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BookChart({ s }: { s: BoardMarketSession }) {
+  const [showOurs, setShowOurs] = useState(true);
   const traders = s.traders ?? [];
-  const matches = s.our_matches ?? [];
+  const allMatches = s.our_matches ?? [];
+  const matches = showOurs ? allMatches : [];
   const quotes = [...traders.flatMap((t) => t.points.map((p) => p.quote)), ...matches.flatMap((m) => [m.ask, m.bid, m.price].filter((x): x is number => x !== null))];
   if (!quotes.length) return <span className="nr-muted">No book lines logged for this session (bench.jsonl).</span>;
   const W = 760;
@@ -47,6 +108,12 @@ function BookChart({ s }: { s: BoardMarketSession }) {
   }
   return (
     <figure style={{ margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+      {allMatches.length ? (
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, alignSelf: "flex-start", cursor: "pointer" }}>
+          <input type="checkbox" checked={showOurs} onChange={(e) => setShowOurs(e.target.checked)} />
+          {`Show our matches (${allMatches.length})`}
+        </label>
+      ) : null}
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Bench book of session ${s.session}: quotes per trader by tick`} style={{ width: "100%", height: "auto" }}>
         {yTicks.map((q) => (
           <g key={q}>
@@ -96,8 +163,8 @@ function BookChart({ s }: { s: BoardMarketSession }) {
           ) : null,
         )}
       </svg>
-      <figcaption className="nr-muted" style={{ fontSize: 12 }}>
-        Asks in red, bids in green; a dot per tick (big = new, hollow = settled), dashed = relaxing, faint = settled. A line that stops: the trader left (impatient) or was matched. Blue squares: our matches (filled = sent, hollow = refused or dry-run), with the count per tick on top.
+      <figcaption>
+        <Legend showOurs={showOurs && allMatches.length > 0} />
       </figcaption>
     </figure>
   );
