@@ -746,9 +746,22 @@ function History({ board, rows, title, filters, onFiltersChange, ladder, open = 
             const group = shown.filter((r) => (r.duel?.session ?? null) === session);
             const deals = group.filter((r) => outcomeOf(r) === "deal");
             const captured = Math.round(deals.reduce((s, r) => s + (r.duel_result ?? 0), 0) * 10) / 10;
+            // In-progress duels get their own table on top, so they never hide among the closed ones.
+            const live = group.filter((r) => outcomeOf(r) === "open");
+            const closed = group.filter((r) => outcomeOf(r) !== "open");
+            const list = (rs: BoardRow[]) => <ConversationList board={board} rows={rs} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />;
             return (
-              <Fold key={String(session)} open={i === 0} title={`${duelSessionName(session)} · ${group.length} duels · ${deals.length} deals · captured ${captured}`}>
-                <ConversationList board={board} rows={group} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />
+              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels${live.length ? ` · ${live.length} in progress` : ""} · ${deals.length} deals · captured ${captured}`}>
+                {live.length ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+                    <strong style={{ color: "var(--us)" }}>{`● In progress · ${live.length}`}</strong>
+                    {list(live)}
+                    <strong className="nr-muted">{`Closed · ${closed.length}`}</strong>
+                    {closed.length ? list(closed) : <span className="nr-muted">None yet.</span>}
+                  </div>
+                ) : (
+                  list(group)
+                )}
               </Fold>
             );
           })
