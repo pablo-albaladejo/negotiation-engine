@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
-import { assetsInOffers, assetsInThreads, busyAssets, isKeepsake, rememberHiddenCards, sellBlocked } from "../../src/shared/asset-locks.js";
+import { assetsInOffers, assetsInThreads, busyAssets, isKeepsake, ourBidRefs, rememberHiddenCards, sellBlocked } from "../../src/shared/asset-locks.js";
 import { DealerInfoSchema, ThreadSchema } from "../../src/shared/schemas.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
 import { DEFAULT_TRADE_PARAMS, buildValueModel, heldAssets, planTick, type HeldAsset, type TradeOffer, type TradeState } from "../../src/trades/trades.js";
@@ -247,5 +247,20 @@ describe("hidden cards are never sold (Pablo, 3 Oct)", () => {
 
   it("LAT-13 is locked even before the catalog is read, with a positive value", () => {
     expect(isKeepsake({ kind: "card", ref: "LAT-13", rarity: "legendary", print_run: 5, your_value: 450 })).toBe(true);
+  });
+});
+
+describe("ourBidRefs: no dealer buy of a card we already bid for", () => {
+  it("reads the refs our open bids want, in any shape, and ignores closed offers and other makers", () => {
+    const offers = {
+      offers: [
+        { id: 1, maker: "t02", status: "open", venue: "rastro", give: { cash: 70 }, want: { cards: ["CHA-09"] } },
+        { id: 2, maker: "t02", status: "open", venue: "rastro", give: { cash: 70 }, want: { types: ["CHA-10"] } },
+        { id: 3, maker: "t02", status: "open", give: { cash: 9 }, want: { assets: [{ id: 5, ref: "LAT-01" }] } },
+        { id: 4, maker: "t02", status: "filled", give: { cash: 70 }, want: { cards: ["SAL-09"] } },
+        { id: 5, maker: "t07", status: "open", give: { cash: 70 }, want: { cards: ["MAL-11"] } },
+      ],
+    };
+    expect([...ourBidRefs(offers, "t02")].sort()).toEqual(["CHA-09", "CHA-10", "LAT-01"]);
   });
 });

@@ -57,6 +57,26 @@ export function assetsInThreads(threads: readonly unknown[], excludeThread?: num
  * Assets we offer to other teams right now (Pablo, 4 Oct: duplicates go to teams first): our open offers on a venue
  * (El Rastro, our board) or addressed to a team (`to` = tNN: directed sales, team-desk counters).
  */
+/**
+ * Card refs our own open bids want (cash given for a card: `want.cards`, `want.types` or `want.assets[].ref`).
+ * Coordinator, 4 Oct (CHA-09/10 for the Chamberi page): no dealer buy of a card we already bid for, or both could fill.
+ */
+export function ourBidRefs(raw: unknown, selfId?: string | null): Set<string> {
+  const out = new Set<string>();
+  for (const x of offersOf(raw)) {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    if (!OPEN.has(typeof o.status === "string" ? o.status : "open")) continue;
+    if (selfId && typeof o.maker === "string" && o.maker.toLowerCase() !== selfId.toLowerCase()) continue;
+    const want = (o.want && typeof o.want === "object" ? o.want : {}) as Record<string, unknown>;
+    for (const k of ["cards", "types"]) for (const r of Array.isArray(want[k]) ? (want[k] as unknown[]) : []) if (typeof r === "string") out.add(r);
+    for (const a of Array.isArray(want.assets) ? (want.assets as unknown[]) : []) {
+      const ref = a && typeof a === "object" ? (a as Record<string, unknown>).ref : undefined;
+      if (typeof ref === "string") out.add(ref);
+    }
+  }
+  return out;
+}
+
 export function teamOfferedAssets(raw: unknown, selfId?: string | null): Set<number> {
   const out = new Set<number>();
   for (const x of offersOf(raw)) {

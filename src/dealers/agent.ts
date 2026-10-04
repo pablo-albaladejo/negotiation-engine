@@ -12,7 +12,7 @@ import { TeamBudget } from "./team.js";
 import { copiesOf, formatThreadSummary, outcomeOf, revealedCards, valueCreated, type ThreadOutcome, type ThreadSummary } from "./history/thread-log.js";
 import { isDealer, sideOfTopic, threadPrices, type DealerRef } from "./negotiation/view.js";
 import { checkStructure, dealerOffers, expectationOf, firstMismatch } from "./negotiation/offer-structure.js";
-import { busyAssets, sellBlocked, teamOfferedAssets } from "../shared/asset-locks.js";
+import { busyAssets, ourBidRefs, sellBlocked, teamOfferedAssets } from "../shared/asset-locks.js";
 
 /**
  * Observe → decide → act loop against one dealer, one thread at a time. Every figure comes from
@@ -378,6 +378,12 @@ export class BazaarAgent {
    * Asset ids never offered to a dealer: received from a team today, and every copy of a card we offer to teams now or
    * that has team demand (duplicates go to teams first). If our offers cannot be read, every card counts (fails closed).
    */
+  /** Card refs our open bids want; undefined when the offers read fails (then no card buy: fail closed). */
+  private async ourBids(me: Me): Promise<ReadonlySet<string> | undefined> {
+    const offers = await this.api.myOffers().catch(() => undefined);
+    return offers === undefined ? undefined : ourBidRefs(offers, me.id);
+  }
+
   private async notForDealers(me: Me): Promise<ReadonlySet<number>> {
     const out = new Set<number>(this.o.teamReceived?.() ?? []);
     const offers = await this.api.myOffers().catch(() => undefined);
@@ -619,7 +625,10 @@ export class BazaarAgent {
       const busy = await busyAssets(this.api, me.id);
       const { menu, catalog } = { menu: this.o.menu, catalog: this.catalog };
       const elsewhere = (c: Target) => { const card = buyCardOf(c); return card !== undefined && this.team.buyingElsewhere(this.o.dealer.id, card); };
-      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c) && !elsewhere(c));
+      // A card we already bid for (El Rastro, a team) is not bought here too: both could fill (coordinator, 4 Oct).
+      const bids = await this.ourBids(me);
+      const bidFor = (c: Target) => { const card = buyCardOf(c); return card !== undefined && (bids === undefined || bids.has(card)); };
+      const cands = (this.o.only ? applyOnly(ranked, this.o.only) : ranked).filter((c) => !menuBlocks(menu, catalog, c) && !sellBlocked(c.topic, busy) && !this.packQuotaFull(c) && !elsewhere(c) && !bidFor(c));
       for (const c of cands) {
         const r = this.ladderReservation(c);
         if (r !== undefined) {
