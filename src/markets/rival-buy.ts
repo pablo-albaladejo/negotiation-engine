@@ -7,7 +7,7 @@ import type { RivalsState, RivalTeam } from "../state/rivals.js";
 import { buyGain, countHoldings, maxBid, median, MAKER_FEES, readSide, setOf, slowReprice, tradeFee, type TickPlan, type TradeOffer, type TradeState } from "../trades/trades.js";
 import { fairPrice } from "./markets.js";
 import { setMultipliers } from "./rival-page.js";
-import { MIN_ROOM, roomOf } from "./room.js";
+import { COUNTERPARTY_CAP, MIN_ROOM, roomOf } from "./room.js";
 
 /**
  * Rival buy: a directed El Rastro bid (`to` = the team, cash for one card) for a page card we lack, sent to a rival
@@ -65,7 +65,7 @@ export interface EpicBuyParams {
   /** Open lane: one bid on El Rastro to anyone (no `to`, `teams` unused) at the ceiling, never repriced, reposted when it expires. */
   open?: boolean;
 }
-export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04"], start: 185, ceiling: 215, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
+export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04"], start: 185, ceiling: 185, maxReprices: 0, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
 /**
  * Second epic lane: RET-11 (value 288 = book 180 × RET 1.6, no page bonus). Directed to t05/t12/t10 up to 240 got no
  * fill (4 Oct); directed bids between teams fill ~3 % (26 of 811), open ones far more, so it is now one open bid at 240
@@ -517,7 +517,9 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   }
   if (open) return committed;
   const seenWith = (team: string) => input.rivals?.teams.find((t) => t.team === team)?.seen.some((s) => s.ref === epic.ref) ?? false;
-  const team = epic.teams.find((t) => !doneNow.has(t) && memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t) && roomOf(input.room, t) >= MIN_ROOM);
+  // Coordinator, 4 Oct: one bid at value − min(50, room), only to a team whose room covers that whole gain.
+  const fullGain = Math.min(COUNTERPARTY_CAP, value! - epicStep(epic, 0));
+  const team = epic.teams.find((t) => !doneNow.has(t) && memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t) && roomOf(input.room, t) >= Math.max(MIN_ROOM, fullGain));
   if (!team) {
     out.notes.push(`${tag} ${epic.ref}: no listed holder left (${epic.teams.join("/")} done or not seen with it)`);
     return 0;
