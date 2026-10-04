@@ -1,7 +1,7 @@
 {
   "schema": "bazaar-lessons/v1",
   "description": "Lessons learned per Bazaar conversation (dealers, duels, trades). One entry per closed conversation; global lessons and open hypotheses at the end. Values are our private values from /api/me/value; prices in primas (P).",
-  "updated": "2026-10-03T00:17:07",
+  "updated": "2026-10-04",
   "conversations": [
     {
       "thread": 56,
@@ -257,6 +257,5583 @@
         "Our text called him 'Abuela' twice; he answered 'I'm not Abuela' and repeated 13. With memory 0.9 and a bio that punishes being clever, a wrong name is a real cost: messages must name the dealer we are talking to.",
         "His bid for an uncommon he buys: 13 P = 0.50 x list. He did not move in 2 ticks and never posted a standing offer, so there was nothing to accept.",
         "We dropped 20 -> 17 at once while he held: with a strict dealer that only gives ground away."
+      ]
+    },
+    {
+      "thread": 319,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-01 (buy:RET:common)",
+      "our_value": 16,
+      "our_limit": 16,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "RET-01"
+      ],
+      "value_created": 6,
+      "ladder_points_after": 0.01,
+      "neg_points_delta": 87.8,
+      "tick": 163,
+      "ts": "2026-10-03T07:30:43.422Z",
+      "cards": [
+        "RET-01"
+      ],
+      "copies_before": {
+        "RET-01": 0
+      },
+      "copies_after": {
+        "RET-01": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 321,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "RET-08, RET-01, SAL-02, LAV-03, SAL-08, RET-06 (buy:RET:uncommon)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        28,
+        29,
+        30,
+        31
+      ],
+      "her_prices": [
+        33,
+        33,
+        33,
+        32
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 31,
+      "received": [
+        "RET-01",
+        "SAL-02",
+        "LAV-03",
+        "SAL-08",
+        "RET-08",
+        "RET-06"
+      ],
+      "value_created": 9,
+      "ladder_points_after": 0.03,
+      "neg_points_delta": 49.3,
+      "tick": 166,
+      "ts": "2026-10-03T07:32:15.023Z",
+      "cards": [
+        "RET-08",
+        "RET-01",
+        "SAL-02",
+        "LAV-03",
+        "SAL-08",
+        "RET-06"
+      ],
+      "copies_before": {
+        "RET-08": 0,
+        "RET-01": 0,
+        "SAL-02": 0,
+        "LAV-03": 0,
+        "SAL-08": 0,
+        "RET-06": 0
+      },
+      "copies_after": {
+        "RET-08": 1,
+        "RET-01": 1,
+        "SAL-02": 2,
+        "LAV-03": 1,
+        "SAL-08": 2,
+        "RET-06": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule adaptive; patience 4 msgs, her replies 3",
+      "lessons": [
+        "She conceded 1 P from her opening (33 → 32).",
+        "Paid above her list (31 > list 26)."
+      ]
+    },
+    {
+      "thread": 326,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-06, SAL-02, LAV-03, SAL-08, RET-08 (buy:RET:uncommon)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        24
+      ],
+      "her_prices": [
+        29,
+        25
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "SAL-02",
+        "LAV-03",
+        "SAL-08",
+        "RET-08",
+        "RET-06"
+      ],
+      "value_created": 16,
+      "ladder_points_after": 0.03,
+      "tick": 166,
+      "ts": "2026-10-03T07:32:13.914Z",
+      "cards": [
+        "RET-06",
+        "SAL-02",
+        "LAV-03",
+        "SAL-08",
+        "RET-08"
+      ],
+      "copies_before": {
+        "RET-06": 0,
+        "SAL-02": 0,
+        "LAV-03": 0,
+        "SAL-08": 0,
+        "RET-08": 0
+      },
+      "copies_after": {
+        "RET-06": 1,
+        "SAL-02": 2,
+        "LAV-03": 1,
+        "SAL-08": 2,
+        "RET-08": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 4 P from her opening (29 → 25).",
+        "Accepted below her list (24 < list 25)."
+      ]
+    },
+    {
+      "thread": 333,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "SAL-02 (sell:571)",
+      "our_value": 3.2,
+      "our_limit": 4,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 2.8,
+      "ladder_points_after": 0.062,
+      "neg_points_delta": -4,
+      "tick": 173,
+      "ts": "2026-10-03T07:35:43.685Z",
+      "cards": [
+        "SAL-02"
+      ],
+      "copies_before": {
+        "SAL-02": 2
+      },
+      "copies_after": {
+        "SAL-02": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 332,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "SAL-08 (sell:573)",
+      "our_value": 8.1,
+      "our_limit": 9,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18,
+        17,
+        16
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        13,
+        14,
+        14
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 7,
+      "outcome": "deal",
+      "price": 14,
+      "value_created": 5.9,
+      "ladder_points_after": 0.062,
+      "neg_points_delta": -4,
+      "tick": 174,
+      "ts": "2026-10-03T07:36:14.647Z",
+      "cards": [
+        "SAL-08"
+      ],
+      "copies_before": {
+        "SAL-08": 2
+      },
+      "copies_after": {
+        "SAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule final-above-reservation; patience 6 msgs, her replies 6",
+      "lessons": [
+        "She conceded 1 P from her opening (13 → 14)."
+      ]
+    },
+    {
+      "thread": 341,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        12
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 175,
+      "ts": "2026-10-03T07:36:47.035Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 12.",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 342,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 179,
+      "ts": "2026-10-03T07:38:48.014Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She did not move: 5 prices at 13."
+      ]
+    },
+    {
+      "thread": 344,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-05 (sell:17)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 180,
+      "ts": "2026-10-03T07:39:18.044Z",
+      "cards": [
+        "LAV-05"
+      ],
+      "copies_before": {
+        "LAV-05": 1
+      },
+      "copies_after": {
+        "LAV-05": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 349,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 182,
+      "ts": "2026-10-03T07:40:18.497Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 352,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 185,
+      "ts": "2026-10-03T07:41:48.307Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 407,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-07 (buy:RET-07)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        24
+      ],
+      "her_prices": [
+        29,
+        25
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "RET-07"
+      ],
+      "value_created": 16,
+      "ladder_points_after": 0.064,
+      "neg_points_delta": -21,
+      "tick": 225,
+      "ts": "2026-10-03T08:01:47.639Z",
+      "cards": [
+        "RET-07"
+      ],
+      "copies_before": {
+        "RET-07": 0
+      },
+      "copies_after": {
+        "RET-07": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1",
+      "lessons": [
+        "She conceded 4 P from her opening (29 → 25).",
+        "Accepted below her list (24 < list 25)."
+      ]
+    },
+    {
+      "thread": 408,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "RET-07 (buy:RET-07)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        28,
+        29,
+        30,
+        31
+      ],
+      "her_prices": [
+        33,
+        33,
+        33,
+        32
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 31,
+      "received": [
+        "RET-07",
+        "RET-07"
+      ],
+      "value_created": 9,
+      "ladder_points_after": 0.064,
+      "neg_points_delta": -21,
+      "tick": 227,
+      "ts": "2026-10-03T08:02:48.147Z",
+      "cards": [
+        "RET-07"
+      ],
+      "copies_before": {
+        "RET-07": 0
+      },
+      "copies_after": {
+        "RET-07": 2
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule adaptive; patience 4 msgs, her replies 3",
+      "lessons": [
+        "She conceded 1 P from her opening (33 → 32).",
+        "Paid above her list (31 > list 26)."
+      ]
+    },
+    {
+      "thread": 413,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-03 (buy:RET-03)",
+      "our_value": 16,
+      "our_limit": 5,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 228,
+      "ts": "2026-10-03T08:03:20.893Z",
+      "cards": [
+        "RET-03"
+      ],
+      "copies_before": {
+        "RET-03": 0
+      },
+      "copies_after": {
+        "RET-03": 0
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10).",
+        "Her first bid 12 was below 0.7 × our minimum 5: closed after one counter."
+      ]
+    },
+    {
+      "thread": 415,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24
+      ],
+      "her_prices": [
+        12,
+        12
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 231,
+      "ts": "2026-10-03T08:04:50.957Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 12.",
+        "Her first bid 12 was below 0.7 × our minimum 18: closed after one counter."
+      ]
+    },
+    {
+      "thread": 414,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "RET-07 (sell:643)",
+      "our_value": 10,
+      "our_limit": 10,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18,
+        17
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        14,
+        15
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 6,
+      "outcome": "deal",
+      "price": 15,
+      "value_created": 5,
+      "ladder_points_after": 0.083,
+      "neg_points_delta": 15,
+      "tick": 234,
+      "ts": "2026-10-03T08:06:18.431Z",
+      "cards": [
+        "RET-07"
+      ],
+      "copies_before": {
+        "RET-07": 2
+      },
+      "copies_after": {
+        "RET-07": 0
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule final-above-reservation; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 2 P from her opening (13 → 15)."
+      ]
+    },
+    {
+      "thread": 417,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-01 (sell:19)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 236,
+      "ts": "2026-10-03T08:07:21.430Z",
+      "cards": [
+        "LAT-01"
+      ],
+      "copies_before": {
+        "LAT-01": 1
+      },
+      "copies_after": {
+        "LAT-01": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 420,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-05 (sell:20)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 241,
+      "ts": "2026-10-03T08:09:51.498Z",
+      "cards": [
+        "LAT-05"
+      ],
+      "copies_before": {
+        "LAT-05": 1
+      },
+      "copies_after": {
+        "LAT-05": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 426,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-02 (sell:21)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": 6,
+      "final_flag": true,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        6,
+        6,
+        6
+      ],
+      "messages_until_final": 4,
+      "ticks_until_final": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 247,
+      "ts": "2026-10-03T08:12:51.523Z",
+      "cards": [
+        "LAT-02"
+      ],
+      "copies_before": {
+        "LAT-02": 1
+      },
+      "copies_after": {
+        "LAT-02": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule final-below-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6).",
+        "Her final came after 4 of our messages (5 ticks)."
+      ]
+    },
+    {
+      "thread": 459,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        14
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 297,
+      "ts": "2026-10-03T08:38:29.562Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 14).",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 462,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-05 (sell:17)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 304,
+      "ts": "2026-10-03T08:42:00.343Z",
+      "cards": [
+        "LAV-05"
+      ],
+      "copies_before": {
+        "LAV-05": 1
+      },
+      "copies_after": {
+        "LAV-05": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 461,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 304,
+      "ts": "2026-10-03T08:42:01.564Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She did not move: 5 prices at 13."
+      ]
+    },
+    {
+      "thread": 467,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 307,
+      "ts": "2026-10-03T08:43:29.613Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 466,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 309,
+      "ts": "2026-10-03T08:44:30.154Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 474,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-03 (sell:572)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 314,
+      "ts": "2026-10-03T08:47:00.003Z",
+      "cards": [
+        "LAV-03"
+      ],
+      "copies_before": {
+        "LAV-03": 1
+      },
+      "copies_after": {
+        "LAV-03": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 493,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-06, LAT-07, SAL-02 (buy:RET:uncommon)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        24
+      ],
+      "her_prices": [
+        29,
+        25
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "LAT-07",
+        "SAL-02",
+        "RET-06"
+      ],
+      "value_created": 16,
+      "ladder_points_after": 0.083,
+      "neg_points_delta": -5.5,
+      "tick": 331,
+      "ts": "2026-10-03T08:55:25.741Z",
+      "cards": [
+        "RET-06",
+        "LAT-07",
+        "SAL-02"
+      ],
+      "copies_before": {
+        "RET-06": 1,
+        "LAT-07": 0,
+        "SAL-02": 0
+      },
+      "copies_after": {
+        "RET-06": 2,
+        "LAT-07": 1,
+        "SAL-02": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1",
+      "lessons": [
+        "She conceded 4 P from her opening (29 → 25).",
+        "Accepted below her list (24 < list 25).",
+        "Duplicate received: RET-06 (we already had 1)."
+      ]
+    },
+    {
+      "thread": 494,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "RET-07, LAT-07, SAL-02 (buy:RET:uncommon)",
+      "our_value": 40,
+      "our_limit": 40,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        28,
+        29,
+        30,
+        31
+      ],
+      "her_prices": [
+        33,
+        33,
+        33,
+        32
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 31,
+      "received": [
+        "LAT-07",
+        "RET-07",
+        "SAL-02"
+      ],
+      "value_created": 9,
+      "ladder_points_after": 0.083,
+      "neg_points_delta": -5.5,
+      "tick": 333,
+      "ts": "2026-10-03T08:56:26.801Z",
+      "cards": [
+        "RET-07",
+        "LAT-07",
+        "SAL-02"
+      ],
+      "copies_before": {
+        "RET-07": 0,
+        "LAT-07": 0,
+        "SAL-02": 0
+      },
+      "copies_after": {
+        "RET-07": 1,
+        "LAT-07": 1,
+        "SAL-02": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule adaptive; patience 4 msgs, her replies 3",
+      "lessons": [
+        "She conceded 1 P from her opening (33 → 32).",
+        "Paid above her list (31 > list 26)."
+      ]
+    },
+    {
+      "thread": 502,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-07 (buy:RET-07)",
+      "our_value": 40,
+      "our_limit": 5,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22
+      ],
+      "her_prices": [
+        29,
+        25
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 334,
+      "ts": "2026-10-03T08:57:00.747Z",
+      "cards": [
+        "RET-07"
+      ],
+      "copies_before": {
+        "RET-07": 0
+      },
+      "copies_after": {
+        "RET-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 4 P from her opening (29 → 25).",
+        "Her first bid 29 was below 0.7 × our minimum 5: closed after one counter."
+      ]
+    },
+    {
+      "thread": 504,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 335,
+      "ts": "2026-10-03T08:57:30.889Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 508,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-05 (sell:17)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 339,
+      "ts": "2026-10-03T08:59:29.169Z",
+      "cards": [
+        "LAV-05"
+      ],
+      "copies_before": {
+        "LAV-05": 1
+      },
+      "copies_after": {
+        "LAV-05": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 509,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        14
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 341,
+      "ts": "2026-10-03T09:00:29.928Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (13 → 14)."
+      ]
+    },
+    {
+      "thread": 517,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 344,
+      "ts": "2026-10-03T09:01:59.409Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 523,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "SAL-06, SAL-08 (buy:SAL:uncommon)",
+      "our_value": 32.5,
+      "our_limit": 32,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        24
+      ],
+      "her_prices": [
+        29,
+        26
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "SAL-06",
+        "SAL-08"
+      ],
+      "value_created": 8.5,
+      "ladder_points_after": 0.083,
+      "neg_points_delta": -39.8,
+      "tick": 348,
+      "ts": "2026-10-03T09:03:56.204Z",
+      "cards": [
+        "SAL-06",
+        "SAL-08"
+      ],
+      "copies_before": {
+        "SAL-06": 1,
+        "SAL-08": 1
+      },
+      "copies_after": {
+        "SAL-06": 2,
+        "SAL-08": 2
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1",
+      "lessons": [
+        "She conceded 3 P from her opening (29 → 26).",
+        "Accepted below her list (24 < list 25).",
+        "Duplicate received: SAL-06 (we already had 1).",
+        "Duplicate received: SAL-08 (we already had 1)."
+      ]
+    },
+    {
+      "thread": 519,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-08, SAL-06 (buy:SAL:uncommon)",
+      "our_value": 32.5,
+      "our_limit": 32,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        28,
+        29,
+        30,
+        31
+      ],
+      "her_prices": [
+        33,
+        33,
+        33,
+        32,
+        32
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 32,
+      "received": [
+        "SAL-06",
+        "SAL-08"
+      ],
+      "value_created": 0.5,
+      "ladder_points_after": 0.083,
+      "neg_points_delta": -39.8,
+      "tick": 348,
+      "ts": "2026-10-03T09:03:57.206Z",
+      "cards": [
+        "SAL-08",
+        "SAL-06"
+      ],
+      "copies_before": {
+        "SAL-08": 1,
+        "SAL-06": 1
+      },
+      "copies_after": {
+        "SAL-08": 2,
+        "SAL-06": 2
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (33 → 32).",
+        "Paid above her list (32 > list 26).",
+        "Duplicate received: SAL-06 (we already had 1).",
+        "Duplicate received: SAL-08 (we already had 1)."
+      ]
+    },
+    {
+      "thread": 532,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 354,
+      "ts": "2026-10-03T09:07:01.822Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She did not move: 5 prices at 13."
+      ]
+    },
+    {
+      "thread": 530,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "SAL-06 (sell:459)",
+      "our_value": 8.1,
+      "our_limit": 9,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24,
+        21,
+        19,
+        18,
+        17
+      ],
+      "her_prices": [
+        12,
+        14,
+        15,
+        15,
+        16
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 17,
+      "value_created": 8.9,
+      "ladder_points_after": 0.094,
+      "tick": 354,
+      "ts": "2026-10-03T09:06:56.817Z",
+      "cards": [
+        "SAL-06"
+      ],
+      "copies_before": {
+        "SAL-06": 2
+      },
+      "copies_after": {
+        "SAL-06": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule adaptive-fallback; patience 5 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 4 P from her opening (12 → 16)."
+      ]
+    },
+    {
+      "thread": 546,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        12
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 362,
+      "ts": "2026-10-03T09:11:00.876Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 12.",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 539,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-03 (sell:572)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 1,
+      "ladder_points_after": 0.098,
+      "tick": 360,
+      "ts": "2026-10-03T09:09:57.200Z",
+      "cards": [
+        "LAV-03"
+      ],
+      "copies_before": {
+        "LAV-03": 1
+      },
+      "copies_after": {
+        "LAV-03": 0
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 551,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 12,
+      "her_final": 13,
+      "final_flag": true,
+      "our_prices": [
+        24,
+        22,
+        21,
+        20,
+        19
+      ],
+      "her_prices": [
+        12,
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "messages_until_final": 5,
+      "ticks_until_final": 6,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 369,
+      "ts": "2026-10-03T09:14:30.729Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule final-below-reservation; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 1 P from her opening (12 → 13).",
+        "Her final came after 5 of our messages (6 ticks)."
+      ]
+    },
+    {
+      "thread": 565,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 12,
+      "her_final": 14,
+      "final_flag": true,
+      "our_prices": [
+        24,
+        22,
+        21,
+        20
+      ],
+      "her_prices": [
+        12,
+        13,
+        14,
+        14,
+        14
+      ],
+      "messages_until_final": 4,
+      "ticks_until_final": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 375,
+      "ts": "2026-10-03T09:17:30.501Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 4,
+      "notes": "auto: last rule final-below-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 14).",
+        "Her final came after 4 of our messages (5 ticks)."
+      ]
+    },
+    {
+      "thread": 621,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 91,
+      "our_limit": 81,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        80,
+        81
+      ],
+      "her_prices": [
+        97,
+        96,
+        95
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 414,
+      "ts": "2026-10-03T09:37:01.325Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She conceded 2 P from her opening (97 → 95)."
+      ]
+    },
+    {
+      "thread": 637,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 91,
+      "our_limit": 81,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        80,
+        81
+      ],
+      "her_prices": [
+        97,
+        96,
+        95
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 430,
+      "ts": "2026-10-03T09:45:01.816Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She conceded 2 P from her opening (97 → 95)."
+      ]
+    },
+    {
+      "thread": 646,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-03 (buy:RET-03)",
+      "our_value": 16,
+      "our_limit": 16,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "RET-03"
+      ],
+      "value_created": 6,
+      "ladder_points_after": 0.098,
+      "tick": 444,
+      "ts": "2026-10-03T09:51:58.887Z",
+      "cards": [
+        "RET-03"
+      ],
+      "copies_before": {
+        "RET-03": 0
+      },
+      "copies_after": {
+        "RET-03": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 653,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-05 (sell:17)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 451,
+      "ts": "2026-10-03T09:55:43.946Z",
+      "cards": [
+        "LAV-05"
+      ],
+      "copies_before": {
+        "LAV-05": 1
+      },
+      "copies_after": {
+        "LAV-05": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 648,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-04 (buy:RET-04)",
+      "our_value": 16,
+      "our_limit": 16,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "RET-04"
+      ],
+      "value_created": 6,
+      "ladder_points_after": 0.098,
+      "tick": 447,
+      "ts": "2026-10-03T09:53:30.679Z",
+      "cards": [
+        "RET-04"
+      ],
+      "copies_before": {
+        "RET-04": 0
+      },
+      "copies_after": {
+        "RET-04": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 657,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 456,
+      "ts": "2026-10-03T09:58:06.617Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 697,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "SAL-03 (sell:542)",
+      "our_value": 3.2,
+      "our_limit": 4,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 5,
+      "value_created": 1.8,
+      "ladder_points_after": 0.098,
+      "tick": 493,
+      "ts": "2026-10-03T10:16:32.365Z",
+      "cards": [
+        "SAL-03"
+      ],
+      "copies_before": {
+        "SAL-03": 2
+      },
+      "copies_after": {
+        "SAL-03": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 717,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "RET-02, RET-09 (buy:RET-02)",
+      "our_value": 16,
+      "our_limit": 16,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "RET-09",
+        "RET-02"
+      ],
+      "value_created": 6,
+      "ladder_points_after": 0.098,
+      "neg_points_delta": 13,
+      "tick": 506,
+      "ts": "2026-10-03T10:23:02.268Z",
+      "cards": [
+        "RET-02",
+        "RET-09"
+      ],
+      "copies_before": {
+        "RET-02": 0,
+        "RET-09": 0
+      },
+      "copies_after": {
+        "RET-02": 1,
+        "RET-09": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 718,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 177.1,
+      "our_limit": 86,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        82,
+        84,
+        85,
+        86
+      ],
+      "her_prices": [
+        97,
+        97,
+        95,
+        94,
+        93
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 508,
+      "ts": "2026-10-03T10:24:08.659Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 4 P from her opening (97 → 93)."
+      ]
+    },
+    {
+      "thread": 728,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-05 (sell:17)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 1,
+      "ladder_points_after": 0.098,
+      "neg_points_delta": -10,
+      "tick": 512,
+      "ts": "2026-10-03T10:26:03.308Z",
+      "cards": [
+        "LAV-05"
+      ],
+      "copies_before": {
+        "LAV-05": 1
+      },
+      "copies_after": {
+        "LAV-05": 0
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 734,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "RET-10 (buy:RET-10)",
+      "our_value": 218,
+      "our_limit": 86,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        82,
+        83,
+        84,
+        85,
+        86
+      ],
+      "her_prices": [
+        97,
+        97,
+        96,
+        95,
+        94,
+        93
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 515,
+      "ts": "2026-10-03T10:27:37.712Z",
+      "cards": [
+        "RET-10"
+      ],
+      "copies_before": {
+        "RET-10": 0
+      },
+      "copies_after": {
+        "RET-10": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 4 P from her opening (97 → 93)."
+      ]
+    },
+    {
+      "thread": 740,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 516,
+      "ts": "2026-10-03T10:28:07.460Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 746,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 523,
+      "ts": "2026-10-03T10:31:37.371Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 747,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "RET-10 (buy:RET-10)",
+      "our_value": 218,
+      "our_limit": 92,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88
+      ],
+      "her_prices": [
+        97,
+        97,
+        96,
+        95,
+        94,
+        93,
+        92,
+        91
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 9,
+      "outcome": "deal",
+      "price": 91,
+      "received": [
+        "RET-10"
+      ],
+      "value_created": 127,
+      "ladder_points_after": 0.098,
+      "tick": 530,
+      "ts": "2026-10-03T10:35:03.579Z",
+      "cards": [
+        "RET-10"
+      ],
+      "copies_before": {
+        "RET-10": 0
+      },
+      "copies_after": {
+        "RET-10": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule final-above-reservation; patience 7 msgs, her replies 7; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 6 P from her opening (97 → 91).",
+        "Paid above her list (91 > list 77)."
+      ]
+    },
+    {
+      "thread": 765,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 545,
+      "ts": "2026-10-03T10:42:39.241Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 812,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAV-01 (sell:18)",
+      "our_value": 5,
+      "our_limit": 5,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        6,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 0,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 1,
+      "ladder_points_after": 0.098,
+      "tick": 592,
+      "ts": "2026-10-03T11:06:04.705Z",
+      "cards": [
+        "LAV-01"
+      ],
+      "copies_before": {
+        "LAV-01": 1
+      },
+      "copies_after": {
+        "LAV-01": 0
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 0 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 893,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        14
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 658,
+      "ts": "2026-10-03T13:43:34.561Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 14).",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 898,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        12
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 661,
+      "ts": "2026-10-03T13:44:58.183Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 12.",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 900,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 661,
+      "ts": "2026-10-03T13:44:58.940Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 906,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 664,
+      "ts": "2026-10-03T13:46:33.653Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 894,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-10 (sell:802)",
+      "our_value": 49,
+      "our_limit": 49,
+      "her_opening": 47,
+      "her_final": null,
+      "measured_limit": 50,
+      "final_flag": false,
+      "our_prices": [
+        64,
+        61
+      ],
+      "her_prices": [
+        47,
+        48,
+        50
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 50,
+      "value_created": 1,
+      "ladder_points_after": 0.112,
+      "tick": 660,
+      "ts": "2026-10-03T13:44:25.107Z",
+      "cards": [
+        "LAT-10"
+      ],
+      "copies_before": {
+        "LAT-10": 1
+      },
+      "copies_after": {
+        "LAT-10": 0
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule welcome-first-deal; patience 2 msgs, her replies 2; neg_points had not moved when the entry was written",
+      "lessons": [
+        "welcome_first_deal: first conversation with pilar, her opening 50 is her limit for sell:802.",
+        "She conceded 3 P from her opening (47 → 50)."
+      ]
+    },
+    {
+      "thread": 905,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-01 (sell:19)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 666,
+      "ts": "2026-10-03T13:47:31.474Z",
+      "cards": [
+        "LAT-01"
+      ],
+      "copies_before": {
+        "LAT-01": 1
+      },
+      "copies_after": {
+        "LAT-01": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 901,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-08 (sell:28)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 16,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24,
+        22,
+        21,
+        20
+      ],
+      "her_prices": [
+        16,
+        16,
+        17,
+        18,
+        19
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 5,
+      "outcome": "deal",
+      "price": 19,
+      "value_created": 1.5,
+      "ladder_points_after": 0.145,
+      "tick": 666,
+      "ts": "2026-10-03T13:47:27.684Z",
+      "cards": [
+        "LAT-08"
+      ],
+      "copies_before": {
+        "LAT-08": 1
+      },
+      "copies_after": {
+        "LAT-08": 0
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 3 P from her opening (16 → 19)."
+      ]
+    },
+    {
+      "thread": 911,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-05 (sell:20)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 671,
+      "ts": "2026-10-03T13:50:02.818Z",
+      "cards": [
+        "LAT-05"
+      ],
+      "copies_before": {
+        "LAT-05": 1
+      },
+      "copies_after": {
+        "LAT-05": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 920,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-02 (sell:21)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 678,
+      "ts": "2026-10-03T13:53:31.097Z",
+      "cards": [
+        "LAT-02"
+      ],
+      "copies_before": {
+        "LAT-02": 1
+      },
+      "copies_after": {
+        "LAT-02": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule holds-exhausted; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 950,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 694,
+      "ts": "2026-10-03T14:01:49.924Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 959,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 698,
+      "ts": "2026-10-03T14:03:41.332Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 949,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-01 (sell:19)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 7,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 699,
+      "ts": "2026-10-03T14:04:00.200Z",
+      "cards": [
+        "LAT-01"
+      ],
+      "copies_before": {
+        "LAT-01": 1
+      },
+      "copies_after": {
+        "LAT-01": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule holds-exhausted; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 966,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-05 (sell:20)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 705,
+      "ts": "2026-10-03T14:07:09.853Z",
+      "cards": [
+        "LAT-05"
+      ],
+      "copies_before": {
+        "LAT-05": 1
+      },
+      "copies_after": {
+        "LAT-05": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 978,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-02 (sell:21)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 710,
+      "ts": "2026-10-03T14:09:34.319Z",
+      "cards": [
+        "LAT-02"
+      ],
+      "copies_before": {
+        "LAT-02": 1
+      },
+      "copies_after": {
+        "LAT-02": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 986,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 713,
+      "ts": "2026-10-03T14:11:03.720Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 1 P from her opening (12 → 13).",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 991,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        30
+      ],
+      "her_prices": [
+        12,
+        14
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 717,
+      "ts": "2026-10-03T14:13:03.685Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 14).",
+        "Her first bid 12 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 996,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 91,
+      "our_limit": 80,
+      "her_opening": 97,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        79,
+        80
+      ],
+      "her_prices": [
+        97,
+        97,
+        96
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 719,
+      "ts": "2026-10-03T14:14:03.050Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She conceded 1 P from her opening (97 → 96)."
+      ]
+    },
+    {
+      "thread": 1004,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 722,
+      "ts": "2026-10-03T14:15:31.222Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1008,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 725,
+      "ts": "2026-10-03T14:17:05.276Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 999,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-04 (sell:393)",
+      "our_value": 1.8,
+      "our_limit": 2,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 5,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 4.2,
+      "ladder_points_after": 0.145,
+      "tick": 724,
+      "ts": "2026-10-03T14:16:29.421Z",
+      "cards": [
+        "LAT-04"
+      ],
+      "copies_before": {
+        "LAT-04": 2
+      },
+      "copies_after": {
+        "LAT-04": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 1010,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-02 (sell:799)",
+      "our_value": 2.2,
+      "our_limit": 3,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 5,
+      "value_created": 2.8,
+      "ladder_points_after": 0.145,
+      "tick": 729,
+      "ts": "2026-10-03T14:18:59.706Z",
+      "cards": [
+        "MAL-02"
+      ],
+      "copies_before": {
+        "MAL-02": 2
+      },
+      "copies_after": {
+        "MAL-02": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 1023,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-01 (sell:19)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 738,
+      "ts": "2026-10-03T14:23:35.646Z",
+      "cards": [
+        "LAT-01"
+      ],
+      "copies_before": {
+        "LAT-01": 1
+      },
+      "copies_after": {
+        "LAT-01": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 1017,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "SAL-04 (sell:830)",
+      "our_value": 3.2,
+      "our_limit": 4,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 5,
+      "value_created": 1.8,
+      "ladder_points_after": 0.145,
+      "tick": 734,
+      "ts": "2026-10-03T14:21:26.610Z",
+      "cards": [
+        "SAL-04"
+      ],
+      "copies_before": {
+        "SAL-04": 2
+      },
+      "copies_after": {
+        "SAL-04": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 1030,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-05 (sell:20)",
+      "our_value": 7,
+      "our_limit": 7,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 746,
+      "ts": "2026-10-03T14:27:33.152Z",
+      "cards": [
+        "LAT-05"
+      ],
+      "copies_before": {
+        "LAT-05": 1
+      },
+      "copies_after": {
+        "LAT-05": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule holds-exhausted; patience 2 msgs, her replies 5",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 1033,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 91,
+      "our_limit": 91,
+      "her_opening": 97,
+      "her_final": 92,
+      "final_flag": true,
+      "our_prices": [
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "her_prices": [
+        97,
+        97,
+        96,
+        95,
+        94,
+        93,
+        92
+      ],
+      "messages_until_final": 6,
+      "ticks_until_final": 8,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 751,
+      "ts": "2026-10-03T14:30:03.122Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 6 msgs, her replies 6",
+      "lessons": [
+        "She conceded 5 P from her opening (97 → 92).",
+        "Her final came after 6 of our messages (8 ticks)."
+      ]
+    },
+    {
+      "thread": 1045,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 91,
+      "our_limit": 91,
+      "her_opening": 97,
+      "her_final": 93,
+      "final_flag": true,
+      "our_prices": [
+        82,
+        83,
+        84,
+        85,
+        86
+      ],
+      "her_prices": [
+        97,
+        97,
+        96,
+        95,
+        94,
+        93
+      ],
+      "messages_until_final": 5,
+      "ticks_until_final": 7,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 759,
+      "ts": "2026-10-03T14:34:05.130Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 0
+      },
+      "copies_after": {
+        "SAL-09": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 5 msgs, her replies 5",
+      "lessons": [
+        "She conceded 4 P from her opening (97 → 93).",
+        "Her final came after 5 of our messages (7 ticks)."
+      ]
+    },
+    {
+      "thread": 1048,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 16,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24,
+        22,
+        21
+      ],
+      "her_prices": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 759,
+      "ts": "2026-10-03T14:34:06.211Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price-out-of-range; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She did not move: 4 prices at 16."
+      ]
+    },
+    {
+      "thread": 1038,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-07 (sell:800)",
+      "our_value": 4.4,
+      "our_limit": 5,
+      "her_opening": 16,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        32,
+        29,
+        26,
+        23
+      ],
+      "her_prices": [
+        16,
+        16,
+        17,
+        18,
+        19
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 2,
+      "outcome": "deal",
+      "price": 19,
+      "value_created": 14.6,
+      "ladder_points_after": 0.185,
+      "tick": 755,
+      "ts": "2026-10-03T14:32:00.983Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 2
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule final-above-reservation; patience 1 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 3 P from her opening (16 → 19)."
+      ]
+    },
+    {
+      "thread": 1056,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        21,
+        20,
+        19,
+        18
+      ],
+      "her_prices": [
+        13,
+        13,
+        13,
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 765,
+      "ts": "2026-10-03T14:37:15.350Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She did not move: 5 prices at 13."
+      ]
+    },
+    {
+      "thread": 1066,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-07 (sell:543)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 0,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 769,
+      "ts": "2026-10-03T14:39:31.285Z",
+      "cards": [
+        "MAL-07"
+      ],
+      "copies_before": {
+        "MAL-07": 1
+      },
+      "copies_after": {
+        "MAL-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 0 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1067,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 10,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24
+      ],
+      "her_prices": [
+        10,
+        11
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 0,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 769,
+      "ts": "2026-10-03T14:39:32.694Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 0 msgs, her replies 1",
+      "lessons": [
+        "She conceded 1 P from her opening (10 → 11).",
+        "Her first bid 10 was below 0.7 × our minimum 18: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1081,
+      "dealer": "chato",
+      "kind": "sell",
+      "item": "MAL-08 (sell:801)",
+      "our_value": 22.5,
+      "our_limit": 23,
+      "her_opening": 13,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        27
+      ],
+      "her_prices": [
+        13,
+        13
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 774,
+      "ts": "2026-10-03T14:41:35.419Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 1
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 13.",
+        "Her first bid 13 was below 0.7 × our minimum 23: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1079,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 16,
+      "her_final": 17,
+      "final_flag": true,
+      "our_prices": [
+        24,
+        22,
+        21,
+        20
+      ],
+      "her_prices": [
+        16,
+        16,
+        16,
+        17,
+        17
+      ],
+      "messages_until_final": 4,
+      "ticks_until_final": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 776,
+      "ts": "2026-10-03T14:42:36.075Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 1 P from her opening (16 → 17).",
+        "Her final came after 4 of our messages (5 ticks)."
+      ]
+    },
+    {
+      "thread": 1126,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "MAL-01 (sell:945)",
+      "our_value": 2.2,
+      "our_limit": 3,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8,
+        7
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 6,
+      "value_created": 3.8,
+      "ladder_points_after": 0.212,
+      "tick": 807,
+      "ts": "2026-10-03T14:58:01.704Z",
+      "cards": [
+        "MAL-01"
+      ],
+      "copies_before": {
+        "MAL-01": 2
+      },
+      "copies_after": {
+        "MAL-01": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 4; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (5 → 6)."
+      ]
+    },
+    {
+      "thread": 1158,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 10,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24
+      ],
+      "her_prices": [
+        10,
+        11
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 824,
+      "ts": "2026-10-03T15:06:40.339Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 1 P from her opening (10 → 11).",
+        "Her first bid 10 was below 0.7 × our minimum 18: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1163,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 16,
+      "her_final": 17,
+      "final_flag": true,
+      "our_prices": [
+        24,
+        22,
+        21
+      ],
+      "her_prices": [
+        16,
+        16,
+        17,
+        17
+      ],
+      "messages_until_final": 3,
+      "ticks_until_final": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 829,
+      "ts": "2026-10-03T15:09:10.674Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She conceded 1 P from her opening (16 → 17).",
+        "Her final came after 3 of our messages (4 ticks)."
+      ]
+    },
+    {
+      "thread": 1225,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "LAT-07 (sell:620)",
+      "our_value": 17.5,
+      "our_limit": 18,
+      "her_opening": 10,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        24
+      ],
+      "her_prices": [
+        10,
+        11
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 861,
+      "ts": "2026-10-03T15:25:14.189Z",
+      "cards": [
+        "LAT-07"
+      ],
+      "copies_before": {
+        "LAT-07": 1
+      },
+      "copies_after": {
+        "LAT-07": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 1 P from her opening (10 → 11).",
+        "Her first bid 10 was below 0.7 × our minimum 18: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1440,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAV-09 (sell:1038)",
+      "our_value": 35,
+      "our_limit": 35,
+      "her_opening": 47,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        63,
+        60,
+        57,
+        54
+      ],
+      "her_prices": [
+        47,
+        49,
+        51,
+        53
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 54,
+      "value_created": 19,
+      "ladder_points_after": 0.27,
+      "tick": 990,
+      "ts": "2026-10-03T16:29:48.571Z",
+      "cards": [
+        "LAV-09"
+      ],
+      "copies_before": {
+        "LAV-09": 1
+      },
+      "copies_after": {
+        "LAV-09": 0
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule adaptive; patience 4 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 6 P from her opening (47 → 53)."
+      ]
+    },
+    {
+      "thread": 1437,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "RET-08 (sell:1037)",
+      "our_value": 10,
+      "our_limit": 10,
+      "her_opening": 10,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        20,
+        18,
+        16,
+        15,
+        14
+      ],
+      "her_prices": [
+        10,
+        10,
+        11,
+        11,
+        11,
+        11
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 7,
+      "outcome": "deal",
+      "price": 11,
+      "value_created": 1,
+      "ladder_points_after": 0.27,
+      "tick": 991,
+      "ts": "2026-10-03T16:30:13.620Z",
+      "cards": [
+        "RET-08"
+      ],
+      "copies_before": {
+        "RET-08": 2
+      },
+      "copies_after": {
+        "RET-08": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule final-above-reservation; patience 5 msgs, her replies 5; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (10 → 11)."
+      ]
+    },
+    {
+      "thread": 1449,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "LAV-08 (sell:1036)",
+      "our_value": 12.5,
+      "our_limit": 13,
+      "her_opening": 16,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        32,
+        29,
+        28
+      ],
+      "her_prices": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 5,
+      "outcome": "deal",
+      "price": 16,
+      "value_created": 3.5,
+      "ladder_points_after": 0.27,
+      "tick": 995,
+      "ts": "2026-10-03T16:32:19.533Z",
+      "cards": [
+        "LAV-08"
+      ],
+      "copies_before": {
+        "LAV-08": 1
+      },
+      "copies_after": {
+        "LAV-08": 0
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 16."
+      ]
+    },
+    {
+      "thread": 1491,
+      "dealer": "banco",
+      "kind": "buy",
+      "item": "RET-12 (buy:RET-12)",
+      "our_value": 720,
+      "our_limit": 60,
+      "her_opening": 761,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        59
+      ],
+      "her_prices": [
+        761,
+        761
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1021,
+      "ts": "2026-10-03T16:45:24.272Z",
+      "cards": [
+        "RET-12"
+      ],
+      "copies_before": {
+        "RET-12": 0
+      },
+      "copies_after": {
+        "RET-12": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 761.",
+        "Her first bid 761 was below 0.7 × our minimum 60: closed after one counter."
+      ]
+    },
+    {
+      "thread": 1495,
+      "dealer": "banco",
+      "kind": "sell",
+      "item": "LAT-13 (sell:1056)",
+      "our_value": 0,
+      "our_limit": 1,
+      "her_opening": null,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [],
+      "her_prices": [],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1023,
+      "ts": "2026-10-03T16:46:20.535Z",
+      "cards": [
+        "LAT-13"
+      ],
+      "copies_before": {
+        "LAT-13": 1
+      },
+      "copies_after": {
+        "LAT-13": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: closed_reason not_traded; patience 0 msgs, her replies 0",
+      "lessons": []
+    },
+    {
+      "thread": 1749,
+      "dealer": "picaros",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 79,
+      "our_limit": 56,
+      "her_opening": 73,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        55
+      ],
+      "her_prices": [
+        73,
+        67
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1176,
+      "ts": "2026-10-03T18:03:04.805Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 1
+      },
+      "copies_after": {
+        "SAL-09": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule structure-mismatch; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 6 P from her opening (73 → 67)."
+      ]
+    },
+    {
+      "thread": 1757,
+      "dealer": "picaros",
+      "kind": "buy",
+      "item": "SAL-10 (buy:SAL-10)",
+      "our_value": 77,
+      "our_limit": 56,
+      "her_opening": 73,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        55
+      ],
+      "her_prices": [
+        73,
+        63
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1179,
+      "ts": "2026-10-03T18:04:32.551Z",
+      "cards": [
+        "SAL-10"
+      ],
+      "copies_before": {
+        "SAL-10": 1
+      },
+      "copies_after": {
+        "SAL-10": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule structure-mismatch; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 10 P from her opening (73 → 63)."
+      ]
+    },
+    {
+      "thread": 1774,
+      "dealer": "picaros",
+      "kind": "buy",
+      "item": "SAL-09 (buy:SAL-09)",
+      "our_value": 79,
+      "our_limit": 55,
+      "her_opening": 73,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [],
+      "her_prices": [
+        73
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1189,
+      "ts": "2026-10-03T18:09:33.946Z",
+      "cards": [
+        "SAL-09"
+      ],
+      "copies_before": {
+        "SAL-09": 1
+      },
+      "copies_after": {
+        "SAL-09": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule structure-mismatch; patience 0 msgs, her replies 0",
+      "lessons": []
+    },
+    {
+      "thread": 1780,
+      "dealer": "picaros",
+      "kind": "buy",
+      "item": "SAL-10 (buy:SAL-10)",
+      "our_value": 76,
+      "our_limit": 56,
+      "her_opening": 73,
+      "her_final": 60,
+      "final_flag": true,
+      "our_prices": [
+        55,
+        56
+      ],
+      "her_prices": [
+        73,
+        65,
+        60
+      ],
+      "messages_until_final": 2,
+      "ticks_until_final": 3,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1193,
+      "ts": "2026-10-03T18:11:34.368Z",
+      "cards": [
+        "SAL-10"
+      ],
+      "copies_before": {
+        "SAL-10": 1
+      },
+      "copies_after": {
+        "SAL-10": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She conceded 13 P from her opening (73 → 60).",
+        "Her final came after 2 of our messages (3 ticks)."
+      ]
+    },
+    {
+      "thread": 1781,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "MAL-10 (sell:135)",
+      "our_value": 63,
+      "our_limit": 63,
+      "her_opening": 47,
+      "her_final": 53,
+      "final_flag": true,
+      "our_prices": [
+        82,
+        79,
+        76,
+        73
+      ],
+      "her_prices": [
+        47,
+        48,
+        49,
+        51,
+        53
+      ],
+      "messages_until_final": 4,
+      "ticks_until_final": 5,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1196,
+      "ts": "2026-10-03T18:13:03.620Z",
+      "cards": [
+        "MAL-10"
+      ],
+      "copies_before": {
+        "MAL-10": 1
+      },
+      "copies_after": {
+        "MAL-10": 1
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule final-below-reservation; patience 4 msgs, her replies 4",
+      "lessons": [
+        "She conceded 6 P from her opening (47 → 53).",
+        "Her final came after 4 of our messages (5 ticks)."
+      ]
+    },
+    {
+      "thread": 1972,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "SAL-03 (sell:944)",
+      "our_value": 3.2,
+      "our_limit": 4,
+      "her_opening": 4,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9,
+        7,
+        6
+      ],
+      "her_prices": [
+        4,
+        4,
+        4
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "deal",
+      "price": 4,
+      "value_created": 0.8,
+      "ladder_points_after": 0.27,
+      "tick": 1311,
+      "ts": "2026-10-03T19:53:11.987Z",
+      "cards": [
+        "SAL-03"
+      ],
+      "copies_before": {
+        "SAL-03": 2
+      },
+      "copies_after": {
+        "SAL-03": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 3 prices at 4."
+      ]
+    },
+    {
+      "thread": 1993,
+      "dealer": "pilar",
+      "kind": "buy",
+      "item": "buy:pack:sobre_oro",
+      "our_value": 312.5,
+      "our_limit": 60,
+      "her_opening": 504,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        59
+      ],
+      "her_prices": [
+        504,
+        491
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1318,
+      "ts": "2026-10-03T19:56:44.824Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She conceded 13 P from her opening (504 → 491).",
+        "Her first bid 504 was below 0.7 × our minimum 60: closed after one counter."
+      ]
+    },
+    {
+      "thread": 2001,
+      "dealer": "pilar",
+      "kind": "buy",
+      "item": "buy:pack:sobre_oro",
+      "our_value": 312.5,
+      "our_limit": 60,
+      "her_opening": 504,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        45
+      ],
+      "her_prices": [
+        504
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1321,
+      "ts": "2026-10-03T19:58:14.729Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "Her first bid 504 was below 0.7 × our minimum 60: closed after one counter."
+      ]
+    },
+    {
+      "thread": 2010,
+      "dealer": "pilar",
+      "kind": "buy",
+      "item": "buy:pack:sobre_oro",
+      "our_value": 312.5,
+      "our_limit": 60,
+      "her_opening": 504,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        59
+      ],
+      "her_prices": [
+        504,
+        504
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1325,
+      "ts": "2026-10-03T20:00:16.746Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 504.",
+        "Her first bid 504 was below 0.7 × our minimum 60: closed after one counter."
+      ]
+    },
+    {
+      "thread": 2033,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "sobre_barrio (buy:pack:sobre_barrio)",
+      "our_value": 39.3,
+      "our_limit": 38,
+      "her_opening": 30,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        25,
+        26
+      ],
+      "her_prices": [
+        30,
+        30,
+        27
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 3,
+      "outcome": "deal",
+      "price": 26,
+      "received": [
+        "sobre_barrio"
+      ],
+      "value_created": 13.3,
+      "ladder_points_after": 0.27,
+      "neg_points_delta": -13.1,
+      "tick": 1341,
+      "ts": "2026-10-03T20:08:09.114Z",
+      "cards": [
+        "sobre_barrio"
+      ],
+      "copies_before": {
+        "sobre_barrio": 0
+      },
+      "copies_after": {
+        "sobre_barrio": 0
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule adaptive; patience 3 msgs, her replies 3",
+      "lessons": [
+        "She conceded 3 P from her opening (30 → 27)."
+      ]
+    },
+    {
+      "thread": 2047,
+      "dealer": "pilar",
+      "kind": "buy",
+      "item": "buy:pack:sobre_oro",
+      "our_value": 263.8,
+      "our_limit": 34,
+      "her_opening": 504,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        26
+      ],
+      "her_prices": [
+        504
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1343,
+      "ts": "2026-10-03T20:09:15.342Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "Her first bid 504 was below 0.7 × our minimum 34: closed after one counter."
+      ]
+    },
+    {
+      "thread": 2060,
+      "dealer": "picaros",
+      "kind": "sell",
+      "item": "MAL-08 (sell:1163)",
+      "our_value": 5.6,
+      "our_limit": 6,
+      "her_opening": 10,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        20,
+        18,
+        17
+      ],
+      "her_prices": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 10,
+      "value_created": 4.4,
+      "ladder_points_after": 0.27,
+      "tick": 1355,
+      "ts": "2026-10-03T20:15:11.885Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 2
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price; patience 3 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 10."
+      ]
+    },
+    {
+      "thread": 2080,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "buy:pack:sobre_plata",
+      "our_value": 130.6,
+      "our_limit": 126,
+      "her_opening": 188,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [],
+      "her_prices": [
+        188
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 0,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1360,
+      "ts": "2026-10-03T20:17:43.576Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule anchor; patience 0 msgs, her replies 1",
+      "lessons": []
+    },
+    {
+      "thread": 2093,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "buy:pack:sobre_plata",
+      "our_value": 130.6,
+      "our_limit": 126,
+      "her_opening": 188,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        51
+      ],
+      "her_prices": [
+        188
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1364,
+      "ts": "2026-10-03T20:19:39.439Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule anchor; patience 1 msgs, her replies 0",
+      "lessons": []
+    },
+    {
+      "thread": 2098,
+      "dealer": "pilar",
+      "kind": "buy",
+      "item": "buy:pack:sobre_oro",
+      "our_value": 312.5,
+      "our_limit": 303,
+      "her_opening": 504,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        45
+      ],
+      "her_prices": [
+        504
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1366,
+      "ts": "2026-10-03T20:20:44.431Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule anchor; patience 1 msgs, her replies 0",
+      "lessons": []
+    },
+    {
+      "thread": 2153,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "buy:pack:sobre_plata",
+      "our_value": 130.6,
+      "our_limit": 126,
+      "her_opening": 188,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [],
+      "her_prices": [
+        188
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 0,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1394,
+      "ts": "2026-10-03T20:34:46.681Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule anchor; patience 0 msgs, her replies 1",
+      "lessons": []
+    },
+    {
+      "thread": 2155,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "buy:pack:sobre_barrio",
+      "our_value": 38.7,
+      "our_limit": 37,
+      "her_opening": 30,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        23
+      ],
+      "her_prices": [
+        30
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 1,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1399,
+      "ts": "2026-10-03T20:37:07.013Z",
+      "cards": [],
+      "copies_before": {},
+      "copies_after": {},
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule anchor; patience 1 msgs, her replies 1",
+      "lessons": []
+    },
+    {
+      "thread": 2224,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "CHA-06 (buy:CHA-06)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        26,
+        27
+      ],
+      "her_prices": [
+        33,
+        33,
+        33
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 7,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1476,
+      "ts": "2026-10-04T07:22:52.847Z",
+      "cards": [
+        "CHA-06"
+      ],
+      "copies_before": {
+        "CHA-06": 0
+      },
+      "copies_after": {
+        "CHA-06": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She did not move: 3 prices at 33."
+      ]
+    },
+    {
+      "thread": 2246,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "CHA-08 (buy:CHA-08)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        26,
+        27
+      ],
+      "her_prices": [
+        33,
+        33,
+        33
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1484,
+      "ts": "2026-10-04T07:24:53.240Z",
+      "cards": [
+        "CHA-08"
+      ],
+      "copies_before": {
+        "CHA-08": 0
+      },
+      "copies_after": {
+        "CHA-08": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She did not move: 3 prices at 33."
+      ]
+    },
+    {
+      "thread": 2229,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-07 (buy:CHA-07)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        23
+      ],
+      "her_prices": [
+        29,
+        26,
+        24
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 8,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "CHA-07"
+      ],
+      "value_created": 3.5,
+      "ladder_points_after": 0.028,
+      "tick": 1480,
+      "ts": "2026-10-04T07:23:45.526Z",
+      "cards": [
+        "CHA-07"
+      ],
+      "copies_before": {
+        "CHA-07": 0
+      },
+      "copies_after": {
+        "CHA-07": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 2 msgs, her replies 2; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 5 P from her opening (29 → 24).",
+        "Accepted below her list (24 < list 25)."
+      ]
+    },
+    {
+      "thread": 2248,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-06 (buy:CHA-06)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        23
+      ],
+      "her_prices": [
+        29,
+        25
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 23,
+      "received": [
+        "CHA-06"
+      ],
+      "value_created": 4.5,
+      "ladder_points_after": 0.036,
+      "tick": 1486,
+      "ts": "2026-10-04T07:25:15.591Z",
+      "cards": [
+        "CHA-06"
+      ],
+      "copies_before": {
+        "CHA-06": 0
+      },
+      "copies_after": {
+        "CHA-06": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 4 P from her opening (29 → 25).",
+        "Accepted below her list (23 < list 25)."
+      ]
+    },
+    {
+      "thread": 2259,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-01 (buy:CHA-01)",
+      "our_value": 11,
+      "our_limit": 11,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "CHA-01"
+      ],
+      "value_created": 1,
+      "ladder_points_after": 0.036,
+      "tick": 1492,
+      "ts": "2026-10-04T07:26:45.860Z",
+      "cards": [
+        "CHA-01"
+      ],
+      "copies_before": {
+        "CHA-01": 0
+      },
+      "copies_after": {
+        "CHA-01": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 2290,
+      "dealer": "chato",
+      "kind": "buy",
+      "item": "CHA-08 (buy:CHA-08)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 33,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        26,
+        27
+      ],
+      "her_prices": [
+        33,
+        33,
+        33
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 8,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1506,
+      "ts": "2026-10-04T07:30:25.359Z",
+      "cards": [
+        "CHA-08"
+      ],
+      "copies_before": {
+        "CHA-08": 0
+      },
+      "copies_after": {
+        "CHA-08": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule stuck-at-reservation; patience 2 msgs, her replies 2",
+      "lessons": [
+        "She did not move: 3 prices at 33."
+      ]
+    },
+    {
+      "thread": 2272,
+      "dealer": "abuela",
+      "kind": "sell",
+      "item": "LAT-05 (sell:1162)",
+      "our_value": 1.8,
+      "our_limit": 2,
+      "her_opening": 5,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        10,
+        9,
+        8
+      ],
+      "her_prices": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 5,
+      "value_created": 3.2,
+      "ladder_points_after": 0.038,
+      "tick": 1504,
+      "ts": "2026-10-04T07:29:47.985Z",
+      "cards": [
+        "LAT-05"
+      ],
+      "copies_before": {
+        "LAT-05": 2
+      },
+      "copies_after": {
+        "LAT-05": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule fixed-price; patience 1 msgs, her replies 3; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She did not move: 4 prices at 5."
+      ]
+    },
+    {
+      "thread": 2294,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-02 (buy:CHA-02)",
+      "our_value": 11,
+      "our_limit": 11,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "CHA-02"
+      ],
+      "value_created": 1,
+      "ladder_points_after": 0.038,
+      "tick": 1510,
+      "ts": "2026-10-04T07:31:18.886Z",
+      "cards": [
+        "CHA-02"
+      ],
+      "copies_before": {
+        "CHA-02": 0
+      },
+      "copies_after": {
+        "CHA-02": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 2308,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-08 (buy:CHA-08)",
+      "our_value": 27.5,
+      "our_limit": 27,
+      "her_opening": 29,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        22,
+        23
+      ],
+      "her_prices": [
+        29,
+        26,
+        24
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 9,
+      "outcome": "deal",
+      "price": 24,
+      "received": [
+        "CHA-08"
+      ],
+      "value_created": 3.5,
+      "ladder_points_after": 0.042,
+      "tick": 1522,
+      "ts": "2026-10-04T07:34:19.571Z",
+      "cards": [
+        "CHA-08"
+      ],
+      "copies_before": {
+        "CHA-08": 0
+      },
+      "copies_after": {
+        "CHA-08": 1
+      },
+      "deals_with_dealer_last_hour": 3,
+      "notes": "auto: last rule ac-next; patience 2 msgs, her replies 2; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 5 P from her opening (29 → 24).",
+        "Accepted below her list (24 < list 25)."
+      ]
+    },
+    {
+      "thread": 2334,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-04 (buy:CHA-04)",
+      "our_value": 11,
+      "our_limit": 11,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 2,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "CHA-04"
+      ],
+      "value_created": 1,
+      "ladder_points_after": 0.042,
+      "tick": 1535,
+      "ts": "2026-10-04T07:37:34.053Z",
+      "cards": [
+        "CHA-04"
+      ],
+      "copies_before": {
+        "CHA-04": 0
+      },
+      "copies_after": {
+        "CHA-04": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 0 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 2344,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-05 (buy:CHA-05)",
+      "our_value": 11,
+      "our_limit": 11,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9,
+        10
+      ],
+      "her_prices": [
+        12,
+        11
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 6,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "CHA-05"
+      ],
+      "value_created": 1,
+      "ladder_points_after": 0.042,
+      "tick": 1541,
+      "ts": "2026-10-04T07:39:01.508Z",
+      "cards": [
+        "CHA-05"
+      ],
+      "copies_before": {
+        "CHA-05": 0
+      },
+      "copies_after": {
+        "CHA-05": 1
+      },
+      "deals_with_dealer_last_hour": 2,
+      "notes": "auto: last rule adaptive; patience 2 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 1 P from her opening (12 → 11)."
+      ]
+    },
+    {
+      "thread": 2555,
+      "dealer": "banco",
+      "kind": "buy",
+      "item": "RET-12 (buy:RET-12)",
+      "our_value": 720,
+      "our_limit": 60,
+      "her_opening": 761,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        59
+      ],
+      "her_prices": [
+        761,
+        761
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 4,
+      "outcome": "closed_no_deal",
+      "price": null,
+      "value_created": 0,
+      "tick": 1712,
+      "ts": "2026-10-04T08:22:04.548Z",
+      "cards": [
+        "RET-12"
+      ],
+      "copies_before": {
+        "RET-12": 0
+      },
+      "copies_after": {
+        "RET-12": 0
+      },
+      "deals_with_dealer_last_hour": 0,
+      "notes": "auto: last rule lowball-bid; patience 1 msgs, her replies 1",
+      "lessons": [
+        "She did not move: 2 prices at 761.",
+        "Her first bid 761 was below 0.7 × our minimum 60: closed after one counter."
+      ]
+    },
+    {
+      "thread": 2569,
+      "dealer": "abuela",
+      "kind": "buy",
+      "item": "CHA-05 (buy:CHA-05)",
+      "our_value": 11,
+      "our_limit": 11,
+      "her_opening": 12,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        9
+      ],
+      "her_prices": [
+        12,
+        10
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 7,
+      "outcome": "deal",
+      "price": 10,
+      "received": [
+        "CHA-05"
+      ],
+      "value_created": 1,
+      "ladder_points_after": 0.042,
+      "tick": 1724,
+      "ts": "2026-10-04T08:24:56.535Z",
+      "cards": [
+        "CHA-05"
+      ],
+      "copies_before": {
+        "CHA-05": 0
+      },
+      "copies_after": {
+        "CHA-05": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 1 msgs, her replies 1; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 2 P from her opening (12 → 10)."
+      ]
+    },
+    {
+      "thread": 2689,
+      "dealer": "pilar",
+      "kind": "sell",
+      "item": "MAL-08 (sell:1311)",
+      "our_value": 5.6,
+      "our_limit": 6,
+      "her_opening": 16,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        32,
+        29,
+        26,
+        23,
+        20
+      ],
+      "her_prices": [
+        16,
+        16,
+        17,
+        18,
+        19,
+        19
+      ],
+      "messages_until_final": null,
+      "ticks_until_final": 10,
+      "outcome": "deal",
+      "price": 19,
+      "value_created": 13.4,
+      "ladder_points_after": 0.082,
+      "tick": 1837,
+      "ts": "2026-10-04T08:53:24.130Z",
+      "cards": [
+        "MAL-08"
+      ],
+      "copies_before": {
+        "MAL-08": 2
+      },
+      "copies_after": {
+        "MAL-08": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 4 msgs, her replies 5; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 3 P from her opening (16 → 19)."
+      ]
+    },
+    {
+      "thread": 3009,
+      "dealer": "picaros",
+      "kind": "buy",
+      "item": "CHA-09 (buy:CHA-09)",
+      "our_value": 77,
+      "our_limit": 70,
+      "her_opening": 73,
+      "her_final": null,
+      "final_flag": false,
+      "our_prices": [
+        55,
+        58
+      ],
+      "her_prices": [
+        73,
+        64,
+        59
+      ],
+      "messages_until_final": null,
+      "ticks_until_close": 9,
+      "outcome": "deal",
+      "price": 59,
+      "received": [
+        "CHA-09"
+      ],
+      "value_created": 18,
+      "ladder_points_after": 0.127,
+      "tick": 2094,
+      "ts": "2026-10-04T09:58:07.910Z",
+      "cards": [
+        "CHA-09"
+      ],
+      "copies_before": {
+        "CHA-09": 0
+      },
+      "copies_after": {
+        "CHA-09": 1
+      },
+      "deals_with_dealer_last_hour": 1,
+      "notes": "auto: last rule ac-next; patience 2 msgs, her replies 2; neg_points had not moved when the entry was written",
+      "lessons": [
+        "She conceded 14 P from her opening (73 → 59).",
+        "Accepted below her list (59 < list 63)."
       ]
     }
   ],
