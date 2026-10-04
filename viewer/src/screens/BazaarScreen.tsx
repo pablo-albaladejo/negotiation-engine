@@ -737,6 +737,37 @@ function Agents({ board }: { board: Board }) {
 /** Status colour by outcome: deal green, no deal red, still open in our colour. */
 const STATUS_TONE: Record<string, string> = { deal: "var(--ok)", "no deal": "var(--bad)", open: "var(--us)" };
 
+/**
+ * Where the duel waves stand: duels open right now, or that every wave so far is closed and when the next one starts
+ * (from the schedule; its local time is estimated from the one event the schedule gives a wall time for).
+ */
+function DuelWaves({ board, rows }: { board: Board; rows: BoardRow[] }) {
+  const live = rows.filter((r) => outcomeOf(r) === "open");
+  const sched = board.schedule;
+  const next = sched?.upcoming.find((u) => u.action === "duels") ?? null;
+  const anchor = sched?.upcoming.find((u) => u.wall) ?? null;
+  let when = "";
+  if (next && sched?.now_hours != null) {
+    const left = next.at_hours - sched.now_hours;
+    // Real ms per game hour, from now to the anchored event.
+    const rate = anchor && anchor.at_hours > sched.now_hours ? (Date.parse(anchor.wall!) - Date.now()) / (anchor.at_hours - sched.now_hours) : null;
+    const at = rate ? new Date(Date.now() + left * rate) : null;
+    const mins = rate ? Math.round((left * rate) / 60000) : null;
+    when = ` at h${next.at_hours}${at ? ` (≈ ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} your time, in ~${mins! >= 60 ? `${Math.floor(mins! / 60)} h ${mins! % 60} min` : `${mins} min`})` : ` (in ${Math.round(left * 10) / 10} game h)`}`;
+  }
+  const sessions = [...new Set(live.map((r) => duelSessionName(r.duel?.session)))].join(", ");
+  return (
+    <div className="nr-card" style={{ padding: "var(--space-3)", borderLeft: `4px solid ${live.length ? "var(--us)" : "var(--ok)"}` }}>
+      {live.length ? (
+        <strong style={{ color: "var(--us)" }}>{`● ${live.length} duel${live.length === 1 ? "" : "s"} in progress (${sessions})`}</strong>
+      ) : (
+        <strong style={{ color: "var(--ok)" }}>✓ No duel open: every wave so far is closed</strong>
+      )}
+      <span className="nr-muted">{next ? ` · next wave: ${next.note}${when}` : " · no more duel waves on the schedule"}</span>
+    </div>
+  );
+}
+
 function duelEfficiency(rows: BoardRow[]): number | null {
   const closed = rows.filter((r) => outcomeOf(r) !== "open" && r.our_value);
   const limit = closed.reduce((s, r) => s + (r.our_value ?? 0), 0);
@@ -770,7 +801,7 @@ function History({ board, rows, title, filters, onFiltersChange, ladder, open = 
             const closed = group.filter((r) => outcomeOf(r) !== "open");
             const list = (rs: BoardRow[]) => <ConversationList board={board} rows={rs} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />;
             return (
-              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels${live.length ? ` · ${live.length} in progress` : ""} · ${deals.length} deals · captured ${captured}${rel}`}>
+              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels · ${live.length ? `● ${live.length} in progress` : "✓ all closed"} · ${deals.length} deals · captured ${captured}${rel}`}>
                 {live.length ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                     <strong style={{ color: "var(--us)" }}>{`● In progress · ${live.length}`}</strong>
@@ -950,7 +981,10 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         ) : view === "eggs" ? (
           <EggsView board={board} model={model} loading={loading} onOpenThread={(t) => openModel(`dealer:${t}`)} />
         ) : view === "duels" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+          <DuelWaves board={board} rows={duels} />
           <History open board={board} rows={duels} title={`Duels${duelPoints === 0 ? " (practice: 0 duel points so far)" : ""}`} filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />
+          </div>
         ) : view === "goals" ? (
           <GoalsView model={model} loading={loading} />
         ) : view === "teams" ? (
