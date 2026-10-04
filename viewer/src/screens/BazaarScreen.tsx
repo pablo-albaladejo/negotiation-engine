@@ -157,8 +157,15 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         { key: "status", label: "Status" },
         { key: "price", label: "Price", numeric: true },
         { key: "value", label: "Our value", numeric: true },
-        ...(duels ? [{ key: "result", label: "Game result (captured)", numeric: true }, { key: "eff", label: "Efficiency (captured ÷ our limit)", numeric: true }] : []),
         { key: "surplus", label: duels ? "Price vs limit" : "Margin vs our value", numeric: true },
+        ...(duels
+          ? [
+              { key: "days", label: "Days (day × weight)", numeric: true },
+              { key: "decay", label: "Decay", numeric: true },
+              { key: "result", label: "Game result (captured)", numeric: true },
+              { key: "eff", label: "Efficiency (captured ÷ our limit)", numeric: true },
+            ]
+          : []),
         // Duels only feed duel points: the column says nothing there.
         ...(duels ? [] : [{ key: "feeds", label: "Feeds" }]),
         { key: "score", label: "Points (Δ on its tick)", numeric: true },
@@ -192,6 +199,13 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         })(),
         score: pointsLabel(r) ?? (outcomeOf(r) !== "deal" ? "—" : r.d_score !== null ? toned(r.d_score) : "not audited"),
         ticks: `${show(r.tick_opened, "?")} → ${show(r.tick_settled, "…")}`,
+        // Last, so a live duel's «ours / theirs» cells replace the closed-deal ones.
+        ...(() => {
+          const live = liveDuelCells(r);
+          if (live) return live;
+          const p = duelSplit(r);
+          return { days: p?.days == null ? "—" : toned(p.days), decay: p?.decay == null ? "—" : toned(p.decay) };
+        })(),
       }))}
       onRowClick={(i) => {
         const row = rows[i];
@@ -800,6 +814,73 @@ function DuelWaves({ board, rows }: { board: Board; rows: BoardRow[] }) {
   );
 }
 
+/**
+ * What a closed duel deal is made of, so captured = price + days + decay: price vs our limit, the delivery days at the
+ * game's weight for us (day × `your_days_weight`; adds for a seller, costs a buyer unless `days_meaning` says
+ * otherwise) and what the decay per round took (captured − the two). Days is null where days were not an issue.
+ */
+function duelSplit(r: BoardRow): { price: number; days: number | null; decay: number | null } | null {
+  if (!r.duel || outcomeOf(r) !== "deal" || r.surplus === null) return null;
+  const d = daysPart(r, r.duel.days);
+  const decay = r.duel_result === null ? null : Math.round((r.duel_result - r.surplus - (d ?? 0)) * 10) / 10;
+  return { price: r.surplus, days: d, decay };
+}
+
+/** Days part for `days` delivery days in duel `r` (+ adds to our side, − costs us); null if days are not an issue. */
+function daysPart(r: BoardRow, days: number | null | undefined): number | null {
+  const du = r.duel;
+  if (!du?.issues.includes("days") || typeof days !== "number" || typeof du.days_weight !== "number") return null;
+  const adds = du.days_meaning ? !/cost/i.test(du.days_meaning) : r.kind === "duel-seller";
+  return Math.round((adds ? 1 : -1) * days * du.days_weight * 100) / 100;
+}
+
+/**
+ * A live duel's cells: each side's latest offer and what it would give us if accepted now — price vs limit, days,
+ * the decay of the rounds so far ((1 − decay)^rounds) and the resulting captured, «ours / theirs». Null if not live.
+ */
+function liveDuelCells(r: BoardRow): Record<string, ReactNode> | null {
+  if (!r.duel || outcomeOf(r) !== "open" || r.our_value === null) return null;
+  const latest = (us: boolean) => [...r.messages].reverse().find((m) => m.us === us && m.price !== null) ?? null;
+  const sides = [latest(true), latest(false)];
+  const limit = r.our_value;
+  const buyer = r.kind === "duel-buyer";
+  const keep = Math.pow(1 - (r.duel.decay ?? 0), r.duel.rounds ?? 0);
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+  const calc = sides.map((m) => {
+    if (!m) return null;
+    const price = buyer ? limit - m.price! : m.price! - limit;
+    const days = daysPart(r, m.days);
+    const before = price + (days ?? 0);
+    return { offer: `${m.price}${typeof m.days === "number" ? ` d${m.days}` : ""}`, price, days, decay: r1(before * keep - before), captured: r1(before * keep) };
+  });
+  const both = (f: (c: NonNullable<(typeof calc)[number]>) => string) => calc.map((c) => (c ? f(c) : "—")).join(" / ");
+  const note = <span className="nr-muted" style={{ fontSize: 11 }}>ours / theirs</span>;
+  const cell = (f: (c: NonNullable<(typeof calc)[number]>) => string) => (
+    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end" }}>
+      {both(f)}
+      {note}
+    </span>
+  );
+  return {
+    price: cell((c) => c.offer),
+    surplus: cell((c) => signedNum(c.price)),
+    days: cell((c) => (c.days === null ? "—" : signedNum(c.days))),
+    decay: cell((c) => signedNum(c.decay)),
+    result: cell((c) => `≈ ${c.captured}`),
+    eff: cell((c) => `${Math.round((1000 * c.captured) / limit) / 10}%`),
+  };
+}
+
+/** Session totals of `duelSplit` (null when no deal has the split). */
+function sumSplit(rows: BoardRow[]): { price: number; days: number; decay: number } | null {
+  const xs = rows.map(duelSplit).filter((x): x is NonNullable<ReturnType<typeof duelSplit>> => x !== null);
+  if (!xs.length) return null;
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+  return { price: r1(xs.reduce((s, x) => s + x.price, 0)), days: r1(xs.reduce((s, x) => s + (x.days ?? 0), 0)), decay: r1(xs.reduce((s, x) => s + (x.decay ?? 0), 0)) };
+}
+
+const signedNum = (v: number) => `${v > 0 ? "+" : ""}${v}`;
+
 function duelEfficiency(rows: BoardRow[]): number | null {
   const closed = rows.filter((r) => outcomeOf(r) !== "open" && r.our_value);
   const limit = closed.reduce((s, r) => s + (r.our_value ?? 0), 0);
@@ -827,13 +908,15 @@ function History({ board, rows, title, filters, onFiltersChange, ladder, open = 
             const captured = Math.round(deals.reduce((s, r) => s + (r.duel_result ?? 0), 0) * 10) / 10;
             const done = group.filter((r) => outcomeOf(r) !== "open");
             const eff = duelEfficiency(done);
+            const split = sumSplit(deals);
+            const parts = split ? ` = price ${signedNum(split.price)} · days ${signedNum(split.days)} · decay ${signedNum(split.decay)}` : "";
             const rel = done.length ? ` · efficiency ${eff ?? "—"}% · ${Math.round((captured / done.length) * 10) / 10}/duel · ${Math.round((100 * deals.length) / done.length)}% deals` : "";
             // In-progress duels get their own table on top, so they never hide among the closed ones.
             const live = group.filter((r) => outcomeOf(r) === "open");
             const closed = group.filter((r) => outcomeOf(r) !== "open");
             const list = (rs: BoardRow[]) => <ConversationList board={board} rows={rs} selectedId={filters.row} onSelect={select} {...(ladder ? { ladder } : {})} />;
             return (
-              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels · ${live.length ? `● ${live.length} in progress` : "✓ all closed"} · ${deals.length} deals · captured ${captured}${rel}`}>
+              <Fold key={String(session)} open={i === 0 || live.length > 0} title={`${duelSessionName(session)} · ${group.length} duels · ${live.length ? `● ${live.length} in progress` : "✓ all closed"} · ${deals.length} deals · captured ${captured}${parts}${rel}`}>
                 {live.length ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                     <strong style={{ color: "var(--us)" }}>{`● In progress · ${live.length}`}</strong>

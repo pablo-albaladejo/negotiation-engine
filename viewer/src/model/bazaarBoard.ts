@@ -63,7 +63,7 @@ export interface BoardRow {
   d_backfill?: boolean;
   duel_result: number | null;
   /** Duel only: number, session (1 = practice, 2 = Duels I, 3 = II, 4 = III, 5 = Grand Final), agreed delivery days, issues, decay per round. */
-  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null; days_weight?: number | null; days_meaning?: string | null };
+  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null; days_weight?: number | null; days_meaning?: string | null; rounds?: number | null };
   tick_opened: number | null;
   tick_settled: number | null;
   messages: BoardMessage[];
