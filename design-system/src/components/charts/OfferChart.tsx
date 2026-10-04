@@ -3,6 +3,13 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type 
 export interface OfferPoint {
   round: number;
   value: number;
+  /** Short text drawn next to the point (e.g. a duel's delivery day), on the side away from the other curve. */
+  label?: string;
+}
+
+/** Y offset of a point label: below the point when the other side's offer that round is above it, else above. */
+function labelDy(value: number, other: number | undefined): number {
+  return other !== undefined && other > value ? 16 : -9;
 }
 
 export interface OfferChartEnd {
@@ -362,6 +369,11 @@ export function OfferChart({
                 cy={offerChartYScale(point.value, yDomain)}
                 r={4.5}
               />
+              {point.label ? (
+                <text className="point-label" x={offerChartXScale(point.round, rounds)} y={offerChartYScale(point.value, yDomain) + labelDy(point.value, theirOffers.find((p) => p.round === point.round)?.value)} textAnchor="middle" fontSize={11} fill="var(--us)">
+                  {point.label}
+                </text>
+              ) : null}
               {onPointClick ? (
                 <circle
                   ref={(el) => {
@@ -395,6 +407,11 @@ export function OfferChart({
                 cy={offerChartYScale(point.value, yDomain)}
                 r={injectionSet.has(point.round) ? 6 : 4.5}
               />
+              {point.label ? (
+                <text className="point-label" x={offerChartXScale(point.round, rounds)} y={offerChartYScale(point.value, yDomain) + labelDy(point.value, ourOffers.find((p) => p.round === point.round)?.value)} textAnchor="middle" fontSize={11} fill="var(--them)">
+                  {point.label}
+                </text>
+              ) : null}
               {onPointClick ? (
                 <circle
                   ref={(el) => {

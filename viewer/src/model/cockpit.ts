@@ -277,6 +277,8 @@ export function partyOf(board: Board, row: BoardRow): Party {
 export interface CurvePoint {
   round: number;
   value: number;
+  /** Duels with a days issue: the delivery day of that offer («d10»), drawn next to the point. */
+  label?: string;
 }
 
 export interface OfferCurve {
@@ -323,13 +325,14 @@ export function offerCurve(row: BoardRow): OfferCurve | null {
   const limits = row.decisions.filter((d): d is typeof d & { tick: number; reservation: number } => d.tick !== null && d.reservation !== null);
   const firstTick = Math.min(...priced.map((m) => m.tick), ...limits.map((d) => d.tick));
   const at = (tick: number) => tick - firstTick + 1;
-  const byRound = (pts: { tick: number; value: number }[]): CurvePoint[] => {
-    const m = new Map<number, number>();
-    for (const p of pts) m.set(at(p.tick), p.value);
-    return [...m].map(([round, value]) => ({ round, value })).sort((a, b) => a.round - b.round);
+  const byRound = (pts: { tick: number; value: number; label?: string }[]): CurvePoint[] => {
+    const m = new Map<number, CurvePoint>();
+    for (const p of pts) m.set(at(p.tick), { round: at(p.tick), value: p.value, ...(p.label ? { label: p.label } : {}) });
+    return [...m.values()].sort((a, b) => a.round - b.round);
   };
-  const ours = byRound(priced.filter((m) => m.us).map((m) => ({ tick: m.tick, value: m.price })));
-  const theirs = byRound(priced.filter((m) => !m.us).map((m) => ({ tick: m.tick, value: m.price })));
+  const dayLabel = (m: { days?: number | null }) => (typeof m.days === "number" ? { label: `d${m.days}` } : {});
+  const ours = byRound(priced.filter((m) => m.us).map((m) => ({ tick: m.tick, value: m.price, ...dayLabel(m) })));
+  const theirs = byRound(priced.filter((m) => !m.us).map((m) => ({ tick: m.tick, value: m.price, ...dayLabel(m) })));
   const limit = byRound(limits.map((d) => ({ tick: d.tick, value: d.reservation })));
   const opening = limits.find((d) => d.action === "open")?.reservation;
   const turns = limits.filter((d) => d.action !== "open").map((d) => d.reservation);
