@@ -30,19 +30,17 @@ async function freeSlots(api: IntrosApi): Promise<number> {
   return (Number.isFinite(cap) ? cap : 6) - open;
 }
 
-/** Opens a team thread on our venue (El Rastro if that is refused), says the message and closes it. */
-async function sendOne(api: IntrosApi, team: string, venue: string, text: string, log: (l: string) => void): Promise<boolean> {
+/**
+ * Opens a team thread on El Rastro (a thread on our own venue is refused: `self_venue`), says the message and closes it.
+ * The message itself still points both teams to our venue.
+ */
+async function sendOne(api: IntrosApi, team: string, text: string, log: (l: string) => void): Promise<boolean> {
   let id: number | undefined;
-  for (const v of [venue, "rastro"]) {
-    try {
-      const t = (await api.raw("POST", "/api/threads", { with: team, venue: v })) as { id?: unknown };
-      if (typeof t?.id === "number") {
-        id = t.id;
-        break;
-      }
-    } catch (e) {
-      log(`[intros] open thread with ${team} on ${v} failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
+  try {
+    const t = (await api.raw("POST", "/api/threads", { with: team, venue: "rastro" })) as { id?: unknown };
+    if (typeof t?.id === "number") id = t.id;
+  } catch (e) {
+    log(`[intros] open thread with ${team} on rastro failed: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (id === undefined) return false;
   try {
@@ -115,7 +113,7 @@ async function introduce(api: IntrosApi, p: IntroPlan, venue: string, dryRun: bo
     return;
   }
   let sent = 0;
-  for (const m of p.messages) if (await sendOne(api, m.team, venue, m.text, log)) sent += 1;
+  for (const m of p.messages) if (await sendOne(api, m.team, m.text, log)) sent += 1;
   if (sent) {
     memo.sent.push({ ts: Date.now(), ref: p.ref, holder: p.holder, wanter: p.wanter });
     saveIntroMemo(memoFile, memo);
