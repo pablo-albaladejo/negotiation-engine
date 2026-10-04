@@ -177,8 +177,10 @@ export type ScorePartsLine = z.infer<typeof ScorePartsLineSchema>;
 export interface ScorePartsOut {
   tick: number | null;
   now: Record<string, number>;
-  /** First snapshot of the day (Δ day = now − this). */
+  /** Base of Δ day: the first snapshot after the daily reset, or the day's first one when there was none. */
   day_start: ScorePartsLine | null;
+  /** True when `day_start` is the daily reset (the raw parts went to 0), not the day's first snapshot. */
+  day_reset?: boolean;
   /** Last snapshot from an earlier tick (Δ tick = now − this). */
   prev: ScorePartsLine | null;
 }
@@ -191,9 +193,23 @@ export function scoreNumbers(score: unknown): Record<string, number> {
   return out;
 }
 
+/** Raw parts the server zeroes at the daily reset (negotiating and score carry on). */
+const RESET_PARTS = ["neg_points", "duel_points", "ladder_points"] as const;
+
+/** Index of the last snapshot where every raw part dropped to 0 at once from a positive value; -1 if none. */
+export function dailyResetIndex(history: readonly ScorePartsLine[]): number {
+  for (let i = history.length - 1; i > 0; i--) {
+    const a = history[i - 1]!.parts;
+    const b = history[i]!.parts;
+    if (RESET_PARTS.every((k) => b[k] === 0) && RESET_PARTS.some((k) => (a[k] ?? 0) > 0)) return i;
+  }
+  return -1;
+}
+
 export function scorePartsOf(now: Record<string, number>, tick: number | null, history: readonly ScorePartsLine[]): ScorePartsOut {
   const earlier = tick === null ? [...history] : history.filter((h) => h.tick < tick);
-  return { tick, now, day_start: history[0] ?? null, prev: earlier.at(-1) ?? null };
+  const reset = dailyResetIndex(history);
+  return { tick, now, day_start: history[Math.max(0, reset)] ?? null, ...(reset >= 0 ? { day_reset: true } : {}), prev: earlier.at(-1) ?? null };
 }
 
 // ---------------------------------------------------------------- team desk

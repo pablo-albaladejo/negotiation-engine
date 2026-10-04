@@ -61,7 +61,7 @@ export function ScoreTree({ board }: { board: Board }) {
           <tr className="nr-muted" style={{ fontSize: 11, textAlign: "right" }}>
             <th style={{ textAlign: "left" }}>Part</th>
             <th>Now</th>
-            <th>{`Δ day${sp?.day_start ? ` (since t${sp.day_start.tick})` : ""}`}</th>
+            <th>{`Δ day${sp?.day_start ? ` (since t${sp.day_start.tick}${sp.day_reset ? " · daily reset" : ""})` : ""}`}</th>
             <th>{`Δ tick${sp?.prev ? ` (t${sp.prev.tick})` : ""}`}</th>
           </tr>
         </thead>
