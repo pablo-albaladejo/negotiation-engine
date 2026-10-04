@@ -116,7 +116,7 @@ describe("day deadlock: offer our best day when the rival's day leaves no room (
             ticksLeft,
           };
           const d = decideDuel(state, DEFAULT_DUEL_PARAMS);
-          if (d.rule !== "day-stand") return;
+          if (d.rule !== "day-stand" && d.rule !== "day-hold") return;
           const offer = d.offer!;
           expect(withinLimit(state, offer)).toBe(true);
           expect(surplusOf(state, offer)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus);

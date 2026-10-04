@@ -58,6 +58,8 @@ export interface DuelParams {
   silentEndgameShare: number;
   /** Day deadlock (`dayStand`): our best day must be worth at least this fraction of the reference surplus over the rival's day. */
   dayStandShare: number;
+  /** Day hold (`dayHold`): before the endgame, keep our best day if its range is worth at least this fraction of the reference surplus. */
+  dayHoldShare: number;
 }
 
 export const DEFAULT_DUEL_PARAMS: DuelParams = {
@@ -85,6 +87,8 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   silentEndgameShare: 0.5,
   // Duels II: 5805 (w 1.23, 6 P over 5 days) closed following the rival's day; 5659/6029 (w ~5, ~50 P) did not.
   dayStandShare: 0.2,
+  // Duels II sellers: 6068 (range 0.5 of reference) and 5614 (0.34) gave up our day early; 5654 (0.28) gave it and closed +23.9.
+  dayHoldShare: 0.4,
 };
 
 /** Value to us (P) of each delivery day 0..10. */
@@ -171,7 +175,7 @@ export interface DuelDecision {
   action: DuelAction;
   offer?: StructuredOffer;
   text?: string;
-  rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "day-stand" | "waiting-for-rival" | "match-stale" | "days-unreadable";
+  rule: AcceptanceRule | "accept-share" | "accept-decay" | "opening" | "concede" | "silent-concede" | "endgame" | "day-stand" | "day-hold" | "waiting-for-rival" | "match-stale" | "days-unreadable";
   /** Target surplus of the offer (or that of the rival's offer being accepted). */
   surplus: number;
   round: number;
@@ -339,18 +343,36 @@ export function dayStand(state: DuelState, params: DuelParams): { days: number; 
   const withDays = state.rivalOffers.filter((o) => o.days !== undefined);
   const last = withDays.at(-1);
   const before = withDays.at(-2);
-  if (!last || !before) return undefined;
+  if (!last) return undefined;
   const best = Math.max(...state.daysValue);
   const days = DAYS_MIN + state.daysValue.indexOf(best);
   // Not converging on the day: their last ask is no closer to our best day than the one before (6113: day 8 → 9).
-  if (last.days === days || Math.abs(last.days! - days) < Math.abs(before.days! - days)) return undefined;
+  if (last.days === days || (before && Math.abs(last.days! - days) < Math.abs(before.days! - days))) return undefined;
   // Only a day that matters to us: when it weighs little, the deck's tip is to give it up and win on price.
   if (best - daysAt(state.daysValue, last.days) < params.dayStandShare * referenceSurplus(state, params)) return undefined;
   if (surplusOf(state, last) >= params.minSurplus) return undefined;
   const atOurDay: StructuredOffer = { price: last.price, days };
   if (!withinLimit(state, atOurDay)) return undefined;
   const rivalPriceSurplus = surplusOf(state, atOurDay);
-  return rivalPriceSurplus >= params.minSurplus ? { days, value: best, rivalPriceSurplus } : undefined;
+  // With a single rival offer, only when their price on our day is already clearly good (6150: 55 P on day 10 = +31.7).
+  const needed = before ? params.minSurplus : Math.max(params.minSurplus, floorSurplus(state, params));
+  return rivalPriceSurplus >= needed ? { days, value: best, rivalPriceSurplus } : undefined;
+}
+
+/**
+ * Day hold: before the endgame, a day worth at least `dayHoldShare` of the reference surplus to us is kept and only
+ * price is conceded (Payday tip 5: give up the day you care little about; 6068 gave 42 P of day for 15 P of price).
+ * Never past the rival's own price on that day.
+ */
+export function dayHold(state: DuelState, params: DuelParams, endgame: boolean): { days: number; value: number; rivalPriceSurplus: number } | undefined {
+  if (!state.withDays || endgame) return undefined;
+  const best = Math.max(...state.daysValue);
+  if (best - Math.min(...state.daysValue) < params.dayHoldShare * referenceSurplus(state, params)) return undefined;
+  const days = DAYS_MIN + state.daysValue.indexOf(best);
+  const rival = state.rivalOffers.at(-1);
+  const atOurDay: StructuredOffer | undefined = rival ? { price: rival.price, days } : undefined;
+  const rivalPriceSurplus = atOurDay && withinLimit(state, atOurDay) ? surplusOf(state, atOurDay) : Number.NEGATIVE_INFINITY;
+  return { days, value: best, rivalPriceSurplus };
 }
 
 /** Synthetic engine issue: our surplus in P, the more the better. */
@@ -457,7 +479,8 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
   // is a loss there) while their own price would already be a deal on our best day. Following their day only shaves
   // cents; offer our best day instead. Never conceding past their price on that day, and never above our previous
   // offer's surplus (monotonic).
-  const stand = dayStand(state, params);
+  const standing = dayStand(state, params);
+  const stand = standing ?? dayHold(state, params, endgame);
   if (stand && offer.days !== stand.days) {
     const standTarget = Math.min(Math.max(target, stand.rivalPriceSurplus), prevSurplus ?? Number.POSITIVE_INFINITY);
     const s = sign(state.role);
@@ -467,7 +490,7 @@ export function decideDuel(state: DuelState, params: DuelParams = DEFAULT_DUEL_P
     if (prevSurplus !== undefined && surplusOf(state, candidate) > prevSurplus) candidate.price -= s;
     if (withinLimit(state, candidate) && surplusOf(state, candidate) >= params.minSurplus && (prevSurplus === undefined || surplusOf(state, candidate) <= prevSurplus)) {
       offer = candidate;
-      rule = "day-stand";
+      rule = standing ? "day-stand" : "day-hold";
     }
   }
   // With days, rounding to another day could ask for more than the previous offer: then we repeat.
