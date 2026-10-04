@@ -3,7 +3,7 @@ import { KIND_LABEL, teamLabel, type Board, type BoardRow } from "../../model/in
 import type { GameModel } from "../../model/gameModel.js";
 import { Fold } from "../../ui/fold.js";
 import { Sparkline } from "../../ui/sparkline.js";
-import { Rivals, TeamDetail } from "../Rivals.js";
+import { Rivals, TeamDetail, rivalCells } from "../Rivals.js";
 import { TeamName } from "./TeamLink.js";
 
 /**
@@ -112,8 +112,14 @@ export function TeamsView({ board, model, team, onPick, onOpen }: { board: Board
             { key: "album", label: "Album" },
             { key: "pages", label: "★", numeric: true },
             { key: "deals", label: "Deals", numeric: true },
+            { key: "trend", label: "Score over time" },
+            { key: "page", label: "Closest page" },
+            { key: "wants", label: "Wants" },
+            { key: "spares", label: "Spares" },
           ]}
-          rows={teams.map((t) => ({
+          rows={teams.map((t) => {
+            const c = rivalCells(board, model?.state?.rivals, t.team);
+            return {
             rank: t.rank ?? "—",
             team: <TeamName board={board} team={t.team} />,
             score: n(t.score, 1),
@@ -122,7 +128,12 @@ export function TeamsView({ board, model, team, onPick, onOpen }: { board: Board
             album: `${t.album_filled ?? "?"}/${t.album_slots ?? "?"}`,
             pages: n(t.pages_complete),
             deals: n(t.deals),
-          }))}
+            trend: c && c.trend.length > 1 ? <Sparkline values={c.trend} label={`${t.team} score`} /> : "—",
+            page: c?.page ?? "—",
+            wants: c?.wants ?? "—",
+            spares: c?.spares ?? "—",
+            };
+          })}
           onRowClick={(i) => {
             const t = teams[i];
             if (t) onPick(t.team);
@@ -131,7 +142,7 @@ export function TeamsView({ board, model, team, onPick, onOpen }: { board: Board
         />
       </Card>
       {picked ? <TeamProfile board={board} model={model} team={picked} onOpen={onOpen} /> : null}
-      {model?.available ? <Rivals model={model} board={board} picked={picked} onPick={onPick} /> : null}
+      {model?.available ? <Rivals model={model} board={board} /> : null}
     </div>
   );
 }

@@ -17,9 +17,8 @@ const TeamList = ({ board, teams }: { board: Board; teams: string[] }) => (
 );
 
 /**
- * «Other teams»: what each team holds and wants, estimated from public structure only (`GameState.rivals`).
- * Opportunities first (cards we hold that someone wants or that close a page for them), then one row per team
- * and the detail of the chosen one. Read-only: nothing here sends an offer.
+ * What each team holds and wants, estimated from public structure only (`GameState.rivals`): the opportunities
+ * panel, the per-team cells of the «Teams» table and the collection detail of a team. Read-only: nothing here sends.
  */
 
 const muted = { color: "var(--muted)" } as const;
@@ -28,7 +27,6 @@ const col = { display: "flex", flexDirection: "column", gap: "var(--space-3)" } 
 /** One leaderboard field over time (rows without it are skipped). */
 const series = (t: ModelRivalTeam, k: "score" | "rank" | "albumFilled"): number[] => (t.history ?? []).flatMap((h) => (typeof h[k] === "number" ? [h[k]] : []));
 
-const US = "us" as const;
 
 const closest = (t: ModelRivalTeam) => t.pages.filter((p) => p.have < p.of).sort((a, b) => a.of - a.have - (b.of - b.have))[0];
 
@@ -52,19 +50,13 @@ function opportunities(r: ModelRivals, holdings: Record<string, number>): Opport
   return out.sort((a, b) => b.closesFor.length - a.closesFor.length || b.wantedBy.length - a.wantedBy.length || a.ref.localeCompare(b.ref));
 }
 
-/** Our own row for the teams table: album and pages are exact (`/api/me`), not estimated from public structure. */
-function ourRow(board: Board, r: ModelRivals) {
-  const lb = board.market.leaderboard.find((t) => t.us || t.team === board.team);
+/** Our own cells: album and pages are exact (`/api/me`), not estimated from public structure. */
+function ourCells(board: Board, r: ModelRivals) {
   const pages = (board.album?.pages ?? []).filter((p) => !p.complete).sort((a, b) => a.of - a.have - (b.of - b.have));
   const held = Object.entries(board.holdings).filter(([, n]) => n > 0);
   const p = pages[0];
   return {
-    team: <strong>{teamLabel(board, board.team)}</strong>,
-    rank: lb?.rank ?? board.header?.rank ?? "—",
-    trend: <Sparkline values={(r.usHistory ?? []).flatMap((h) => (typeof h.score === "number" ? [h.score] : []))} label={`${board.team} score`} />,
-    album: board.album ? `${board.album.filled ?? "?"}/${board.album.slots ?? "?"}` : lb ? `${lb.album_filled ?? "?"}/${lb.album_slots ?? "?"}` : "—",
-    seen: held.length,
-    unseen: 0,
+    trend: (r.usHistory ?? []).flatMap((h) => (typeof h.score === "number" ? [h.score] : [])),
     page: p ? `${p.set} ${p.have}/${p.of}${p.of - p.have <= 3 ? ` · lacks ${p.missing.map((m) => m.ref).join(" ")}` : ""}` : "—",
     wants: pages.flatMap((pg) => pg.missing.map((m) => m.ref)).slice(0, 5).join(" ") || "—",
     // Holdings include the copy in the album: a spare is any extra copy.
@@ -109,31 +101,38 @@ export function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
   );
 }
 
-/** Controlled by the «Teams» tab: a row click picks the team its profile shows above. */
-export function Rivals({ model, board, picked, onPick }: { model: GameModel; board: Board; picked: string; onPick: (team: string) => void }) {
+/** Public-structure cells of one team for the «Teams» table: score trend, closest page, wants and spares. */
+export function rivalCells(board: Board, r: ModelRivals | undefined, team: string): { trend: number[]; page: string; wants: string; spares: string } | null {
+  if (team === board.team) return r ? ourCells(board, r) : null;
+  const t = r?.teams.find((x) => x.team === team);
+  if (!t) return null;
+  const p = closest(t);
+  return {
+    trend: series(t, "score"),
+    page: p ? `${p.set} ${p.have}/${p.of}${p.of - p.have <= 3 ? ` · lacks ${p.missing.join(" ")}` : ""}` : "—",
+    wants: t.wants.slice(0, 5).map((w) => w.ref).join(" ") || "—",
+    spares: t.spares.join(" ") || "—",
+  };
+}
+
+/** Opportunities: cards we hold that other teams want or that bring them close to a page. */
+export function Rivals({ model, board }: { model: GameModel; board: Board }) {
   const r = model.state?.rivals;
   if (!r) {
     return (
-      <Card title="Other teams">
+      <Card title="Opportunities">
         <span style={muted}>Not in this model yet (the viewer server predates `GameState.rivals`, or it failed this tick).</span>
       </Card>
     );
   }
   const opps = opportunities(r, board.holdings);
-  const teams = [...r.teams].sort((a, b) => (a.board?.rank ?? 99) - (b.board?.rank ?? 99) || a.team.localeCompare(b.team));
-  const detail = teams.find((t) => t.team === picked);
-  // Our row goes at our leaderboard rank, among the others.
-  const ourRank = board.market.leaderboard.find((t) => t.us || t.team === board.team)?.rank ?? board.header?.rank ?? 99;
-  const teamRows: (ModelRivalTeam | typeof US)[] = [...teams];
-  teamRows.splice(teams.filter((t) => (t.board?.rank ?? 99) < ourRank).length, 0, US);
   return (
-    <Card title={`Other teams · collections (${r.teams.length} teams · ${r.seenAssets} cards located)`}>
+    <Card title={`Opportunities · cards we hold that others want (${opps.length})`}>
       <div style={col}>
         <span style={muted}>
-          Public structure only: a card is seen with a team when it receives it in a settlement, offers it or gets it from a pack; a want is a card it asked for and has not been seen
-          getting since. The leaderboard bounds each album; «not seen» is what we cannot place yet.
+          Public structure only ({r.seenAssets} cards located across {r.teams.length} teams): a card is seen with a team when it receives it in a settlement, offers it or gets it from a
+          pack; a want is a card it asked for and has not been seen getting since.
         </span>
-        <strong>Opportunities · cards we hold that others want ({opps.length})</strong>
         {opps.length > 0 ? (
           <DataTable
             columns={[
@@ -152,40 +151,6 @@ export function Rivals({ model, board, picked, onPick }: { model: GameModel; boa
         ) : (
           <span style={muted}>None of our cards is wanted by another team right now.</span>
         )}
-        <strong>Teams</strong>
-        <DataTable
-          columns={[
-            { key: "team", label: "Team" },
-            { key: "rank", label: "Rank", numeric: true },
-            { key: "trend", label: "Score over time" },
-            { key: "album", label: "Album", numeric: true },
-            { key: "seen", label: "Seen", numeric: true },
-            { key: "unseen", label: "Not seen", numeric: true },
-            { key: "page", label: "Closest page" },
-            { key: "wants", label: "Wants" },
-            { key: "spares", label: "Spares" },
-          ]}
-          rows={teamRows.map((t) => {
-            if (t === US) return ourRow(board, r);
-            const p = closest(t);
-            return {
-              team: <TeamName board={board} team={t.team} />,
-              rank: t.board?.rank ?? "—",
-              trend: <Sparkline values={series(t, "score")} label={`${t.team} score`} />,
-              album: t.board ? `${t.board.albumFilled ?? "?"}/${t.board.albumSlots ?? "?"}` : "—",
-              seen: t.distinct,
-              unseen: t.unseen ?? "—",
-              page: p ? `${p.set} ${p.have}/${p.of}${p.of - p.have <= 3 ? ` · lacks ${p.missing.join(" ")}` : ""}` : "—",
-              wants: t.wants.slice(0, 5).map((w) => w.ref).join(" ") || "—",
-              spares: t.spares.join(" ") || "—",
-            };
-          })}
-          onRowClick={(i) => {
-            const t = teamRows[i];
-            if (t && t !== US) onPick(t.team);
-          }}
-          {...(detail ? { selectedRowIndex: teamRows.indexOf(detail) } : {})}
-        />
       </div>
     </Card>
   );
