@@ -82,7 +82,7 @@ Al arrancar:
 - Pendiente del coordinator: reiniciar el visor para cargar 755d97f. Sin decisiones pendientes de Pablo (thin desaconsejado).
 - Pendiente según audit: corregir el anuncio de v26 que dice «v04» y volver a anunciar (con OK de Pablo).
 - Últimos commits: 787b6bf (arreglos del broker: `announcementFor`, reintentos, salida 3 por bad_key, heartbeat de la sombra, `venue --replace` sondea `/api/me`), 98e8330 (vía épica SAL-11, ahora de trader), 755d97f (óptimo a posteriori en Market test).
-- El informe del modelo offline (`bench-model-v2/REPORT.md` y `broker-thin.patch`) está en el scratchpad de la sesión: **temporal**; copiarlo a `docs/` o al hub con permiso de Pablo.
+- El informe del modelo offline está en [agents/tools/bench-model-v2.md](../tools/bench-model-v2.md), con sus scripts en [agents/tools/bench-model/](../tools/bench-model/AGENTS.md) y el parche thin (sin aplicar) en [agents/tools/broker-thin.patch](../tools/broker-thin.patch).
 
 ## Ficheros clave
 

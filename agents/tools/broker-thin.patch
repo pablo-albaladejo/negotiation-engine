@@ -1,0 +1,222 @@
+--- a/src/broker/broker.ts
++++ b/src/broker/broker.ts
+@@ -11,6 +11,8 @@
+   side: "ask" | "bid";
+   quote: number;
+   index: number;
++  /** Last tick of the bench session (`expires_tick`), when the book carries it. */
++  expiresTick?: number;
+ }
+ 
+ export interface PublicSell {
+@@ -72,8 +74,25 @@
+   firmShade: number;
+   /** Age (ticks) from which an offer is treated as about to leave. */
+   maxAgeTicks: number;
++  /** Thin-pair deferral (bench-model-v2). Unset = off: planBench stays the auto-equivalent crossing. */
++  thin?: ThinParams;
+ }
+ 
++/** Defer the marginal pair while its estimated surplus is thin and neither side is about to leave. */
++export interface ThinParams {
++  /** Defer while (limit bid - limit ask) < share * estimated clearing price. Fitted: 0.3. */
++  share: number;
++  /** ... and both sides' posterior P(leaves after this tick) < leaveTheta. Fitted: 0.3. */
++  leaveTheta: number;
++  /** Never defer in the last endTicks ticks before `expiresTick`. Fitted: 2. */
++  endTicks: number;
++  /** Traders per side (10 regular, 12 hard) and the hard shares (firm 0.35, impatient 0.35). */
++  perSide: number;
++  hard: boolean;
++}
++
++export const THIN_BENCH_PARAMS: ThinParams = { share: 0.3, leaveTheta: 0.3, endTicks: 2, perSide: 10, hard: false };
++
+ export const DEFAULT_BENCH_PARAMS: BenchParams = { holdTicks: 0, firmShade: 0.1, maxAgeTicks: 6 };
+ export const MAX_PUBLIC_MATCHES_PER_TICK = 10;
+ 
+@@ -129,8 +148,10 @@
+     if (!run) return void book.errors.push(`bench ${o.id}: id is not <run>-<n>`);
+     const ask = isObj(o.want) ? posNum(o.want.cash) : undefined;
+     const bid = isObj(o.give) ? posNum(o.give.cash) : undefined;
+-    if (ask !== undefined && bid === undefined) book.bench.push({ id: o.id, run, side: "ask", quote: ask, index });
+-    else if (bid !== undefined && ask === undefined) book.bench.push({ id: o.id, run, side: "bid", quote: bid, index });
++    const exp = posNum(o.expires_tick);
++    const extra = exp !== undefined ? { expiresTick: exp } : {};
++    if (ask !== undefined && bid === undefined) book.bench.push({ id: o.id, run, side: "ask", quote: ask, index, ...extra });
++    else if (bid !== undefined && ask === undefined) book.bench.push({ id: o.id, run, side: "bid", quote: bid, index, ...extra });
+     else book.errors.push(`bench ${o.id}: neither a cash ask nor a cash bid`);
+   });
+ 
+@@ -188,19 +209,26 @@
+   moves: number;
+   /** Distinct ticks in which it has been seen. */
+   seen: number;
++  /** Quote per distinct tick since first seen (a re-poll in the same tick replaces the last one). */
++  quotes: number[];
++  /** Tick it was first missing from the book (matched or left); kept for the clearing-price estimate. */
++  goneTick?: number;
+ }
+ 
+-/** Updates the bank's quote history (mutates and returns `tracks`); forgets ids that are no longer there. */
++/** Updates the bank's quote history (mutates and returns `tracks`); an id no longer there is marked `goneTick` and forgotten 40 ticks later. */
+ export function observeBench(tracks: Map<string, QuoteTrack>, bench: BenchQuote[], tick: number): Map<string, QuoteTrack> {
+   const present = new Set<string>();
+   for (const b of bench) {
+     present.add(b.id);
+     const t = tracks.get(b.id);
+     if (!t) {
+-      tracks.set(b.id, { side: b.side, firstTick: tick, lastTick: tick, first: b.quote, last: b.quote, lastStep: 0, moves: 0, seen: 1 });
++      tracks.set(b.id, { side: b.side, firstTick: tick, lastTick: tick, first: b.quote, last: b.quote, lastStep: 0, moves: 0, seen: 1, quotes: [b.quote] });
+       continue;
+     }
+-    if (tick !== t.lastTick) t.seen += 1;
++    if (tick !== t.lastTick) {
++      t.seen += 1;
++      t.quotes.push(b.quote);
++    } else t.quotes[t.quotes.length - 1] = b.quote;
+     const step = b.side === "ask" ? t.last - b.quote : b.quote - t.last;
+     if (step > 0) {
+       t.moves += 1;
+@@ -210,7 +238,11 @@
+     t.last = b.quote;
+     t.lastTick = tick;
+   }
+-  for (const id of [...tracks.keys()]) if (!present.has(id)) tracks.delete(id);
++  for (const [id, t] of [...tracks]) {
++    if (present.has(id)) continue;
++    t.goneTick ??= tick;
++    if (tick - t.goneTick > 40) tracks.delete(id); // a session lasts 16 ticks
++  }
+   return tracks;
+ }
+ 
+@@ -235,6 +267,81 @@
+   return q.side === "ask" ? q.quote - slack : q.quote + slack;
+ }
+ 
++// ------------------------------------------------------------------ bench trader model (bench-model-v2)
++
++/** Calibrated prior (6 sessions, 3 Oct): limits U[10,130] bids / U[25,100] asks, first quote L(1±m), stays 1-2 ticks
++ * (impatient) or 3-6, relaxes linearly and ends k steps short of L (k 0/1/2 = 0.4/0.4/0.2). */
++const BENCH_PRIOR = { vlo: 10, vhi: 130, clo: 25, chi: 100, ask: [0.05, 0.35], bid: [0.1, 0.3], firm: 0.2, impatient: 0.25 } as const;
++const BENCH_K: ReadonlyArray<readonly [number, number]> = [[0, 0.4], [1, 0.4], [2, 0.2]];
++const M_GRID = 24;
++
++export interface BenchPosterior {
++  /** Posterior mean of the hidden limit. */
++  limit: number;
++  /** Posterior probability that it leaves after this tick. */
++  pLeave: number;
++}
++
++/** Posterior over (markup, patience, firm, k) given the quotes seen at consecutive ticks since arrival. */
++export function benchPosterior(side: "ask" | "bid", quotes: readonly number[], hard = false): BenchPosterior {
++  const q0 = quotes[0] ?? 0;
++  const j = quotes.length - 1;
++  const firmShare = hard ? 0.35 : BENCH_PRIOR.firm;
++  const imp = hard ? 0.35 : BENCH_PRIOR.impatient;
++  const patience: Array<[number, number]> = [[1, imp / 2], [2, imp / 2], ...[3, 4, 5, 6].map((p): [number, number] => [p, (1 - imp) / 4])];
++  const constant = quotes.every((q) => q === q0);
++  const [mlo, mhi] = BENCH_PRIOR[side];
++  for (const widen of [0, 0.15, 0.4]) {
++    let w = 0;
++    let wl = 0;
++    let wleave = 0;
++    const lo = Math.max(0, mlo - widen);
++    const hi = Math.min(0.9, mhi + widen);
++    for (let i = 0; i < M_GRID; i++) {
++      const m = lo + ((hi - lo) * (i + 0.5)) / M_GRID;
++      const limit = side === "ask" ? q0 / (1 + m) : q0 / (1 - m);
++      for (const [P, wp] of patience) {
++        if (P < j + 1) continue;
++        const add = (weight: number) => {
++          w += weight;
++          wl += weight * limit;
++          if (P === j + 1) wleave += weight;
++        };
++        if (constant) add(wp * (P <= 1 ? 1 : firmShare)); // firm (or a one-tick trader)
++        if (P <= 1) continue;
++        for (const [k, wk] of BENCH_K) {
++          const fits = quotes.every((q, a) => Math.abs(q0 + (limit - q0) * Math.min(1, a / (P - 1 + k)) - q) <= 1.01);
++          if (fits) add(wp * (1 - firmShare) * wk);
++        }
++      }
++    }
++    if (w > 0) return { limit: wl / w, pLeave: wleave / w };
++  }
++  return { limit: quotes[quotes.length - 1] ?? q0, pLeave: 0.5 };
++}
++
++/** Competitive-equilibrium price of the posterior limits of every trader of `run` seen so far (present or gone),
++ * plus prior quantiles for the ids not seen yet (`perSide` per side). */
++export function benchClearingPrice(run: string, tracks: Map<string, QuoteTrack>, perSide: number, hard = false): number {
++  const bids: number[] = [];
++  const asks: number[] = [];
++  for (const [id, t] of tracks) {
++    if (benchRun(id) !== run) continue;
++    (t.side === "bid" ? bids : asks).push(benchPosterior(t.side, t.quotes, hard).limit);
++  }
++  const ub = Math.max(0, perSide - bids.length);
++  const ua = Math.max(0, perSide - asks.length);
++  for (let i = 0; i < ub; i++) bids.push(BENCH_PRIOR.vlo + ((BENCH_PRIOR.vhi - BENCH_PRIOR.vlo) * (i + 0.5)) / ub);
++  for (let i = 0; i < ua; i++) asks.push(BENCH_PRIOR.clo + ((BENCH_PRIOR.chi - BENCH_PRIOR.clo) * (i + 0.5)) / ua);
++  bids.sort((a, b) => b - a);
++  asks.sort((a, b) => a - b);
++  let k = 0;
++  while (k < Math.min(bids.length, asks.length) && bids[k]! >= asks[k]!) k += 1;
++  const lo = Math.max(...(k ? [asks[k - 1]!] : []), ...(k < bids.length ? [bids[k]!] : []), 0);
++  const hi = Math.min(...(k ? [bids[k - 1]!] : []), ...(k < asks.length ? [asks[k]!] : []), Number.POSITIVE_INFINITY);
++  return Number.isFinite(hi) ? (lo + hi) / 2 : lo;
++}
++
+ export interface BenchPlan {
+   matches: BrokerMatch[];
+   /** Pairs that cross but are deferred (new, patient offers, `holdTicks`). */
+@@ -267,6 +374,7 @@
+     const asks = offers.filter((o) => o.side === "ask").sort((a, b) => e(a) - e(b) || a.quote - b.quote || a.index - b.index);
+     const bids = offers.filter((o) => o.side === "bid").sort((a, b) => e(b) - e(a) || b.quote - a.quote || a.index - b.index);
+     const used = new Set<string>();
++    const runMatches: BrokerMatch[] = [];
+     for (const bid of bids) {
+       for (const ask of asks) {
+         if (used.has(ask.id)) continue;
+@@ -284,13 +392,38 @@
+           estSurplus: e(bid) - e(ask),
+         };
+         (params.holdTicks > 0 && young(ask) && young(bid) ? plan.held : plan.matches).push(m);
++        runMatches.push(m);
+         break;
+       }
+     }
++    if (params.thin) deferThin(runMatches, offers, tracks, tick, params.thin, plan);
+   }
+   return plan;
+ }
+ 
++/** Thin-pair deferral: from the marginal pair (lowest bid estimate) upward, move a pair to `held` while its posterior
++ * surplus is below share × clearing price, neither side is likely to leave after this tick and the session does not
++ * end within endTicks. Fitted offline (bench-model-v2): about +0.001 efficiency over auto, never significantly below. */
++function deferThin(runMatches: BrokerMatch[], offers: BenchQuote[], tracks: Map<string, QuoteTrack>, tick: number, thin: ThinParams, plan: BenchPlan): void {
++  const first = offers[0];
++  if (!first || runMatches.length === 0) return;
++  if (first.expiresTick === undefined || tick >= first.expiresTick - 1 - thin.endTicks) return;
++  const price = benchClearingPrice(first.run, tracks, thin.perSide, thin.hard);
++  const post = (id: string | number) => {
++    const t = tracks.get(String(id));
++    return t ? benchPosterior(t.side, t.quotes, thin.hard) : undefined;
++  };
++  for (let i = runMatches.length - 1; i >= 0; i--) {
++    const m = runMatches[i]!;
++    const b = post(m.buy);
++    const a = post(m.sell);
++    if (!b || !a || b.limit - a.limit >= thin.share * price || b.pLeave >= thin.leaveTheta || a.pLeave >= thin.leaveTheta) return;
++    const at = plan.matches.indexOf(m);
++    if (at >= 0) plan.matches.splice(at, 1);
++    if (!plan.held.includes(m)) plan.held.push(m);
++  }
++}
++
+ /** Offers and assets already taken within one planning call (shared across exact and any-copy). */
+ export interface PublicUsed {
+   offers: Set<string>;
