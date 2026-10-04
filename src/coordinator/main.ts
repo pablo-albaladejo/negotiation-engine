@@ -113,7 +113,7 @@ async function main() {
   // Epic-lane holders already done survive a restart (written only live, on a done cancel).
   const epicDoneFile = defaultEpicDoneFile(process.cwd());
   if (values["rival-buy-epic"]) {
-    const done = seedEpicDone(epicDoneFile);
+    const done = seedEpicDone(epicDoneFile, undefined, EPIC_BUY_LANES);
     if (done.length) console.log(`[rival-buy] [epic] done holders from ${epicDoneFile}: ${done.join(", ")}`);
   }
   const root = process.cwd();

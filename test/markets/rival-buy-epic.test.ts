@@ -48,7 +48,7 @@ const arb = {
 
 describe("rival buy · epic test lane", () => {
   it("steps go start → midpoint → ceiling and never pass the ceiling", () => {
-    expect([0, 1, 2, 3, 9].map((n) => epicStep(EPIC, n))).toEqual([150, 165, 180, 180, 180]);
+    expect([0, 1, 2, 3, 9].map((n) => epicStep(EPIC, n))).toEqual([EPIC.start, Math.round((EPIC.start + EPIC.ceiling) / 2), EPIC.ceiling, EPIC.ceiling, EPIC.ceiling]);
   });
 
   it("every epic post is ≤ ceiling, to a listed holder, leaves cash ≥ floor, and at most one is open", () => {
@@ -97,7 +97,7 @@ describe("rival buy · epic test lane", () => {
   it("a listed holder seen with the card gets the start price when nothing is open", () => {
     const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals(["t08"]), maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
-    expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", 150]]);
+    expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", EPIC.start]]);
   });
 
   it("several lanes: each post ≤ its ceiling, to its listed holders, one open per card, and all of them together leave cash ≥ floor", () => {

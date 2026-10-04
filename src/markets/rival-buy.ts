@@ -62,7 +62,7 @@ export interface EpicBuyParams {
   expiresInTicks: number;
   cashFloor: number;
 }
-export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04"], start: 150, ceiling: 180, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
+export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04", "t13"], start: 185, ceiling: 215, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
 /** Second epic lane (Pablo, 4 Oct): RET-11 (value 288 = book 180 × RET 1.6, no page bonus) to its seen holders, 200 → 220 → 240. */
 export const EPIC_BUY_RET11: EpicBuyParams = { ref: "RET-11", teams: ["t05", "t12", "t10"], start: 200, ceiling: 240, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
 /** Every lane `--rival-buy-epic` runs; each keeps one bid open, and the cash floor counts what the others commit. */
@@ -129,11 +129,20 @@ const defaultMemo: RivalBuyMemo = new Map();
 /** Epic-lane holders marked done (`<team>:<ref>`), kept on disk so a restart of `pnpm bazaar:play` does not bid them again. */
 export const defaultEpicDoneFile = (root: string): string => join(root, "results", "bazaar-live", "epic-done.json");
 
-/** Loads the done holders into `memo` (missing or unreadable file: nothing). Returns the keys loaded. */
-export function seedEpicDone(file: string, memo: RivalBuyMemo = defaultMemo): string[] {
+/**
+ * Loads the done holders into `memo` (missing or unreadable file: nothing). A holder that turned down a lower ceiling
+ * than its lane's current one is not loaded (it gets a new cycle at the higher ceiling). Returns the keys loaded.
+ */
+export function seedEpicDone(file: string, memo: RivalBuyMemo = defaultMemo, lanes: readonly EpicBuyParams[] = []): string[] {
   if (!existsSync(file)) return [];
   try {
-    const keys = Object.keys(JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>);
+    const all = JSON.parse(readFileSync(file, "utf8")) as Record<string, { ceiling?: number } | null>;
+    const ceilingOf = new Map(lanes.map((l) => [l.ref, l.ceiling]));
+    const keys = Object.keys(all).filter((k) => {
+      const now = ceilingOf.get(k.split(":")[1] ?? "");
+      const seen = all[k]?.ceiling;
+      return now === undefined || seen === undefined || seen >= now;
+    });
     for (const k of keys) memo.set(k, { reprices: 0, backoffUntil: Infinity });
     return keys;
   } catch {
@@ -141,14 +150,14 @@ export function seedEpicDone(file: string, memo: RivalBuyMemo = defaultMemo): st
   }
 }
 
-function saveEpicDone(file: string, key: string, tick: number): void {
+function saveEpicDone(file: string, key: string, tick: number, ceiling?: number): void {
   let all: Record<string, unknown> = {};
   try {
     if (existsSync(file)) all = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
   } catch {
     // An unreadable file is rewritten with this key.
   }
-  all[key] = { tick, at: new Date().toISOString() };
+  all[key] = { tick, at: new Date().toISOString(), ...(ceiling !== undefined ? { ceiling } : {}) };
   writeFileSync(file, JSON.stringify(all, null, 1));
 }
 /** Ticks at which high-value bids were posted (new ones, not reprices). */
@@ -175,6 +184,8 @@ export interface RivalBuyCancel {
   backoff: boolean;
   /** Epic lane: this team is done for the run (no new cycle). */
   done?: boolean;
+  /** Epic lane: the ceiling the team turned down (a later, higher ceiling bids it again). */
+  ceiling?: number;
   reason: string;
 }
 
@@ -420,7 +431,7 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   const cancel = (offerId: number, team: string, reason: string, done: boolean) => {
     if (done) doneNow.add(team);
     const intentId = `markets:rivalbuy:cancel:${offerId}`;
-    out.plan.cancels.push({ intentId, offerId, key: `${team}:${epic.ref}`, backoff: false, ...(done ? { done: true } : {}), reason });
+    out.plan.cancels.push({ intentId, offerId, key: `${team}:${epic.ref}`, backoff: false, ...(done ? { done: true, ceiling: epic.ceiling } : {}), reason });
     out.intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${tag} cancel #${offerId} (${reason})` });
     out.notes.push(`${tag} cancel #${offerId} ${reason}`);
   };
@@ -535,7 +546,7 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
       cancelled.add(c.offerId);
       if (c.done) {
         memo.set(c.key, { reprices: 0, backoffUntil: Infinity });
-        if (epicDoneFile) saveEpicDone(epicDoneFile, c.key, tick);
+        if (epicDoneFile) saveEpicDone(epicDoneFile, c.key, tick, c.ceiling);
       }
       else if (c.backoff) memo.set(c.key, { reprices: 0, backoffUntil: tick + params.backoffTicks });
       lines.push(`${TAG} cancelled #${c.offerId} (${c.reason})`);
