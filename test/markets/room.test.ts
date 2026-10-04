@@ -110,7 +110,7 @@ describe("rival-buy budget (4 Oct: kept bids summed 95 with 73 above the floor)"
         const rivals: RivalsState = { teams: [holder], byRef: Object.fromEntries(refs.map((r) => [r, { holders: ["t07"], wantedBy: [] }])), seenAssets: refs.length, lastEventId: 0 };
         const { plan } = proposeRivalBuy({ tick: TICK, trade, rivals, maxSpend: 1000, cashFloor: 50, apiValues: new Map(refs.map((r) => [r, 49])), room: new Map() }, RIVAL_BUY_PARAMS, new Map(), []);
         const cancelled = new Set(plan.cancels.map((c) => c.offerId));
-        const kept = mine.filter((o) => !cancelled.has(o.id)).reduce((s, o) => s + o.give.cash!, 0);
+        const kept = mine.filter((o) => !cancelled.has(o.id)).reduce((s, o) => s + (o.give?.cash ?? 0), 0);
         const posted = plan.posts.reduce((s, p) => s + p.price, 0);
         expect(kept + posted).toBeLessThanOrEqual(cash - 50);
       }),
