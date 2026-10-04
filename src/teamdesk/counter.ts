@@ -150,6 +150,14 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     plan.incoming.push({ id: e.offer.id, team: e.offer.maker, venue: e.offer.venue, weGet: side(e.offer, "give"), weGive: side(e.offer, "want"), kind: e.kind, value: Math.round(e.valueCreated * 10) / 10, verdict: e.ok ? "ok" : e.reason });
   }
 
+  // CHA lane stops on a complete page (coordinator OK 4 Oct, CHA 10/10): a last copy of a full page needs Pablo's OK.
+  const heldRefs = new Set(trade.held.map((a) => a.ref));
+  const pageComplete = (ref: string): boolean => {
+    const set = trade.model.meta.get(ref)?.set;
+    const page = set ? trade.model.pages.get(set) : undefined;
+    return !!page?.length && page.includes(ref) && page.every((r) => heldRefs.has(r));
+  };
+
   // Sale requests we answer: cash for one card of ours, rejected for margin or last copy, on an allowed venue.
   const requests = evals.flatMap((e) => {
     const o = e.offer;
@@ -164,6 +172,10 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     const refs = [...want.cards, ...want.assets.flatMap((a) => (a.ref ? [a.ref] : []))];
     if (give.assets.length || give.cards.length || refs.length !== 1) return [];
     if (lane && !input.rebuyable?.has(refs[0]!)) return [];
+    if (lane && pageComplete(refs[0]!)) {
+      notes.push(`${TAG} [cha-lane] skip #${o.id} ${refs[0]} → ${o.maker}: completes a full page`);
+      return [];
+    }
     return [{ offer: o, team: o.maker, venue: o.venue, ref: refs[0]!, offered: give.cash, lane }];
   });
 
@@ -202,6 +214,11 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     const anchor = priced.anchor;
     memo.set(key, Math.min(memo.get(key) ?? c.price, c.price));
     const intentId = `teamdesk:cancel:${c.offer.id}`;
+    if (laneCounter && pageComplete(c.ref)) {
+      plan.cancels.push({ intentId, offerId: c.offer.id, team: c.team, venue: c.venue, ref: c.ref, reason: "last copy of a complete page" });
+      intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${TAG} [cha-lane] cancel #${c.offer.id} ${c.ref} → ${c.team} (complete page)` });
+      continue;
+    }
     if (c.price < floor) {
       plan.cancels.push({ intentId, offerId: c.offer.id, team: c.team, venue: c.venue, ref: c.ref, reason: `floor ${floor} rose above ask ${c.price}` });
       intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${TAG} cancel #${c.offer.id} ${c.ref} → ${c.team} (floor rose)` });
