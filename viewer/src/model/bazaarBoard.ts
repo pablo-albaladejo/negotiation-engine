@@ -212,6 +212,8 @@ export interface BoardScoreParts {
   day_reset?: boolean;
   /** Each part since `day_start`, oldest first (thinned); absent on an older server. */
   series?: Record<string, number[]>;
+  /** Each part over every recorded day (parts reset daily, so it saw-tooths); absent on an older server. */
+  week_series?: Record<string, number[]>;
   prev: { tick: number; parts: Record<string, number> } | null;
 }
 

@@ -185,6 +185,20 @@ export interface ScorePartsOut {
   prev: ScorePartsLine | null;
   /** Each part since `day_start`, oldest first, thinned to at most `SERIES_POINTS` (the last one is always kept). */
   series?: Record<string, number[]>;
+  /** Each part over every recorded day (earlier days' files, then today), thinned the same way: parts reset daily, so it saw-tooths. */
+  week_series?: Record<string, number[]>;
+}
+
+/** Each numeric part of `now` along `lines`, thinned to at most `SERIES_POINTS` (the last one always kept). */
+function seriesOf(now: Record<string, number>, lines: readonly ScorePartsLine[]): Record<string, number[]> {
+  const step = Math.max(1, Math.ceil(lines.length / SERIES_POINTS));
+  const picked = lines.filter((_, i) => i % step === 0 || i === lines.length - 1);
+  const out: Record<string, number[]> = {};
+  for (const k of Object.keys(now)) {
+    const values = picked.flatMap((h) => (typeof h.parts[k] === "number" ? [h.parts[k]!] : []));
+    if (values.length > 1) out[k] = values;
+  }
+  return out;
 }
 
 const SERIES_POINTS = 80;
@@ -210,18 +224,12 @@ export function dailyResetIndex(history: readonly ScorePartsLine[]): number {
   return -1;
 }
 
-export function scorePartsOf(now: Record<string, number>, tick: number | null, history: readonly ScorePartsLine[]): ScorePartsOut {
+export function scorePartsOf(now: Record<string, number>, tick: number | null, history: readonly ScorePartsLine[], earlierDays: readonly ScorePartsLine[] = []): ScorePartsOut {
   const earlier = tick === null ? [...history] : history.filter((h) => h.tick < tick);
   const reset = dailyResetIndex(history);
-  const since = history.slice(Math.max(0, reset));
-  const step = Math.max(1, Math.ceil(since.length / SERIES_POINTS));
-  const picked = since.filter((_, i) => i % step === 0 || i === since.length - 1);
-  const series: Record<string, number[]> = {};
-  for (const k of Object.keys(now)) {
-    const values = picked.flatMap((h) => (typeof h.parts[k] === "number" ? [h.parts[k]!] : []));
-    if (values.length > 1) series[k] = values;
-  }
-  return { tick, now, day_start: history[Math.max(0, reset)] ?? null, ...(reset >= 0 ? { day_reset: true } : {}), prev: earlier.at(-1) ?? null, series };
+  const series = seriesOf(now, history.slice(Math.max(0, reset)));
+  const week_series = seriesOf(now, [...earlierDays, ...history]);
+  return { tick, now, day_start: history[Math.max(0, reset)] ?? null, ...(reset >= 0 ? { day_reset: true } : {}), prev: earlier.at(-1) ?? null, series, week_series };
 }
 
 // ---------------------------------------------------------------- team desk

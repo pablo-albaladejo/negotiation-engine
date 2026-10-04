@@ -27,7 +27,7 @@ function signed(v: number | null, rank: boolean): { text: string; color?: string
   return { text: `${v > 0 ? "+" : ""}${v}`, color: good ? "var(--ok)" : "var(--warn)" };
 }
 
-function Row({ n, depth, series }: { n: TreeNode; depth: number; series: Record<string, number[]> | undefined }) {
+function Row({ n, depth, series, week }: { n: TreeNode; depth: number; series: Record<string, number[]> | undefined; week: Record<string, number[]> | undefined }) {
   const comp = NODE_COMP[n.key];
   const rank = n.key === "rank";
   const day = signed(n.dDay, rank);
@@ -46,11 +46,14 @@ function Row({ n, depth, series }: { n: TreeNode; depth: number; series: Record<
           {/* Rank goes up the chart when it gets better (a lower number). */}
           {series?.[n.key] ? <Sparkline values={rank ? series[n.key]!.map((v) => -v) : series[n.key]!} label={`${n.label} since the day base`} width={72} height={20} /> : null}
         </td>
+        <td style={{ textAlign: "center", paddingLeft: 8 }}>
+          {week?.[n.key] ? <Sparkline values={rank ? week[n.key]!.map((v) => -v) : week[n.key]!} label={`${n.label} over every recorded day`} width={72} height={20} /> : null}
+        </td>
         <td style={{ textAlign: "right", color: day.color }}>{day.text}</td>
         <td style={{ textAlign: "right", color: tick.color }}>{tick.text}</td>
       </tr>
       {(n.children ?? []).map((c) => (
-        <Row key={c.key} n={c} depth={depth + 1} series={series} />
+        <Row key={c.key} n={c} depth={depth + 1} series={series} week={week} />
       ))}
     </>
   );
@@ -67,12 +70,13 @@ export function ScoreTree({ board }: { board: Board }) {
             <th style={{ textAlign: "left" }}>Part</th>
             <th>Now</th>
             <th style={{ textAlign: "center" }}>Today</th>
+            <th style={{ textAlign: "center" }} title="Every recorded day; neg, duel and ladder reset each day, so they saw-tooth">Week</th>
             <th>{`Δ day${sp?.day_start ? ` (since t${sp.day_start.tick}${sp.day_reset ? " · daily reset" : ""})` : ""}`}</th>
             <th>{`Δ tick${sp?.prev ? ` (t${sp.prev.tick})` : ""}`}</th>
           </tr>
         </thead>
         <tbody>
-          <Row n={tree} depth={0} series={sp?.series} />
+          <Row n={tree} depth={0} series={sp?.series} week={sp?.week_series} />
         </tbody>
       </table>
       <span className="nr-muted" style={{ fontSize: 11 }}>

@@ -476,7 +476,24 @@ export class BazaarBoard {
         // no write permission: Δ tick falls back to what is already on disk
       }
     }
-    return scorePartsOf(now, tick, history);
+    return scorePartsOf(now, tick, history, await this.earlierScoreParts());
+  }
+
+  /** `score-parts.jsonl` of every day before today, oldest first; read once per day (those files no longer change). */
+  private earlierParts: { today: string; lines: ScorePartsLine[] } | null = null;
+  private async earlierScoreParts(): Promise<ScorePartsLine[]> {
+    const today = this.today();
+    if (this.earlierParts?.today === today) return this.earlierParts.lines;
+    const lines: ScorePartsLine[] = [];
+    for (const date of (await datesOf(this.bazaarDir)).filter((d) => d < today)) {
+      try {
+        lines.push(...(await readJsonl(join(this.bazaarDir, date, "score-parts.jsonl"), `${date}/score-parts.jsonl`, ScorePartsLineSchema)).data);
+      } catch {
+        // that day has no file
+      }
+    }
+    this.earlierParts = { today, lines };
+    return lines;
   }
 
   private async writeCache(cache: VerdictCache): Promise<void> {
