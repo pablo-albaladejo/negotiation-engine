@@ -70,6 +70,8 @@ export interface TickInput {
   prev: Metrics | null;
   /** Metrics at the first tick of the current round (null until it is known). */
   dayStart: Metrics | null;
+  /** Window end per goal id from the schedule (`windowEndTick`); a goal not listed keeps its hand value. */
+  until?: Readonly<Record<string, number | null>> | undefined;
 }
 
 /** Prefix of gaps written by `refreshGaps`; hand-written gaps never start with it and are kept. */
@@ -118,6 +120,7 @@ export function refreshGoals(prev: GoalsFile, strategies: StrategiesFile, input:
       day_start: typeof start === "number" ? round(start) : g.day_start,
       delta_tick: deltaTick,
       status,
+      until_tick: input.until && g.id in input.until ? (input.until[g.id] ?? null) : g.until_tick,
       strategies: linked.map((s) => s.id),
     };
   });
@@ -133,4 +136,49 @@ export function refreshGaps(strategies: StrategiesFile, goals: GoalsFile): strin
     .filter((g) => !strategies.strategies.some((s) => s.goal === g.id && s.status === "live"))
     .map((g) => `${AUTO_GAP}${g.id} (priority ${g.priority}) has no live strategy`);
   return [...auto, ...manual];
+}
+
+/** One `/api/schedule` entry (only the fields read here). */
+export interface ScheduleEvent {
+  at_hours: number;
+  action: string;
+  note?: string;
+  params?: Record<string, unknown>;
+}
+
+/** `/api/clock` fields read here. */
+export interface ClockView {
+  tick: number;
+  t_hours: number;
+  tick_seconds: number;
+  doors?: string;
+}
+
+/** Goal id → the schedule event that closes its current window. */
+export const WINDOW_EVENT: Readonly<Record<string, (e: ScheduleEvent) => boolean>> = {
+  duels: (e) => e.action === "duels",
+  "market-test": (e) => e.action === "bench",
+  "dealer-ladder": (e) => e.action === "persona" && e.params?.enabled === false,
+};
+
+/**
+ * Tick at which a schedule event ends, assuming one game hour per wall hour once doors are open. With doors closed
+ * the clock resumes at the next `day_opens` event (tick unchanged, that day's tick_seconds), so events before it are
+ * skipped. A bench ends `params.ticks` after it starts; anything else at its start. Null if nothing matches.
+ */
+export function windowEndTick(clock: ClockView, upcoming: readonly ScheduleEvent[], match: (e: ScheduleEvent) => boolean): number | null {
+  let baseHours = clock.t_hours;
+  let tickSeconds = clock.tick_seconds;
+  if (clock.doors === "closed") {
+    const opens = upcoming.find((e) => e.action === "day_opens" && e.at_hours >= clock.t_hours);
+    if (!opens) return null;
+    baseHours = opens.at_hours;
+    const ts = opens.params?.tick_seconds;
+    if (typeof ts === "number" && ts > 0) tickSeconds = ts;
+  }
+  const event = upcoming.find((e) => e.at_hours >= baseHours && match(e));
+  if (!event) return null;
+  const start = clock.tick + Math.round(((event.at_hours - baseHours) * 3600) / tickSeconds);
+  const ticks = event.params?.ticks;
+  return event.action === "bench" && typeof ticks === "number" ? start + ticks : start;
 }

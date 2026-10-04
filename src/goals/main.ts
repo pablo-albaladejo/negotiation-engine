@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { BazaarClient } from "../shared/client.js";
 import { loadBazaarEnv } from "../shared/env.js";
 import { extractScoreFields } from "../shared/score.js";
-import { AUTO_CHANGE, isRoundReset, refreshGaps, refreshGoals, type GoalsFile, type Metrics, type StrategiesFile } from "./goals.js";
+import { AUTO_CHANGE, isRoundReset, WINDOW_EVENT, windowEndTick, type ClockView, type ScheduleEvent, refreshGaps, refreshGoals, type GoalsFile, type Metrics, type StrategiesFile } from "./goals.js";
 
 /**
  * `pnpm bazaar:goals`: keeps results/state/goals.json and strategies.json alive. Read-only: one GET /api/me per
@@ -49,6 +49,19 @@ const client = new BazaarClient({ url: env.url, key: env.key, ratePerSec: 1, bur
 
 let prev: Metrics | null = null;
 
+/** Window end tick per goal from /api/clock and /api/schedule; undefined (hand values stay) if either fails. */
+async function windows(): Promise<Record<string, number | null> | undefined> {
+  try {
+    const clock = (await client.raw("GET", "/api/clock")) as ClockView;
+    const schedule = (await client.raw("GET", "/api/schedule")) as { upcoming?: ScheduleEvent[] };
+    if (typeof clock?.tick !== "number" || typeof clock.t_hours !== "number" || !Array.isArray(schedule?.upcoming)) return undefined;
+    const upcoming = [...schedule.upcoming].sort((a, b) => a.at_hours - b.at_hours);
+    return Object.fromEntries(Object.entries(WINDOW_EVENT).map(([id, match]) => [id, windowEndTick(clock, upcoming, match)]));
+  } catch {
+    return undefined;
+  }
+}
+
 async function refresh(): Promise<void> {
   if (!existsSync(goalsFile) || !existsSync(strategiesFile)) throw new Error(`missing ${goalsFile} or ${strategiesFile}`);
   const me = await client.me();
@@ -67,12 +80,14 @@ async function refresh(): Promise<void> {
     console.log(`day start set at t${tick}`);
   }
 
+  const until = await windows();
   const goals = refreshGoals(readJson<GoalsFile>(goalsFile), readJson<StrategiesFile>(strategiesFile), {
     tick,
     at: new Date().toISOString(),
     metrics,
     prev,
     dayStart: dayStart.metrics,
+    until,
   });
   writeJson(goalsFile, goals);
   // Re-read just before writing: the goals session edits this file by hand.
