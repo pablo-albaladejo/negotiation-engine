@@ -610,6 +610,16 @@ export interface BoardOurEgg {
   probe: { phrase: string; tick: number } | null;
   prize: { cards: BoardEggCard[]; cash: number; packs: string[]; badges: string[]; reason: string | null };
   order: number;
+  /** The thread it fired in; absent on an older server, null without our team stream. */
+  flow?: BoardEggFlow | null;
+}
+
+/** What we did to get an egg: the thread topic, every message up to the egg (our text and offers) and the outcome. */
+export interface BoardEggFlow {
+  thread: number | null;
+  topic: string | null;
+  steps: { tick: number; who: "us" | "dealer"; text: string | null; offer: string | null }[];
+  outcome: string;
 }
 
 export interface BoardPersonaEggs {

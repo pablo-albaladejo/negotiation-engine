@@ -4,6 +4,7 @@ import { z } from "zod";
 import { venueBooksOf, type VenueBooksOut } from "./venues/venue-books.js";
 import { offerOriginsOf, PlanLineSchema, type OfferOrigin } from "./venues/offer-origins.js";
 import { directedOffersOf, type DirectedOffer } from "./venues/directed-offers.js";
+import { readOurThreadEvents } from "./profile/egg-flow.js";
 import { eggsOf, type EggsOut } from "./profile/eggs.js";
 import { grantsOf, type Grant } from "./profile/grants.js";
 import { marketTestOf, type MarketTestOut } from "./market-test/market-test.js";
@@ -413,7 +414,7 @@ export class BazaarBoard {
       directed: directedOffersOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], clock?.tick ?? null, team, handOf(valuesRaw)),
       grants: await grantsOf(this.bazaarDir, team),
       market_test: await marketTestOf(this.bazaarDir, join(dirname(this.bazaarDir), "logs")),
-      eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await Promise.all((await datesOf(this.bazaarDir)).map((d) => readJsonFile(join(this.bazaarDir, d, "personas.json")))), this.catalog?.raw ?? null),
+      eggs: eggsOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events], team, await Promise.all((await datesOf(this.bazaarDir)).map((d) => readJsonFile(join(this.bazaarDir, d, "personas.json")))), this.catalog?.raw ?? null, await readOurThreadEvents((await datesOf(this.bazaarDir)).map((d) => join(this.bazaarDir, d, "stream-team.jsonl")), team)),
       team_desk: teamDeskOf(
         (await readJsonl(join(this.bazaarDir, this.today(), "team-desk.jsonl"), `${this.today()}/team-desk.jsonl`, TeamDeskLineSchema)).data,
         offerExpiriesOf([...streamLines.flatMap((l) => (l.data ? [l.data] : [])), ...events]),

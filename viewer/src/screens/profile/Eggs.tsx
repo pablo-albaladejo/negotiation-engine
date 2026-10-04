@@ -1,5 +1,5 @@
 import { Card, DataTable } from "@negotiation-ring/design-system";
-import { teamLabel, type Board, type BoardEggCard, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
+import { teamLabel, type Board, type BoardEggCard, type BoardEggFlow, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
 
 /** ASSUMPTION (same as src/state/world.ts): 15 eggs per persona until the API gives a figure. */
 const EGGS_PER_PERSONA = 15;
@@ -22,6 +22,36 @@ function prizeOf(e: BoardOurEgg): string {
     ...p.badges.map((b) => `badge «${b}»`),
   ];
   return parts.join(" + ") || "—";
+}
+
+/**
+ * What we did to get the egg, step by step: the thread we opened ("buy pack sobre_barrio from abuela"), each message up
+ * to the egg (what we said and offered; the dealer's offer, and its reply on the egg tick) and how the thread ended.
+ */
+function EggFlowSteps({ flow, persona, eggTick }: { flow: BoardEggFlow; persona: string; eggTick: number }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: "var(--space-1)" }}>
+      <span>
+        <span className="nr-muted">Flow: </span>
+        {`${flow.topic ? `${flow.topic} from ${persona}` : `thread with ${persona}`}${flow.thread !== null ? ` · thread #${flow.thread}` : ""}`}
+      </span>
+      <ol style={{ margin: 0, paddingLeft: "var(--space-4, 20px)", display: "flex", flexDirection: "column", gap: 2 }}>
+        {flow.steps.map((s, i) => (
+          <li key={`${s.tick}-${i}`} style={s.tick === eggTick && s.who === "dealer" ? { color: "var(--ok)" } : undefined}>
+            <span className="nr-muted">{`t${s.tick} · `}</span>
+            <strong>{s.who === "us" ? "we" : persona}</strong>
+            {s.offer ? ` ${s.offer}` : s.who === "us" ? " write" : " replies"}
+            {s.text ? <>{s.offer ? ", saying " : " "}«{s.text}»</> : null}
+            {s.tick === eggTick && s.who === "dealer" ? <strong>{" → egg"}</strong> : null}
+          </li>
+        ))}
+      </ol>
+      <span>
+        <span className="nr-muted">Outcome: </span>
+        {flow.outcome}
+      </span>
+    </div>
+  );
 }
 
 const ROUTE_TEXT: Record<BoardEggPlanRow["route"], string> = { play: "inside play", manual: "manual (probe.sh)", excluded: "excluded" };
@@ -126,6 +156,7 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
                           <br />
                           Prize: <strong>{prizeOf(e)}</strong>
                           {e.prize.reason ? <span className="nr-muted">{` · ${e.prize.reason}`}</span> : null}
+                          {e.flow ? <EggFlowSteps flow={e.flow} persona={e.persona_name ?? e.persona} eggTick={e.tick} /> : null}
                         </li>
                       ) : g ? (
                         <li key={`g-${g.tick}`} style={{ borderLeft: "4px solid var(--ok)", paddingLeft: "var(--space-2)" }}>

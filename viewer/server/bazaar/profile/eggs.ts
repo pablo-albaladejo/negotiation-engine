@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eggPlanRows, type EggPlanRow } from "../../../../src/hints/egg-plan.js";
+import { eggFlowOf, type EggFlow } from "./egg-flow.js";
 import type { FeedEvent } from "../bazaar-board-core.js";
 
 /**
@@ -46,6 +47,8 @@ export interface OurEgg {
   prize: EggPrize;
   /** 1-based order of this find among all the persona's finds (us included). */
   order: number;
+  /** The whole thread it fired in (what we opened, said and offered, and how it ended); null without team stream. */
+  flow: EggFlow | null;
 }
 
 export interface PersonaEggs {
@@ -85,8 +88,11 @@ const PROBE_WINDOW = 6;
 const strings = (xs: readonly unknown[] | null | undefined): string[] =>
   (xs ?? []).flatMap((x) => (typeof x === "string" ? [x] : x && typeof x === "object" && typeof (x as { ref?: unknown }).ref === "string" ? [(x as { ref: string }).ref] : []));
 
-/** `personasRaw`: one `personas.json` per day folder (probes are kept per day): their probes are merged. */
-export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: unknown, catalogRaw: unknown): EggsOut {
+/**
+ * `personasRaw`: one `personas.json` per day folder (probes are kept per day): their probes are merged. `teamEvents`:
+ * our own thread events from the team streams (`readOurThreadEvents`), the only ones with our text.
+ */
+export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: unknown, catalogRaw: unknown, teamEvents: readonly FeedEvent[] = []): EggsOut {
   const seen = new Set<number>();
   const unique = events.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true))).sort((a, b) => (a.tick ?? 0) - (b.tick ?? 0) || a.id - b.id);
 
@@ -166,7 +172,7 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
     const probe = probesOf(f.data.persona)
       .filter((x) => x.tick <= tick && tick - x.tick <= PROBE_WINDOW)
       .sort((a, b) => b.tick - a.tick)[0];
-    ours.push({ tick, persona: f.data.persona, persona_name: f.data.persona_name ?? null, probe: probe ? { phrase: probe.phrase, tick: probe.tick } : null, prize, order: p.found.length });
+    ours.push({ tick, persona: f.data.persona, persona_name: f.data.persona_name ?? null, probe: probe ? { phrase: probe.phrase, tick: probe.tick } : null, prize, order: p.found.length, flow: eggFlowOf({ persona: f.data.persona, tick }, teamEvents, team) });
   }
   // Our side of the conversation with a persona around a tick (our own messages and the deals: structure only).
   const contextOf = (persona: string, tick: number): OurGift["context"] => {
@@ -213,7 +219,7 @@ export function eggsOf(events: readonly FeedEvent[], team: string, personasRaw: 
   }
   const gifts_by_persona = [...giftCount].map(([persona, c]) => ({ persona, total: c.total, teams: c.teams.size, ours: c.ours })).sort((a, b) => b.total - a.total);
   // The plan's status comes from our own messages to personas (our text) and our eggs, as in `GameState.eggPlan`.
-  const ourMessages = unique.flatMap((e) => {
+  const ourMessages = [...unique, ...teamEvents].flatMap((e) => {
     const p = e.payload as { kind?: unknown; sender?: unknown; with?: unknown; text?: unknown } | undefined;
     return e.type === "thread.message" && p?.kind === "persona" && p.sender === team && typeof p.with === "string" && typeof p.text === "string" && typeof e.tick === "number"
       ? [{ tick: e.tick, persona: p.with, text: p.text }]

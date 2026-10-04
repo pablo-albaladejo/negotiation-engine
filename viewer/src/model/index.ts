@@ -25,6 +25,7 @@ export {
   type BoardDirectedOffer,
   type BoardEggs,
   type BoardEggPlanRow,
+  type BoardEggFlow,
   type BoardEggCard,
   type BoardGrant,
   type BoardMarketTest,
