@@ -45,6 +45,7 @@ src/
 ├─ news/      noticias de Radio Rastro: visor y pista en GameState.news (nunca una cifra; pnpm bazaar:news)
 ├─ teamdesk/  contraofertas a las ofertas que otros equipos nos hacen (pnpm bazaar:play --team-desk)
 ├─ intros/    presentaciones por hilo hacia nuestro venue (pnpm bazaar:intros)
+├─ goals/     objetivos del equipo y registro de estrategias (pnpm bazaar:goals, solo lectura)
 ├─ audit/     auditor de ineficiencias de solo lectura (pnpm bazaar:audit)
 └─ coordinator/ coordinador por tick: limits, intenciones, arbitraje (pnpm bazaar:play)
 test/        solo tests de guardarraíles (fast-check)
@@ -71,6 +72,7 @@ results/     trazas en vivo (fuera de git)
 | `pnpm bazaar:play` | Coordinador por tick: `GameState`, presupuesto de `clock.limits`, intenciones de duelos, dealers y El Rastro, arbitraje (`--dry-run --once`; en vivo sin `--dry-run` y con `--confirm`; ventas dirigidas a rivales solo con `--rival-page`, pujas dirigidas con `--rival-buy`; cambios carta por carta de nuestras repetidas con `--rival-swap`; escáner de dispersión de la ruta de mercados solo con `--scanner` (opt-in) y `--scanner-spend-per-hour` (60) como tope de compra; `--page-targets` (SAL-09) es el único objetivo de página y tiene tope en su base sin bonus hasta `--page-bonus-scored`, que lo sube a 0,9 × `your_value`; cada Δ de `neg_points` se audita trato a trato en `score-audit.jsonl`; sin pujas pasivas en El Rastro ni anuncios < 4 P (pujas, con `--rastro-bids`); reserva de cambio de venue: con caja < 290 P solo compras que cierran página, hasta que nuestro venue sea board, `--no-venue-reserve` la quita). |
 | `pnpm bazaar:audit` | Auditor de ineficiencias de solo lectura: compras repetidas, ida y vuelta con pérdida, copia del álbum perdida, dos rutas a la vez, fallos repetidos; `--date` informe, `--watch` en vivo. |
 | `pnpm bazaar:intros` | Presentaciones por hilo para el flujo orgánico del market: a cada pareja de repetida y carta que falta (`matchPairs`) le dice al que tiene la repetida y al que la busca que publiquen en nuestro venue, donde el broker los cruza. Sin cifras; máx. 3 parejas/h y una por equipo cada 2 h (`--dry-run --once`; en vivo con `--confirm`). |
+| `pnpm bazaar:goals` | Objetivos del equipo y registro de estrategias: refresca cada tick `results/state/goals.json` (ahora, Δ del día y del tick, estado) y los huecos de strategies.json; solo GET (`--once`). |
 | `pnpm bazaar:news` | Noticias del Bazaar (Radio Rastro, Boletín, El Tablón): `news.jsonl` y news-summary.json para el panel «Radio Rastro» del visor. Solo mostrar: nunca una cifra ni una decisión (`--once`, `--no-llm`). |
 | `pnpm bazaar:doctor` | Comprueba que todo está listo (✓/✗): `.env`, Node, git, tests, API, puerto del visor y `bazaar:play --dry-run --once` (`--fast`). |
 | `pnpm bazaar:up` | Doctor y recorder, visor, `bazaar:play`, broker en sombra, news y audit (`--no-audit` lo quita), en dry-run (en vivo: `--live --confirm`; `--broker-live` solo con ellos: broker con `--confirm` en vez de `--shadow`); `pnpm bazaar:down` para lo de `--detach`. Ver [`DAY2.md`](DAY2.md). |

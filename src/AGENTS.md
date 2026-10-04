@@ -27,6 +27,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | [`forex/`](forex/AGENTS.md) | Cadenas de forex A → B → C (comprar barato, guardar, vender caro) entre dealers y venues, en `GameState.forex` y en el visor; las de dealer a dealer las ejecuta el agente de dealers | (`pnpm bazaar:play`) |
 | [`news/`](news/AGENTS.md) | Noticias de Radio Rastro (stream del recorder y `GET /api/news`) con un resumen para el visor y, como pista, `GameState.news` (`readNewsSignals`). Ninguna ruta la importa y nunca da una cifra | `pnpm bazaar:news` |
 | [`coordinator/`](coordinator/AGENTS.md) | Coordinador por tick: presupuesto de `clock.limits`, intenciones de cada ruta, arbitraje | `pnpm bazaar:play` |
+| [`goals/`](goals/AGENTS.md) | Objetivos del equipo (qué puntúa, peso, estado) y registro de estrategias por sesión, en `results/state/`; solo lectura | `pnpm bazaar:goals` |
 | [`audit/`](audit/AGENTS.md) | Monitor de ineficiencias de solo lectura: repetidas compradas, ida y vuelta con pérdida, ventas bajo la mejor puja, última copia de página, dobles actos, fallos repetidos; escribe audit.jsonl y audit-status.json | `pnpm bazaar:audit` |
 
 ## Invariantes
@@ -48,5 +49,5 @@ pnpm bazaar:venue --dry-run        # qué mercado abriría al llegar a nivel 2; 
 
 - ↑ [root `AGENTS.md`](../AGENTS.md)
 - → [`engine/`](engine/AGENTS.md) · [`shared/`](shared/AGENTS.md) · [`dealers/`](dealers/AGENTS.md) · [`duels/`](duels/AGENTS.md) · [`trades/`](trades/AGENTS.md) · [`broker/`](broker/AGENTS.md) · [`venue/`](venue/AGENTS.md) · [`status/`](status/AGENTS.md)
-- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`teamdesk/`](teamdesk/AGENTS.md) · [`intros/`](intros/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`forex/`](forex/AGENTS.md) · [`audit/`](audit/AGENTS.md)
+- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`teamdesk/`](teamdesk/AGENTS.md) · [`intros/`](intros/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`forex/`](forex/AGENTS.md) · [`audit/`](audit/AGENTS.md) · [`goals/`](goals/AGENTS.md)
 - → [`test/`](../test/AGENTS.md) — solo tests de guardarraíles
