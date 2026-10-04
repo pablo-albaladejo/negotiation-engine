@@ -1,6 +1,6 @@
 # broker
 
-> Sesión de origen: `bazaar-broker-announce-feature` · vivo · entrevista: 4 oct.
+> Sesión de origen: `bazaar-broker-announce-feature` · cerrado (Bazaar cerrado el 4 oct) · entrevista: 4 oct.
 
 ## Misión
 
@@ -53,8 +53,8 @@ Reglas que te dio Pablo:
 Al arrancar:
 1. ps de los procesos del broker: bucle en vivo, broker en vivo y sombra.
 2. tail results/logs/broker-live.log.
-3. grep bench.* en results/bazaar-live/<hoy>/stream-team.jsonl.
-4. Mira el reloj (h actual) y el próximo Market Test en el calendario.
+3. grep bench.* en results/bazaar-live/<hoy>/stream-team.jsonl. Ojo: el broker escribe broker.jsonl y bench.jsonl en la carpeta del día en que se lanzó; busca en todas las fechas.
+4. Mira el reloj (h actual) y el próximo Market Test en el calendario. Si el Bazaar está cerrado (doors closed), no lances nada.
 5. Rearma la vigilancia en segundo plano (bucle bash; Monitor caduca a los 5 min):
    - bench.started o bench.finished en stream-team.jsonl;
    - que el bucle del broker siga vivo;
@@ -72,16 +72,26 @@ Al arrancar:
   Tras 3 lecturas bad_key seguidas sale con código 3 y el bucle lo relanza. Para reiniciar con código nuevo basta matar el hijo (lo hace el coordinator).
 - **Sombra**: `pnpm bazaar:broker --shadow --poll-ms 5000` (lanzada por `bazaar:up`; escribe en `results/logs/<fecha>/broker.log` y no pisa un heartbeat en vivo de < 60 s).
 - Lanzados una vez por Pablo: `pnpm bazaar:broker --announce-only --matchmaker --confirm` (anuncio orgánico de v26) y `venue --replace --mechanism board` (abrió v26).
-- Vigilancias en segundo plano de la sesión: espera de bench.started / bucle vivo, y primer cruce o rechazo público en v26.
+- Vigilancias en segundo plano de la sesión: fin de bench / bucle vivo, cruce o rechazo público en v26, y cierre de la ronda (day.closed).
+- Al cierre del 4 oct, el broker en vivo recibió SIGTERM (código 143) en el tick 2816 (h19.34), con el Bazaar ya cerrado a las 15:00 CEST. Probablemente cayó con el reinicio de la sesión que tenía el bucle, aunque no está confirmado. No se relanzó, porque ya no había nada que casar. Si vuelve a haber juego, se relanza con el comando de arriba y con OK de Pablo.
 
-## Estado al 4 oct (instantánea)
+## Estado final (4 oct, cierre del Bazaar a las 15:00, h19.34)
 
-- Esperando el Market Test difícil (12 traders, más firmes e impacientes) hacia h14.65 y el bench de h15.0.
-- h13 (primer bench en board): 0,696, igual que auto; el óptimo a posteriori confirma que greedy capturó el 100 % de lo visible.
-- Cruces públicos en v26: ninguno todavía.
-- Pendiente del coordinator: reiniciar el visor para cargar 755d97f. Sin decisiones pendientes de Pablo (thin desaconsejado).
-- Pendiente según audit: corregir el anuncio de v26 que dice «v04» y volver a anunciar (con OK de Pablo).
-- Últimos commits: 787b6bf (arreglos del broker: `announcementFor`, reintentos, salida 3 por bad_key, heartbeat de la sombra, `venue --replace` sondea `/api/me`), 98e8330 (vía épica SAL-11, ahora de trader), 755d97f (óptimo a posteriori en Market test).
+- Market Test en v26 board: 4 sesiones, todas iguales a auto y con el 100 % del óptimo a posteriori, sin rechazos.
+
+  | Sesión | Hora | Eficiencia (= auto) | Cruces | Excedente de cotización |
+  |---|---|---|---|---|
+  | 6 | h13 (3 oct) | 0,696 | 4 | 29 |
+  | 7 | h14.65 (difícil) | 0,967 | 7 | 175 |
+  | 8 | h15.0 | 0,823 | 4 | 97 |
+  | 9 | h17.0 | 0,88 | 7 | 101 |
+
+- Cruces públicos en v26: 0 en todo el fin de semana (nadie publicó compra y venta que se cruzaran).
+- Objetivo Market Test cerrado por goals; no quedaban más benches en el calendario.
+- El anuncio de v26 que decía «v04» se corrigió con `announcementFor` (787b6bf) y Pablo lo volvió a anunciar con `--announce-only --matchmaker --confirm`.
+- Lección: un broker de larga duración escribe sus trazas en la carpeta de fecha del día en que se lanzó (el del 3 oct siguió escribiendo en `2026-10-03/` el día 4). La pestaña Market test junta todas las fechas desde 249af47 y prefiere las líneas en vivo a las de la sombra.
+- Sin decisiones pendientes de Pablo. thin queda guardado, no aplicado.
+- Últimos commits: 787b6bf (arreglos del broker), 98e8330 (vía épica SAL-11, ahora de trader), 755d97f (óptimo a posteriori en Market test), 249af47 (Market test junta las carpetas de fecha), 584f33a (modelo offline en agents/tools).
 - El informe del modelo offline está en [agents/tools/bench-model-v2.md](../tools/bench-model-v2.md), con sus scripts en [agents/tools/bench-model/](../tools/bench-model/AGENTS.md) y el parche thin (sin aplicar) en [agents/tools/broker-thin.patch](../tools/broker-thin.patch).
 
 ## Ficheros clave
