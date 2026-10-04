@@ -51,7 +51,37 @@ async function sendOne(api: IntrosApi, team: string, text: string, log: (l: stri
     log(`[intros] say to ${team} in thread ${id} failed: ${e instanceof Error ? e.message : String(e)}`);
     return false;
   } finally {
-    await api.closeThread(id).catch((e) => log(`[intros] close thread ${id} failed: ${e instanceof Error ? e.message : String(e)}`));
+    await closeOrQueue(api, id, log);
+  }
+}
+
+/** Thread ids whose close failed (e.g. rate_limited): retried at the start of every pass so no slot stays taken. */
+const pendingCloses = new Set<number>();
+
+/** Closes a thread, retrying once after a second; if it still fails, the id waits in `pendingCloses`. */
+async function closeOrQueue(api: IntrosApi, id: number, log: (l: string) => void): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await api.closeThread(id);
+      pendingCloses.delete(id);
+      return;
+    } catch (e) {
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 1200));
+      else log(`[intros] close thread ${id} failed: ${e instanceof Error ? e.message : String(e)} (retried next pass)`);
+    }
+  }
+  pendingCloses.add(id);
+}
+
+async function retryPendingCloses(api: IntrosApi, log: (l: string) => void): Promise<void> {
+  for (const id of [...pendingCloses]) {
+    try {
+      await api.closeThread(id);
+      pendingCloses.delete(id);
+      log(`[intros] closed thread ${id} on retry`);
+    } catch (e) {
+      log(`[intros] close thread ${id} still failing: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 }
 
@@ -96,6 +126,7 @@ export async function runIntrosCli(argv: string[], log: (line: string) => void =
   }
 
   async function pass(): Promise<void> {
+    if (!dryRun) await retryPendingCloses(client!, log);
     const venue = await ourOpenVenue(client!);
     const ledger = loadLedgerFile(values["rivals-file"]!);
     if (!venue) log("[intros] off: we run no open venue");
