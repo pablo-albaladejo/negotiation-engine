@@ -11,6 +11,7 @@ import { NewsView } from "./news/NewsView.js";
 import { TeamName } from "./teams/TeamLink.js";
 import { NavCtx, TickLink, type Nav } from "./nav/Links.js";
 import { TickPanel } from "./nav/TickPanel.js";
+import { GoalsView } from "./goals/GoalsView.js";
 import { TeamsView } from "./teams/TeamsView.js";
 import { EggsView } from "./profile/EggsView.js";
 import { PersonasView } from "./profile/PersonasView.js";
@@ -803,7 +804,7 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news" | "teams";
+type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news" | "teams" | "goals";
 
 /** Tab label (what it is) and hint (what it answers), shown under the tabs for the selected view. */
 const VIEWS: { id: View; label: string; hint: string }[] = [
@@ -816,6 +817,7 @@ const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: "market-test", label: "🧪 Market test", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
   { id: "eggs", label: "🥚 Eggs", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
   { id: "news", label: "📻 News", hint: "Radio Rastro, the Bulletin and the notice board: which dealer, set or card is being talked about, with a summary. Unverified, may be rumour, never a figure." },
+  { id: "goals", label: "🎯 Goals", hint: "What we aim at and how: gaps and conflicts, goals by priority, open proposals (pros, cons, recommendation) and every strategy by goal. From the goals session; shown only." },
   { id: "teams", label: "👥 Teams", hint: "Every team in one place: score parts, what we did with it, its trades with others, eggs it found and its collection. Click any team name in the viewer to land here." },
   { id: "personas", label: "🧑‍🎤 Dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },
 ];
@@ -913,6 +915,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <MarketTest board={board} />
         ) : view === "eggs" ? (
           <EggsView board={board} model={model} loading={loading} onOpenThread={(t) => openModel(`dealer:${t}`)} />
+        ) : view === "goals" ? (
+          <GoalsView model={model} loading={loading} />
         ) : view === "teams" ? (
           <TeamsView board={board} model={model} team={team} onPick={setTeam} onOpen={openModel} />
         ) : view === "news" ? (

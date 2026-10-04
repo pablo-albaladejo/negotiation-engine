@@ -351,6 +351,8 @@ export interface GameModel {
   prices?: { source: string; rows: Record<string, unknown>[] };
   /** `GameState.valuation` (src/state/valuation.ts): our value model per card and page; optional on older servers. */
   valuation?: ModelValuation | null;
+  /** `GameState.goals` (src/goals/goals.ts): goals.json and the strategy registry; optional on older servers. */
+  registry?: ModelRegistry | null;
   /** `GameState.workshop`: spares per rarity and the strategy's decision; optional on older servers. */
   workshop?: ModelWorkshop | null;
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
@@ -998,4 +1000,50 @@ export function packsOf(model: GameModel): { types: PackTypeView[]; held: HeldPa
   });
   const intents = arr(pick(so, "intents")).map((i) => strOf(rec(i).summary) ?? textOf(i));
   return { types, held, intents, source: stateTypes.length > 0 || stateHeld.length > 0 ? "state" : "catalog" };
+}
+
+/** One goal of goals.json (src/goals/goals.ts `Goal`): WHAT we aim at, never a price. */
+export interface ModelGoal {
+  id: string;
+  goal: string;
+  block: string;
+  weight: number;
+  priority: number;
+  metric: string;
+  now: number | null;
+  day_start: number | null;
+  delta_tick: number;
+  status: string;
+  target: string;
+  why: string;
+  until_tick: number | null;
+  guardrails: string[];
+  do_not: string[];
+  strategies: string[];
+}
+
+/** One entry of the strategy registry (src/goals/goals.ts `Strategy`); `figures_for_humans` is text, never a price. */
+export interface ModelStrategy {
+  id: string;
+  owner: string;
+  goal: string;
+  summary: string;
+  status: string;
+  commit: string;
+  flag: string;
+  approved_by_pablo: boolean;
+  since: string;
+  evidence: string;
+  conflicts: string[];
+  figures_for_humans?: string;
+  pros?: string[];
+  cons?: string[];
+  recommendation?: string;
+  ok_by?: string;
+  approved_at?: string | null;
+}
+
+export interface ModelRegistry {
+  goals: { tick: number; updated_at: string; day: string; goals: ModelGoal[]; changes: string[] } | null;
+  strategies: { updated_at: string; strategies: ModelStrategy[]; gaps: string[]; conflicts: string[] } | null;
 }

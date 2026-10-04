@@ -4,6 +4,7 @@ import { BazaarClient, BazaarError, type BazaarClientOptions } from "../../../sr
 import { loadBazaarEnv } from "../../../src/shared/env.js";
 import { buildGameState, type GameState } from "../../../src/state/game-state.js";
 import type { ValuationState } from "../../../src/state/valuation.js";
+import type { GoalsState } from "../../../src/goals/read.js";
 import type { WorkshopState } from "../../../src/workshop/workshop.js";
 import type { NewsSignals } from "../../../src/news/signals.js";
 import { loadConversationMemos } from "../../../src/state/conversation.js";
@@ -145,6 +146,8 @@ export interface ModelOut {
   prices: { source: "state" | "viewer" | "none"; rows: Record<string, unknown>[] };
   /** `GameState.valuation`: our value model per card and page (null until the state has it). */
   valuation: ValuationState | null;
+  /** `GameState.goals`: goals.json and the strategy registry (strategies.json), shown only; null on an older state. */
+  registry: GoalsState | null;
   /** `GameState.workshop` (src/workshop/): spares per rarity, the strategy's decision and the public crafts (null until the state has it). */
   workshop: WorkshopState | null;
   /** Packs: whatever the state carries (PACKS route) and, failing that, the catalog (`packs`) and our sealed packs. */
@@ -278,6 +281,7 @@ function emptyModel(reason: string, nextMs: number): ModelOut {
     ladder: [],
     prices: { source: "none", rows: [] },
     valuation: null,
+    registry: null,
     workshop: null,
     packs: { state: null, catalog: [], held: [] },
     venues: { state: null, api: [] },
@@ -540,6 +544,7 @@ export class BazaarModel {
       ladder: await this.ladderOf(state),
       prices: pricesOf(state, market),
       valuation: state.valuation ?? null,
+      registry: state.goals ?? null,
       workshop: state.workshop ?? null,
       packs: {
         state: stateAny.packs ?? record(stateAny.markets).packs ?? null,

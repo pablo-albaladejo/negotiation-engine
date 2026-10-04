@@ -1,12 +1,13 @@
 # viewer/src/screens/ — Pantallas
 
-- **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Teams, Dealers), con etiquetas cortas con icono y una frase bajo las pestañas que dice qué responde; cajón de cada conversación con la curva y el camino previsto.
+- **`BazaarScreen.tsx`** — la cabina del Bazaar y sus pestañas (Now, Cockpit, Cards, Model, Venues, Forex, Market test, Eggs, News, Goals, Teams, Dealers), con etiquetas cortas con icono y una frase bajo las pestañas que dice qué responde; cajón de cada conversación con la curva y el camino previsto.
 - **[`now/`](now/AGENTS.md)** — la pestaña «Now»: qué está pasando ahora mismo (tick, plan del tick, conversaciones vivas, nuestras ofertas, qué cambió).
 - **[`market-test/`](market-test/AGENTS.md)** — la pestaña «Market test»: nuestras sesiones de bench en auto (v04) frente a board (v26), con el libro tick a tick y nuestros emparejamientos.
 - **[`profile/`](profile/AGENTS.md)** — nuestro perfil bajo el marcador: los easter eggs que hemos encontrado (sondeo y premio) y los de cada persona.
 - **[`venues/`](venues/AGENTS.md)** — la pestaña «Venues»: el libro de todos los venues abiertos, cada oferta marcada frente a nuestra mano y nuestros valores (NEG como quien acepta, dup, última copia), con filtros.
 - **[`forex/`](forex/AGENTS.md)** — la pestaña «Forex»: las cadenas A → B → C de `bazaar:play` (comprar, guardar, vender) con el paso actual resaltado, margen neto y peor caso.
 - **[`news/`](news/AGENTS.md)** — la pestaña «News»: señales de noticias y Radio Rastro.
+- **[`goals/`](goals/AGENTS.md)** — la pestaña «Goals»: objetivos, propuestas y registro de estrategias de `GameState.goals` (solo se muestra).
 - **[`nav/`](nav/AGENTS.md)** — enlaces entre pestañas: cualquier «tN» abre el cajón «Tick N», un equipo su perfil en Teams y un dealer su fila en Dealers.
 - **[`teams/`](teams/AGENTS.md)** — la pestaña «Teams»: todo lo que sabemos de cada equipo; cualquier nombre de equipo del visor abre esta pestaña en ese equipo.
 - **[`album/`](album/AGENTS.md)** — la pestaña «Cards»: el álbum como cromos, igual que /cards del juego: una banda por set y un cromo por carta (las que tenemos y las que faltan), con el valor, la tirada y las shinies.
@@ -30,6 +31,7 @@ Solo texto plano: nada de HTML inyectado.
 - ↓ [`market-test/`](market-test/AGENTS.md)
 - ↓ [`album/`](album/AGENTS.md)
 - ↓ [`news/`](news/AGENTS.md)
+- ↓ [`goals/`](goals/AGENTS.md)
 - ↓ [`nav/`](nav/AGENTS.md)
 - ↓ [`teams/`](teams/AGENTS.md)
 - ↓ [`forex/`](forex/AGENTS.md)
