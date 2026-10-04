@@ -25,6 +25,7 @@ import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/pric
 import { executePacks, proposePacks } from "../packs/packs.js";
 import { executeWorkshop, proposeWorkshop } from "../workshop/workshop.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
+import { dealerBuyQuotes, updateDealerLedger } from "../forex/ledger.js";
 import { loadCounterpartyRoom } from "../markets/room.js";
 import { defaultEpicDoneFile, EPIC_BUY_LANES, executeRivalBuy, seedEpicDone, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
@@ -402,7 +403,14 @@ async function main() {
           }
           // Team desk: counter-offers to offers made to us that El Rastro rejects (intents only with the opt-in --team-desk).
           try {
-            const r = proposeTeamDesk({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), ...(trades.lastState?.rivals ? { rivals: trades.lastState.rivals } : {}), room }, undefined, undefined, deskOfferIds(deskLedger));
+            // CHA lane: our cards a dealer sold in the last 600 ticks at ≤ our value (dealer picaros excluded), ref → highest price.
+            const rebuyable = new Map<string, number>();
+            const dealerTrades = updateDealerLedger(join(process.cwd(), "results", "bazaar-live", new Date().toLocaleDateString("sv-SE")), [], state.tick);
+            for (const a of trades.lastState?.held ?? []) {
+              const q = dealerBuyQuotes(dealerTrades, a.ref, a.value, state.tick, 600)[0];
+              if (q && !rebuyable.has(a.ref)) rebuyable.set(a.ref, q.hi);
+            }
+            const r = proposeTeamDesk({ tick: state.tick, trade: trades.lastState, ...(trades.lastPlan ? { tradePlan: trades.lastPlan } : {}), ...(trades.lastState?.rivals ? { rivals: trades.lastState.rivals } : {}), room, rebuyable }, undefined, undefined, deskOfferIds(deskLedger));
             deskPlan = r.plan;
             deskIntents = r.intents;
             if (values["team-desk"]) m.intents.push(...r.intents);

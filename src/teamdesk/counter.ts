@@ -40,6 +40,8 @@ export const TEAM_DESK_PARAMS = {
   marginFrac: 0.1,
   /** Rejections we answer: the offer did not leave margin (a last-free-copy request is never countered). */
   reasons: ["below-margin"] as readonly string[],
+  /** CHA lane (P7, coordinator OK 4 Oct): a last-copy sale needs gain ≥ this, counted at min(price − value, room). */
+  laneMinGain: 20,
   /** Venues we never operate on (they lift rival markets). */
   forbiddenVenues: ["v01", "v02", "v07", "v14"] as readonly string[],
 };
@@ -98,6 +100,11 @@ export interface DeskInput {
   rivals?: RivalSignals;
   /** Score room left per counterparty (`loadCounterpartyRoom`): a team below `MIN_ROOM` gets no counter. */
   room?: ReadonlyMap<string, number>;
+  /**
+   * CHA lane: cards a dealer sold in the window at a price ≤ our value (`dealerBuyQuotes`, dealer picaros excluded), ref → that
+   * highest price. Only these may go as our last copy, and only against a team offer of ≥ value + `laneMinGain` with room.
+   */
+  rebuyable?: ReadonlyMap<string, number>;
 }
 
 /** Last price we asked per `team:ref:venue` (counters stay monotonic across expiries within one run). */
@@ -146,7 +153,8 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
   // Sale requests we answer: cash for one card of ours, rejected for margin or last copy, on an allowed venue.
   const requests = evals.flatMap((e) => {
     const o = e.offer;
-    if (e.ok || !params.reasons.includes(e.reason) || !o.maker || !o.venue || o.thread != null) return [];
+    const lane = e.reason === "last-free-copy";
+    if (e.ok || !(params.reasons.includes(e.reason) || lane) || !o.maker || !o.venue || o.thread != null) return [];
     if (params.forbiddenVenues.includes(o.venue)) {
       notes.push(`${TAG} skip #${o.id} from ${o.maker}: venue ${o.venue} is off-limits`);
       return [];
@@ -155,7 +163,8 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     const want = readSide(o.want);
     const refs = [...want.cards, ...want.assets.flatMap((a) => (a.ref ? [a.ref] : []))];
     if (give.assets.length || give.cards.length || refs.length !== 1) return [];
-    return [{ offer: o, team: o.maker, venue: o.venue, ref: refs[0]!, offered: give.cash }];
+    if (lane && !input.rebuyable?.has(refs[0]!)) return [];
+    return [{ offer: o, team: o.maker, venue: o.venue, ref: refs[0]!, offered: give.cash, lane }];
   });
 
   // Busy assets: our other open offers (El Rastro listings, rival-page, swaps), assets the El Rastro plan posts, locks.
@@ -187,7 +196,10 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     answered.add(key);
     const asset = trade.held.find((a) => a.id === c.assetId);
     if (!asset) continue;
-    const { floor, anchor } = priceFor(key, asset.value, c.venue);
+    const laneCounter = trade.held.filter((a) => a.ref === c.ref).length === 1;
+    const priced = priceFor(key, asset.value, c.venue);
+    const floor = laneCounter ? Math.max(priced.floor, Math.ceil(asset.value + params.laneMinGain)) : priced.floor;
+    const anchor = priced.anchor;
     memo.set(key, Math.min(memo.get(key) ?? c.price, c.price));
     const intentId = `teamdesk:cancel:${c.offer.id}`;
     if (c.price < floor) {
@@ -199,7 +211,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
     // Age from created_tick, or from expires_tick minus the expiry we post with.
     const created = c.offer.created_tick ?? (c.offer.expires_tick != null ? c.offer.expires_tick - params.expiresInTicks : input.tick);
     const age = input.tick - created;
-    if (!req || age < params.stepTicks || c.price <= floor) {
+    if (!req || age < params.stepTicks || c.price <= floor || laneCounter) {
       notes.push(`${TAG} hold #${c.offer.id} ${c.ref} → ${c.team}@${c.venue} @ ${c.price} P (floor ${floor}, age ${age})`);
       continue;
     }
@@ -216,7 +228,7 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
 
   // New counters: the requested card, then spares the team signals demand for.
   for (const r of requests) {
-    const wanted = [r.ref, ...[...(input.rivals?.demand ?? new Map<string, string[]>())].filter(([ref, teams]) => ref !== r.ref && teams.includes(r.team)).map(([ref]) => ref)];
+    const wanted = r.lane ? [r.ref] : [r.ref, ...[...(input.rivals?.demand ?? new Map<string, string[]>())].filter(([ref, teams]) => ref !== r.ref && teams.includes(r.team)).map(([ref]) => ref)];
     for (const ref of wanted) {
       const key = `${r.team}:${ref}:${r.venue}`;
       if (answered.has(key)) continue;
@@ -249,8 +261,28 @@ export function proposeTeamDesk(input: DeskInput, params: TeamDeskParams = TEAM_
         continue;
       }
       // Never our last free copy (Pablo, 3 Oct: complete pages are not sold): only spares, requested or not.
-      if (isLastFreeCopy(asset.id, trade.held, lockedIds, trade.reserved)) {
+      const lastCopy = isLastFreeCopy(asset.id, trade.held, lockedIds, trade.reserved);
+      if (lastCopy && !r.lane) {
         if (ref === r.ref) notes.push(`${TAG} skip ${ref} → ${r.team}: our last free copy (complete pages are not sold)`);
+        continue;
+      }
+      if (lastCopy) {
+        // CHA lane: sold at the team's own offer, only when a dealer sells it back at ≤ our value and the gain scores.
+        const gain = r.offered - tradeFee(r.offered, 1, fees(r.venue)) - asset.value;
+        const scored = Math.min(gain, roomOf(input.room, r.team));
+        const quote = input.rebuyable?.get(ref);
+        if (quote === undefined || quote > asset.value || scored < params.laneMinGain) {
+          notes.push(`${TAG} [cha-lane] skip ${ref} → ${r.team}: ${quote === undefined || quote > asset.value ? "no dealer rebuy at ≤ our value" : `scored ${Math.round(scored)} < ${params.laneMinGain}`}`);
+          continue;
+        }
+        const price = enforceGuardrails({ role: "seller", reservation: Math.ceil(asset.value + params.laneMinGain) }, r.offered);
+        const post = makePost("counter", r.team, r.venue, ref, asset.id, price, Math.ceil(asset.value + params.laneMinGain), price, asset.value, fees(r.venue), r.offer.id, params);
+        plan.posts.push(post);
+        intents.push(postIntent(post));
+        memo.set(key, price);
+        busy.add(asset.id);
+        open += 1;
+        notes.push(`${TAG} [cha-lane] counter #${r.offer.id}: last copy of ${ref} → ${r.team} @ ${price} P on ${r.venue} (value ${asset.value}, gain ${Math.round(gain)}, room ${roomOf(input.room, r.team)}, dealer rebuy ≤ ${quote})`);
         continue;
       }
       const { floor, anchor, price } = priceFor(key, asset.value, r.venue);
