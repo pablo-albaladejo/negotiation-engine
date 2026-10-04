@@ -7,7 +7,6 @@ import { Fold } from "../../ui/fold.js";
 import { Meter } from "../../ui/meter.js";
 import { gridCols } from "../../ui/grid.js";
 import { useNow } from "../../ui/use-now.js";
-import { RadioRastro } from "./RadioRastro.js";
 import { ageLabel, diffSnapshots, liveConversations, offerLines, planRows, quotas, rememberSnapshot, snapshotOf, tickHeader, type Change, type LiveConv, type LiveStatus, type PlanRow } from "./nowModel.js";
 
 /**
@@ -296,7 +295,6 @@ export function NowView({ board, model, onOpen }: { board: Board; model: GameMod
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <Header board={board} model={model} boardAt={boardAt} />
-      <RadioRastro />
       <Plan model={model} onOpen={onOpen} />
       <Conversations board={board} model={model} onOpen={onOpen} />
       <Offers board={board} model={model} onOpen={onOpen} />

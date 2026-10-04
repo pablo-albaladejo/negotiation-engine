@@ -10,7 +10,7 @@ Qué está pasando ahora mismo, en una pantalla (primera pestaña del Bazaar):
 5. **Qué cambió desde el tick anterior**: foto en memoria del cliente (sobrevive al cambio de pestaña, no a recargar).
 
 - **`NowView.tsx`** — la pantalla.
-- **`RadioRastro.tsx`** — el panel «Radio Rastro» y su lectura de `/api/bazaar/news`.
+- **`RadioRastro.tsx`** — el panel «Radio Rastro» y su lectura de `/api/bazaar/news`; se muestra en la pestaña «News» ([`news/`](../news/AGENTS.md)).
 - **`nowModel.ts`** — funciones puras (`tickHeader`, `planRows`, `quotas`, `liveConversations`, `offerLines`, `snapshotOf`, `diffSnapshots`).
 
 Datos: el tablero (`/api/bazaar/board`, cada tick) y el campo `now` de `/api/bazaar/model` (solo GET). Ni valores privados ni límites; todo texto plano.

@@ -63,40 +63,58 @@ function planStatus(r: BoardEggPlanRow) {
   return <span style={{ color, fontWeight: r.status === "hit" ? 800 : undefined }}>{text}</span>;
 }
 
-/** Sunday's approved egg probe plan: literal phrase per dealer, odds, what we stand to win, cost and status. */
+/** Sunday's approved egg probe plan: one card per probe, the literal phrase big, then odds, prize, cost and status. */
 function EggPlan({ rows }: { rows: BoardEggPlanRow[] }) {
+  const fact = (label: string, value: string) => (
+    <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <span className="nr-muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
+        {label}
+      </span>
+      <span>{value || "—"}</span>
+    </span>
+  );
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
       <strong style={{ fontSize: 16 }}>Probe plan</strong>
       <span className="nr-muted" style={{ fontSize: 12 }}>
-        An egg fires when our message contains its phrase literally (accents and case ignored). ≥ 5 ticks between probes to the same dealer.
+        We send the phrase to the dealer; if our message contains it literally (accents and case ignored), the egg fires. At least 5 ticks between probes to the same dealer.
       </span>
-      <div style={{ overflowX: "auto" }}>
-        <DataTable
-          columns={[
-            { key: "n", label: "#" },
-            { key: "dealer", label: "Dealer" },
-            { key: "line", label: "Literal phrase" },
-            { key: "odds", label: "Odds" },
-            { key: "stake", label: "Stake" },
-            { key: "cost", label: "Cost" },
-            { key: "status", label: "Status" },
-          ]}
-          rows={rows.map((r) => ({
-            n: r.n || "—",
-            dealer: `${r.persona} · ${ROUTE_TEXT[r.route]}`,
-            line: (
-              <span>
-                «{r.line}»{r.note ? <span className="nr-muted">{` · ${r.note}`}</span> : null}
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+        {rows.map((r) => (
+          <li
+            key={`${r.n}-${r.persona}-${r.key}`}
+            style={{
+              border: "1px solid var(--line)",
+              borderLeft: `4px solid ${r.status === "hit" ? "var(--ok)" : r.status === "sent" ? "var(--us)" : "var(--line)"}`,
+              borderRadius: 8,
+              padding: "var(--space-2) var(--space-3)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-1)",
+              opacity: r.status === "excluded" || r.status === "miss" ? 0.6 : 1,
+            }}
+          >
+            <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "baseline", flexWrap: "wrap" }}>
+              <strong>{`${r.n ? `#${r.n} · ` : ""}${r.persona}`}</strong>
+              <span className="nr-muted" style={{ fontSize: 12 }}>
+                {ROUTE_TEXT[r.route]}
               </span>
-            ),
-            odds: r.odds,
-            stake: r.stake,
-            cost: r.cost,
-            status: planStatus(r),
-          }))}
-        />
-      </div>
+              <span style={{ marginLeft: "auto" }}>{planStatus(r)}</span>
+            </div>
+            <span style={{ fontSize: 15, fontStyle: "italic" }}>«{r.line}»</span>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "var(--space-1) var(--space-3)", fontSize: 13 }}>
+              {fact("Odds", r.odds)}
+              {fact("We could win", r.stake)}
+              {fact("Cost", r.cost)}
+            </div>
+            {r.note ? (
+              <span className="nr-muted" style={{ fontSize: 12 }}>
+                {r.note}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

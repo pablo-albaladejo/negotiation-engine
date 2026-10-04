@@ -72,6 +72,13 @@ function Legend({ showOurs }: { showOurs: boolean }) {
           <Key label="refused or dry-run">
             <rect x={9} y={2} width={8} height={8} fill="none" stroke="var(--us)" strokeWidth={2} />
           </Key>
+          <Key label="the ask and bid we paired (rings, joined), #n = row below">
+            <g>
+              <line x1={13} x2={13} y1={2} y2={10} stroke="var(--us)" strokeWidth={2} />
+              <circle cx={13} cy={2.5} r={2.2} fill="none" stroke="var(--us)" strokeWidth={1.5} />
+              <circle cx={13} cy={9.5} r={2.2} fill="none" stroke="var(--us)" strokeWidth={1.5} />
+            </g>
+          </Key>
           <Key label="tick with matches (count on top)">
             <line x1={13} x2={13} y1={0} y2={12} stroke="var(--us)" strokeDasharray="2 3" />
           </Key>
@@ -86,6 +93,9 @@ function BookChart({ s }: { s: BoardMarketSession }) {
   const traders = s.traders ?? [];
   const allMatches = s.our_matches ?? [];
   const matches = showOurs ? allMatches : [];
+  // The traders of our matches stand out; the rest of the book fades while our matches are shown.
+  const matched = new Set(matches.flatMap((m) => [m.sell, m.buy].filter((x): x is string => x !== null)));
+  const fade = (id: string) => (matched.size === 0 ? 1 : matched.has(id) ? 1 : 0.35);
   const quotes = [...traders.flatMap((t) => t.points.map((p) => p.quote)), ...matches.flatMap((m) => [m.ask, m.bid, m.price].filter((x): x is number => x !== null))];
   if (!quotes.length) return <span className="nr-muted">No book lines logged for this session (bench.jsonl).</span>;
   const W = 760;
@@ -145,16 +155,36 @@ function BookChart({ s }: { s: BoardMarketSession }) {
               {t.points.slice(1).map((p, i) => {
                 const prev = t.points[i]!;
                 const st = TEMPER_STYLE[p.temper ?? ""] ?? { opacity: 0.8 };
-                return <line key={i} x1={x(prev.tick)} y1={y(prev.quote)} x2={x(p.tick)} y2={y(p.quote)} stroke={color} strokeWidth={2} strokeOpacity={st.opacity} {...(st.dash ? { strokeDasharray: st.dash } : {})} />;
+                return <line key={i} x1={x(prev.tick)} y1={y(prev.quote)} x2={x(p.tick)} y2={y(p.quote)} stroke={color} strokeWidth={matched.has(t.id) ? 3 : 2} strokeOpacity={st.opacity * fade(t.id)} {...(st.dash ? { strokeDasharray: st.dash } : {})} />;
               })}
               {t.points.map((p, i) => (
-                <circle key={i} cx={x(p.tick)} cy={y(p.quote)} r={p.temper === "new" ? 4 : 2.5} fill={p.temper === "settled" ? "none" : color} stroke={color} opacity={(TEMPER_STYLE[p.temper ?? ""] ?? { opacity: 0.8 }).opacity}>
+                <circle key={i} cx={x(p.tick)} cy={y(p.quote)} r={p.temper === "new" ? 4 : 2.5} fill={p.temper === "settled" ? "none" : color} stroke={color} opacity={(TEMPER_STYLE[p.temper ?? ""] ?? { opacity: 0.8 }).opacity * fade(t.id)}>
                   <title>{`${t.id} · ${t.side} ${p.quote} · ${p.temper ?? "?"} · t${p.tick}`}</title>
                 </circle>
               ))}
             </g>
           );
         })}
+        {matches.map((m, i) =>
+          m.ask !== null && m.bid !== null ? (
+            <g key={`pair${i}`}>
+              <line x1={x(m.tick)} x2={x(m.tick)} y1={y(m.ask)} y2={y(m.bid)} stroke="var(--us)" strokeWidth={2} />
+              <circle cx={x(m.tick)} cy={y(m.ask)} r={6} fill="none" stroke="var(--us)" strokeWidth={2}>
+                <title>{`#${i + 1} ask we took: ${m.sell ?? "?"} at ${m.ask}`}</title>
+              </circle>
+              <circle cx={x(m.tick)} cy={y(m.bid)} r={6} fill="none" stroke="var(--us)" strokeWidth={2}>
+                <title>{`#${i + 1} bid we took: ${m.buy ?? "?"} at ${m.bid}`}</title>
+              </circle>
+            </g>
+          ) : null,
+        )}
+        {matches.map((m, i) =>
+          m.price !== null ? (
+            <text key={`n${i}`} x={x(m.tick) + 8} y={y(m.price) + 4} fontSize="11" fontWeight={700} fill="var(--us)">
+              {`#${i + 1}`}
+            </text>
+          ) : null,
+        )}
         {matches.map((m, i) =>
           m.price !== null ? (
             <rect key={`p${i}`} x={x(m.tick) - 4} y={y(m.price) - 4} width={8} height={8} fill={m.status === "sent" ? "var(--us)" : "none"} stroke="var(--us)" strokeWidth={2}>
@@ -243,17 +273,19 @@ export function MarketTest({ board }: { board: Board }) {
               <div style={{ overflowX: "auto" }}>
                 <DataTable
                   columns={[
+                    { key: "n", label: "#" },
                     { key: "tick", label: "Tick", numeric: true },
-                    { key: "pair", label: "Sell × buy" },
+                    { key: "pair", label: "Ask (seller) × bid (buyer)" },
                     { key: "price", label: "Price", numeric: true },
                     { key: "quotes", label: "Ask / bid" },
                     { key: "surplus", label: "Surplus", numeric: true },
                     { key: "source", label: "Source" },
                     { key: "status", label: "Status" },
                   ]}
-                  rows={(selected.our_matches ?? []).map((m) => ({
+                  rows={(selected.our_matches ?? []).map((m, i) => ({
+                    n: <strong style={{ color: "var(--us)" }}>{`#${i + 1}`}</strong>,
                     tick: m.tick,
-                    pair: `${m.sell ?? "?"} × ${m.buy ?? "?"}`,
+                    pair: `${m.sell ?? "?"} asks ${m.ask ?? "?"} × ${m.buy ?? "?"} bids ${m.bid ?? "?"}`,
                     price: m.price ?? "—",
                     quotes: `${m.ask ?? "?"} / ${m.bid ?? "?"}`,
                     surplus: m.surplus ?? "—",

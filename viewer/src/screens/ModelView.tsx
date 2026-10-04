@@ -6,7 +6,6 @@ import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
 import { Rivals } from "./Rivals.js";
-import { NewsSignals } from "./NewsSignals.js";
 import { PersonaStrategy } from "./DealerFitStrip.js";
 import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
@@ -398,13 +397,25 @@ export function Hints({ model }: { model: GameModel }) {
   const personas = [...new Set(all.map((h) => h.persona))].sort();
   const classes = [...new Set(all.map((h) => h.classification).filter((c): c is string => c !== null))].sort();
   const shown = groupHints(filterHints(all, f));
-  const counts = personas.map((p) => `${p} ${all.filter((h) => h.persona === p).length}`);
   return (
     <Card title={`Hints corpus (${all.length})`}>
       <div style={col}>
         <Muted>
-          Dealer text kept only as an egg hint, never a figure. Lines that differ only in numbers are grouped (×N). {counts.length ? counts.join(" · ") : ""}
+          What dealers said that might point to an easter egg. A line becomes a <strong>candidate</strong> when it names another dealer, points to someone, mentions a time, a secret word, a quoted phrase, an unreleased set or a card id not in the catalogue; the tags say which. Read it for the clue, never for a price. Lines that differ only in numbers count once (×N).
         </Muted>
+        <div role="group" aria-label="Dealers" style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+          {[{ id: "", label: `All ${all.length}` }, ...personas.map((p) => ({ id: p, label: `${p} ${all.filter((h) => h.persona === p).length}` }))].map((x) => (
+            <button
+              key={x.id || "all"}
+              type="button"
+              aria-pressed={f.persona === x.id}
+              onClick={() => setF({ ...f, persona: x.id })}
+              style={{ padding: "2px 10px", borderRadius: "var(--radius-pill)", border: `1px solid ${f.persona === x.id ? "var(--us)" : "var(--line)"}`, background: f.persona === x.id ? "color-mix(in srgb, var(--us) 15%, transparent)" : "transparent", color: "inherit", font: "inherit", fontSize: 13, cursor: "pointer" }}
+            >
+              {x.label}
+            </button>
+          ))}
+        </div>
         <div className="nr-filters" role="group" aria-label="Hint filters">
           <div className="nr-filter-field">
             <label className="nr-muted nr-filter-label" htmlFor={candId}>
@@ -413,7 +424,6 @@ export function Hints({ model }: { model: GameModel }) {
             <input id={candId} type="checkbox" checked={f.candidatesOnly} onChange={(e) => setF({ ...f, candidatesOnly: e.target.checked })} />
           </div>
           <SelectBox label="Classification" value={f.classification} onChange={(classification) => setF({ ...f, classification })} options={[{ value: "", label: "All" }, { value: "none", label: "unclassified" }, ...classes.map((c) => ({ value: c, label: c }))]} />
-          <SelectBox label="Persona" value={f.persona} onChange={(persona) => setF({ ...f, persona })} options={[{ value: "", label: "All" }, ...personas.map((p) => ({ value: p, label: p }))]} />
           <div className="nr-filter-field">
             <label className="nr-muted nr-filter-label" htmlFor={searchId}>
               Search
@@ -423,17 +433,22 @@ export function Hints({ model }: { model: GameModel }) {
         </div>
         {shown.length > 0 ? (
           <ul style={list} aria-label="Hints, latest first">
-            {shown.slice(0, 100).map((h) => (
-              <li key={h.key} style={{ ...row, flexWrap: "nowrap", borderTop: "1px solid var(--line)", paddingTop: "var(--space-1)" }}>
-                <strong style={{ flex: "none" }}>{h.persona}</strong>
-                <Muted>{`${h.count > 1 ? `×${h.count} · ` : ""}${h.lastTick !== null ? `t${h.lastTick}` : ""}`}</Muted>
-                {h.classification ? <Flag kind="decision">{h.classification}</Flag> : null}
-                <span title={[h.text, ...h.reasons].join("\n")} style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {h.text}
-                </span>
+            {shown.slice(0, 60).map((h) => (
+              <li key={h.key} style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: "1px solid var(--line)", padding: "var(--space-2) 0" }}>
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+                  <strong>{h.persona}</strong>
+                  <Muted>{`${h.lastTick !== null ? `tick ${h.lastTick}` : ""}${h.count > 1 ? ` · said ×${h.count}` : ""}`}</Muted>
+                  {h.classification ? <Flag kind="decision">{h.classification}</Flag> : null}
+                  {h.reasons.map((r) => (
+                    <span key={r} style={{ fontSize: 11, padding: "1px 6px", borderRadius: "var(--radius-pill)", border: "1px solid var(--us)", color: "var(--us)" }}>
+                      {r}
+                    </span>
+                  ))}
+                </div>
+                <span style={{ lineHeight: 1.45 }}>{h.text}</span>
               </li>
             ))}
-            {shown.length > 100 ? <Muted>{`…and ${shown.length - 100} more (narrow with the filters)`}</Muted> : null}
+            {shown.length > 60 ? <Muted>{`…and ${shown.length - 60} more: pick a dealer or search to narrow`}</Muted> : null}
           </ul>
         ) : (
           <Muted>{all.length ? "Nothing matches these filters." : "No hints recorded yet (hints.jsonl not there or empty)."}</Muted>
@@ -920,7 +935,7 @@ export function EggsAndFlags({ model, board }: { model: GameModel; board: Board 
   );
   const nowTick = board.clock?.tick ?? null;
   return (
-    <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(0, 2fr)")}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       {board.eggs ? <Eggs board={board} title={`Eggs (prestige, not scored) · ${board.eggs.ours.length} ours`} /> : <Card title="Eggs (prestige, not scored)">
         <div style={col}>
           <strong>Ours</strong>
@@ -971,14 +986,20 @@ export function EggsAndFlags({ model, board }: { model: GameModel; board: Board 
               />
             </div>
           ) : null}
-          <strong>Candidates (verifiable contradiction between text and offer structure)</strong>
+          <strong>Candidates · the dealer's text contradicts its own offer</strong>
           {flags.candidates.length ? (
             <ul style={list}>
-              {flags.candidates.map((c) => (
-                <li key={c.conversation}>
-                  {c.conversation}: {textOf(c.candidate)}
-                </li>
-              ))}
+              {flags.candidates.map((c) => {
+                const k = (c.candidate && typeof c.candidate === "object" ? c.candidate : {}) as Record<string, unknown>;
+                const thread = c.conversation.replace(/^dealer:/, "thread #");
+                return (
+                  <li key={c.conversation} style={{ borderTop: "1px solid var(--line)", paddingTop: "var(--space-1)" }}>
+                    <strong>{thread}</strong>{" "}
+                    {typeof k.reason === "string" ? k.reason : textOf(c.candidate)}
+                    {k.verifiable === true ? <Muted>{" · verifiable"}</Muted> : null}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <Muted>none</Muted>
@@ -1008,7 +1029,6 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Timeline model={model} />
       <Coordinator model={model} />
       <Goals model={model} board={board} />
-      <NewsSignals model={model} />
       <Card title={`Conversations in our model (${active.length} active, ${convs.length - active.length} done)`}>
         {convs.length > 0 ? <ConversationsTable convs={convs} onOpen={onOpen} /> : <Muted>No conversations.</Muted>}
       </Card>

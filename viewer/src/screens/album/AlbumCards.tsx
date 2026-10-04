@@ -14,6 +14,18 @@ const FALLBACK = "#8A6F9E";
 const NOT_LOGGED = "Not logged yet.";
 const fmtV = (v: number) => (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
 
+/** A labelled figure under a tile: small caps label over the number. */
+function Stat({ label, value, ours = false }: { label: string; value: string; ours?: boolean }) {
+  return (
+    <span style={{ display: "flex", flexDirection: "column", alignItems: ours ? "flex-end" : "flex-start", lineHeight: 1.15 }}>
+      <span className="nr-muted" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 0.4 }}>
+        {label}
+      </span>
+      <strong style={{ fontSize: 14, color: ours ? "var(--us)" : undefined }}>{value}</strong>
+    </span>
+  );
+}
+
 /** Same ref → same skyline: a few buildings whose heights come from the ref's characters. */
 
 function Skyline({ seed, dark }: { seed: string; dark: string }) {
@@ -113,8 +125,8 @@ function Tile({ c, color, set, v }: { c: BoardAlbumCard; color: string; set: str
         <span>{c.minted !== null && c.print_run ? `${c.minted}/${c.print_run}` : ""}</span>
         <span>{c.book !== null ? `book ${c.book}` : ""}</span>
       </span>
-      <span
-        style={{ fontSize: 11, display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0 4px", fontVariantNumeric: "tabular-nums", whiteSpace: "pre-line" }}
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 6px", fontVariantNumeric: "tabular-nums", whiteSpace: "pre-line" }}
         title={
           v
             ? [
@@ -128,11 +140,12 @@ function Tile({ c, color, set, v }: { c: BoardAlbumCard; color: string; set: str
             : "Our valuation loads with the model (GameState.valuation)."
         }
       >
-        <span className="nr-muted">{`API ${c.value !== null ? fmtV(c.value) : "?"}`}</span>
-        <span style={{ color: "var(--us)", fontWeight: 700 }}>
-          {v ? (have ? `lose ${fmtV(v.loseCopy ?? 0)} · +1 ${fmtV(v.nextCopy)}` : `${v.baseSource === "estimated" ? "~" : ""}+1 ${fmtV(v.nextCopy)}`) : "ours ?"}
-        </span>
-      </span>
+        <Stat label="API" value={c.value !== null ? String(fmtV(c.value)) : "?"} />
+        <Stat label={have ? "Ours (keep)" : "Ours"} value={v ? `${v.baseSource === "estimated" ? "~" : ""}${fmtV(have ? (v.loseCopy ?? 0) : v.nextCopy)}` : "?"} ours />
+        {v && have ? (
+          <span className="nr-muted" style={{ gridColumn: "1 / -1", fontSize: 11 }}>{`another copy adds ${fmtV(v.nextCopy)}`}</span>
+        ) : null}
+      </div>
     </li>
   );
 }
