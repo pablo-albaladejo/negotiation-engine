@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { BazaarError, type BazaarClient } from "../shared/client.js";
 import type { Catalog } from "../shared/schemas.js";
 import { assetsInOffers, assetsInThreads } from "../shared/asset-locks.js";
+import { loadCounterpartyRoom } from "../markets/room.js";
 import {
   buildValueModel,
   countHoldings,
@@ -86,6 +87,15 @@ export class TradesAgent {
   /** Cards whose open El Rastro bids belong to another route (the open epic lane of `src/markets/rival-buy.ts`). */
   foreignBidRefs = new Set<string>();
   private readonly log: (line: string) => void;
+
+  /** Payday score room per counterparty (score-audit of every day); unreadable → no limit known. */
+  private counterpartyRoom(): Map<string, number> {
+    try {
+      return loadCounterpartyRoom(process.cwd());
+    } catch {
+      return new Map();
+    }
+  }
 
   constructor(
     private readonly api: TradesApi,
@@ -177,6 +187,7 @@ export class TradesAgent {
       listBackoff: new Map(this.listBackoff),
       venueFees: new Map(this.venueFees),
       ...(this.foreignBidRefs.size ? { foreignBidRefs: new Set(this.foreignBidRefs) } : {}),
+      room: this.counterpartyRoom(),
     };
   }
 

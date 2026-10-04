@@ -2,6 +2,7 @@ import { z } from "zod";
 import { freeCounts, takesLastFreeCopy } from "../shared/last-copy.js";
 import type { Asset, Catalog } from "../shared/schemas.js";
 import { isKeepsake } from "../shared/asset-locks.js";
+import { MIN_ROOM, roomOf } from "../markets/room.js";
 
 /**
  * Trades with other teams in El Rastro: valuation at OUR private values and pure,
@@ -527,6 +528,8 @@ export interface TradeState {
   venueFees?: Map<string, FeeModel>;
   /** Cards whose open El Rastro bids of ours belong to another route (open epic lane): left alone, like directed ones. */
   foreignBidRefs?: Set<string>;
+  /** Payday score room left per counterparty team (`src/markets/room.ts`); a team missing from it has the full cap. */
+  room?: ReadonlyMap<string, number>;
 }
 
 /** An open El Rastro bid of ours for a card another route owns (`foreignBidRefs`): never cancelled or repriced here. */
@@ -674,6 +677,13 @@ export function evaluateOffer(offer: TradeOffer, source: Evaluation["source"], s
   if (getCards.length === 0 && giveCards.length === 0) return { ...base, ok: false, reason: "no-cards" };
   if (want.cash > state.cash) return { ...base, ok: false, reason: "insufficient-cash" };
   if (valueCreated < required) return { ...base, ok: false, reason: "below-margin" };
+  // Payday caps the points a team trade scores per counterparty, cumulative across days: no room, no points (a loss
+  // still counts in full), and the gain counted for ranking is at most the room left.
+  if (offer.maker && /^t\d+$/.test(offer.maker)) {
+    const room = roomOf(state.room, offer.maker);
+    if (room < MIN_ROOM) return { ...base, ok: false, reason: "no-room" };
+    return { ...base, valueCreated: Math.min(valueCreated, room), ok: true, reason: "value" };
+  }
   return { ...base, ok: true, reason: "value" };
 }
 
