@@ -49,6 +49,17 @@ export interface Strategy {
   since: string;
   evidence: string;
   conflicts: string[];
+  /**
+   * Proposal fields (Pablo, 4 Oct). `figures_for_humans` is free text for the person deciding: no code reads it and it
+   * is never a price; the figure of any offer still comes from the route's code.
+   */
+  figures_for_humans?: string;
+  pros?: string[];
+  cons?: string[];
+  recommendation?: string;
+  /** Who gives the OK: the coordinator for TRADER proposals (Pablo's delegation), Pablo for the rest. */
+  ok_by?: "pablo" | "coordinator";
+  approved_at?: string | null;
 }
 
 export interface StrategiesFile {

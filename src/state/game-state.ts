@@ -12,6 +12,7 @@ import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { buildValuation, type ValuationState } from "./valuation.js";
 import { buildWorkshop, type WorkshopState } from "../workshop/workshop.js";
 import { introDemand } from "../intros/intros.js";
+import { readGoalsState, type GoalsState } from "../goals/read.js";
 import { spareTargets } from "../dealers/planning/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
@@ -114,6 +115,11 @@ export interface GameState {
    * figure. No decision reads it yet.
    */
   news: NewsSignals;
+  /**
+   * Team goals and the strategy registry (results/state/goals.json and strategies.json, written by the goals session
+   * and `pnpm bazaar:goals`). Shown only: no route reads it to decide, and a proposal's figures are text for humans.
+   */
+  goals: GoalsState;
   env: {
     schedule: { nowHours?: number; next: { atHours: number; action: string; note?: string }[] };
     dealers: { id: string; name?: string; status?: string; level?: number }[];
@@ -480,6 +486,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     world: { eggs: world.eggs },
     eggPlan: eggPlanRows({ messages: recordedOurPersonaMessages(dayDir, me?.id ?? undefined), ourEggs: world.ours.eggs, tick: clock.tick }),
     news: readNewsSignals(dayDir, clock.tick),
+    goals: readGoalsState(),
     env: {
       schedule: scheduleSummary(schedule),
       dealers: (dealers?.dealers ?? []).map((d) => ({ id: d.id, ...(d.name ? { name: d.name } : {}), ...(d.status ? { status: d.status } : {}), ...(typeof d.level === "number" ? { level: d.level } : {}) })),
