@@ -7,6 +7,7 @@ Reglas: solo lectura (GET) salvo que la ficha del agente diga otra cosa; las cla
 | Fichero | Agente | Qué es |
 |---------|--------|--------|
 | [duels-table.mjs](duels-table.mjs) | [duels](../routes/duels.md) | Tabla en vivo (solo GET) de una sesión de duelos: trato, result y Δduel_points por duelo cada 15 s (`node agents/tools/duels-table.mjs 4`) |
+| [duels-sim.ts](duels-sim.ts) | [duels](../routes/duels.md) | Simulación de latencia de duelos sin la API: servidor falso con ticks reales, 4 duelos concurrentes cuyos rivales repiten ofertas reales, el sub-bucle `--duels-fast` de play y una carga que imita al resto de play en el mismo cubo; mide cuánto tardamos en ver y en contestar cada oferta del rival (`pnpm exec tsx agents/tools/duels-sim.ts --tick-seconds 15 --waves 2 --load 50`; salida en `results/duels/sim-*.json`) |
 | [audit-tick-eval.py](audit-tick-eval.py) | [audit](../analysis/audit.md) | Una línea por tick de `play.log` con los Δ (score, escalera, neg, duelos, caja) y los FLAG |
 | [audit-alerts.sh](audit-alerts.sh) | [audit](../analysis/audit.md) | Alertas: caídas de play, banco/Pícaros, desajustes de score-audit, bench, nuestro venue y nuestros tratos |
 | [objetivos-design.md](objetivos-design.md) | [market-analyst](../analysis/market-analyst.md) → [goals](../ops/goals.md) | Diseño de partida de los objetivos del equipo |

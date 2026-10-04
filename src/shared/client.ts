@@ -37,6 +37,8 @@ export class BazaarError extends Error {
 export class TokenBucket {
   private tokens: number;
   private last: number;
+  /** Priority takers waiting for a token: while any wait, normal takers yield the next one to them. */
+  private priorityWaiting = 0;
   constructor(
     private readonly ratePerSec: number,
     private readonly burst: number,
@@ -47,16 +49,25 @@ export class TokenBucket {
     this.last = now();
   }
 
-  async take(): Promise<void> {
-    for (;;) {
-      const t = this.now();
-      this.tokens = Math.min(this.burst, this.tokens + ((t - this.last) / 1000) * this.ratePerSec);
-      this.last = t;
-      if (this.tokens >= 1) {
-        this.tokens -= 1;
-        return;
+  /**
+   * Waits for a token. `priority` (duels: a 12-tick duel cannot wait behind a tick's worth of other routes) jumps the
+   * queue: the total rate is unchanged, normal takers just let it have the next token.
+   */
+  async take(priority = false): Promise<void> {
+    if (priority) this.priorityWaiting += 1;
+    try {
+      for (;;) {
+        const t = this.now();
+        this.tokens = Math.min(this.burst, this.tokens + ((t - this.last) / 1000) * this.ratePerSec);
+        this.last = t;
+        if (this.tokens >= 1 && (priority || this.priorityWaiting === 0)) {
+          this.tokens -= 1;
+          return;
+        }
+        await this.sleep(Math.max(priority ? 1 : 50, Math.ceil(((1 - Math.min(1, this.tokens)) / this.ratePerSec) * 1000)));
       }
-      await this.sleep(Math.ceil(((1 - this.tokens) / this.ratePerSec) * 1000));
+    } finally {
+      if (priority) this.priorityWaiting -= 1;
     }
   }
 }
@@ -74,6 +85,10 @@ export interface BazaarClientOptions {
   /** On `wait_for_tick`, sleep until the next tick and retry (otherwise the error is thrown). */
   waitOnTick?: boolean;
   timeoutMs?: number;
+  /** Shared bucket (see `prioritized`); by default the client gets its own. */
+  bucket?: TokenBucket;
+  /** Takes tokens ahead of normal requests on the shared bucket. */
+  priority?: boolean;
 }
 
 export type Topic =
@@ -98,6 +113,8 @@ export class BazaarClient {
   private readonly fetchFn: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly bucket: TokenBucket;
+  private readonly priority: boolean;
+  private readonly options: BazaarClientOptions;
   private readonly retries: number;
   private readonly waitOnTick: boolean;
   private readonly timeoutMs: number;
@@ -109,7 +126,9 @@ export class BazaarClient {
     this.#key = options.key;
     this.fetchFn = options.fetch ?? fetch;
     this.sleep = options.sleep ?? realSleep;
-    this.bucket = new TokenBucket(options.ratePerSec ?? 4, options.burst ?? 2, options.now ?? Date.now, this.sleep);
+    this.bucket = options.bucket ?? new TokenBucket(options.ratePerSec ?? 4, options.burst ?? 2, options.now ?? Date.now, this.sleep);
+    this.priority = options.priority ?? false;
+    this.options = options;
     this.retries = options.retries ?? 3;
     this.waitOnTick = options.waitOnTick ?? false;
     this.timeoutMs = options.timeoutMs ?? 15_000;
@@ -122,10 +141,15 @@ export class BazaarClient {
     return parsed.data;
   }
 
+  /** Same key and the same rate-limit bucket, but its requests go first (the duel route: one step per 15 s tick). */
+  prioritized(): BazaarClient {
+    return new BazaarClient({ ...this.options, bucket: this.bucket, priority: true });
+  }
+
   async raw(method: string, path: string, body?: unknown): Promise<unknown> {
     let attempt = 0;
     for (;;) {
-      await this.bucket.take();
+      await this.bucket.take(this.priority);
       let err: BazaarError;
       try {
         return await this.once(method, path, body);

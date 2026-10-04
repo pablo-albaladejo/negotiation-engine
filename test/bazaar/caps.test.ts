@@ -5,6 +5,7 @@ import { BazaarAgent, type BazaarApi } from "../../src/dealers/agent.js";
 import { DealerInfoSchema, ThreadSchema, type Thread } from "../../src/shared/schemas.js";
 import { parseOnly } from "../../src/dealers/planning/plan.js";
 import type { TraceRecord } from "../../src/shared/trace.js";
+import { TokenBucket } from "../../src/shared/client.js";
 
 const MENU = DealerInfoSchema.parse({
   id: "abuela",
@@ -156,5 +157,28 @@ describe("cap by her expected limit (per-persona fit)", () => {
         else expect(r.price).toBeGreaterThanOrEqual(tight);
       }),
     );
+  });
+});
+
+describe("rate-limit bucket priority (duels)", () => {
+  // Real time at a high rate (20–40/s) so the tests stay fast.
+  const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+  it("a priority request takes the next token ahead of waiting normal ones", async () => {
+    const bucket = new TokenBucket(20, 1, Date.now, sleep);
+    await bucket.take(); // burst used
+    const order: string[] = [];
+    const normal = bucket.take().then(() => order.push("normal"));
+    const prio = bucket.take(true).then(() => order.push("priority"));
+    await Promise.all([normal, prio]);
+    expect(order[0]).toBe("priority");
+  });
+
+  it("priority never raises the total rate above ratePerSec", async () => {
+    const bucket = new TokenBucket(40, 2, Date.now, sleep);
+    const t0 = Date.now();
+    await Promise.all(Array.from({ length: 20 }, (_, i) => bucket.take(i % 3 === 0)));
+    // 20 tokens at 40/s with a burst of 2: at least (20 − 2) / 40 s.
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(((20 - 2) / 40) * 1000 - 5);
   });
 });

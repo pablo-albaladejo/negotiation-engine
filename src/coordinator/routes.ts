@@ -55,8 +55,12 @@ export class DuelsRoute {
   /** `--duels-fast`: duels run on their own per-tick loop (`runFast`), so the main loop proposes nothing for them. */
   private fast = false;
 
-  constructor(private readonly client: BazaarClient, dryRun: boolean, stateFile?: string) {
-    this.agent = new DuelsAgent(duelsApi(client), { dryRun, ...(stateFile ? { stateFile } : {}) });
+  private readonly fastClient: BazaarClient;
+
+  constructor(client: BazaarClient, dryRun: boolean, stateFile?: string) {
+    this.fastClient = client.prioritized();
+    // Duel requests jump the shared rate-limit queue (`prioritized`): Duels III 11594 lost ~64 P waiting a tick.
+    this.agent = new DuelsAgent(duelsApi(this.fastClient), { dryRun, ...(stateFile ? { stateFile } : {}) });
   }
 
   async propose(): Promise<RouteProposal> {
@@ -109,7 +113,7 @@ export class DuelsRoute {
     for (;;) {
       let waitMs = 1_000;
       try {
-        const clock = await this.client.clock();
+        const clock = await this.fastClient.clock();
         const gate = gated ? clockGate(clock) : undefined;
         if (gate && !gate.run) {
           waitMs = gate.waitMs;
