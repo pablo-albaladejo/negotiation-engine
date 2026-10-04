@@ -21,6 +21,8 @@ export interface Target {
   herList?: number | undefined;
   /** Buy of the card that completes a page: limit from cash above the floor, not from the hourly/run spend caps. */
   pageCompleting?: boolean;
+  /** Approved album buy (`ALBUM_BUYS`): limit from cash above its own floor, not from the hourly/run spend caps. */
+  album?: boolean;
 }
 
 const PAGE_RARITIES = new Set(["common", "uncommon", "rare"]);

@@ -138,6 +138,15 @@ export interface AgentOptions {
 }
 
 /** Card a buy target asks for by name (`{buy: {card}}`), if any. */
+/**
+ * Album buys approved by Pablo (4 Oct, via the coordinator): CHA-09 and CHA-10 from Picaros for the Chamberi page, at
+ * most 70 each and never above our value, keeping cash >= 50. Only while we hold no copy and have no open bid for the
+ * card (`ourBidRefs`), at most one buy per card. Outside the hourly/run spend caps (her rare list, 63, is above 60/h).
+ */
+export const ALBUM_BUYS: Readonly<Record<string, { cards: readonly string[]; max: number; cashFloor: number }>> = {
+  picaros: { cards: ["CHA-09", "CHA-10"], max: 70, cashFloor: 50 },
+};
+
 const buyCardOf = (t: Target): string | undefined => (t.side === "buy" ? (t.topic as { buy?: { card?: unknown } }).buy?.card : undefined) as string | undefined;
 
 interface Active {
@@ -205,6 +214,8 @@ export class BazaarAgent {
   private threadsOpened = 0;
   /** Threads left alone (logged once). */
   private readonly foreignLogged = new Set<number>();
+  /** Album cards (`ALBUM_BUYS`) bought in this run: never a second time. */
+  private readonly albumBought = new Set<string>();
   /** Threads this run opened (always ours). */
   private readonly openedHere = new Set<number>();
   private dealsDone = 0;
@@ -378,6 +389,25 @@ export class BazaarAgent {
    * Asset ids never offered to a dealer: received from a team today, and every copy of a card we offer to teams now or
    * that has team demand (duplicates go to teams first). If our offers cannot be read, every card counts (fails closed).
    */
+  /** The approved album buy with this dealer (`ALBUM_BUYS`), if one is due: limit min(max, value, cash − its floor). */
+  private albumTarget(ranked: readonly Candidate[], me: Me, bids: ReadonlySet<string> | undefined, ok: (c: Candidate) => boolean): Candidate | undefined {
+    const rule = ALBUM_BUYS[this.o.dealer.id];
+    if (!rule || !bids) return undefined;
+    for (const c of ranked) {
+      const card = buyCardOf(c);
+      if (c.kind !== "buy-card" || !card || !rule.cards.includes(card)) continue;
+      if (this.albumBought.has(card) || bids.has(card) || me.assets.some((a) => a.ref === card) || !ok(c)) continue;
+      const reservation = Math.min(rule.max, Math.floor(c.value ?? 0), Math.floor(me.cash - rule.cashFloor));
+      if (reservation <= (c.herList ?? c.herOpening)) {
+        this.log(`album ${card} via ${this.o.dealer.id}: limit ${reservation} <= her list ${c.herList ?? c.herOpening}, not opened`);
+        continue;
+      }
+      this.log(`album ${card} via ${this.o.dealer.id}: limit ${reservation} (max ${rule.max}, value ${Math.round((c.value ?? 0) * 10) / 10}, cash ${me.cash} - floor ${rule.cashFloor}), outside the hourly cap`);
+      return { ...c, reservation, room: true, album: true };
+    }
+    return undefined;
+  }
+
   /** Card refs our open bids want; undefined when the offers read fails (then no card buy: fail closed). */
   private async ourBids(me: Me): Promise<ReadonlySet<string> | undefined> {
     const offers = await this.api.myOffers().catch(() => undefined);
@@ -639,6 +669,8 @@ export class BazaarAgent {
       const hopeless = cands.filter((c) => this.hopeless(c));
       for (const c of hopeless.filter((h) => h.room)) this.log(`skip ${c.label}: hopeless (${this.hopeless(c)})`);
       const viable = cands.filter((c) => !hopeless.includes(c));
+      const album = this.albumTarget(ranked, me, bids, (c) => free(c) && !elsewhere(c) && !menuBlocks(menu, catalog, c) && !this.hopeless(c));
+      if (album) return album;
       const picked = selectCandidates(viable.filter(free), { maxThreads: 1, maxSpend: budget, pageSpend: this.pageInput(me).pageBudget, only: !!this.o.only })[0]?.candidate;
       const chase = this.o.only ? undefined : this.chasePersona(me);
       if (chase && picked) this.log(`unlock-chase ${chase} via ${this.o.dealer.id}: regular target ${picked.label} has room and also counts (no tolerance used)`);
@@ -688,7 +720,8 @@ export class BazaarAgent {
     const chaseOver = active.chase !== undefined && !chasing && target.value !== undefined;
     const ownRes = chaseOver ? (target.side === "buy" ? Math.min(target.reservation, Math.floor(target.value!)) : Math.max(target.reservation, Math.ceil(target.value!))) : target.reservation;
     const page = (target as { page?: PageImpact }).page;
-    const spendable = target.pageCompleting ? this.team.pageLeft(me.cash) : this.budgetLeft(me.cash, !!page && page.after > page.have);
+    const albumRule = target.album ? ALBUM_BUYS[this.o.dealer.id] : undefined;
+    const spendable = albumRule ? me.cash - albumRule.cashFloor : target.pageCompleting ? this.team.pageLeft(me.cash) : this.budgetLeft(me.cash, !!page && page.after > page.have);
     const reservation = target.side === "buy" ? Math.max(0, Math.min(ownRes, me.cash, Math.floor(spendable))) : ownRes;
     const acceptValue = chasing && target.value !== undefined ? target.value + (target.side === "buy" ? UNLOCK_CHASE_TOLERANCE : -UNLOCK_CHASE_TOLERANCE) : target.value;
     const herAt = active.patience.herAtCounters();
@@ -871,6 +904,10 @@ export class BazaarAgent {
     let settled = settledPrice(thread, target, this.o.dealer) ?? acceptedPrice;
     if (thread.status === "deal") {
       this.dealsDone += 1;
+      if (target.album) {
+        const card = buyCardOf(target);
+        if (card) this.albumBought.add(card);
+      }
       this.dealHours.push(this.hoursNow);
       const pack = (target.topic as { buy?: { pack?: string } }).buy?.pack;
       if (pack) this.packHours.set(pack, [...(this.packHours.get(pack) ?? []), this.hoursNow]);
