@@ -159,7 +159,8 @@ function ConversationList({ board, rows, selectedId, onSelect, ladder }: { board
         { key: "value", label: "Our value", numeric: true },
         ...(duels ? [{ key: "result", label: "Game result (captured)", numeric: true }] : []),
         { key: "surplus", label: duels ? "Price vs limit" : "Margin vs our value", numeric: true },
-        { key: "feeds", label: "Feeds" },
+        // Duels only feed duel points: the column says nothing there.
+        ...(duels ? [] : [{ key: "feeds", label: "Feeds" }]),
         { key: "score", label: "Points (Δ on its tick)", numeric: true },
         { key: "ticks", label: "Ticks" },
       ]}

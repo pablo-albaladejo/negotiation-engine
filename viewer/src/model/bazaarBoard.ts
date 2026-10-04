@@ -340,7 +340,7 @@ export function pointsLabel(r: BoardRow): { value: string; tone?: "better" | "wo
   const text = shown.map(([k, label]) => `${label} ${sign(p[k]!)}`).join(" · ");
   const net = p.score ?? Object.entries(p).reduce((s, [k, v]) => (k === "score" ? s : s + v), 0);
   const tone = net > 0 ? "better" : net < 0 ? "worse" : undefined;
-  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} ${r.duel ? "duels" : "deals"})` : ""}${r.d_lagged ? " · ladder lagged (not exact)" : ""}${r.d_backfill ? " · backfilled" : ""}`;
+  const value = `${text}${(r.d_shared ?? 0) > 1 ? ` (tick total, ${r.d_shared} ${r.duel ? "duels" : "deals"})` : ""}${r.d_lagged ? " · ladder lagged (not exact)" : ""}`;
   return tone ? { value, tone } : { value };
 }
 
