@@ -37,7 +37,7 @@ if (existsSync(TRACK)) for (const line of readFileSync(TRACK, "utf8").split("\n"
 function sign(v) { const n = Number(v); return `${n >= 0 ? "+" : ""}${n.toFixed(2)}`; }
 
 const pad = (s, n, right = false) => { s = String(s); return s.length >= n ? s.slice(0, n) : right ? s.padStart(n) : s.padEnd(n); };
-const COLS = [["Duel", 4], ["Rol", 4], ["Rival", 11], ["Carta", 22], ["Estado", 7], ["Rnd", 3], ["Trato (P/día)", 16], ["Result", 6], ["Δpts", 6]];
+const COLS = [["Duel", 5], ["Rol", 4], ["Rival", 11], ["Carta", 22], ["Estado", 7], ["Rnd", 3], ["Trato (P/día)", 16], ["Result", 6], ["Δpts", 6]];
 const sep = "+" + COLS.map(([, n]) => "-".repeat(n + 2)).join("+") + "+";
 const row = (cells) => "| " + cells.map((c, k) => pad(c, COLS[k][1], k === 5 || k === 7 || k === 8)).join(" | ") + " |";
 
