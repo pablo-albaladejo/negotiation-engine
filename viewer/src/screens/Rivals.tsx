@@ -4,6 +4,18 @@ import type { Board } from "../model/bazaarBoard.js";
 import { teamLabel } from "../model/cockpit.js";
 import type { GameModel, ModelRivalTeam, ModelRivals } from "../model/gameModel.js";
 import { Sparkline } from "../ui/sparkline.js";
+import { TeamName } from "./teams/TeamLink.js";
+
+const TeamList = ({ board, teams }: { board: Board; teams: string[] }) => (
+  <span>
+    {teams.map((t, i) => (
+      <span key={t}>
+        {i ? ", " : ""}
+        <TeamName board={board} team={t} />
+      </span>
+    ))}
+  </span>
+);
 
 /**
  * «Other teams»: what each team holds and wants, estimated from public structure only (`GameState.rivals`).
@@ -61,7 +73,7 @@ function ourRow(board: Board, r: ModelRivals) {
   };
 }
 
-function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
+export function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
   return (
     <div style={col}>
       <span style={muted}>
@@ -98,10 +110,13 @@ function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
   );
 }
 
-export function Rivals({ model, board }: { model: GameModel; board: Board }) {
+export function Rivals({ model, board, picked: pickedProp, onPick }: { model: GameModel; board: Board; picked?: string; onPick?: (team: string) => void }) {
   const r = model.state?.rivals;
   const pickId = useId();
-  const [picked, setPicked] = useState("");
+  const [pickedOwn, setPickedOwn] = useState("");
+  // Controlled by the «Teams» tab when it passes `picked`/`onPick`; on its own otherwise.
+  const picked = pickedProp ?? pickedOwn;
+  const setPicked = onPick ?? setPickedOwn;
   if (!r) {
     return (
       <Card title="Other teams">
@@ -135,8 +150,8 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
             rows={opps.map((o) => ({
               ref: o.ref,
               held: o.held,
-              closes: o.closesFor.map((t) => teamLabel(board, t)).join(", ") || "—",
-              wanted: o.wantedBy.map((t) => teamLabel(board, t)).join(", ") || "—",
+              closes: o.closesFor.length ? <TeamList board={board} teams={o.closesFor} /> : "—",
+              wanted: o.wantedBy.length ? <TeamList board={board} teams={o.wantedBy} /> : "—",
             }))}
           />
         ) : (
@@ -159,7 +174,7 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
             if (t === US) return ourRow(board, r);
             const p = closest(t);
             return {
-              team: teamLabel(board, t.team),
+              team: <TeamName board={board} team={t.team} />,
               rank: t.board?.rank ?? "—",
               trend: <Sparkline values={series(t, "score")} label={`${t.team} score`} />,
               album: t.board ? `${t.board.albumFilled ?? "?"}/${t.board.albumSlots ?? "?"}` : "—",
@@ -189,7 +204,7 @@ export function Rivals({ model, board }: { model: GameModel; board: Board }) {
             ))}
           </select>
         </div>
-        {detail ? <TeamDetail board={board} t={detail} /> : null}
+        {detail && !onPick ? <TeamDetail board={board} t={detail} /> : null}
       </div>
     </Card>
   );

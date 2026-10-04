@@ -5,10 +5,10 @@ import { gridCols } from "../ui/grid.js";
 import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
-import { Rivals } from "./Rivals.js";
 import { PersonaStrategy } from "./DealerFitStrip.js";
 import { herWalkText, sideLabel } from "../model/personaModel.js";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
+import { TeamName } from "./teams/TeamLink.js";
 import {
   arr,
   assetLabel,
@@ -356,7 +356,7 @@ function Goals({ model, board }: { model: GameModel; board: Board }) {
                 <ul style={list}>
                   {lb.top.map((t) => (
                     <li key={t.team}>
-                      #{t.rank ?? "?"} {t.team === board.team ? <strong style={{ color: "var(--us)" }}>{teamLabel(board, t.team)}</strong> : (t.name ?? t.team)} {fmt(t.score, 2)}
+                      #{t.rank ?? "?"} {t.team ? <TeamName board={board} team={t.team} /> : (t.name ?? "?")} {fmt(t.score, 2)}
                     </li>
                   ))}
                 </ul>
@@ -1034,7 +1034,6 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       </Card>
       <Markets model={model} onOpen={onOpen} />
       <Venues model={model} board={board} />
-      <Rivals model={model} board={board} />
       <Packs model={model} />
     </div>
   );

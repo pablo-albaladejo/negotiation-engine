@@ -1,6 +1,7 @@
 import { Card, DataTable, TableLink } from "@negotiation-ring/design-system";
 import type { ReactNode } from "react";
 import { teamLabel, type Board, type BoardEggCard, type BoardEggFlow, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
+import { TeamName } from "../teams/TeamLink.js";
 
 /** ASSUMPTION (same as src/state/world.ts): 15 eggs per persona until the API gives a figure. */
 const EGGS_PER_PERSONA = 15;
@@ -267,7 +268,7 @@ export function Eggs({ board, title, onOpenThread }: { board: Board; title?: str
                   {p.found.map((f, i) => (
                     <span key={`${f.team}-${f.tick}`} style={f.team === board.team ? { color: "var(--us)", fontWeight: 800 } : undefined}>
                       {i ? " · " : ""}
-                      {teamLabel(board, f.team)} t{f.tick}
+                      <TeamName board={board} team={f.team} /> t{f.tick}
                     </span>
                   ))}
                 </span>

@@ -1,7 +1,6 @@
 import { Card, ChatMessage, DataTable, Flag, Legend, OfferChart, Tabs } from "@negotiation-ring/design-system";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { gridCols } from "../ui/grid.js";
-import { PageTitle } from "../ui/page-title.js";
 import { Workshop } from "./Workshop.js";
 import { TeamDesk } from "./TeamDesk.js";
 import { VenueBooks } from "./venues/VenueBooks.js";
@@ -9,6 +8,8 @@ import { Forex } from "./forex/Forex.js";
 import { MarketTest } from "./market-test/MarketTest.js";
 import { CardsView } from "./album/CardsView.js";
 import { NewsView } from "./news/NewsView.js";
+import { TeamNav, TeamName } from "./teams/TeamLink.js";
+import { TeamsView } from "./teams/TeamsView.js";
 import { EggsView } from "./profile/EggsView.js";
 import { PersonasView } from "./profile/PersonasView.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
@@ -798,20 +799,21 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news";
+type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas" | "news" | "teams";
 
 /** Tab label (what it is) and hint (what it answers), shown under the tabs for the selected view. */
 const VIEWS: { id: View; label: string; hint: string }[] = [
-  { id: "now", label: "Now · this tick", hint: "What the coordinator picked this tick, live conversations, our open offers and what changed since the last tick." },
-  { id: "cockpit", label: "Cockpit · score and history", hint: "Straight from the Bazaar API: scoreboard, upcoming events, right now, team desk, what moved the score, agents alive, and the full history of trades and duels." },
-  { id: "cards", label: "Cards · our album", hint: "Our album page by page (held or missing, copies in circulation, API value vs ours, shinies), then the price sheet of every card: market, our value, next copy and edges." },
-  { id: "model", label: "Model · our reasoning", hint: "Our internal view: the three score layers, timeline, coordinator, goals, markets, venues, rivals and packs." },
-  { id: "venues", label: "Venues · every open book", hint: "Every open venue's asks and bids side by side, each offer marked against our hand and values. Nothing here sends." },
-  { id: "forex", label: "Forex · buy here, sell there", hint: "A → B → C chains: buy a card at one place, hold it, sell it at another, net of fees." },
-  { id: "market-test", label: "Market test · auto vs board", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
-  { id: "eggs", label: "Eggs · finds, gifts, hints", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
-  { id: "news", label: "News · Radio Rastro", hint: "Radio Rastro, the Bulletin and the notice board: which dealer, set or card is being talked about, with a summary. Unverified, may be rumour, never a figure." },
-  { id: "personas", label: "Personas · dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },
+  { id: "now", label: "⏱️ Now", hint: "What the coordinator picked this tick, live conversations, our open offers and what changed since the last tick." },
+  { id: "cockpit", label: "🎛️ Cockpit", hint: "Straight from the Bazaar API: scoreboard, upcoming events, right now, team desk, what moved the score, agents alive, and the full history of trades and duels." },
+  { id: "cards", label: "🃏 Cards", hint: "Our album page by page (held or missing, copies in circulation, API value vs ours, shinies), then the price sheet of every card: market, our value, next copy and edges." },
+  { id: "model", label: "🧠 Model", hint: "Our internal view: the three score layers, timeline, coordinator, goals, markets, venues and packs." },
+  { id: "venues", label: "🏪 Venues", hint: "Every open venue's asks and bids side by side, each offer marked against our hand and values. Nothing here sends." },
+  { id: "forex", label: "🔁 Forex", hint: "A → B → C chains: buy a card at one place, hold it, sell it at another, net of fees." },
+  { id: "market-test", label: "🧪 Market test", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
+  { id: "eggs", label: "🥚 Eggs", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
+  { id: "news", label: "📻 News", hint: "Radio Rastro, the Bulletin and the notice board: which dealer, set or card is being talked about, with a summary. Unverified, may be rumour, never a figure." },
+  { id: "teams", label: "👥 Teams", hint: "Every team in one place: score parts, what we did with it, its trades with others, eggs it found and its collection. Click any team name in the viewer to land here." },
+  { id: "personas", label: "🧑‍🎤 Dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },
 ];
 
 /**
@@ -829,6 +831,11 @@ function ViewHint({ view }: { view: View }) {
 
 export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenProps) {
   const [view, setView] = useState<View>("now");
+  const [team, setTeam] = useState("");
+  const openTeam = (t: string) => {
+    setTeam(t);
+    setView("teams");
+  };
   const pick = (id: string) => setView(VIEWS.find((v) => v.id === id)?.id ?? "now");
   const { model, loading } = useBazaarModel(view !== "cockpit" || filters.row !== "");
   const selected = board.rows.find((r) => r.id === filters.row) ?? board.rows.find((r) => r.id === boardRowIdFor(filters.row)) ?? board.others.find((r) => r.id === filters.row) ?? null;
@@ -850,8 +857,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
   ) : null;
   if (view !== "cockpit") {
     return (
+      <TeamNav.Provider value={openTeam}>
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-        <PageTitle>Bazaar</PageTitle>
         <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
         <ViewHint view={view} />
         {view === "now" ? (
@@ -866,6 +873,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <MarketTest board={board} />
         ) : view === "eggs" ? (
           <EggsView board={board} model={model} loading={loading} onOpenThread={(t) => openModel(`dealer:${t}`)} />
+        ) : view === "teams" ? (
+          <TeamsView board={board} model={model} team={team} onPick={setTeam} onOpen={openModel} />
         ) : view === "news" ? (
           <NewsView model={model} loading={loading} />
         ) : view === "personas" ? (
@@ -875,11 +884,12 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         )}
         {drawer}
       </section>
+      </TeamNav.Provider>
     );
   }
   return (
+    <TeamNav.Provider value={openTeam}>
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <PageTitle>Bazaar</PageTitle>
       <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
       <ViewHint view={view} />
       {!board.live ? <EmptyStateCard title="No live Bazaar data (BAZAAR_KEY not set on the viewer server, or the Bazaar is unreachable)" /> : null}
@@ -903,5 +913,6 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       </Fold>
       {drawer}
     </section>
+    </TeamNav.Provider>
   );
 }

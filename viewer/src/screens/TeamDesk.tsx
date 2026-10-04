@@ -1,6 +1,7 @@
 import { Card } from "@negotiation-ring/design-system";
 import { teamLabel, type Board, type BoardDeskChain } from "../model/index.js";
 import { ComponentChip } from "./ScoreTree.js";
+import { TeamName } from "./teams/TeamLink.js";
 
 /**
  * «Team desk»: offers other teams make to us (to-me), the counter we answer with (sell only: the requested card or a
@@ -90,7 +91,7 @@ export function TeamDesk({ board }: { board: Board }) {
           {teams.map((t) => (
             <div key={t.team} style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
               <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "baseline", flexWrap: "wrap" }}>
-                <strong>{teamLabel(board, t.team)}</strong>
+                <TeamName board={board} team={t.team} strong />
                 <span className="nr-muted">{`${t.chains.length} offer${t.chains.length === 1 ? "" : "s"}`}</span>
                 <span style={{ color: t.negWon > 0 ? "var(--ok)" : undefined }}>{`neg won ${signed(t.negWon)}`}</span>
                 {t.negOpen ? <span className="nr-muted">{`${signed(t.negOpen)} if sent counters fill`}</span> : null}

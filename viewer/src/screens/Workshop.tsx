@@ -1,6 +1,7 @@
 import { Card } from "@negotiation-ring/design-system";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 import type { ModelWorkshop } from "../model/gameModel.js";
+import { TeamName } from "./teams/TeamLink.js";
 
 /**
  * The Workshop (El Taller): three spare copies of one rarity → one random card of the next rarity (shown, never
@@ -53,7 +54,9 @@ export function Workshop({ board, strategy = null }: { board: Board; strategy?: 
             <ul style={ul} aria-label="Public crafts, latest first">
               {w.crafts.slice(0, 8).map((c) => (
                 <li key={c.id} className={c.us ? undefined : "nr-muted"}>
-                  {`t${c.tick ?? "?"} · ${teamLabel(board, c.team)} · ${c.from ?? "?"} → ${c.card ?? "?"} (${c.to ?? "?"})`}
+                  {`t${c.tick ?? "?"} · `}
+                  <TeamName board={board} team={c.team} />
+                  {` · ${c.from ?? "?"} → ${c.card ?? "?"} (${c.to ?? "?"})`}
                 </li>
               ))}
             </ul>

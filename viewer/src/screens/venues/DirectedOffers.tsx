@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, DataTable } from "@negotiation-ring/design-system";
 import { teamLabel, type Board } from "../../model/index.js";
+import { TeamName } from "../teams/TeamLink.js";
 
 /**
  * «Between other teams»: directed offers one team makes to another (they never show in the venue books), from the
@@ -43,7 +44,12 @@ export function DirectedOffers({ board }: { board: Board }) {
               ]}
               rows={rows.slice(0, 80).map((d) => ({
                 tick: d.tick ?? "?",
-                who: `${teamLabel(board, d.maker)} → ${teamLabel(board, d.to)}${d.venue && d.venue !== "rastro" ? ` @ ${d.venue}` : ""}`,
+                who: (
+                  <span>
+                    <TeamName board={board} team={d.maker} /> → <TeamName board={board} team={d.to} />
+                    {d.venue && d.venue !== "rastro" ? ` @ ${d.venue}` : ""}
+                  </span>
+                ),
                 side: d.side,
                 card: (
                   <span style={d.spare ? { color: "var(--ok)", fontWeight: 800 } : undefined} title={d.spare ? `we hold ×${d.hand}` : undefined}>
