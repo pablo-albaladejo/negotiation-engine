@@ -33,7 +33,7 @@ Estado: Duelos III a h15.367 (sesión 4 del servidor, 2 rondas, 12 ticks, decay 
 - No lanza procesos del juego. play (flags del 3 oct: `pnpm bazaar:play --confirm --scanner --scanner-spend-per-hour 10 --rival-page --rival-buy --team-desk --no-venue-reserve --egg-open banco --max-spend 250 --cash-floor 20`; los actuales los tiene el coordinator) lo lanza y reinicia el coordinator.
 - Suyos, solo lectura (GET), versionados en `agents/tools/`:
   - **Tabla en vivo:** `node agents/tools/duels-table.mjs 4` (sesión del servidor: Duelos I = 2, II = 3, III = 4; Gran Final probablemente 5). Lee `/api/clock`, `/api/me` y `/api/duels` cada 15 s y escribe `results/duels/duels-s<sesión>.txt`. Apunta el Δduel_points de cada cierre en `results/duels/dpts.log`. `--tty` la pinta en la terminal y `--out <fichero>` cambia el nombre. Para verla: `watch -n 15 cat results/duels/duels-s4.txt`. Se lanza en segundo plano (run_in_background).
-  - **Alarma sobre el log de play** (una línea, no es fichero; relanzarla cada día con su fecha): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "days-unreadable|duel [0-9]+: PAUSED|\[duels\].*(error|rejected|429|4[0-9][0-9] )"`. Sale en la primera coincidencia; al saltar, avisar al coordinator con el JSON crudo y volver a lanzarla.
+  - **Alarma sobre el log de play** (una línea, no es fichero; relanzarla cada día con su fecha): `tail -n0 -F results/logs/<fecha>/play.log | grep -m1 -E "days-unreadable|duel [0-9]+: PAUSED|\[duels\].*(error|rejected|429|[^0-9]4[0-9][0-9] )"`. Sale en la primera coincidencia; al saltar, avisar al coordinator con el JSON crudo y volver a lanzarla. `[^0-9]` delante del código HTTP: sin él, el id 11412 hizo saltar la alarma.
 
 ## Estado al 4 oct (instantánea)
 
