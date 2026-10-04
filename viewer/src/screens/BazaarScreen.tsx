@@ -8,7 +8,8 @@ import { VenueBooks } from "./venues/VenueBooks.js";
 import { Forex } from "./forex/Forex.js";
 import { MarketTest } from "./market-test/MarketTest.js";
 import { AlbumCards } from "./album/AlbumCards.js";
-import { Eggs } from "./profile/Eggs.js";
+import { EggsView } from "./profile/EggsView.js";
+import { PersonasView } from "./profile/PersonasView.js";
 import { ComponentChip, ScoreTree } from "./ScoreTree.js";
 import { componentOf } from "../model/scoreTree.js";
 import type { ModelLadderLevel } from "../model/gameModel.js";
@@ -796,7 +797,7 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "model" | "venues" | "forex" | "market-test";
+type View = "now" | "cockpit" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "now", label: "Now" },
@@ -805,6 +806,8 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "venues", label: "Venues (all books)" },
   { id: "forex", label: "Forex (A → B → C)" },
   { id: "market-test", label: "Market test (auto vs board)" },
+  { id: "eggs", label: "Eggs (eggs, gifts, flags, hints)" },
+  { id: "personas", label: "Personas (dealers and estimates)" },
 ];
 
 /**
@@ -846,6 +849,10 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
           <Forex board={board} onOpen={openModel} />
         ) : view === "market-test" ? (
           <MarketTest board={board} />
+        ) : view === "eggs" ? (
+          <EggsView board={board} model={model} loading={loading} />
+        ) : view === "personas" ? (
+          <PersonasView model={model} loading={loading} />
         ) : (
           <ModelView model={model} loading={loading} board={board} onOpen={openModel} />
         )}
@@ -862,7 +869,6 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <Scoreboard board={board} />
         <Upcoming board={board} />
       </div>
-      <Eggs board={board} />
       <RightNow board={board} onOpen={open} />
       <TeamDesk board={board} />
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>

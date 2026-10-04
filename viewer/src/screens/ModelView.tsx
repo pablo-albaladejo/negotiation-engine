@@ -5,7 +5,6 @@ import { gridCols } from "../ui/grid.js";
 import { TableLink } from "../ui/buttons.js";
 import { EmptyStateCard } from "../ui/states.js";
 import { Meter } from "../ui/meter.js";
-import { DealerEstimates } from "./DealerEstimates.js";
 import { Rivals } from "./Rivals.js";
 import { NewsSignals } from "./NewsSignals.js";
 import { PersonaStrategy } from "./DealerFitStrip.js";
@@ -391,7 +390,7 @@ function SelectBox({ label, value, options, onChange }: { label: string; value: 
   );
 }
 
-function Hints({ model }: { model: GameModel }) {
+export function Hints({ model }: { model: GameModel }) {
   const all = hintsOf(model);
   const [f, setF] = useState<HintFilters>({ candidatesOnly: true, classification: "", persona: "", q: "" });
   const searchId = useId();
@@ -444,7 +443,7 @@ function Hints({ model }: { model: GameModel }) {
   );
 }
 
-function Personas({ model }: { model: GameModel }) {
+export function Personas({ model }: { model: GameModel }) {
   const personas = personasOf(model);
   return (
     <Card title={`Personas (${personas.length})`}>
@@ -908,7 +907,7 @@ function flagRow(f: unknown, nowTick: number | null) {
   };
 }
 
-function EggsAndFlags({ model, board }: { model: GameModel; board: Board }) {
+export function EggsAndFlags({ model, board }: { model: GameModel; board: Board }) {
   const o = model.state?.ours;
   const flags = flagsOf(model);
   const byPersona = Object.entries(model.state?.world?.eggs?.byPersona ?? {});
@@ -1007,9 +1006,6 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Timeline model={model} />
       <Coordinator model={model} />
       <Goals model={model} board={board} />
-      <Personas model={model} />
-      <DealerEstimates model={model} />
-      <Hints model={model} />
       <NewsSignals model={model} />
       <Card title={`Conversations in our model (${active.length} active, ${convs.length - active.length} done)`}>
         {convs.length > 0 ? <ConversationsTable convs={convs} onOpen={onOpen} /> : <Muted>No conversations.</Muted>}
@@ -1019,7 +1015,6 @@ export function ModelView({ model, loading, board, onOpen }: { model: GameModel 
       <Rivals model={model} board={board} />
       <Prices model={model} />
       <Packs model={model} />
-      <EggsAndFlags model={model} board={board} />
     </div>
   );
 }
