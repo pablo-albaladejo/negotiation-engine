@@ -75,8 +75,9 @@ export function isProbePhrase(x: string): boolean {
 export const GREETINGS: readonly string[] = [
   "¡Felicidades por su santo, Abuela!", // game text
   "Con permiso: ¿sabe usted quién guarda El Rastro al Amanecer?", // game text
-  // Chato's egg (eggs, approved by Pablo, 3 Oct): t10 and t08 won it mid-haggle; a cold one-shot got "Caña, luego".
-  "Y cuando cerremos, una caña en la Plaza Mayor, que usted conoce Madrid.", // game text
+  // Chato's egg (eggs, approved by Pablo, 3 Oct): an egg fires on a literal phrase (accents and case ignored), and both
+  // rival hits echoed "Plaza Mayor, con caña"; our misses broke that substring.
+  "Y cuando cerremos, Plaza Mayor, con caña, que usted conoce Madrid.", // game text
 ];
 
 /**
