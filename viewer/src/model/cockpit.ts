@@ -156,13 +156,35 @@ const ACTION_LABEL: Record<string, string> = {
   duels: "Duels",
 };
 
+/**
+ * Real milliseconds per game hour: from now to the one event the schedule gives a wall time for, else one real hour
+ * (measured on 4 Oct: the game hour runs at 60 real minutes).
+ */
+export function msPerGameHour(s: { now_hours: number | null; upcoming: { at_hours: number; wall: string | null }[] }): number {
+  const anchor = s.upcoming.find((u) => u.wall);
+  if (anchor && s.now_hours !== null && anchor.at_hours > s.now_hours + 0.05) {
+    const rate = (Date.parse(anchor.wall!) - Date.now()) / (anchor.at_hours - s.now_hours);
+    if (rate > 0) return rate;
+  }
+  return 3_600_000;
+}
+
+/** «at 14:00 (in 0:11)»: local clock time and countdown as H:MM for `dh` game hours from now. */
+export function clockIn(dh: number, rate = 3_600_000): string {
+  const ms = dh * rate;
+  const mins = Math.max(0, Math.round(ms / 60_000));
+  const at = new Date(Date.now() + ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `at ${at} (in ${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")})`;
+}
+
 /** Upcoming appointments; those falling at the same time stay together and in order. */
 export function scheduleLines(board: Board, max = 8): ScheduleLine[] {
   const s = board.schedule;
   if (!s) return [];
+  const rate = msPerGameHour(s);
   return s.upcoming.slice(0, max).map((u) => {
     const dh = s.now_hours !== null ? u.at_hours - s.now_hours : null;
-    const when = dh === null ? `hour ${u.at_hours}` : dh <= 0 ? "now" : `in ${dh < 1 ? dh.toFixed(2) : dh.toFixed(1)} h`;
+    const when = dh === null ? `hour ${u.at_hours}` : dh <= 0 ? "now" : clockIn(dh, rate);
     return { at_hours: u.at_hours, when, action: ACTION_LABEL[u.action] ?? u.action, note: u.note };
   });
 }

@@ -1,4 +1,4 @@
-import { niceScale, type OfferCurve } from "./cockpit.js";
+import { clockIn, niceScale, type OfferCurve } from "./cockpit.js";
 
 /**
  * Our internal model as served by `/api/bazaar/model`: the tick's `GameState`, the budget from
@@ -574,7 +574,7 @@ function eventLabel(action: string, params: Record<string, unknown>): string {
 /** Known events of the day: `state.agenda` if present; otherwise `/api/schedule` with our plan per kind. */
 export function timelineEvents(model: GameModel): TimelineEvent[] {
   const now = nowHours(model);
-  const countdown = (at: number) => (now === null ? null : at <= now ? "now / past" : `in ${fmtH(at - now)} h`);
+  const countdown = (at: number) => (now === null ? null : at <= now ? "now / past" : clockIn(at - now));
   const agenda = arr(model.state?.agenda);
   if (agenda.length > 0) {
     return agenda.flatMap((x): TimelineEvent[] => {
