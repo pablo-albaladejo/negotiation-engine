@@ -47,10 +47,11 @@ export const EGG_PLAN: readonly EggPlanItem[] = [
     n: 1,
     persona: "chato",
     route: "manual",
-    // Chato's echo to t16's hit (t1609, 4 Oct) was in English; our Spanish "con caña" missed at t1475 inside a haggle.
-    line: "Plaza Mayor, with a caña. You know Madrid. Plaza Mayor, con una caña.", // game text
-    key: "plaza mayor, with a caña", // game text
-    odds: "high: echo of t16's hit at t1609; the egg is still alive",
+    // Hit at t1814 (4 Oct, thread 2684): t12's hit showed Chato reacting to "bocadillo, caña bien tirada"; the
+    // "Plaza Mayor, con caña" line rivals saw was the egg's fixed reply, and sending it missed four times.
+    line: "Plaza Mayor, bocadillo, caña bien tirada. Un bocadillo de calamares en la Plaza Mayor y una caña bien tirada.", // game text
+    key: "caña bien tirada", // game text
+    odds: "won t1814",
     stake: "sobre_barrio",
     cost: "0 P, 1 probe",
   },
