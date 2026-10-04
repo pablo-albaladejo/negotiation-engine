@@ -132,6 +132,8 @@ async function main() {
   // --rival-swap (opt-in): El Rastro may also accept a card-for-card swap addressed to us (fee only) without a page-completing card.
   const rivalSwap = values["rival-swap"] === true;
   const trades = new TradesRoute(client, dryRun, { maxSpend: num(values["max-spend"], "--max-spend"), cashFloor: num(values["cash-floor"], "--cash-floor"), pageTargets, pageBonusScored, rastroBids, rivalSwap }, defaultListBackoffFile(root));
+  // The open epic lane's El Rastro bid is rival-buy's: El Rastro neither cancels it (no passive bids) nor counts it as its spend.
+  if (values["rival-buy-epic"]) trades.agent.foreignBidRefs = new Set(EPIC_BUY_LANES.filter((l) => l.open).map((l) => l.ref));
   trades.scanner = values.scanner === true;
   // Pressure phrases: only with approval (ids one by one or in bulk); candidates are listed in dry-run.
   const approvedFlags = new Set(values["approve-flags"].split(",").map((s) => s.trim()).filter(Boolean));

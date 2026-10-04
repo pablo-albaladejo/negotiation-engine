@@ -61,10 +61,16 @@ export interface EpicBuyParams {
   repriceAfterTicks: number;
   expiresInTicks: number;
   cashFloor: number;
+  /** Open lane: one bid on El Rastro to anyone (no `to`, `teams` unused) at the ceiling, never repriced, reposted when it expires. */
+  open?: boolean;
 }
 export const EPIC_BUY_PARAMS: EpicBuyParams = { ref: "SAL-11", teams: ["t18", "t08", "t17", "t04", "t13"], start: 185, ceiling: 215, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
-/** Second epic lane (Pablo, 4 Oct): RET-11 (value 288 = book 180 × RET 1.6, no page bonus) to its seen holders, 200 → 220 → 240. */
-export const EPIC_BUY_RET11: EpicBuyParams = { ref: "RET-11", teams: ["t05", "t12", "t10"], start: 200, ceiling: 240, maxReprices: 2, repriceAfterTicks: 10, expiresInTicks: 20, cashFloor: 100 };
+/**
+ * Second epic lane: RET-11 (value 288 = book 180 × RET 1.6, no page bonus). Directed to t05/t12/t10 up to 240 got no
+ * fill (4 Oct); directed bids between teams fill ~3 % (26 of 811), open ones far more, so it is now one open bid at 240
+ * for 40 ticks (coordinator OK with Pablo's rule, 4 Oct).
+ */
+export const EPIC_BUY_RET11: EpicBuyParams = { ref: "RET-11", teams: [], start: 240, ceiling: 240, maxReprices: 0, repriceAfterTicks: 40, expiresInTicks: 40, cashFloor: 100, open: true };
 /** Every lane `--rival-buy-epic` runs; each keeps one bid open, and the cash floor counts what the others commit. */
 export const EPIC_BUY_LANES: readonly EpicBuyParams[] = [EPIC_BUY_PARAMS, EPIC_BUY_RET11];
 
@@ -174,7 +180,8 @@ export interface RivalBuyPost {
   hi?: boolean;
   /** Epic test lane post (`--rival-buy-epic`). */
   epic?: boolean;
-  body: { venue: "rastro"; to: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
+  /** `to` is missing only on the open epic lane. */
+  body: { venue: "rastro"; to?: string; give: { cash: number }; want: { cards: string[] }; expires_in_ticks: number };
 }
 
 export interface RivalBuyCancel {
@@ -255,6 +262,17 @@ export function assessRivalBuy(team: RivalTeam, ref: string, input: RivalBuyInpu
 }
 
 /** Our directed cash-for-one-card bids on El Rastro (open, not expired). */
+/** Our open (no `to`) single-card cash bids on El Rastro for `ref`: the epic open lane's own. */
+export function openBids(trade: TradeState, ref: string): { offer: TradeOffer; team: string; ref: string; price: number }[] {
+  return trade.mine.flatMap((o) => {
+    if (o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
+    const g = readSide(o.give);
+    const w = readSide(o.want);
+    if (g.cash <= 0 || g.assets.length || w.cash !== 0 || w.assets.length || w.cards.length !== 1 || w.cards[0] !== ref) return [];
+    return [{ offer: o, team: "open", ref, price: g.cash }];
+  });
+}
+
 export function directedBids(trade: TradeState): { offer: TradeOffer; team: string; ref: string; price: number }[] {
   return trade.mine.flatMap((o) => {
     if (!o.to || o.venue !== "rastro" || o.thread != null || (o.status ?? "open") !== "open" || (o.expires_tick != null && o.expires_tick <= trade.tick)) return [];
@@ -303,7 +321,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   const epics: readonly EpicBuyParams[] = !input.epic ? [] : "ref" in input.epic ? [input.epic] : input.epic;
   const epicRefs = new Set(epics.map((e) => e.ref));
   // Each lane's cash floor counts what the other lanes keep open or post this tick (open bids hold no cash server side).
-  const epicKept = new Map<string, number>(epics.map((e) => [e.ref, existing.filter((x) => x.ref === e.ref).reduce((s, x) => s + x.price, 0)]));
+  const epicKept = new Map<string, number>(epics.map((e) => [e.ref, (e.open ? openBids(trade, e.ref) : existing.filter((x) => x.ref === e.ref)).reduce((s, x) => s + x.price, 0)]));
   for (const epic of epics) {
     const others = [...epicKept].filter(([ref]) => ref !== epic.ref).reduce((s, [, v]) => s + v, 0);
     epicKept.set(epic.ref, proposeEpicBuy(input, epic, existing, memo, { intents, notes, plan }, others));
@@ -425,7 +443,7 @@ function epicCash(input: RivalBuyInput): number {
 export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existing: ReturnType<typeof directedBids>, memo: RivalBuyMemo, out: { intents: Intent[]; notes: string[]; plan: RivalBuyPlan }, reserved = 0): number {
   const trade = input.trade!;
   const tag = `${TAG} [epic]`;
-  const mine = existing.filter((e) => e.ref === epic.ref);
+  const mine = epic.open ? openBids(input.trade!, epic.ref) : existing.filter((e) => e.ref === epic.ref);
   // Teams marked done this tick: the memo only learns it on execution, so the new-bid pick must skip them now.
   const doneNow = new Set<string>();
   const cancel = (offerId: number, team: string, reason: string, done: boolean) => {
@@ -444,6 +462,7 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
     return 0;
   }
   const cash = epicCash(input) - reserved;
+  if (epic.open) return proposeOpenEpic(input, epic, mine, value!, cash, out, cancel);
   let open = 0;
   let committed = 0;
   for (const e of mine) {
@@ -499,6 +518,32 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   return price;
 }
 
+/**
+ * Open epic lane: keeps one bid at the ceiling on El Rastro to anyone (structure only: cash for one card), never
+ * repriced; one above the ceiling or a second one is cancelled; a new one only above the cash floor.
+ */
+function proposeOpenEpic(input: RivalBuyInput, epic: EpicBuyParams, mine: ReturnType<typeof openBids>, value: number, cash: number, out: { intents: Intent[]; notes: string[]; plan: RivalBuyPlan }, cancel: (offerId: number, team: string, reason: string, done: boolean) => void): number {
+  const tag = `${TAG} [epic] [open]`;
+  let committed = 0;
+  for (const e of mine) {
+    if (e.price > epic.ceiling || committed > 0) cancel(e.offer.id, "open", e.price > epic.ceiling ? `bid ${e.price} > ceiling ${epic.ceiling}` : "one open epic bid at a time", false);
+    else committed = e.price;
+  }
+  if (committed) return committed;
+  const price = enforceGuardrails({ role: "buyer", reservation: epic.ceiling }, epic.ceiling);
+  const fee = tradeFee(price, 1, MAKER_FEES);
+  if (cash - price - fee < epic.cashFloor) {
+    out.notes.push(`${tag} ${epic.ref}: cash ${Math.floor(cash)} − ${price + fee} < floor ${epic.cashFloor}`);
+    return 0;
+  }
+  const post = makeEpicPost("open", price, epic, 0, undefined);
+  out.plan.posts.push(post);
+  const line = `${tag} ${epic.ref} · /api/me/value ${value} · open bid ${price} (no reprice) · cash floor ${epic.cashFloor} · POST rastro (anyone) exp ${epic.expiresInTicks}`;
+  out.intents.push(postIntent(post, line, value - price - fee));
+  out.notes.push(line);
+  return price;
+}
+
 function makeEpicPost(team: string, price: number, epic: EpicBuyParams, reprice: number, replaces: number | undefined): RivalBuyPost {
   return {
     intentId: `markets:rivalbuy:post:${team}:${epic.ref}`,
@@ -508,7 +553,7 @@ function makeEpicPost(team: string, price: number, epic: EpicBuyParams, reprice:
     reprice,
     epic: true,
     ...(replaces !== undefined ? { replaces } : {}),
-    body: { venue: "rastro", to: team, give: { cash: price }, want: { cards: [epic.ref] }, expires_in_ticks: epic.expiresInTicks },
+    body: { venue: "rastro", ...(epic.open ? {} : { to: team }), give: { cash: price }, want: { cards: [epic.ref] }, expires_in_ticks: epic.expiresInTicks },
   };
 }
 
@@ -555,7 +600,7 @@ export async function executeRivalBuy(client: Pick<BazaarClient, "postOffer" | "
     }
   }
   for (const p of plan.posts.filter((x) => ids.has(x.intentId))) {
-    const what = `POST rastro to=${p.team} bid ${p.price} P for ${p.ref} exp ${params.expiresInTicks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
+    const what = `POST rastro ${p.body.to ? `to=${p.body.to}` : "(anyone)"} bid ${p.price} P for ${p.ref} exp ${p.body.expires_in_ticks}${p.replaces !== undefined ? ` (replaces #${p.replaces})` : ""}`;
     if (dryRun) {
       lines.push(`${TAG} would ${what}`);
       continue;

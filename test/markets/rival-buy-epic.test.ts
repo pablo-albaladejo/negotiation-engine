@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { EPIC_BUY_LANES, EPIC_BUY_PARAMS, epicStep, proposeRivalBuy, RIVAL_BUY_PARAMS, type RivalBuyInput, type RivalBuyMemo } from "../../src/markets/rival-buy.js";
 import type { RivalsState, RivalTeam } from "../../src/state/rivals.js";
-import { DEFAULT_VALUE_RULES, MAKER_FEES, tradeFee, type HeldAsset, type TradeOffer, type TradeState, type ValueModel } from "../../src/trades/trades.js";
+import { DEFAULT_TRADE_PARAMS, DEFAULT_VALUE_RULES, MAKER_FEES, planTick, tradeFee, type HeldAsset, type TradeOffer, type TradeState, type ValueModel } from "../../src/trades/trades.js";
 
 /** Epic test lane (Pablo, 4 Oct): never above the ceiling, never below the cash floor, only to the listed holders, one bid at a time. */
 
@@ -106,7 +106,12 @@ describe("rival buy · epic test lane", () => {
     const laneBids = fc.array(fc.record({ lane: fc.constantFrom(0, 1), to: fc.constantFrom(...TEAMS), price: fc.integer({ min: 1, max: 400 }), age: fc.integer({ min: 0, max: 30 }) }), { maxLength: 4 });
     fc.assert(
       fc.property(arb.cash, fc.subarray(TEAMS), fc.subarray(TEAMS), laneBids, arb.reprices, arb.committed, (cash, ha, hb, bids, reprices, committed) => {
-        const mine = bids.map((x, k) => ({ ...bid(2000 + k, x.to, x.price, x.age), want: { cards: [lanes[x.lane]!.ref] } }));
+        // An open lane's bids carry no `to`.
+        const mine = bids.map((x, k) => {
+          const o: TradeOffer = { ...bid(2000 + k, x.to, x.price, x.age), want: { cards: [lanes[x.lane]!.ref] } };
+          if (lanes[x.lane]!.open) delete o.to;
+          return o;
+        });
         const memo: RivalBuyMemo = new Map(bids.map((x) => [`${x.to}:${lanes[x.lane]!.ref}`, { reprices }]));
         const team = (id: string): RivalTeam => ({ team: id, seen: [...(ha.includes(id) ? [a.ref] : []), ...(hb.includes(id) ? [b.ref] : [])].map((ref, k) => ({ assetId: 9000 + Number(id.slice(1)) * 10 + k, ref, tick: TICK - 5, source: "board" as never })), distinct: 1, spares: [], pages: [], wants: [] });
         const ids = [...new Set([...ha, ...hb])];
@@ -127,7 +132,8 @@ describe("rival buy · epic test lane", () => {
           const posts = plan.posts.filter((p) => p.ref === lane.ref);
           for (const p of posts) {
             expect(p.price).toBeLessThanOrEqual(lane.ceiling);
-            expect(lane.teams).toContain(p.team);
+            if (lane.open) expect(p.body.to).toBeUndefined();
+            else expect(lane.teams).toContain(p.team);
             expect(p.body.want).toEqual({ cards: [lane.ref] });
           }
           expect(posts.length + kept.filter((o) => (o.want as { cards: string[] }).cards[0] === lane.ref).length).toBeLessThanOrEqual(1);
@@ -148,5 +154,27 @@ describe("rival buy · epic test lane", () => {
     const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map([[`t18:${EPIC.ref}`, { reprices: EPIC.maxReprices }]]), []);
     expect(plan.cancels.map((c) => c.offerId)).toEqual([3000]);
     expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", EPIC.start]]);
+  });
+
+  it("open lane: one bid to anyone at the ceiling, never above it, and El Rastro leaves it alone", () => {
+    const lane = EPIC_BUY_LANES.find((l) => l.open)!;
+    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], []), rivals: rivals([]), maxSpend: 0, cashFloor: 20, epic: EPIC_BUY_LANES, apiValues: new Map([[EPIC.ref, 234], [lane.ref, 288]]) };
+    const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map(), []);
+    const posts = plan.posts.filter((p) => p.ref === lane.ref);
+    expect(posts.map((p) => [p.price, p.body.to])).toEqual([[lane.ceiling, undefined]]);
+    // Kept while open; one above the ceiling is cancelled.
+    const open = (id: number, price: number): TradeOffer => ({ id, venue: "rastro", status: "open", give: { cash: price }, want: { cards: [lane.ref] }, created_tick: TICK - 1, expires_tick: TICK + 30 });
+    const again = proposeRivalBuy({ ...input, trade: tradeState(600, [], [open(5000, lane.ceiling)]) }, RIVAL_BUY_PARAMS, new Map(), []);
+    expect(again.plan.posts.filter((p) => p.ref === lane.ref)).toHaveLength(0);
+    expect(again.plan.cancels).toHaveLength(0);
+    const over = proposeRivalBuy({ ...input, trade: tradeState(600, [], [open(5001, lane.ceiling + 1)]) }, RIVAL_BUY_PARAMS, new Map(), []);
+    expect(over.plan.cancels.map((c) => c.offerId)).toContain(5001);
+    // El Rastro (no passive bids) does not cancel the open lane's bid when its card is foreign to it.
+    const st = { ...tradeState(600, [], [open(5000, lane.ceiling)]), foreignBidRefs: new Set([lane.ref]), pageSets: [], board: [] } as TradeState;
+    const tp = planTick(st, DEFAULT_TRADE_PARAMS);
+    expect(tp.cancels.map((c) => c.id)).not.toContain(5000);
+    // Without the exemption El Rastro would cancel it (no passive bids): the check above is not vacuous.
+    const { foreignBidRefs: _, ...plain } = st;
+    expect(planTick(plain as TradeState, DEFAULT_TRADE_PARAMS).cancels.map((c) => c.id)).toContain(5000);
   });
 });

@@ -525,6 +525,16 @@ export interface TradeState {
   rivals?: RivalSignals;
   /** Fees of other venues (`/api/venues` fee_bps, fee_per_card) for offers we accept there; unknown → `params.fees`. */
   venueFees?: Map<string, FeeModel>;
+  /** Cards whose open El Rastro bids of ours belong to another route (open epic lane): left alone, like directed ones. */
+  foreignBidRefs?: Set<string>;
+}
+
+/** An open El Rastro bid of ours for a card another route owns (`foreignBidRefs`): never cancelled or repriced here. */
+function isForeignBid(o: TradeOffer, refs: ReadonlySet<string> | undefined): boolean {
+  if (!refs?.size) return false;
+  const g = readSide(o.give);
+  const w = readSide(o.want);
+  return g.cash > 0 && !g.assets.length && w.cards.length === 1 && refs.has(w.cards[0]!);
 }
 
 /** Fee model for accepting an offer at `venue`: El Rastro and unknown venues pay `fallback` (the Rastro fee, conservative). */
@@ -784,9 +794,10 @@ export function planTick(state: TradeState, params: TradeParams): TickPlan {
   const fees = MAKER_FEES;
 
   // Our El Rastro offers (those in dealer threads and directed ones, `to` set, are left alone but still count as open).
-  const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !(o.venue === "rastro" && o.thread == null && !o.to)).length;
+  const ours = (o: TradeOffer) => o.venue === "rastro" && o.thread == null && !o.to && !isForeignBid(o, state.foreignBidRefs);
+  const nonRastroOpen = state.mine.filter((o) => (o.status ?? "open") === "open" && !ours(o)).length;
   const existing = state.mine
-    .filter((o) => (o.status ?? "open") === "open" && o.venue === "rastro" && o.thread == null && !o.to && (o.expires_tick == null || o.expires_tick > state.tick))
+    .filter((o) => (o.status ?? "open") === "open" && ours(o) && (o.expires_tick == null || o.expires_tick > state.tick))
     .flatMap((o) => {
       const c = classifyMine(o, state.held);
       return c ? [c] : [];

@@ -83,6 +83,8 @@ export class TradesAgent {
   private readonly listPosts = new Map<number, number>();
   private readonly listBackoff = new Map<number, number>();
   spent = 0;
+  /** Cards whose open El Rastro bids belong to another route (the open epic lane of `src/markets/rival-buy.ts`). */
+  foreignBidRefs = new Set<string>();
   private readonly log: (line: string) => void;
 
   constructor(
@@ -174,6 +176,7 @@ export class TradesAgent {
       reserved: new Set([...this.reservedUntil.keys(), ...inThreads.map(([id]) => id)]),
       listBackoff: new Map(this.listBackoff),
       venueFees: new Map(this.venueFees),
+      ...(this.foreignBidRefs.size ? { foreignBidRefs: new Set(this.foreignBidRefs) } : {}),
     };
   }
 
@@ -184,7 +187,7 @@ export class TradesAgent {
       if (o.venue !== "rastro" || o.thread != null || o.to || (o.status ?? "open") !== "open") continue;
       const g = readSide(o.give);
       const w = readSide(o.want);
-      if (g.cash > 0 && w.cards.length === 1) now.set(o.id, { cash: g.cash, expires: o.expires_tick ?? Infinity });
+      if (g.cash > 0 && w.cards.length === 1 && !this.foreignBidRefs.has(w.cards[0]!)) now.set(o.id, { cash: g.cash, expires: o.expires_tick ?? Infinity });
     }
     for (const [id, b] of this.openBids) {
       if (now.has(id) || this.cancelled.has(id) || b.expires <= tick) continue;
