@@ -10,7 +10,7 @@ Análisis de cómo puntúa el market-making (Market Test y orgánico) y la ruta 
 
 - No reinicia procesos ni lanza nada en vivo ([coordinator](../ops/coordinator.md): commit + hijo).
 - No toca dealers, duelos, eggs ni el visor ([dealers](../routes/dealers.md), [duels](../routes/duels.md), [eggs](../routes/eggs.md), [ui](../ops/ui.md)).
-- El WHAT (qué objetivos) es de [goals](../ops/goals.md), que parte de su `objetivos-design.md`.
+- El WHAT (qué objetivos) es de [goals](../ops/goals.md), que parte de [`objetivos-design.md`](../tools/objetivos-design.md).
 - No decide el cambio de venue a board: lo aprueba Pablo, se ejecuta vía coordinator y exige caja ≥ 290 P.
 
 ## Prompt de arranque
@@ -35,8 +35,8 @@ Reglas: nada en vivo sin aprobación de Pablo; los reinicios de bazaar:play los 
 ## Estado al 4 oct (instantánea)
 
 - Commits: 01852a0 (site-map § 6.10–6.12, comentario del escáner) y 9092fd5 (penalización por rival ≥ 20 P en venues con < 6 tratos alojados; en vivo desde el 3 oct 16:39).
-- Pendiente 1: el ASSUMPTION de `src/markets/scanner.ts` dice que el tope por trato es desconocido; Payday dice 50 (trader lo aplicó en 31c75c1; revisar si el comentario sigue).
-- Pendiente 2: el diseño de objetivos está en un scratchpad temporal (`/private/tmp/claude-501/-Users-pablo-development-negotiation-ring/79ea0b55-c445-4907-b266-1e1eb94b0516/scratchpad/objetivos-design.md`). **Conviene copiarlo a un sitio durable** (p. ej. `.omc/specs/`).
+- Pendiente 1 (resuelto): el escáner ya aplica el tope de 50 por trato (Payday) y por contraparte (`scoredGainCap`, `room.ts`; trader, 31c75c1).
+- Pendiente 2 (resuelto): el diseño de objetivos está versionado en [`agents/tools/objetivos-design.md`](../tools/objetivos-design.md); lo hereda goals.
 - Idea abierta, sin aprobar: un board solo compensa si trae flujo orgánico o ventaja medida en el bench; la caja (~135 P entonces) no llegaba a 290.
 
 ## Ficheros clave
