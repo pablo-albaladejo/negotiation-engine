@@ -92,6 +92,9 @@ export function updateDealerLedger(dir: string, events: readonly FeedEvent[], ti
   return trades;
 }
 
+/** Dealers the CHA lane never rebuys from (coordinator, 4 Oct: Picaros stays off until Pablo approves P2). */
+export const CHA_REBUY_OFF: ReadonlySet<string> = new Set(["picaros"]);
+
 /** A dealer's recent asking side for one card: where we could buy it back, from public deals (any team). */
 export interface DealerBuyQuote {
   dealer: string;
@@ -109,7 +112,7 @@ export interface DealerBuyQuote {
  */
 export function dealerBuyQuotes(trades: readonly DealerTrade[], ref: string, value: number, tick: number, window = 240): DealerBuyQuote[] {
   const by = new Map<string, DealerTrade[]>();
-  for (const t of trades) if (t.ref === ref && t.side === "sells" && t.tick >= tick - window) by.set(t.dealer, [...(by.get(t.dealer) ?? []), t]);
+  for (const t of trades) if (t.ref === ref && t.side === "sells" && t.tick >= tick - window && !CHA_REBUY_OFF.has(t.dealer)) by.set(t.dealer, [...(by.get(t.dealer) ?? []), t]);
   const out: DealerBuyQuote[] = [];
   for (const [dealer, ts] of by) {
     const ps = ts.map((t) => t.price).sort((a, b) => a - b);
