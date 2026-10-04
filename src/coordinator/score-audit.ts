@@ -4,7 +4,7 @@ import type { Me } from "../shared/schemas.js";
 import type { FeedEvent } from "../state/world.js";
 
 /**
- * Per-deal score audit (GET only). `neg_points` should move by Σ(your_value − price) on buys and Σ(price − your_value)
+ * Per-deal score audit (GET only). `neg_points` should move by Σ(your_value − price − fee) on buys and Σ(price − your_value − fee)
  * on sells (docs/bazaar/neg-points-formula.md). Each tick it reads our settlements from the feed since the last read,
  * tags each one dealer (a persona) or team (a venue), values it at OUR value seen BEFORE the deal (last `/api/me` for
  * what we sold, the private-values cache for what we bought) and compares the expected sum with the `neg_points` Δ.
@@ -22,7 +22,7 @@ export interface AuditDeal {
   fee: number;
   /** Our value of the cards at deal time (sum); `undefined` if one of them was never seen. */
   value?: number;
-  /** buy: value − price; sell: price − value (fee not subtracted). */
+  /** buy: value − price − fee; sell: price − value − fee (SAL-11 sold @222, v 234, fee 13: neg_points −25 on 4 Oct). */
   expected?: number;
 }
 
@@ -76,6 +76,7 @@ export function ourDeals(events: readonly FeedEvent[], team: string, valueOf: (s
     const persona = typeof p.persona === "string" && p.persona ? p.persona : undefined;
     const vals = mine.map((i) => valueOf(side, { ...(num(i.id) !== undefined ? { id: num(i.id)! } : {}), ref: i.ref as string }));
     const price = num(p.price) ?? 0;
+    const fee = num(p.fee) ?? 0;
     const value = vals.every((v) => v !== undefined) ? round1(vals.reduce((s: number, v) => s + v!, 0)) : undefined;
     out.push({
       source: persona ? "dealer" : "team",
@@ -85,8 +86,8 @@ export function ourDeals(events: readonly FeedEvent[], team: string, valueOf: (s
       side,
       refs: mine.map((i) => i.ref as string),
       price,
-      fee: num(p.fee) ?? 0,
-      ...(value !== undefined ? { value, expected: round1(side === "buy" ? value - price : price - value) } : {}),
+      fee,
+      ...(value !== undefined ? { value, expected: round1((side === "buy" ? value - price : price - value) - fee) } : {}),
     });
   }
   return out;
