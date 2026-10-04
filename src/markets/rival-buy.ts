@@ -342,34 +342,50 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     epicKept.set(epic.ref, proposeEpicBuy(input, epic, existing, memo, { intents, notes, plan }, others));
   }
 
-  // Existing directed bids: cancel, reprice or keep (what they commit comes off the budget).
+  // Existing directed bids: cancel, reprice or keep. Everything they commit comes off the budget up front, so a reprice
+  // only spends what no other kept bid holds; a cancelled bid gives its cash back.
+  for (const e of existing) if (!epicRefs.has(e.ref)) budget -= e.price + tradeFee(e.price, 1, MAKER_FEES);
   let open = 0;
   const priority = new Set(params.priorityRefs);
   const yieldable: { id: number; key: string; ref: string; committed: number }[] = [];
+  // A kept bid that was repriced this tick is already cancelled: dropping it removes its repost instead.
+  const dropKept = (y: (typeof yieldable)[number], reason: string) => {
+    const k = plan.posts.findIndex((x) => x.replaces === y.id);
+    if (k < 0) return cancel(y.id, y.key, reason);
+    const [post] = plan.posts.splice(k, 1);
+    const i = intents.findIndex((x) => x.id === post!.intentId);
+    if (i >= 0) intents.splice(i, 1);
+    notes.push(`${TAG} drop reprice of #${y.id} ${y.ref} (${reason})`);
+  };
   for (const e of existing) {
     if (epicRefs.has(e.ref)) continue;
     const key = `${e.team}:${e.ref}`;
+    const held0 = e.price + tradeFee(e.price, 1, MAKER_FEES);
+    const drop = (reason: string, backoff = false) => {
+      cancel(e.offer.id, key, reason, backoff);
+      budget += held0;
+    };
     const team = byTeam.get(e.team);
     if (!team) {
-      cancel(e.offer.id, key, `${e.team} not in the rivals view`);
+      drop(`${e.team} not in the rivals view`);
       continue;
     }
     if (rastro.has(e.ref)) {
-      cancel(e.offer.id, key, `El Rastro bids on ${e.ref} (no double fill)`);
+      drop(`El Rastro bids on ${e.ref} (no double fill)`);
       continue;
     }
     if (roomOf(input.room, e.team) < MIN_ROOM) {
-      cancel(e.offer.id, key, `${e.team} score room ${roomOf(input.room, e.team)} < ${MIN_ROOM}`, true);
+      drop(`${e.team} score room ${roomOf(input.room, e.team)} < ${MIN_ROOM}`, true);
       continue;
     }
     const asm = assessRivalBuy(team, e.ref, input, params);
     const cap = asm.p?.cap;
     if (!asm.ok && !/^cap /.test(asm.reason)) {
-      cancel(e.offer.id, key, asm.reason);
+      drop(asm.reason);
       continue;
     }
     if (cap === undefined || e.price > cap) {
-      cancel(e.offer.id, key, cap === undefined ? "no cap" : `bid ${e.price} > cap ${cap}`);
+      drop(cap === undefined ? "no cap" : `bid ${e.price} > cap ${cap}`);
       continue;
     }
     const age = trade.tick - (e.offer.created_tick ?? trade.tick);
@@ -378,21 +394,32 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
       const n = memo.get(key)?.reprices ?? 0;
       const next = enforceGuardrails({ role: "buyer", reservation: cap }, Math.min(cap, slowReprice(e.price, cap, params.repriceFrac)), e.price);
       const extra = next + tradeFee(next, 1, MAKER_FEES) - committed;
-      if (n >= params.maxReprices || next <= e.price || extra > budget) {
-        cancel(e.offer.id, key, `no fill after ${n} reprice(s)${extra > budget ? " and no budget to raise" : ""}; backoff ${params.backoffTicks} ticks`, true);
+      if (n >= params.maxReprices || next <= e.price) {
+        drop(`no fill after ${n} reprice(s); backoff ${params.backoffTicks} ticks`, true);
         continue;
       }
+      if (extra > budget) {
+        notes.push(`${TAG} hold #${e.offer.id} ${e.ref} at ${e.price}: raise to ${next} needs ${extra}, budget left ${Math.max(0, Math.floor(budget))}`);
+      } else {
       cancel(e.offer.id, key, `reprice ${e.price} → ${next}`);
       const post = makePost(e.team, e.ref, next, params, n + 1, e.offer.id);
       plan.posts.push(post);
       intents.push(postIntent(post, `${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`, (asm.p?.gain ?? 0) - next - tradeFee(next, 1, MAKER_FEES)));
       notes.push(`${TAG} reprice #${e.offer.id} ${e.price} → ${next} (${n + 1}/${params.maxReprices})`);
       committed = next + tradeFee(next, 1, MAKER_FEES);
+      }
     }
-    budget -= committed;
+    budget -= committed - held0;
     open += 1;
     handled.add(key);
     if (!priority.has(e.ref)) yieldable.push({ id: e.offer.id, key, ref: e.ref, committed });
+  }
+  // Over budget (cash below the floor if every bid filled): non-priority bids give way first.
+  while (budget < 0 && yieldable.length) {
+    const y = yieldable.pop()!;
+    dropKept(y, `over budget by ${Math.ceil(-budget)}`);
+    budget += y.committed;
+    open -= 1;
   }
 
   // New candidates: page cards we lack that a rival holds a spare of.
@@ -435,7 +462,7 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
     // A priority card takes the slot and budget of a kept non-priority bid (cancelled, so the cash is free again).
     while (priority.has(p.ref) && (open >= params.maxOpen || p.bid + p.fee > budget) && yieldable.length) {
       const y = yieldable.shift()!;
-      cancel(y.id, y.key, `make room for priority ${p.ref}`);
+      dropKept(y, `make room for priority ${p.ref}`);
       budget += y.committed;
       open -= 1;
       refs.delete(y.ref);

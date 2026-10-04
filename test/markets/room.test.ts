@@ -95,3 +95,25 @@ describe("rival-buy page lane (Pablo, 4 Oct: negotiable bids for missing page ca
     );
   });
 });
+
+describe("rival-buy budget (4 Oct: kept bids summed 95 with 73 above the floor)", () => {
+  it("non-priority bids kept after the plan never commit more than cash − floor", async () => {
+    const { buildValueModel } = await import("../../src/trades/trades.js");
+    const refs = ["LAT-06", "LAT-07", "LAT-08", "LAT-09"];
+    const catalog = { sets: [{ id: "LAT", released: true, cards: [{ id: "LAT-01", rarity: "common", book: 10 }, ...refs.map((id) => ({ id, rarity: "rare", book: 70 }))] }], packs: [] } as never;
+    fc.assert(
+      fc.property(fc.array(fc.integer({ min: 1, max: 40 }), { minLength: 1, maxLength: 4 }), fc.integer({ min: 50, max: 200 }), fc.integer({ min: 0, max: 30 }), (prices, cash, age) => {
+        const held = [{ id: 1, ref: "LAT-01", value: 7, locked: false }];
+        const mine: TradeOffer[] = prices.map((price, k) => ({ id: 2000 + k, to: "t07", venue: OFFER_VENUE, status: "open", give: { cash: price }, want: { cards: [refs[k]!] }, created_tick: TICK - age, expires_tick: TICK + 10 }));
+        const trade = { ...tradeState(cash, mine), held, pageSets: ["LAT"], model: buildValueModel(catalog, held as never, new Map()) } as unknown as TradeState;
+        const holder: RivalTeam = { team: "t07", seen: refs.map((ref, i) => ({ assetId: 7000 + i, ref, tick: TICK - 1, source: "board" as never })), distinct: refs.length, spares: [], pages: [], wants: [] };
+        const rivals: RivalsState = { teams: [holder], byRef: Object.fromEntries(refs.map((r) => [r, { holders: ["t07"], wantedBy: [] }])), seenAssets: refs.length, lastEventId: 0 };
+        const { plan } = proposeRivalBuy({ tick: TICK, trade, rivals, maxSpend: 1000, cashFloor: 50, apiValues: new Map(refs.map((r) => [r, 49])), room: new Map() }, RIVAL_BUY_PARAMS, new Map(), []);
+        const cancelled = new Set(plan.cancels.map((c) => c.offerId));
+        const kept = mine.filter((o) => !cancelled.has(o.id)).reduce((s, o) => s + o.give.cash!, 0);
+        const posted = plan.posts.reduce((s, p) => s + p.price, 0);
+        expect(kept + posted).toBeLessThanOrEqual(cash - 50);
+      }),
+    );
+  });
+});
