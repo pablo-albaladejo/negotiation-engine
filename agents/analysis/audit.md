@@ -37,7 +37,10 @@ Rearma cada monitor al caducar (30 min). Las rutas de results/ llevan la fecha: 
 ## Procesos
 
 - `pnpm bazaar:audit --watch` (solo lectura; lo arranca y reinicia esta sesión; el 4 oct, pid 90968 desde las 09:21).
-- Monitores de Claude: `tick_eval.py` (**en el scratchpad de la sesión: se pierde si se cierra; conviene pasarlo a `scripts/`**) y el de alertas.
+- Monitores de Claude, versionados en [`agents/tools/`](../tools/AGENTS.md) y lanzados con la herramienta Monitor desde la raíz del repo (caducan a los 30 min: hay que volver a armarlos):
+  - `python3 -u agents/tools/audit-tick-eval.py --from-end [--date AAAA-MM-DD]`: una línea por tick de `play.log` con los Δ (score, escalera, neg, duelos, caja) y los `FLAG:` (concesión de un solo lado, duelo por debajo del límite, carta oculta, errores, caja baja, bajada de rank).
+  - `bash agents/tools/audit-alerts.sh [AAAA-MM-DD]`: alertas de caídas y errores de play, banco y Pícaros, desajustes de score-audit, pausa del reloj, `bench.finished`, nuestro venue, líneas HIGH/MEDIUM del auditor y nuestros tratos (TEAM-DEAL, BIG-DEALER-BUY, HIDDEN-CARD-SOLD).
+  - La fecha por defecto es la de hoy en UTC (la de las carpetas de `results/`); pasada la medianoche hay que relanzarlos, y también el auditor.
 - No lanza nada de `bazaar:up`.
 
 ## Estado al 4 oct (instantánea, ~t1625)
