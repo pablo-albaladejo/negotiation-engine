@@ -460,7 +460,9 @@ export function proposeRivalBuy(input: RivalBuyInput, params: RivalBuyParams = R
   for (const p of fresh) {
     if (refs.has(p.ref)) continue;
     // A priority card takes the slot and budget of a kept non-priority bid (cancelled, so the cash is free again).
-    while (priority.has(p.ref) && (open >= params.maxOpen || p.bid + p.fee > budget) && yieldable.length) {
+    // Only when giving way makes it fit: otherwise the bids would be cancelled and reposted every tick.
+    const fits = budget + yieldable.reduce((s, y) => s + y.committed, 0) >= p.bid + p.fee && open - yieldable.length < params.maxOpen;
+    while (priority.has(p.ref) && fits && (open >= params.maxOpen || p.bid + p.fee > budget) && yieldable.length) {
       const y = yieldable.shift()!;
       dropKept(y, `make room for priority ${p.ref}`);
       budget += y.committed;
