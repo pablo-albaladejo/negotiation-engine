@@ -1,6 +1,6 @@
 # trader
 
-> Sesión de origen: `negotiation-ring-00` · vivo · entrevista: 4 oct (t~1630), actualizado t~2722. Desde t~1614 lleva también la vía de [team-desk](team-desk.md).
+> Sesión de origen: `negotiation-ring-00` · cerrada (el Bazaar cerró el 4 oct a las 15:00) · entrevista: 4 oct (t~1630), actualizado t~2722. Desde t~1614 lleva también la vía de [team-desk](team-desk.md).
 
 ## Misión
 
@@ -41,13 +41,13 @@ Antes de cada commit: pnpm test, pnpm typecheck, pnpm docs:check; commit en DAY2
 - Monitor de solo lectura sobre `play.log` y `score-audit.jsonl` filtrando `[epic]` y deltas.
 - Pruebas: `pnpm bazaar:play --dry-run --once --rival-buy --rival-buy-epic`. Scripts GET de una vez en `results/trader/` (`value-table.ts`, `me.ts`, `ret.ts`).
 
-## Estado al 4 oct (instantánea, t~2722, 14:36)
+## Estado final al 4 oct (t~2722, 14:36; el Bazaar cerró a las 15:00)
 
 - Commits del día: 47cbeb7/c77d6e7/d9b25bc (todo en v21), c5f128a (vía de página, techo valor − 1), 1fc0450 (prioridad MAL y sin pujas a t09 en v21), 191e4d4 + eb0eab2 (presupuesto: las pujas abiertas cuentan antes de repreciar; si sobra, ceden las no prioritarias), 19a95bb (una prioritaria solo desplaza a otras si así cabe; sin cancelar y republicar en bucle). En vivo desde 14:14:58 (pid 28962).
 - Chamberí 10/10 (CHA-09 a 59 y CHA-10 a 60, vía Pícaros); LAT-03 comprada a 6. MAL 7/10 (faltan 04, 06 y 09), LAT 5/10, LAV 0/10; sin repetidas; caja 123.
 - Desde h 18.87 la agenda congela las altas (end_round h 19.367, el domingo cierra a las 15:00) y canceló todas las pujas; ninguna MAL se llenó.
 - Scripts manuales en `results/trader/` (GET por defecto, `--go` lo ejecuta Pablo con `!`): `bidsum.ts` (suma de pujas frente a caja − 50) y `trim-bids.ts` (cancela la puja no MAL más pequeña que basta).
-- Por hacer: team-desk con /api/me/value para épicas y cartas que no tenemos; tabla de valores en GameState o en el visor.
+- Si hay otro día, por hacer: team-desk con /api/me/value para épicas y cartas que no tenemos; tabla de valores en GameState o en el visor.
 
 ## Ficheros clave
 
