@@ -3,8 +3,8 @@ import { buyGain, pageRisk, valueDelta, type ValueModel } from "../trades/trades
 /**
  * Dispersion scanner (markets route): buy asks below our MARGINAL private value and sell into bids above it.
  * neg_points score value gained at private value (buy: v − p, sell: p − v), so each leg scores on its own.
- * ASSUMPTION: no per-deal cap is modelled, but the admin UI says the surplus is "capped per trade and per counterparty"
- * (cap size unknown; docs/bazaar/site-map.md § 6.12), so a single huge edge may score less than this ranks it.
+ * Per-deal cap: a team trade scores at most `scoredGainCap` (Payday: gain ≤ 50 per trade), so the edge is ranked at
+ * min(edge, cap); a bigger raw edge buys nothing extra. The per-counterparty cap is approximated by `dealsPerCounterpartyPerHour`.
  * Pure: margin, marginal value, per-deal decision and the hourly ledger. The figure is always the price on display.
  */
 export const SCANNER_PARAMS = {
@@ -15,6 +15,8 @@ export const SCANNER_PARAMS = {
   spendPerHour: 60,
   /** Anti-feeding (RULES.md:132): at most N scanner deals per counterparty team per game hour. */
   dealsPerCounterpartyPerHour: 2,
+  /** Payday: a team trade scores at most this gain (value − price or price − value), so edges above it count as it. */
+  scoredGainCap: 50,
   /** Page protection for `pageRisk` (same threshold as rival-page). */
   protectPageHave: 8,
 };
@@ -66,7 +68,7 @@ export interface ScanDecision {
 
 /** One scanner deal: net (edge − fee − penalty) ≥ margin, spend cap, cash floor and counterparty cap. */
 export function scanDecision(i: ScanInput, p: ScannerParams = SCANNER_PARAMS): ScanDecision {
-  const edge = r1(i.side === "buy" ? i.marginal - i.price : i.price - i.marginal);
+  const edge = r1(Math.min(p.scoredGainCap, i.side === "buy" ? i.marginal - i.price : i.price - i.marginal));
   const net = r1(edge - i.fee - i.penalty);
   const margin = scannerMargin(i.price, p);
   const d = (ok: boolean, reason: string): ScanDecision => ({ ok, edge, net, margin, reason });
