@@ -651,6 +651,12 @@ export class FlagsRoute {
         records.push({ messageId: f.messageId, reason, tick: state.tick, persona: c.counterparty, result: "pending" });
         lines.push(`flags: flagged message ${f.messageId}`);
       } catch (e) {
+        if (e instanceof BazaarError && e.code === "already_flagged") {
+          // Flagged on an earlier day (flags.json is per day): record it so it is not retried every tick.
+          records.push({ messageId: f.messageId, reason, tick: state.tick, persona: c.counterparty, result: "pending" });
+          lines.push(`flags: message ${f.messageId} already flagged on the server (recorded)`);
+          continue;
+        }
         lines.push(`flags: message ${f.messageId} failed: ${e instanceof BazaarError ? e.code : String(e)}`);
       }
     }
