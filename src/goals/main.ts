@@ -28,6 +28,8 @@ const dayStartFile = join(args.dir, "goals-day-start.json");
 
 interface DayStart {
   date: string;
+  /** `/api/clock` round when the snapshot was taken; a new round resets the score parts. */
+  round?: number | undefined;
   tick: number;
   metrics: Metrics;
 }
@@ -49,16 +51,20 @@ const client = new BazaarClient({ url: env.url, key: env.key, ratePerSec: 1, bur
 
 let prev: Metrics | null = null;
 
-/** Window end tick per goal from /api/clock and /api/schedule; undefined (hand values stay) if either fails. */
-async function windows(): Promise<Record<string, number | null> | undefined> {
+/**
+ * Current round and the window end tick per goal from /api/clock and /api/schedule; each is undefined (round
+ * detection falls back to `deals`, hand windows stay) if its GET fails.
+ */
+async function clockInfo(): Promise<{ round?: number | undefined; until?: Record<string, number | null> | undefined }> {
   try {
-    const clock = (await client.raw("GET", "/api/clock")) as ClockView;
-    const schedule = (await client.raw("GET", "/api/schedule")) as { upcoming?: ScheduleEvent[] };
-    if (typeof clock?.tick !== "number" || typeof clock.t_hours !== "number" || !Array.isArray(schedule?.upcoming)) return undefined;
+    const clock = (await client.raw("GET", "/api/clock")) as ClockView & { round?: unknown };
+    const round = typeof clock?.round === "number" ? clock.round : undefined;
+    const schedule = (await client.raw("GET", "/api/schedule").catch(() => null)) as { upcoming?: ScheduleEvent[] } | null;
+    if (typeof clock?.tick !== "number" || typeof clock.t_hours !== "number" || !Array.isArray(schedule?.upcoming)) return { round };
     const upcoming = [...schedule.upcoming].sort((a, b) => a.at_hours - b.at_hours);
-    return Object.fromEntries(Object.entries(WINDOW_EVENT).map(([id, match]) => [id, windowEndTick(clock, upcoming, match)]));
+    return { round, until: Object.fromEntries(Object.entries(WINDOW_EVENT).map(([id, match]) => [id, windowEndTick(clock, upcoming, match)])) };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -73,14 +79,15 @@ async function refresh(): Promise<void> {
   const tick = typeof rawTick === "number" ? rawTick : 0;
   const date = new Date().toLocaleDateString("sv-SE");
 
+  const { round, until } = await clockInfo();
   let dayStart = existsSync(dayStartFile) ? readJson<DayStart>(dayStartFile) : null;
-  if (!dayStart || dayStart.date !== date || isRoundReset(prev, metrics)) {
-    dayStart = { date, tick, metrics };
+  const newRound = round !== undefined ? dayStart?.round !== round : isRoundReset(prev, metrics);
+  if (!dayStart || dayStart.date !== date || newRound) {
+    dayStart = { date, round, tick, metrics };
     writeJson(dayStartFile, dayStart);
-    console.log(`day start set at t${tick}`);
+    console.log(`day start set at t${tick}${round !== undefined ? ` (round ${round})` : ""}`);
   }
 
-  const until = await windows();
   const goals = refreshGoals(readJson<GoalsFile>(goalsFile), readJson<StrategiesFile>(strategiesFile), {
     tick,
     at: new Date().toISOString(),

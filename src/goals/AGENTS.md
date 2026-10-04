@@ -5,7 +5,7 @@ El **qué**: qué objetivos persigue el equipo, con qué peso y en qué estado e
 ## Archivos
 
 - **`goals.ts`** — puro, sin E/S. `refreshGoals` recalcula en cada tick los campos medidos de cada objetivo (`now`, `day_start`, `delta_tick`, las reglas de `status` de `ruleStatus` y la lista de estrategias enlazadas) y copia tal cual los que fija a mano la sesión «goals» (peso, prioridad, `target`, `why`, `do_not`, `guardrails`). `refreshGaps` añade los huecos automáticos (objetivo con peso > 0 y prioridad ≤ `GAP_PRIORITY` sin estrategia live) y conserva los escritos a mano. `isRoundReset` detecta una ronda nueva porque baja `deals`. `windowEndTick` calcula `until_tick` de duels (próxima ola de duelos), market-test (fin de la próxima sesión del bench) y dealer-ladder (cierre de los puestos) con `/api/clock` y `/api/schedule`: con las puertas cerradas, el reloj se reanuda en el siguiente `day_opens` con el tick_seconds de ese día y los eventos anteriores se saltan.
-- **`main.ts`** — CLI de solo lectura: un GET a `/api/me`, `/api/clock` y `/api/schedule` cada `--interval` s (30), nunca un POST; `--once` refresca una vez y sale. Escribe de forma atómica (.tmp y rename) en `results/state/` (fuera de git): goals.json, el `gaps` de strategies.json y goals-day-start.json (la foto del primer tick de la ronda).
+- **`main.ts`** — CLI de solo lectura: un GET a `/api/me`, `/api/clock` y `/api/schedule` cada `--interval` s (30), nunca un POST; `--once` refresca una vez y sale. Escribe de forma atómica (.tmp y rename) en `results/state/` (fuera de git): goals.json, el `gaps` de strategies.json y goals-day-start.json (la foto del primer tick de la ronda: ronda nueva cuando cambia `round` de `/api/clock`; si falla, cuando baja `deals`).
 
 ## Reglas
 
