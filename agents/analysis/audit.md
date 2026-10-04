@@ -63,6 +63,8 @@ Rearma cada monitor al caducar (30 min). Las rutas de results/ llevan la fecha: 
 - La comisión resta neg: SAL-11 se vendió a 222 con valor 234 y comisión 13, y neg bajó 25. Lo recoge 4773175 en score-audit.
 - Cambio de SAL-11 por CHA-11: lo hizo Pablo a mano; neg +25 neto y SAL queda a 9/10, aceptado.
 - Los «m…» de El Rastro son equipos anónimos, no bots.
+- 15839 (−15) y 16106 (−6) fueron carreras dentro del mismo tick (el rival mueve tras nuestro GET): no son fallo.
+- rival-buy a t09 en v21 falla con `self_venue` (v21 es el venue de t09); pasado al coordinator.
 
 ## Ficheros clave
 
