@@ -15,6 +15,8 @@ Pestañas propias del visor (salen de «Model» para no repetirse):
 
 Datos: `board.eggs`, de `eggsOf` en [`viewer/server/bazaar/profile/`](../../../server/bazaar/profile/AGENTS.md). Solo lectura; aquí no se calcula ninguna cifra.
 
+Los «thread #N» y los ticks del flujo de cada egg (y el hilo de cada regalo) son enlaces: abren el cajón de esa conversación, igual que el historial.
+
 ## Links
 
 - ↑ [`viewer/src/screens/`](../AGENTS.md)

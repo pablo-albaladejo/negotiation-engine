@@ -924,7 +924,7 @@ function flagRow(f: unknown, nowTick: number | null) {
   };
 }
 
-export function EggsAndFlags({ model, board }: { model: GameModel; board: Board }) {
+export function EggsAndFlags({ model, board, onOpenThread }: { model: GameModel; board: Board; onOpenThread?: (thread: number) => void }) {
   const o = model.state?.ours;
   const flags = flagsOf(model);
   const byPersona = Object.entries(model.state?.world?.eggs?.byPersona ?? {});
@@ -936,7 +936,7 @@ export function EggsAndFlags({ model, board }: { model: GameModel; board: Board 
   const nowTick = board.clock?.tick ?? null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      {board.eggs ? <Eggs board={board} title={`Eggs (prestige, not scored) · ${board.eggs.ours.length} ours`} /> : <Card title="Eggs (prestige, not scored)">
+      {board.eggs ? <Eggs board={board} title={`Eggs (prestige, not scored) · ${board.eggs.ours.length} ours`} {...(onOpenThread ? { onOpenThread } : {})} /> : <Card title="Eggs (prestige, not scored)">
         <div style={col}>
           <strong>Ours</strong>
           {items("eggs", o?.eggs)}

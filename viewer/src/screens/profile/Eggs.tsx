@@ -1,4 +1,5 @@
-import { Card, DataTable } from "@negotiation-ring/design-system";
+import { Card, DataTable, TableLink } from "@negotiation-ring/design-system";
+import type { ReactNode } from "react";
 import { teamLabel, type Board, type BoardEggCard, type BoardEggFlow, type BoardEggPlanRow, type BoardOurEgg } from "../../model/index.js";
 
 /** ASSUMPTION (same as src/state/world.ts): 15 eggs per persona until the API gives a figure. */
@@ -28,17 +29,36 @@ function prizeOf(e: BoardOurEgg): string {
  * What we did to get the egg, step by step: the thread we opened ("buy pack sobre_barrio from abuela"), each message up
  * to the egg (what we said and offered; the dealer's offer, and its reply on the egg tick) and how the thread ended.
  */
-function EggFlowSteps({ flow, persona, eggTick }: { flow: BoardEggFlow; persona: string; eggTick: number }) {
+/** A thread reference that opens the conversation drawer when the screen gives a handler; plain text otherwise. */
+function ThreadLink({ thread, onOpen, children }: { thread: number | null; onOpen: ((thread: number) => void) | undefined; children: ReactNode }) {
+  if (thread === null || !onOpen) return <>{children}</>;
+  return (
+    <TableLink aria-label={`Open thread #${thread}`} title={`Open thread #${thread}`} onClick={() => onOpen(thread)}>
+      {children}
+    </TableLink>
+  );
+}
+
+function EggFlowSteps({ flow, persona, eggTick, onOpen }: { flow: BoardEggFlow; persona: string; eggTick: number; onOpen: ((thread: number) => void) | undefined }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: "var(--space-1)" }}>
       <span>
         <span className="nr-muted">Flow: </span>
-        {`${flow.topic ? `${flow.topic} from ${persona}` : `thread with ${persona}`}${flow.thread !== null ? ` · thread #${flow.thread}` : ""}`}
+        {flow.topic ? `${flow.topic} from ${persona}` : `thread with ${persona}`}
+        {flow.thread !== null ? (
+          <>
+            {" · "}
+            <ThreadLink thread={flow.thread} onOpen={onOpen}>{`thread #${flow.thread}`}</ThreadLink>
+          </>
+        ) : null}
       </span>
       <ol style={{ margin: 0, paddingLeft: "var(--space-4, 20px)", display: "flex", flexDirection: "column", gap: 2 }}>
         {flow.steps.map((s, i) => (
           <li key={`${s.tick}-${i}`} style={s.tick === eggTick && s.who === "dealer" ? { color: "var(--ok)" } : undefined}>
-            <span className="nr-muted">{`t${s.tick} · `}</span>
+            <ThreadLink thread={flow.thread} onOpen={onOpen}>
+              <span className="nr-muted">{`t${s.tick}`}</span>
+            </ThreadLink>
+            <span className="nr-muted">{" · "}</span>
             <strong>{s.who === "us" ? "we" : persona}</strong>
             {s.offer ? ` ${s.offer}` : s.who === "us" ? " write" : " replies"}
             {s.text ? <>{s.offer ? ", saying " : " "}«{s.text}»</> : null}
@@ -119,7 +139,7 @@ function EggPlan({ rows }: { rows: BoardEggPlanRow[] }) {
   );
 }
 
-export function Eggs({ board, title }: { board: Board; title?: string }) {
+export function Eggs({ board, title, onOpenThread }: { board: Board; title?: string; onOpenThread?: (thread: number) => void }) {
   const eggs = board.eggs;
   if (!eggs) return null;
   const persona = (id: string) => eggs.personas.find((p) => p.persona === id);
@@ -174,7 +194,7 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
                           <br />
                           Prize: <strong>{prizeOf(e)}</strong>
                           {e.prize.reason ? <span className="nr-muted">{` · ${e.prize.reason}`}</span> : null}
-                          {e.flow ? <EggFlowSteps flow={e.flow} persona={e.persona_name ?? e.persona} eggTick={e.tick} /> : null}
+                          {e.flow ? <EggFlowSteps flow={e.flow} persona={e.persona_name ?? e.persona} eggTick={e.tick} onOpen={onOpenThread} /> : null}
                         </li>
                       ) : g ? (
                         <li key={`g-${g.tick}`} style={{ borderLeft: "4px solid var(--ok)", paddingLeft: "var(--space-2)" }}>
@@ -185,8 +205,16 @@ export function Eggs({ board, title }: { board: Board; title?: string }) {
                             <>
                               <br />
                               <span className="nr-muted">
+                                {g.context.thread !== null ? (
+                                  <>
+                                    {"while negotiating in "}
+                                    <ThreadLink thread={g.context.thread} onOpen={onOpenThread}>{`thread #${g.context.thread}`}</ThreadLink>
+                                    {" · "}
+                                  </>
+                                ) : (
+                                  "while negotiating · "
+                                )}
                                 {[
-                                  g.context.thread !== null ? `while negotiating in thread #${g.context.thread}` : "while negotiating",
                                   g.context.our_offer ? `our offer t${g.context.our_tick ?? "?"}: ${g.context.our_offer}` : null,
                                   g.context.deal ? `deal t${g.context.deal.tick}: ${g.context.deal.refs.join(" + ") || "?"} at ${g.context.deal.price ?? "?"} P` : "no deal in the next ticks",
                                 ]

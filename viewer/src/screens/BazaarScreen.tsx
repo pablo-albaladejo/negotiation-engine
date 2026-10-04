@@ -865,7 +865,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         ) : view === "market-test" ? (
           <MarketTest board={board} />
         ) : view === "eggs" ? (
-          <EggsView board={board} model={model} loading={loading} />
+          <EggsView board={board} model={model} loading={loading} onOpenThread={(t) => openModel(`dealer:${t}`)} />
         ) : view === "news" ? (
           <NewsView model={model} loading={loading} />
         ) : view === "personas" ? (
