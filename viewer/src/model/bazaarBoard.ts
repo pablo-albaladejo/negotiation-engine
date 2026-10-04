@@ -210,6 +210,8 @@ export interface BoardScoreParts {
   day_start: { tick: number; parts: Record<string, number> } | null;
   /** `day_start` is the daily reset (raw parts zeroed), not the day's first snapshot; absent on an older server. */
   day_reset?: boolean;
+  /** Each part since `day_start`, oldest first (thinned); absent on an older server. */
+  series?: Record<string, number[]>;
   prev: { tick: number; parts: Record<string, number> } | null;
 }
 
