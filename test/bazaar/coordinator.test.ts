@@ -98,7 +98,7 @@ describe("duels v2 guardrails", () => {
   });
 
   it("never concedes twice without a rival counter", () => {
-    const d = decideDuel(duel({ ourOffers: [{ price: 120 }, { price: 105 }], concessionsSinceRival: 1, ticksSinceOurLast: 9, ticksLeft: 2, rivalOffers: [{ price: 85 }] }), DEFAULT_DUEL_PARAMS);
+    const d = decideDuel(duel({ ourOffers: [{ price: 120 }, { price: 105 }], concessionsSinceRival: 1, ticksSinceOurLast: 9, ticksLeft: 3, rivalOffers: [{ price: 85 }] }), DEFAULT_DUEL_PARAMS);
     expect(d.action).toBe("wait");
   });
 

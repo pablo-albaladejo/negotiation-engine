@@ -71,7 +71,9 @@ export const DEFAULT_DUEL_PARAMS: DuelParams = {
   maxRounds: 3,
   floorShare: 0.3,
   minSurplus: 1,
-  lastMoveTicks: 1,
+  // 2, not 1: play's loop takes ~30 s against 15 s ticks and saw Duels III 11146 only at 10, 8, 6, 4, 2 ticks left, so the
+  // last-move accept never fired (rival 108 P day 0 = +3 standing since ~t1873; no deal).
+  lastMoveTicks: 2,
   endgameTicks: 3,
   assumedDaysWeight: 0,
   pauseOnUnreadableDays: true,
