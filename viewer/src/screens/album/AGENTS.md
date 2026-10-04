@@ -1,6 +1,6 @@
 # viewer/src/screens/album/ — El álbum como cromos
 
-La tarjeta «Album» de la cabina, con el aspecto de la página /cards del juego:
+La pestaña «Cards» (la tarjeta «Album», fuera de la cabina), con el aspecto de la página /cards del juego:
 
 - **Chips arriba:** todas las páginas o una sola (color del set y have/of), y el filtro «only missing».
 - **Por set:** una banda con su color y su tema del catálogo, have/of y una barra de progreso.

@@ -797,17 +797,19 @@ function Drawer({ label, onClose, children }: { label: string; onClose: () => vo
   );
 }
 
-type View = "now" | "cockpit" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas";
+type View = "now" | "cockpit" | "cards" | "model" | "venues" | "forex" | "market-test" | "eggs" | "personas";
 
-const VIEWS: { id: View; label: string }[] = [
-  { id: "now", label: "Now" },
-  { id: "cockpit", label: "Cockpit (the API)" },
-  { id: "model", label: "Model (our internal view)" },
-  { id: "venues", label: "Venues (all books)" },
-  { id: "forex", label: "Forex (A → B → C)" },
-  { id: "market-test", label: "Market test (auto vs board)" },
-  { id: "eggs", label: "Eggs (eggs, gifts, flags, hints)" },
-  { id: "personas", label: "Personas (dealers and estimates)" },
+/** Tab label (what it is) and hint (what it answers), shown under the tabs for the selected view. */
+const VIEWS: { id: View; label: string; hint: string }[] = [
+  { id: "now", label: "Now · this tick", hint: "What the coordinator picked this tick, live conversations, our open offers and what changed since the last tick." },
+  { id: "cockpit", label: "Cockpit · score and history", hint: "Straight from the Bazaar API: scoreboard, upcoming events, right now, team desk, what moved the score, agents alive, and the full history of trades and duels." },
+  { id: "cards", label: "Cards · our album", hint: "Our album page by page: every card held or missing, copies in circulation, value per card, and the shinies that top a page up." },
+  { id: "model", label: "Model · our reasoning", hint: "Our internal view: the three score layers, timeline, coordinator, goals, news, markets, venues, rivals, prices and packs." },
+  { id: "venues", label: "Venues · every open book", hint: "Every open venue's asks and bids side by side, each offer marked against our hand and values. Nothing here sends." },
+  { id: "forex", label: "Forex · buy here, sell there", hint: "A → B → C chains: buy a card at one place, hold it, sell it at another, net of fees." },
+  { id: "market-test", label: "Market test · auto vs board", hint: "Our bench sessions in auto (v04) against board (v26, our broker matching): efficiency per session and the book tick by tick." },
+  { id: "eggs", label: "Eggs · finds, gifts, hints", hint: "Easter eggs per dealer (our probes, finds and prizes), gifts we received, flags we sent and the dealers' hint lines." },
+  { id: "personas", label: "Personas · dealers", hint: "Every dealer persona we model and our estimates of each dealer (structure only)." },
 ];
 
 /**
@@ -815,6 +817,14 @@ const VIEWS: { id: View; label: string }[] = [
  * then album, what moved the figure and whether our agents are alive; history and market
  * collapsed. Everything comes from `/api/bazaar/board`; the UI does not compute the figure.
  */
+function ViewHint({ view }: { view: View }) {
+  return (
+    <p className="nr-muted" style={{ margin: "calc(-1 * var(--space-2)) 0 0", fontSize: 13 }}>
+      {VIEWS.find((v) => v.id === view)?.hint}
+    </p>
+  );
+}
+
 export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenProps) {
   const [view, setView] = useState<View>("now");
   const pick = (id: string) => setView(VIEWS.find((v) => v.id === id)?.id ?? "now");
@@ -841,8 +851,11 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <PageTitle>Bazaar</PageTitle>
         <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
+        <ViewHint view={view} />
         {view === "now" ? (
           <NowView board={board} model={model} onOpen={openModel} />
+        ) : view === "cards" ? (
+          <AlbumCards board={board} />
         ) : view === "venues" ? (
           <VenueBooks board={board} />
         ) : view === "forex" ? (
@@ -864,6 +877,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <PageTitle>Bazaar</PageTitle>
       <Tabs aria-label="Bazaar views" items={VIEWS} selectedId={view} onSelect={pick} />
+      <ViewHint view={view} />
       {!board.live ? <EmptyStateCard title="No live Bazaar data (BAZAAR_KEY not set on the viewer server, or the Bazaar is unreachable)" /> : null}
       <div className="nr-grid" style={gridCols("minmax(0, 1fr) minmax(0, 1fr)")}>
         <Scoreboard board={board} />
@@ -872,9 +886,8 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
       <RightNow board={board} onOpen={open} />
       <TeamDesk board={board} />
       <div className="nr-grid" style={gridCols("minmax(0, 3fr) minmax(260px, 2fr)")}>
-        <AlbumCards board={board} />
+        <ScoreMovers board={board} onOpen={open} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
-          <ScoreMovers board={board} onOpen={open} />
           <Agents board={board} />
           <Workshop board={board} />
         </div>
