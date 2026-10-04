@@ -773,8 +773,9 @@ export function probePhrasesFor(hints: readonly HintLine[], persona: string): st
     })
     .sort((a, b) => a.r - b.r || Number(isSpanishPhrase(b.k)) - Number(isSpanishPhrase(a.k)) || b.tick - a.tick)
     .flatMap(({ k }) => {
-      // Keywords cut from the middle of a sentence ("to pack up", "your lucky face") are not a topic a dealer could know about.
-      if (!k || !isProbePhrase(k) || /^(to|your|this|it|her|him)\s/i.test(k) || seen.has(normalize(k))) return [];
+      // Keywords cut from the middle of a sentence ("to pack up", "your lucky face") are not a topic a dealer could know
+      // about, nor is a single word or a pronoun ("you", "her": probes sent at t1720 and on thread 3044, 4 Oct).
+      if (!k || !isProbePhrase(k) || k.split(/\s+/).length < 2 || /^(to|your|you|this|it|her|him|his|she|he|they|them|me|my|we|our)\s/i.test(k) || seen.has(normalize(k))) return [];
       seen.add(normalize(k));
       return [k];
     });
