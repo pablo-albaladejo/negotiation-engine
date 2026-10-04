@@ -1,6 +1,6 @@
 # trader
 
-> Sesión de origen: `negotiation-ring-00` · vivo · entrevista: 4 oct (t~1630). Desde t~1614 lleva también la vía de [team-desk](team-desk.md).
+> Sesión de origen: `negotiation-ring-00` · vivo · entrevista: 4 oct (t~1630), actualizado t~2722. Desde t~1614 lleva también la vía de [team-desk](team-desk.md).
 
 ## Misión
 
@@ -27,6 +27,11 @@ Reglas de Pablo en esta sesión:
 - Vender solo repetidas, o (a equipos) cartas que podemos recomprar a un dealer ≤ nuestro valor; última copia/página completa con OK. Nunca cartas ocultas (LAT-13).
 - Valor = book × multiplicador de set (RET 1,6, SAL 1,3, CHA 1,1, MAL 0,9, LAT 0,7, LAV 0,5); épicas no son cartas de página.
 - Comprobar siempre datos frescos (GET) antes de proponer: una vez di una página stale (CHA 1/10 cuando era 8/10).
+- Todas nuestras ofertas solo en v21 (`OFFER_VENUE`, venue de Team 9, aliados); nunca dirigidas a su dueño t09 allí (`OFFER_VENUE_OWNER`, el servidor responde self_venue).
+- Vía de página de rival-buy: pujas negociables por cartas de página que nos faltan, techo = /api/me/value − 1; `priorityRefs` (MAL-04/06/09, «negocia las 3») van primero. Las pujas abiertas, sumadas, nunca pasan de caja − suelo (50).
+- El bonus de página existe: en una página completa cada carta vale base + 0,25 × Σbase de la página (CHA +72,9; LAT +46,4; MAL +59,6); /api/me/value de una carta que falta no lo incluye.
+- Una página completa (CHA, RET, SAL) no se vende: la vía CHA de team-desk se para.
+- Comprobar `pnpm docs:check` y `pnpm typecheck` por código de salida y después de la última edición (dos veces en rojo el 4 oct).
 Antes de cada commit: pnpm test, pnpm typecheck, pnpm docs:check; commit en DAY2 y git push origin DAY2; firma Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>. Solo tests de guardarraíles; lo demás con pnpm bazaar:play --dry-run --once --rival-buy --rival-buy-epic.
 ```
 
@@ -36,13 +41,13 @@ Antes de cada commit: pnpm test, pnpm typecheck, pnpm docs:check; commit en DAY2
 - Monitor de solo lectura sobre `play.log` y `score-audit.jsonl` filtrando `[epic]` y deltas.
 - Pruebas: `pnpm bazaar:play --dry-run --once --rival-buy --rival-buy-epic`. Scripts GET de una vez en `results/trader/` (`value-table.ts`, `me.ts`, `ret.ts`).
 
-## Estado al 4 oct (instantánea, t~1630)
+## Estado al 4 oct (instantánea, t~2722, 14:36)
 
-- Commits: 9b69f46 (vía RET-11), bcc2cf9 (sin re-puja el mismo tick a un titular descartado), f3d922d (titulares descartados en `epic-done.json`), 74b43d0 (P1: SAL-11 185→200→215, +t13), 70a94aa (P4: RET-11 puja abierta a 240 + `foreignBidRefs` en trades), 31c75c1 (escáner: tope Payday 50).
-- Pendiente del coordinator: (a) aceptar #21583 (t05 nos vende RET-11 a 240, caduca t1653, valor 288 → +48), urgente; (b) reinicio de play con P1+P4+escáner, fuera de la ventana dura del Market Test (h14.65–~t1706), mejor después de #21583.
-- P2 (MAL-11 vía Pícaros): esperando a dealers; luego a Pablo.
-- P3 (vía CHA): diseño en dry-run con dealers; regla: vender solo si ya tenemos la repetida recomprada.
-- Por hacer: team-desk debe leer `/api/me/value` para épicas y cartas que no tenemos (valoró RET-11 en 35 en vez de 288); regenerar la tabla de valores (stale desde 08:21) y proponerla en GameState/visor; si se activa `--rastro-bids`, que el planificador de pujas salte `foreignBidRefs`.
+- Commits del día: 47cbeb7/c77d6e7/d9b25bc (todo en v21), c5f128a (vía de página, techo valor − 1), 1fc0450 (prioridad MAL y sin pujas a t09 en v21), 191e4d4 + eb0eab2 (presupuesto: las pujas abiertas cuentan antes de repreciar; si sobra, ceden las no prioritarias), 19a95bb (una prioritaria solo desplaza a otras si así cabe; sin cancelar y republicar en bucle). En vivo desde 14:14:58 (pid 28962).
+- Chamberí 10/10 (CHA-09 a 59 y CHA-10 a 60, vía Pícaros); LAT-03 comprada a 6. MAL 7/10 (faltan 04, 06 y 09), LAT 5/10, LAV 0/10; sin repetidas; caja 123.
+- Desde h 18.87 la agenda congela las altas (end_round h 19.367, el domingo cierra a las 15:00) y canceló todas las pujas; ninguna MAL se llenó.
+- Scripts manuales en `results/trader/` (GET por defecto, `--go` lo ejecuta Pablo con `!`): `bidsum.ts` (suma de pujas frente a caja − 50) y `trim-bids.ts` (cancela la puja no MAL más pequeña que basta).
+- Por hacer: team-desk con /api/me/value para épicas y cartas que no tenemos; tabla de valores en GameState o en el visor.
 
 ## Ficheros clave
 
