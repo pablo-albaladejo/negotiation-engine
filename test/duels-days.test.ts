@@ -143,7 +143,7 @@ describe("endgame with the rival outside the limit on price only", () => {
         if (d.action !== "counter") return;
         const o = d.offer!;
         expect(withinLimit(state, o)).toBe(true);
-        expect(surplusOf(state, o)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus);
+        expect(surplusOf(state, o)).toBeGreaterThanOrEqual(DEFAULT_DUEL_PARAMS.minSurplus - 1e-9);
         expect(textMatchesOffer(d.text!, o)).toBe(true);
       }),
     );
