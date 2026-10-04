@@ -1,6 +1,7 @@
 import { Card, DataTable, TableLink } from "@negotiation-ring/design-system";
 import { KIND_LABEL, teamLabel, type Board, type BoardRow } from "../../model/index.js";
 import type { GameModel } from "../../model/gameModel.js";
+import { Fold } from "../../ui/fold.js";
 import { Sparkline } from "../../ui/sparkline.js";
 import { Rivals, TeamDetail } from "../Rivals.js";
 import { TeamName } from "./TeamLink.js";
@@ -73,8 +74,8 @@ function TeamProfile({ board, model, team, onOpen }: { board: Board; model: Game
         ) : null}
         <strong>{`With us · ${ours.length}`}</strong>
         {ours.length ? <DataTable columns={columns} rows={ours.map(dealRow)} /> : <span className="nr-muted">No trades, offers or duels with us yet.</span>}
-        <strong>{`With other teams · ${others.length}`}</strong>
         {others.length ? (
+          <Fold title={`With other teams · ${others.length}`}>
           <DataTable
             columns={[{ key: "with", label: "With" }, ...columns]}
             rows={others.map((r) => {
@@ -82,6 +83,7 @@ function TeamProfile({ board, model, team, onOpen }: { board: Board; model: Game
               return { with: <TeamName board={board} team={other} />, ...dealRow(r) };
             })}
           />
+          </Fold>
         ) : (
           <span className="nr-muted">No trades with other teams seen.</span>
         )}
