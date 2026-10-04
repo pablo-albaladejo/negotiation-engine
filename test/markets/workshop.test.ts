@@ -1,7 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { arbitrate, type Budget, type Intent } from "../../src/coordinator/coordinator.js";
 import type { BazaarClient } from "../../src/shared/client.js";
-import { buildWorkshop, executeWorkshop, proposeWorkshop, RARITY_LADDER } from "../../src/workshop/workshop.js";
+import { buildWorkshop, executeWorkshop, nearPageDemand, proposeWorkshop, RARITY_LADDER } from "../../src/workshop/workshop.js";
 
 const REFS = ["LAT-01", "LAT-02", "LAT-06", "LAT-07", "LAT-09", "SAL-01", "SAL-06", "SAL-09", "LAT-13"];
 const rarityOf = (ref: string) => (ref === "LAT-13" ? "uncommon" : Number(ref.split("-")[1]) <= 5 ? "common" : Number(ref.split("-")[1]) <= 8 ? "uncommon" : "rare");
@@ -112,6 +113,40 @@ describe("workshop guardrails", () => {
         expect(calls).toEqual([]);
         expect(lines.some((l) => l.includes("aborted"))).toBe(true);
         if (change === "directed") expect(lines.some((l) => l.includes("has team demand"))).toBe(true);
+      }),
+    );
+  });
+
+  // 4 Oct 10:48: a craft took three copies El Rastro was listing for teams in the same tick. Teams go first.
+  it("a craft never wins over a sale or listing of the same copy or card in the same tick", () => {
+    const budget: Budget = { accepts: 1, messagesPerConversation: 1, maxOpenThreads: 6, openThreadsNow: 0, offersPerTick: 12, maxOpenOffers: 30, openOffersNow: 0, missing: [] };
+    fc.assert(
+      fc.property(hand, fc.constantFrom("asset", "sell", "sell#n", "accept"), (h, how) => {
+        const w0 = world(h.map((x) => ({ ...x, where: "free" })));
+        const w = buildWorkshop({ assets: w0.assets, team: "t02", threads: [], myOffers: { offers: [] }, prices: w0.prices, events: [] });
+        const craft = proposeWorkshop(w).intents[0];
+        if (!craft) return;
+        const id = Number(craft.locks!.find((l) => l.startsWith("asset:"))!.slice(6));
+        const ref = w0.assets.find((a) => a.id === id)!.ref;
+        const lock = how === "asset" || how === "accept" ? `asset:${id}` : how === "sell" ? `sell:${ref}` : `sell:${ref}#2`;
+        const other: Intent = { id: "trades:post:0", route: "trades", kind: how === "accept" ? "accept" : "listing", ev: 0.1, summary: "list", locks: [lock] };
+        const v = arbitrate([craft, other], budget);
+        expect(v.find((x) => x.intent.id === craft.id)!.selected).toBe(false);
+        // Control: an unrelated listing does not block the craft.
+        const free = arbitrate([craft, { ...other, locks: ["asset:99999", "sell:ZZZ-01"] }], budget);
+        expect(free.find((x) => x.intent.id === craft.id)!.selected).toBe(true);
+      }),
+    );
+  });
+
+  it("a card a rival lacks to finish a page is team demand: never crafted", () => {
+    const teams = [{ pages: [{ have: 9, of: 10, missing: ["LAT-02"] }, { have: 7, of: 10, missing: ["SAL-01", "SAL-06", "SAL-09"] }] }];
+    expect([...nearPageDemand(teams)]).toEqual(["LAT-02"]);
+    fc.assert(
+      fc.property(hand, (h) => {
+        const w0 = world(h.map((x) => ({ ...x, where: "free" })));
+        const w = buildWorkshop({ assets: w0.assets, team: "t02", threads: [], myOffers: { offers: [] }, teamDemand: nearPageDemand(teams), prices: w0.prices, events: [] });
+        for (const r of w.rarities) for (const id of r.pick) expect(h[id - 100]!.ref).not.toBe("LAT-02");
       }),
     );
   });

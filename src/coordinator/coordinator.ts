@@ -197,11 +197,17 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     take(i);
     verdicts.set(i.id, { intent: i, selected: true, reason: "open pack: ASSUMPTION it does not use the accept quota (unverified)" });
   }
+  // Duplicates go to teams first (Pablo, 4 Oct): a craft loses to any other intent that sells or lists the same copy or
+  // card this tick, selected or not (`ref:X` on a craft matches `sell:X` and `sell:X#n` of a listing).
+  const wanted = new Set(intents.filter((x) => x.kind !== "craft" && x.kind !== "cancel").flatMap((x) => x.locks ?? []));
+  const teamsFirst = (i: Intent) =>
+    (i.locks ?? []).find((l) => (l.startsWith("asset:") && wanted.has(l)) || (l.startsWith("ref:") && [...wanted].some((w) => w === `sell:${l.slice(4)}` || w.startsWith(`sell:${l.slice(4)}#`))));
   let crafted = false;
   for (const i of intents.filter((x) => x.kind === "craft").sort((a, c) => (c.ev ?? 0) - (a.ev ?? 0))) {
-    const busy = clash(i);
-    if (busy || crafted) {
-      verdicts.set(i.id, { intent: i, selected: false, reason: busy ? `asset lock: ${busy}` : "workshop: one craft per tick already selected" });
+    const sold = teamsFirst(i);
+    const busy = sold ? undefined : clash(i);
+    if (sold || busy || crafted) {
+      verdicts.set(i.id, { intent: i, selected: false, reason: sold ? `workshop: teams first, another route sells ${sold.replace(/^ref:/, "")} this tick` : busy ? `asset lock: ${busy}` : "workshop: one craft per tick already selected" });
       continue;
     }
     crafted = true;

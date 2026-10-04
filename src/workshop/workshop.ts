@@ -14,7 +14,8 @@ import type { CardValuation } from "../state/valuation.js";
  * spares are worth (losing a copy, or the best bid we could sell it at now). Same guardrails as any sale: never the last
  * free copy, nothing in an open thread or offer, never a hidden or keepsake card. Duplicates go to teams first (Pablo,
  * 4 Oct, as the dealers route): no copy of a card we offer to teams (El Rastro, a venue, directed) or that an intros pair
- * of the last 6 h names us as holder of is crafted, and no listing is cancelled for a craft. Offers unreadable: nothing.
+ * of the last 6 h names us as holder of, or that a rival lacks to finish a page, is crafted; no listing is cancelled for
+ * a craft, and the arbitration drops a craft when another route sells or lists the same card. Offers unreadable: nothing.
  */
 
 export const RARITY_LADDER = ["common", "uncommon", "rare", "epic", "legendary"] as const;
@@ -85,7 +86,7 @@ export interface WorkshopInput {
   threads: readonly unknown[];
   /** Our offers; `undefined` when they could not be read (nothing is crafted). */
   myOffers: unknown;
-  /** Refs with team demand from intros (`introDemand`). */
+  /** Refs with team demand: intros (`introDemand`) and rivals one card from a page (`nearPageDemand`). */
   teamDemand?: ReadonlySet<string>;
   prices: readonly PriceEntry[];
   valuation?: readonly CardValuation[];
@@ -95,6 +96,11 @@ export interface WorkshopInput {
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const rec = (x: unknown): Record<string, unknown> => (x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {});
 const isHiddenRef = (ref: string) => Number(ref.split("-")[1]) > 12;
+
+/** Cards a rival team lacks to finish a page (one missing): team demand, kept for that sale (teams first). */
+export function nearPageDemand(teams: readonly { pages: readonly { have: number; of: number; missing: readonly string[] }[] }[] | undefined): Set<string> {
+  return new Set((teams ?? []).flatMap((t) => t.pages.filter((p) => p.of - p.have === 1).flatMap((p) => p.missing)));
+}
 
 /** Busy assets: open threads and every open offer of ours. */
 function busyOf(threads: readonly unknown[], myOffers: unknown, team: string | undefined): Map<number, string> {
@@ -207,7 +213,8 @@ export function proposeWorkshop(w: WorkshopState | undefined, enabled = true): {
         kind: "craft",
         ev: r.net,
         summary: `craft 3 ${r.rarity} [${copies.join(", ")}] → 1 random ${r.next}: expected ${r.expected} P vs ${r.cost} P (net ${r.net})`,
-        locks: r.pick.map((id) => `asset:${id}`),
+        // `ref:` locks let the arbitration drop the craft when another route sells or lists that card (teams first).
+        locks: [...r.pick.map((id) => `asset:${id}`), ...new Set(r.pick.map((id) => `ref:${r.spares.find((s) => s.id === id)!.ref}`))],
       },
     ],
     notes,

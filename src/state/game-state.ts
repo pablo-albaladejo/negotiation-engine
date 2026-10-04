@@ -10,7 +10,7 @@ import { extractScoreFields, type ScoreFields } from "../shared/score.js";
 import { duelsApi, type Duel, type Schedule } from "../duels/schemas.js";
 import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { buildValuation, type ValuationState } from "./valuation.js";
-import { buildWorkshop, type WorkshopState } from "../workshop/workshop.js";
+import { buildWorkshop, nearPageDemand, type WorkshopState } from "../workshop/workshop.js";
 import { introDemand } from "../intros/intros.js";
 import { readGoalsState, type GoalsState } from "../goals/read.js";
 import { spareTargets } from "../dealers/planning/planner.js";
@@ -446,7 +446,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   // The Workshop: never takes the tick down (a failure goes to `missing`).
   let workshop: WorkshopState | undefined;
   try {
-    workshop = buildWorkshop({ assets: me?.assets ?? [], ...(me?.id ? { team: me.id } : {}), threads: allThreads, myOffers, teamDemand: introDemand(me?.id), prices, ...(valuation ? { valuation: valuation.cards } : {}), events });
+    workshop = buildWorkshop({ assets: me?.assets ?? [], ...(me?.id ? { team: me.id } : {}), threads: allThreads, myOffers, teamDemand: new Set([...introDemand(me?.id), ...nearPageDemand(rivals?.teams)]), prices, ...(valuation ? { valuation: valuation.cards } : {}), events });
   } catch (e) {
     missing.push(`workshop: ${e instanceof Error ? e.message : "error"}`);
   }
