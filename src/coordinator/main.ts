@@ -23,6 +23,7 @@ import { defaultTriggersFile, loadTriggerMemo, personaFiles, runTriggers, saveTr
 import type { TimeState } from "../state/time.js";
 import { defaultValuesFile, loadValueCache, saveValueCache } from "../state/prices.js";
 import { executePacks, proposePacks } from "../packs/packs.js";
+import { executeWorkshop, proposeWorkshop } from "../workshop/workshop.js";
 import { executeMarkets, proposeMarkets } from "../markets/markets.js";
 import { EPIC_BUY_LANES, executeRivalBuy, proposeRivalBuy, rivalBuyValues, type RivalBuyPlan } from "../markets/rival-buy.js";
 import { directedListings, executeRivalPage, proposeRivalPage, type RivalPagePlan } from "../markets/rival-page.js";
@@ -88,6 +89,7 @@ async function main() {
       "rival-buy-epic": { type: "boolean", default: false },
       "rival-swap": { type: "boolean", default: false },
       "team-desk": { type: "boolean", default: false },
+      workshop: { type: "boolean", default: false },
       "rastro-bids": { type: "boolean", default: false },
       "no-venue-reserve": { type: "boolean", default: false },
       scanner: { type: "boolean", default: false },
@@ -339,6 +341,7 @@ async function main() {
           return { ...p, strategies: new Map(), decisions: new Map() };
         },
       ],
+      ["workshop", async () => ({ ...proposeWorkshop(state.workshop, values.workshop === true), strategies: new Map(), decisions: new Map() })],
       [
         "markets",
         async () => {
@@ -468,6 +471,8 @@ async function main() {
     const deskOn = values["team-desk"] === true;
     report("markets", await executeTeamDesk(client, deskOn ? selectedIntents : deskIntents, deskPlan, dryRun || !deskOn, { tick: state.tick, ...(trades.lastState ? { myId: trades.lastState.myId } : {}), trade: trades.lastState, ledger: deskLedger }));
     report("packs", await executePacks(client, selectedIntents, dryRun));
+    // Workshop crafts go out only live AND with the opt-in --workshop; otherwise "would" lines.
+    report("workshop", await executeWorkshop(client, selectedIntents, state.workshop, !dryRun && values.workshop === true));
     report("venue", executeVenueMechanism(selectedIntents, state.ours.venue?.id, { dryRun, confirm: values.confirm, allowVenueSwitch: values["allow-venue-switch"] }));
     const flagged = await flagsRoute.execute(state, selected);
     report("flags", flagged.lines);

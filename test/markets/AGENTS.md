@@ -8,6 +8,14 @@
 
   Si ya tenemos la carta o su valor queda por debajo del techo, no sale ninguna puja nueva. Los escalones de precio son inicio, punto medio y techo. Con varias vías (`EPIC_BUY_LANES`: SAL-11 y RET-11), cada puja respeta el techo y la lista de su vía, hay una abierta como mucho por carta, y todas las que quedan abiertas juntas dejan la caja por encima del suelo.
 
+- **`workshop.test.ts`** — El Taller (`src/workshop/workshop.ts`). Con manos aleatorias (copias libres, en un anuncio nuestro, en un hilo o en otro venue), comprueba que el Taller:
+  - nunca entrega la última copia libre, una copia ocupada ni una oculta;
+  - nunca mezcla rarezas;
+  - solo cancela anuncios nuestros de las copias que entrega;
+  - propone como mucho una por tick;
+  - sin `send`, nunca llama a la API;
+  - en vivo, si en la nueva lectura una copia elegida está ocupada, ya no es nuestra o sería la última libre, no cancela nada ni hace el POST.
+
 ## Links
 
 - ↑ [`test/`](../AGENTS.md)

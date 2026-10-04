@@ -1,5 +1,6 @@
 import { Card } from "@negotiation-ring/design-system";
 import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
+import type { ModelWorkshop } from "../model/gameModel.js";
 
 /**
  * The Workshop (El Taller): three spare copies of one rarity → one random card of the next rarity (shown, never
@@ -10,7 +11,7 @@ import { RARITY_COLOR, teamLabel, type Board } from "../model/index.js";
 const ul = { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-1)" } as const;
 const dot = (rarity: string) => <span aria-hidden="true" style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: RARITY_COLOR[rarity] ?? "var(--muted)", marginRight: 6 }} />;
 
-export function Workshop({ board }: { board: Board }) {
+export function Workshop({ board, strategy = null }: { board: Board; strategy?: ModelWorkshop | null }) {
   const w = board.workshop;
   if (!w) return null;
   const ready = w.rarities.filter((r) => r.ready);
@@ -36,6 +37,15 @@ export function Workshop({ board }: { board: Board }) {
         ) : (
           <span className="nr-muted">No spare copies right now.</span>
         )}
+        {strategy && strategy.rarities.length > 0 ? (
+          <ul style={ul} aria-label="Workshop strategy (GameState.workshop)">
+            {strategy.rarities.map((r) => (
+              <li key={r.rarity} style={r.decision === "craft" ? { color: "var(--ok)" } : undefined} className={r.decision === "craft" ? undefined : "nr-muted"}>
+                {`Strategy · ${r.rarity}: ${r.decision}${r.decision === "craft" && r.pick.length ? ` [${r.pick.map((id) => `${r.spares.find((s) => s.id === id)?.ref ?? "?"}#${id}`).join(", ")}]` : ""} · ${r.reason}`}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {w.locked.length > 0 ? <span className="nr-muted">{`Busy (not counted): ${w.locked.map((l) => `${l.ref} #${l.id} in ${l.where}`).join(" · ")}`}</span> : null}
         {w.crafts.length > 0 ? (
           <>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "@negotiation-ring/design-system";
 import { RARITY_COLOR, type Board, type BoardAlbumCard, type BoardAlbumPage } from "../../model/index.js";
-import type { ModelValuation, ModelValuationCard } from "../../model/gameModel.js";
+import type { ModelValuation, ModelValuationCard, ModelWorkshop, ModelWorkshopRarity } from "../../model/gameModel.js";
 
 /**
  * The album as cards, like the game's /cards page: one band per set (color, theme, have/of) and a tile per page card,
@@ -50,7 +50,33 @@ function Skyline({ seed, dark }: { seed: string; dark: string }) {
   );
 }
 
-function Tile({ c, color, set, v }: { c: BoardAlbumCard; color: string; set: string; v: ModelValuationCard | undefined }) {
+/** This card's spare copies in the Workshop pool and whether the strategy hands them in this tick. */
+interface TileWorkshop {
+  spares: number;
+  inCraft: number;
+  r: ModelWorkshopRarity;
+}
+
+function workshopFor(w: ModelWorkshop | null, ref: string): TileWorkshop | undefined {
+  const r = w?.rarities.find((x) => x.spares.some((s) => s.ref === ref));
+  if (!r) return undefined;
+  const ids = r.spares.filter((s) => s.ref === ref).map((s) => s.id);
+  return { spares: ids.length, inCraft: r.decision === "craft" ? ids.filter((id) => r.pick.includes(id)).length : 0, r };
+}
+
+function WorkshopLine({ ws }: { ws: TileWorkshop }) {
+  const craft = ws.inCraft > 0;
+  return (
+    <span
+      style={{ fontSize: 11, color: craft ? "var(--ok)" : "var(--muted)" }}
+      title={`The Workshop (GameState.workshop): ${ws.r.rarity} spares ${Math.min(ws.r.spares.length, 3)}/3 · ${ws.r.decision}: ${ws.r.reason}. Never the last free copy; live only with --confirm --workshop.`}
+    >
+      {craft ? `⚒ craft ${ws.inCraft} → ${ws.r.next ?? "?"}` : `⚒ ${ws.spares} spare · ${ws.r.decision}`}
+    </span>
+  );
+}
+
+function Tile({ c, color, set, v, ws }: { c: BoardAlbumCard; color: string; set: string; v: ModelValuationCard | undefined; ws?: TileWorkshop | undefined }) {
   const rarity = c.rarity ?? "common";
   const rc = RARITY_COLOR[rarity] ?? "var(--muted)";
   const have = c.held > 0;
@@ -146,13 +172,14 @@ function Tile({ c, color, set, v }: { c: BoardAlbumCard; color: string; set: str
           <span className="nr-muted" style={{ gridColumn: "1 / -1", fontSize: 11 }}>{`another copy adds ${fmtV(v.nextCopy)}`}</span>
         ) : null}
       </div>
+      {ws ? <WorkshopLine ws={ws} /> : null}
     </li>
   );
 }
 
 const grid = { listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 124px), 1fr))", gap: "var(--space-3)" } as const;
 
-function Page({ p, val }: { p: BoardAlbumPage; val: ModelValuation | null }) {
+function Page({ p, val, workshop }: { p: BoardAlbumPage; val: ModelValuation | null; workshop: ModelWorkshop | null }) {
   const vOf = (ref: string) => val?.cards.find((x) => x.ref === ref);
   const bonus = val?.pages.find((x) => x.set === p.set)?.bonus;
   const color = p.color ?? FALLBACK;
@@ -178,7 +205,7 @@ function Page({ p, val }: { p: BoardAlbumPage; val: ModelValuation | null }) {
       {p.cards && p.cards.length > 0 ? (
         <ul style={grid} aria-label={`${p.name} cards`}>
           {p.cards.map((c) => (
-            <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} />
+            <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} ws={workshopFor(workshop, c.ref)} />
           ))}
         </ul>
       ) : (
@@ -191,7 +218,7 @@ function Page({ p, val }: { p: BoardAlbumPage; val: ModelValuation | null }) {
           </span>
           <ul style={grid} aria-label={`${p.name} shinies`}>
             {p.shinies.map((c) => (
-              <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} />
+              <Tile key={c.ref} c={c} color={color} set={p.set} v={vOf(c.ref)} ws={workshopFor(workshop, c.ref)} />
             ))}
           </ul>
         </>
@@ -226,7 +253,7 @@ function Chip({ on, label, dot, onClick }: { on: boolean; label: string; dot?: s
   );
 }
 
-export function AlbumCards({ board, valuation = null }: { board: Board; valuation?: ModelValuation | null }) {
+export function AlbumCards({ board, valuation = null, workshop = null }: { board: Board; valuation?: ModelValuation | null; workshop?: ModelWorkshop | null }) {
   const album = board.album;
   const [set, setSet] = useState<string>("all");
   const [missingOnly, setMissingOnly] = useState(false);
@@ -251,8 +278,13 @@ export function AlbumCards({ board, valuation = null }: { board: Board; valuatio
           ))}
           <Chip on={missingOnly} label="only missing" onClick={() => setMissingOnly(!missingOnly)} />
         </div>
+        {workshop && workshop.rarities.length > 0 ? (
+          <span className="nr-muted" style={{ fontSize: 12 }} title="The Workshop: 3 spare copies of one rarity → 1 random card of the next (never scored). GameState.workshop">
+            {`⚒ Workshop: ${workshop.rarities.map((r) => `${r.rarity} ${Math.min(r.spares.length, 3)}/3 ${r.decision}${r.ready ? ` (expected ${r.expected} vs ${r.cost} P)` : ""}`).join(" · ")}`}
+          </span>
+        ) : null}
         {pages.map((p) => (
-          <Page key={p.set} p={p} val={valuation} />
+          <Page key={p.set} p={p} val={valuation} workshop={workshop} />
         ))}
       </div>
     </Card>

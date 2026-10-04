@@ -289,6 +289,30 @@ export interface ModelValuation {
   pages: { set: string; have: number; of: number; complete: boolean; bonus: number; missing: string[] }[];
 }
 
+/** `GameState.workshop` (src/workshop/workshop.ts): mirror of `WorkshopState`. */
+export interface ModelWorkshopRarity {
+  rarity: string;
+  next: string | null;
+  spares: { id: number; ref: string; cost: number; askId?: number }[];
+  ready: boolean;
+  pick: number[];
+  cancels: number[];
+  cost: number;
+  expected: number;
+  pool: number;
+  missing: number;
+  net: number;
+  decision: "craft" | "hold" | "short";
+  reason: string;
+}
+
+export interface ModelWorkshop {
+  rarities: ModelWorkshopRarity[];
+  best?: string;
+  busy: { id: number; ref: string; where: string }[];
+  crafts: { id: number; tick?: number; team: string; from?: string; to?: string; card?: string; us: boolean }[];
+}
+
 export interface GameModel {
   available: boolean;
   /** The response is the latest build and another is in progress (optional on older servers). */
@@ -325,6 +349,8 @@ export interface GameModel {
   prices?: { source: string; rows: Record<string, unknown>[] };
   /** `GameState.valuation` (src/state/valuation.ts): our value model per card and page; optional on older servers. */
   valuation?: ModelValuation | null;
+  /** `GameState.workshop`: spares per rarity and the strategy's decision; optional on older servers. */
+  workshop?: ModelWorkshop | null;
   packs?: { state: unknown; catalog: unknown[]; held: unknown[] };
   venues?: { state: unknown; api: unknown[] };
   now?: NowData | null;

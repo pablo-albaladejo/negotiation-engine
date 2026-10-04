@@ -10,6 +10,7 @@ import { extractScoreFields, type ScoreFields } from "../shared/score.js";
 import { duelsApi, type Duel, type Schedule } from "../duels/schemas.js";
 import { parseMyOffers, parseOffers, readSide } from "../trades/trades.js";
 import { buildValuation, type ValuationState } from "./valuation.js";
+import { buildWorkshop, type WorkshopState } from "../workshop/workshop.js";
 import { spareTargets } from "../dealers/planning/planner.js";
 import { buildConversations, type Conversation, type ConversationMemo } from "./conversation.js";
 import { indexCatalog } from "../flags/flags.js";
@@ -94,6 +95,11 @@ export interface GameState {
   valuation?: ValuationState;
   /** Our sealed packs and pack types (expected value with supply, dealers, El Rastro). */
   packs: PacksState;
+  /**
+   * The Workshop (`src/workshop/`): our spares per rarity under the sale guardrails, the expected card of the next
+   * rarity against what the spares are worth, the strategy's decision (craft, hold, short) and the public crafts.
+   */
+  workshop?: WorkshopState;
   /** Full hints corpus (what is already stored + what is new this tick) and the new part to append to `hints.jsonl`. */
   hints: { all: HintLine[]; fresh: HintLine[] };
   /** Personas (dealers and those that appear via `/api/levels` or the feed), with state and unlock progress. */
@@ -430,6 +436,13 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
   } catch (e) {
     missing.push(`rivals: ${e instanceof Error ? e.message : "error"}`);
   }
+  // The Workshop: never takes the tick down (a failure goes to `missing`).
+  let workshop: WorkshopState | undefined;
+  try {
+    workshop = buildWorkshop({ assets: me?.assets ?? [], ...(me?.id ? { team: me.id } : {}), threads: allThreads, myOffers, prices, ...(valuation ? { valuation: valuation.cards } : {}), events });
+  } catch (e) {
+    missing.push(`workshop: ${e instanceof Error ? e.message : "error"}`);
+  }
   const time = buildTime(clock, schedule, leaderboard, opts.prevTime?.scheduleHash);
   const prevWeight = opts.prevTime?.round?.weight;
   if (time.round && time.round.weight === undefined && prevWeight !== undefined && opts.prevTime?.round?.n === time.round.n) time.round.weight = prevWeight;
@@ -459,6 +472,7 @@ export async function buildGameState(client: BazaarClient, opts: BuildOptions = 
     ...(valuation ? { valuation } : {}),
     ...(forex ? { forex } : {}),
     events,
+    ...(workshop ? { workshop } : {}),
     packs: buildPacks({ ...(me ? { me } : {}), ...(catalog ? { catalog } : {}), dealers: rawDealers, rastro: offers, ...(me?.id ? { team: me.id } : {}), events, values: Object.fromEntries(valueCache) }),
     hints: { all: hintsAll, fresh },
     personas,

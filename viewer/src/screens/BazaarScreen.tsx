@@ -893,7 +893,7 @@ export function BazaarScreen({ board, filters, onFiltersChange }: BazaarScreenPr
         <ScoreMovers board={board} onOpen={open} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", minWidth: 0 }}>
           <Agents board={board} />
-          <Workshop board={board} />
+          <Workshop board={board} strategy={model?.workshop ?? null} />
         </div>
       </div>
       <History board={board} rows={[...trades, ...board.others]} title="History · dealers and El Rastro (all teams)" filters={filters} onFiltersChange={onFiltersChange} {...(model?.ladder ? { ladder: model.ladder } : {})} />

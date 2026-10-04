@@ -9,6 +9,7 @@ La pestaña «Cards» (la tarjeta «Album», fuera de la cabina), con el aspecto
   - las que faltan, en gris y con borde discontinuo, sin valores encima;
   - debajo de cada cromo: las copias en circulación frente a la tirada (`minted`/`print_run`) y el precio de libro; y en otra línea el valor de la API («API», `your_value`: el de la copia que tenemos o el de `/api/me/value` para la primera copia) frente al nuestro, leído de `GameState.valuation` (`src/state/valuation.ts`): si la tenemos, «lose» (lo que cuesta perder una copia, con el riesgo de página) y «+1» (lo que suma otra copia); si falta, «+1» (con el bonus de página si la completa) y «~» si la base es estimada. Al pasar el ratón: API, base y su origen, +1 y lose.
 - **Banda de cada set:** el bonus de página («page bonus N · ours» si está completa, «at stake» si no).
+- **El Taller:** cada cromo con repetidas en el Taller lleva «⚒ N spare · decisión», o «⚒ craft N → rareza» si la estrategia las entrega este tick; arriba, una línea por rareza. Sale de `GameState.workshop` ([`src/workshop/`](../../../../src/workshop/AGENTS.md)).
 - **Shinies:** las cartas fuera de la página van aparte. Las ocultas solo aparecen si las tenemos, y entonces con la etiqueta «never sold».
 
 El dibujo es nuestro: un sol y un perfil de edificios que sale de la referencia de la carta. No se copia el arte del juego.

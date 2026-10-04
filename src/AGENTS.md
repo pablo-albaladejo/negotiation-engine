@@ -21,6 +21,7 @@ Un concepto por carpeta; cada comando `pnpm` arranca en el main.ts de la suya.
 | [`intros/`](intros/AGENTS.md) | Presentaciones por hilo: parejas de repetida y carta que falta, enviadas a nuestro venue | `pnpm bazaar:intros` |
 | [`markets/`](markets/AGENTS.md) | Mercados entre venues: hueco neto = hueco − comisión − penalización por rival | (`pnpm bazaar:play`) |
 | [`packs/`](packs/AGENTS.md) | Sobres: cerrados nuestros, valor esperado con el suministro, comprar, abrir o vender cerrado | (`pnpm bazaar:play`) |
+| [`workshop/`](workshop/AGENTS.md) | El Taller: tres repetidas de una rareza por una carta al azar de la siguiente (sin puntuar); estado en `GameState.workshop`, estrategia y ruta | (`pnpm bazaar:play --workshop`) |
 | [`hints/`](hints/AGENTS.md) | Corpus de pistas: cada línea de dealer, con candidatas por regla determinista | (`pnpm bazaar:play`) |
 | [`agenda/`](agenda/AGENTS.md) | Calendario como playbook (antelación y efecto por acción) y disparadores del feed | (`pnpm bazaar:play`) |
 | [`flags/`](flags/AGENTS.md) | Detector de flags: texto del dealer frente a la estructura de su oferta, y frases de presión de una lista cerrada en sus contraofertas | (`pnpm bazaar:play`) |
@@ -49,5 +50,5 @@ pnpm bazaar:venue --dry-run        # qué mercado abriría al llegar a nivel 2; 
 
 - ↑ [root `AGENTS.md`](../AGENTS.md)
 - → [`engine/`](engine/AGENTS.md) · [`shared/`](shared/AGENTS.md) · [`dealers/`](dealers/AGENTS.md) · [`duels/`](duels/AGENTS.md) · [`trades/`](trades/AGENTS.md) · [`broker/`](broker/AGENTS.md) · [`venue/`](venue/AGENTS.md) · [`status/`](status/AGENTS.md)
-- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`teamdesk/`](teamdesk/AGENTS.md) · [`intros/`](intros/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`forex/`](forex/AGENTS.md) · [`audit/`](audit/AGENTS.md) · [`goals/`](goals/AGENTS.md)
+- → [`state/`](state/AGENTS.md) · [`markets/`](markets/AGENTS.md) · [`packs/`](packs/AGENTS.md) · [`workshop/`](workshop/AGENTS.md) · [`hints/`](hints/AGENTS.md) · [`agenda/`](agenda/AGENTS.md) · [`flags/`](flags/AGENTS.md) · [`teamdesk/`](teamdesk/AGENTS.md) · [`intros/`](intros/AGENTS.md) · [`coordinator/`](coordinator/AGENTS.md) · [`news/`](news/AGENTS.md) · [`forex/`](forex/AGENTS.md) · [`audit/`](audit/AGENTS.md) · [`goals/`](goals/AGENTS.md)
 - → [`test/`](../test/AGENTS.md) — solo tests de guardarraíles

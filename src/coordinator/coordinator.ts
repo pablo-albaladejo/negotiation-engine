@@ -8,14 +8,16 @@ import type { GameState, TickLimits } from "../state/game-state.js";
  * accepts have their own limits: they never block your trading". `arbitrate` selects them apart, one per duel.
  */
 
-export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs" | "markets" | "venue";
+export type Route = "duels" | "dealers" | "trades" | "flags" | "eggs" | "agenda" | "packs" | "markets" | "venue" | "workshop";
 /**
  * `flag`: `POST /api/flags`, does not use the accept quota. `probe`: egg message, counts as a message and goes last.
  * `unpack`: open a sealed pack; ASSUMPTION (unverified): does not spend the accept quota.
  * `agenda`: calendar action (venue, pack, offers before the close) that is only printed: it never goes out from here.
  * `venue`: mechanism change of our venue (`src/venue/route.ts`); at most one per tick, live behind its own gate.
+ * `craft`: hand three spares to the Workshop (`src/workshop/`); at most one per tick, before listings, so a listing of
+ * the same copy loses the asset lock. ASSUMPTION (unverified): it does not spend the accept quota.
  */
-export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda" | "unpack" | "venue";
+export type IntentKind = "accept" | "message" | "open" | "listing" | "cancel" | "flag" | "probe" | "agenda" | "unpack" | "venue" | "craft";
 export type AcceptClass = "duel" | "page-completing" | "scanner" | "dealer-ladder" | "other";
 
 /** Accept priority (lower rank, earlier); at equal rank, higher expected value first. */
@@ -194,6 +196,17 @@ export function arbitrate(intents: readonly Intent[], b: Budget): Verdict[] {
     }
     take(i);
     verdicts.set(i.id, { intent: i, selected: true, reason: "open pack: ASSUMPTION it does not use the accept quota (unverified)" });
+  }
+  let crafted = false;
+  for (const i of intents.filter((x) => x.kind === "craft").sort((a, c) => (c.ev ?? 0) - (a.ev ?? 0))) {
+    const busy = clash(i);
+    if (busy || crafted) {
+      verdicts.set(i.id, { intent: i, selected: false, reason: busy ? `asset lock: ${busy}` : "workshop: one craft per tick already selected" });
+      continue;
+    }
+    crafted = true;
+    take(i);
+    verdicts.set(i.id, { intent: i, selected: true, reason: "workshop craft: one per tick, ASSUMPTION it does not use the accept quota; live needs --confirm and --workshop" });
   }
   for (const i of intents.filter((x) => x.kind === "agenda")) verdicts.set(i.id, { intent: i, selected: false, reason: "agenda intent: printed only (live needs its own CLI with --confirm and user approval)" });
   intents.filter((x) => x.kind === "venue").forEach((i, k) => verdicts.set(i.id, { intent: i, selected: k === 0, reason: k === 0 ? "venue mechanism: one change per tick; live needs --confirm and --allow-venue-switch" : "venue mechanism: one change per tick already selected" }));

@@ -8,7 +8,7 @@ import { AlbumCards } from "./AlbumCards.js";
 export function CardsView({ board, model, loading }: { board: Board; model: GameModel | null; loading: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <AlbumCards board={board} valuation={model?.valuation ?? null} />
+      <AlbumCards board={board} valuation={model?.valuation ?? null} workshop={model?.workshop ?? null} />
       {model?.available ? <Prices model={model} /> : <EmptyStateCard title={loading ? "Loading our model (price sheet)…" : `The price sheet needs our model: ${model?.reason ?? "not available"}`} />}
     </div>
   );
