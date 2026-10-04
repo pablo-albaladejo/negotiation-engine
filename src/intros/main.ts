@@ -154,7 +154,7 @@ async function introduce(api: IntrosApi, p: IntroPlan, venue: string, dryRun: bo
     for (const m of p.messages) log(`[intros] would tell ${m.team} (${m.role}): ${m.text}`);
     return;
   }
-  // Both threads need a slot each, one after the other; dealers and the team desk keep theirs.
+  // One thread per message, one after the other; dealers and the team desk keep their slots.
   if ((await freeSlots(api)) <= INTRO_PARAMS.minFreeSlots) {
     log(`[intros] ${p.ref}: skipped, fewer than ${INTRO_PARAMS.minFreeSlots + 1} free conversation slots`);
     return;
@@ -162,7 +162,7 @@ async function introduce(api: IntrosApi, p: IntroPlan, venue: string, dryRun: bo
   let sent = 0;
   for (const m of p.messages) if (await sendOne(api, m.team, m.text, log)) sent += 1;
   if (sent) {
-    memo.sent.push({ ts: Date.now(), ref: p.ref, holder: p.holder, wanter: p.wanter });
+    memo.sent.push({ ts: Date.now(), ref: p.ref, holder: p.holder, wanter: p.wanter, wanterOnly: true });
     saveIntroMemo(memoFile, memo);
   }
 }

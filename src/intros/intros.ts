@@ -17,7 +17,7 @@ export const INTRO_PARAMS = {
   perRun: 1,
   /** A team gets at most one introduction in this window. */
   teamCooldownMs: 2 * 3600_000,
-  /** The same card and holder/wanter pair is not introduced twice in this window. */
+  /** The same team is not told twice about the same card in this window. */
   pairCooldownMs: 6 * 3600_000,
   /** Free conversation slots that must remain after opening one (dealers and team desk share the cap). */
   minFreeSlots: 3,
@@ -36,6 +36,8 @@ export interface IntroSent {
   wanter: string;
   /** Book intro: the only team we messaged (the other side is the order's maker). */
   target?: string;
+  /** Bid-first pair intro: only the wanter was messaged; the holder hears of it through a book intro once the bid is up. */
+  wanterOnly?: boolean;
 }
 
 export interface IntroMemo {
@@ -52,33 +54,13 @@ export interface IntroPlan {
   ref: string;
   holder: string;
   wanter: string;
-  messages: [IntroMessage, IntroMessage];
+  messages: IntroMessage[];
 }
 
 /** Team id → label used in the text ("t09" → "Team 9"). */
 const label = (id: string): string => (/^t\d+$/.test(id) ? `Team ${Number(id.slice(1))}` : id);
 /** A book maker: its team label, or "A team" for a pseudonym. */
 const makerLabel = (id: string): string => (/^t\d+$/.test(id) ? label(id) : "A team");
-
-/** The two messages of one introduction; game text (it goes to the other teams), no figure. */
-export function introMessages(ref: string, holder: string, wanter: string, venue: string): [IntroMessage, IntroMessage] {
-  // game text
-  const head = `Team 2 here: we run venue "${venue}" (0 % fee, 0 P per card; our broker crosses every tick).`;
-  return [
-    {
-      team: holder,
-      role: "holder",
-      // game text
-      text: `${head} ${label(wanter)} is missing ${ref} and you hold a spare. Post it on venue "${venue}": give {"assets": [your ${ref} id]}, want cash. Our broker matches it with their bid as soon as the prices meet. No reply needed.`,
-    },
-    {
-      team: wanter,
-      role: "wanter",
-      // game text
-      text: `${head} ${label(holder)} holds a spare ${ref}, a card you are missing. Bid on venue "${venue}": give cash, want {"cards": ["${ref}"]}. Our broker crosses it with their ask as soon as the prices meet. No reply needed.`,
-    },
-  ];
-}
 
 /** Introductions to send now: best pairs first (most wanters), skipping teams and pairs in cooldown, within the hourly cap. */
 export function planIntros(pairs: readonly MatchPair[], memo: IntroMemo, venue: string, now: number, params: IntroParams = INTRO_PARAMS): { plans: IntroPlan[]; notes: string[] } {
@@ -87,19 +69,19 @@ export function planIntros(pairs: readonly MatchPair[], memo: IntroMemo, venue: 
   let budget = Math.min(params.perRun, params.perHour - lastHour);
   if (budget <= 0) return { plans: [], notes: [`[intros] hourly cap reached (${lastHour}/${params.perHour})`] };
   const busy = busyTeams(memo, now, params);
-  const done = new Set(memo.sent.filter((s) => now - s.ts < params.pairCooldownMs).map((s) => `${s.ref}:${s.holder}:${s.wanter}`));
+  const done = new Set(memo.sent.filter((s) => now - s.ts < params.pairCooldownMs).map((s) => `${s.ref}:${s.wanter}`));
   const plans: IntroPlan[] = [];
   for (const p of pairs) {
     if (budget <= 0) break;
-    const holder = p.holders.find((h) => !busy.has(h));
+    // The holder is only named (not messaged): any holder will do, preferably one not told anything lately.
+    const holder = p.holders.find((h) => !busy.has(h)) ?? p.holders[0];
     const wanter = p.wanters.find((w) => !busy.has(w) && w !== holder);
     if (!holder || !wanter) {
       notes.push(`[intros] skip ${p.ref}: every holder or wanter introduced in the last ${params.teamCooldownMs / 3600_000} h`);
       continue;
     }
-    if (done.has(`${p.ref}:${holder}:${wanter}`)) continue;
-    plans.push({ ref: p.ref, holder, wanter, messages: introMessages(p.ref, holder, wanter, venue) });
-    busy.add(holder);
+    if (done.has(`${p.ref}:${wanter}`)) continue;
+    plans.push({ ref: p.ref, holder, wanter, messages: [bidFirstMessage(p.ref, holder, wanter, venue)] });
     busy.add(wanter);
     budget -= 1;
   }
@@ -107,9 +89,25 @@ export function planIntros(pairs: readonly MatchPair[], memo: IntroMemo, venue: 
   return { plans, notes };
 }
 
-/** Teams messaged within the team cooldown (a book intro only counts its target). */
+/** Teams messaged within the team cooldown (a book intro only counts its target, a bid-first intro its wanter). */
 function busyTeams(memo: IntroMemo, now: number, params: IntroParams): Set<string> {
-  return new Set(memo.sent.filter((s) => now - s.ts < params.teamCooldownMs).flatMap((s) => (s.target ? [s.target] : [s.holder, s.wanter])));
+  return new Set(memo.sent.filter((s) => now - s.ts < params.teamCooldownMs).flatMap((s) => (s.target ? [s.target] : s.wanterOnly ? [s.wanter] : [s.holder, s.wanter])));
+}
+
+/**
+ * Bid-first intro (Pablo, 4 Oct: 8 two-sided intros, 0 orders): only the team missing the card is told to bid on our
+ * venue now. Once its bid is on the book, `planBookIntros` tells the holders, so a holder always sees a live bid.
+ * Game text, no figure.
+ */
+export function bidFirstMessage(ref: string, holder: string, wanter: string, venue: string): IntroMessage {
+  // game text
+  const head = `Team 2 here: we run venue "${venue}" (0 % fee, 0 P per card; our broker crosses every tick).`;
+  return {
+    team: wanter,
+    role: "wanter",
+    // game text
+    text: `${head} ${label(holder)} holds a spare ${ref}, a card you are missing. Post your bid on venue "${venue}" now: give cash, want {"cards": ["${ref}"]}. As soon as it is up we tell the holders, and our broker crosses it the moment an ask meets your price. No reply needed.`,
+  };
 }
 
 /** An open order another team posted on our venue: one card for cash (ask) or cash for any copy of a card (bid). */
