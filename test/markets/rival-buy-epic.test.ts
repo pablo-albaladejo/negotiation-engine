@@ -141,4 +141,12 @@ describe("rival buy · epic test lane", () => {
       { numRuns: 400 },
     );
   });
+
+  it("a holder that did not fill at the ceiling is not bid again in the same tick: the next listed holder gets the start price", () => {
+    const at = bid(3000, "t18", EPIC.ceiling, EPIC.repriceAfterTicks);
+    const input: RivalBuyInput = { tick: TICK, trade: tradeState(600, [], [at]), rivals: rivals(["t18", "t08"]), maxSpend: 0, cashFloor: 20, epic: EPIC, apiValues: new Map([[EPIC.ref, 234]]) };
+    const { plan } = proposeRivalBuy(input, RIVAL_BUY_PARAMS, new Map([[`t18:${EPIC.ref}`, { reprices: EPIC.maxReprices }]]), []);
+    expect(plan.cancels.map((c) => c.offerId)).toEqual([3000]);
+    expect(plan.posts.map((p) => [p.team, p.price])).toEqual([["t08", EPIC.start]]);
+  });
 });

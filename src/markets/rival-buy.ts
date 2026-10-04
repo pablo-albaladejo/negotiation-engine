@@ -387,7 +387,10 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   const trade = input.trade!;
   const tag = `${TAG} [epic]`;
   const mine = existing.filter((e) => e.ref === epic.ref);
+  // Teams marked done this tick: the memo only learns it on execution, so the new-bid pick must skip them now.
+  const doneNow = new Set<string>();
   const cancel = (offerId: number, team: string, reason: string, done: boolean) => {
+    if (done) doneNow.add(team);
     const intentId = `markets:rivalbuy:cancel:${offerId}`;
     out.plan.cancels.push({ intentId, offerId, key: `${team}:${epic.ref}`, backoff: false, ...(done ? { done: true } : {}), reason });
     out.intents.push({ id: intentId, route: "markets", kind: "cancel", summary: `${tag} cancel #${offerId} (${reason})` });
@@ -438,7 +441,7 @@ export function proposeEpicBuy(input: RivalBuyInput, epic: EpicBuyParams, existi
   }
   if (open) return committed;
   const seenWith = (team: string) => input.rivals?.teams.find((t) => t.team === team)?.seen.some((s) => s.ref === epic.ref) ?? false;
-  const team = epic.teams.find((t) => memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t));
+  const team = epic.teams.find((t) => !doneNow.has(t) && memo.get(`${t}:${epic.ref}`)?.backoffUntil !== Infinity && seenWith(t));
   if (!team) {
     out.notes.push(`${tag} ${epic.ref}: no listed holder left (${epic.teams.join("/")} done or not seen with it)`);
     return 0;
