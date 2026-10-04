@@ -65,9 +65,11 @@ export const BoardDuelSchema = z.looseObject({
   days: num.nullish(),
   issues: z.array(str).nullish(),
   decay_per_round: num.nullish(),
+  your_days_weight: num.nullish(),
+  days_meaning: str.nullish(),
   your_offer: DuelOfferSchema.nullish(),
   rival_offer: DuelOfferSchema.nullish(),
-  messages: z.array(z.looseObject({ tick: num.nullish(), from: str.nullish(), text: str.nullish(), price: num.nullish() })).nullish(),
+  messages: z.array(z.looseObject({ tick: num.nullish(), from: str.nullish(), text: str.nullish(), price: num.nullish(), days: num.nullish() })).nullish(),
   result: num.nullish(),
   price: num.nullish(),
 });
@@ -196,6 +198,8 @@ export interface BoardMessage {
   us: boolean;
   tick: number | null;
   price: number | null;
+  /** Duel only: the delivery day this message proposes (the second issue besides price). */
+  days?: number | null;
   text: string;
 }
 
@@ -247,7 +251,7 @@ export interface BoardRow {
   d_backfill?: boolean;
   duel_result: number | null;
   /** Duel only: the game's duel number, its session (1 = practice, 2 = Duels I, 3 = II, 4 = III, 5 = Grand Final), the agreed delivery days and the decay per round (absent elsewhere). */
-  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
+  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null; days_weight?: number | null; days_meaning?: string | null };
   tick_opened: number | null;
   tick_settled: number | null;
   messages: BoardMessage[];
@@ -628,10 +632,10 @@ function duelRow(d: BoardDuel, input: BoardInput): BoardRow {
     d_ladder_points: deltas.ladder,
     d_score: deltas.score,
     duel_result: d.result ?? null,
-    duel: { no: d.duel, session: d.session ?? null, days: d.days ?? null, issues: d.issues ?? [], decay: d.decay_per_round ?? null, deadline: d.deadline_tick ?? null },
+    duel: { no: d.duel, session: d.session ?? null, days: d.days ?? null, issues: d.issues ?? [], decay: d.decay_per_round ?? null, deadline: d.deadline_tick ?? null, days_weight: d.your_days_weight ?? null, days_meaning: d.days_meaning ?? null },
     tick_opened: ticks.length ? Math.min(...ticks) : null,
     tick_settled: open ? null : ticks.length ? Math.max(...ticks) : (d.deadline_tick ?? null),
-    messages: msgs.map((m) => ({ sender: m.from === "you" ? input.team : (m.from ?? "?"), us: m.from === "you", tick: m.tick ?? null, price: m.price ?? null, text: m.text ?? "" })),
+    messages: msgs.map((m) => ({ sender: m.from === "you" ? input.team : (m.from ?? "?"), us: m.from === "you", tick: m.tick ?? null, price: m.price ?? null, ...(typeof m.days === "number" ? { days: m.days } : {}), text: m.text ?? "" })),
     offers,
   };
 }

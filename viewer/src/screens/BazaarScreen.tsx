@@ -255,7 +255,7 @@ function ConversationDetail({ board, row, conv, model }: { board: Board; row: Bo
               <div key={`${s.tick ?? "?"}-${i}`} className="nr-grid" style={gridCols("minmax(0, 2fr) minmax(0, 1fr)")}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                   {s.messages.map((m, j) => (
-                    <ChatMessage key={j} side={m.us ? "us" : "them"} round={m.tick ?? 0} {...(m.price !== null ? { offer: m.price } : {})} flags={[{ kind: m.us ? "decision" : "neutral", label: m.us ? teamLabel(board, board.team || m.sender) : withTeamNames(board, m.sender) }]} text={m.text} />
+                    <ChatMessage key={j} side={m.us ? "us" : "them"} round={m.tick ?? 0} {...(m.price !== null ? { offer: m.price } : {})} flags={[{ kind: m.us ? "decision" : "neutral", label: m.us ? teamLabel(board, board.team || m.sender) : withTeamNames(board, m.sender) }, ...(typeof m.days === "number" ? [{ kind: "neutral" as const, label: `delivery day ${m.days}` }] : [])]} text={m.text} />
                   ))}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
@@ -317,7 +317,7 @@ function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConv
         yTicks={curve.yTicks}
         xLabel="tick"
         xTickLabel={tickOf}
-        describeRound={(round) => withPredictionLines(overlay, plannedLines(curve, planned, curveRoundLines(curve, row.counterparty, round), round), round, `tick ${curve.firstTick + round - 1}`)}
+        describeRound={(round) => withDayLines(row, curve.firstTick + round - 1, withPredictionLines(overlay, plannedLines(curve, planned, curveRoundLines(curve, row.counterparty, round), round), round, `tick ${curve.firstTick + round - 1}`))}
         ourOffers={curve.ours}
         theirOffers={curve.theirs}
         {...(planned.length > 0 ? { planned } : {})}
@@ -337,6 +337,7 @@ function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConv
           ...(curve.end ? [{ kind: "end" as const, label: curve.end.label }] : []),
         ]}
       />
+      <DuelDays row={row} />
       {pred ? <span className="nr-muted">{`${predictionCaption(pred)} · today's model`}{conv && isWelcome(model, conv) ? " · welcome: counts only towards her limit, not the curve" : ""}</span> : null}
       {curve.capped ? (
         <span className="nr-muted">
@@ -344,6 +345,37 @@ function NegotiationCurve({ row, conv, model }: { row: BoardRow; conv: ModelConv
         </span>
       ) : null}
     </figure>
+  );
+}
+
+/** Delivery days proposed by each side at `tick` (duels with a days issue), as hover lines. */
+function daysAt(row: BoardRow, tick: number): { us: number | null; them: number | null } {
+  const at = (us: boolean) => [...row.messages].reverse().find((m) => m.us === us && m.tick === tick && typeof m.days === "number")?.days ?? null;
+  return { us: at(true), them: at(false) };
+}
+
+function withDayLines(row: BoardRow, tick: number, lines: string[] | null): string[] | null {
+  if (!lines) return lines;
+  const d = daysAt(row, tick);
+  const extra = [d.us !== null ? `us: delivery day ${d.us}` : null, d.them !== null ? `${row.counterparty}: delivery day ${d.them}` : null].filter((l): l is string => l !== null);
+  return [...lines, ...extra];
+}
+
+/** Duels where days are an issue: the delivery day each side proposed, tick by tick (the chart shows only price). */
+function DuelDays({ row }: { row: BoardRow }) {
+  if (!row.duel?.issues.includes("days")) return null;
+  const ticks = [...new Set(row.messages.filter((m) => typeof m.days === "number" && m.tick !== null).map((m) => m.tick!))].sort((a, b) => a - b);
+  if (!ticks.length) return <span className="nr-muted">Delivery day: not in the messages yet.</span>;
+  const cell = (v: number | null) => (v === null ? "—" : `day ${v}`);
+  const w = row.duel.days_weight;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+    {typeof w === "number" ? <span className="nr-muted">{`Each delivery day: ${w} P to us (${row.duel.days_meaning ?? "game's weight"}).`}</span> : null}
+    <DataTable
+      columns={[{ key: "who", label: "Delivery day" }, ...ticks.map((t) => ({ key: `t${t}`, label: `t${t}`, numeric: true }))]}
+      rows={[true, false].map((us) => ({ who: us ? "Team 2 (us)" : row.counterparty, ...Object.fromEntries(ticks.map((t) => [`t${t}`, cell(us ? daysAt(row, t).us : daysAt(row, t).them)])) }))}
+    />
+    </div>
   );
 }
 

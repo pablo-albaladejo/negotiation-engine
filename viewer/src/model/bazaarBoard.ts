@@ -12,6 +12,8 @@ export interface BoardMessage {
   us: boolean;
   tick: number | null;
   price: number | null;
+  /** Duel only: the delivery day this message proposes. */
+  days?: number | null;
   text: string;
 }
 
@@ -61,7 +63,7 @@ export interface BoardRow {
   d_backfill?: boolean;
   duel_result: number | null;
   /** Duel only: number, session (1 = practice, 2 = Duels I, 3 = II, 4 = III, 5 = Grand Final), agreed delivery days, issues, decay per round. */
-  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null };
+  duel?: { no: number; session: number | null; days: number | null; issues: string[]; decay: number | null; deadline: number | null; days_weight?: number | null; days_meaning?: string | null };
   tick_opened: number | null;
   tick_settled: number | null;
   messages: BoardMessage[];
