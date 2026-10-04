@@ -1,5 +1,4 @@
 import { Card, DataTable } from "@negotiation-ring/design-system";
-import { useId, useState } from "react";
 import type { Board } from "../model/bazaarBoard.js";
 import { teamLabel } from "../model/cockpit.js";
 import type { GameModel, ModelRivalTeam, ModelRivals } from "../model/gameModel.js";
@@ -110,13 +109,9 @@ export function TeamDetail({ board, t }: { board: Board; t: ModelRivalTeam }) {
   );
 }
 
-export function Rivals({ model, board, picked: pickedProp, onPick }: { model: GameModel; board: Board; picked?: string; onPick?: (team: string) => void }) {
+/** Controlled by the «Teams» tab: a row click picks the team its profile shows above. */
+export function Rivals({ model, board, picked, onPick }: { model: GameModel; board: Board; picked: string; onPick: (team: string) => void }) {
   const r = model.state?.rivals;
-  const pickId = useId();
-  const [pickedOwn, setPickedOwn] = useState("");
-  // Controlled by the «Teams» tab when it passes `picked`/`onPick`; on its own otherwise.
-  const picked = pickedProp ?? pickedOwn;
-  const setPicked = onPick ?? setPickedOwn;
   if (!r) {
     return (
       <Card title="Other teams">
@@ -187,24 +182,10 @@ export function Rivals({ model, board, picked: pickedProp, onPick }: { model: Ga
           })}
           onRowClick={(i) => {
             const t = teamRows[i];
-            if (t && t !== US) setPicked(t.team === picked ? "" : t.team);
+            if (t && t !== US) onPick(t.team);
           }}
           {...(detail ? { selectedRowIndex: teamRows.indexOf(detail) } : {})}
         />
-        <div className="nr-filter-field">
-          <label className="nr-muted nr-filter-label" htmlFor={pickId}>
-            Team detail
-          </label>
-          <select id={pickId} className="nr-filter-select" value={picked} onChange={(e) => setPicked(e.target.value)}>
-            <option value="">Pick a team (or click its row)</option>
-            {teams.map((t) => (
-              <option key={t.team} value={t.team}>
-                {teamLabel(board, t.team)}
-              </option>
-            ))}
-          </select>
-        </div>
-        {detail && !onPick ? <TeamDetail board={board} t={detail} /> : null}
       </div>
     </Card>
   );
