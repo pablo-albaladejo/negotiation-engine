@@ -10,3 +10,4 @@ Reglas: solo lectura (GET) salvo que la ficha del agente diga otra cosa; las cla
 | [audit-tick-eval.py](audit-tick-eval.py) | [audit](../analysis/audit.md) | Una línea por tick de `play.log` con los Δ (score, escalera, neg, duelos, caja) y los FLAG |
 | [audit-alerts.sh](audit-alerts.sh) | [audit](../analysis/audit.md) | Alertas: caídas de play, banco/Pícaros, desajustes de score-audit, bench, nuestro venue y nuestros tratos |
 | [objetivos-design.md](objetivos-design.md) | [market-analyst](../analysis/market-analyst.md) → [goals](../ops/goals.md) | Diseño de partida de los objetivos del equipo |
+| [workshop-opps.mjs](workshop-opps.mjs) | [workshop](../routes/workshop.md) | Chequeo de solo lectura (GET) de tríos para el Taller y candidatas a Pilar L3, sin copias en ofertas o hilos ni cartas ocultas; se lanza con `.env` cargado (ver la ficha) |
