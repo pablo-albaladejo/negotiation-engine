@@ -91,3 +91,30 @@ export function updateDealerLedger(dir: string, events: readonly FeedEvent[], ti
   }
   return trades;
 }
+
+/** A dealer's recent asking side for one card: where we could buy it back, from public deals (any team). */
+export interface DealerBuyQuote {
+  dealer: string;
+  /** Median and highest price she sold it at in the window, and how many deals. */
+  median: number;
+  hi: number;
+  n: number;
+  lastTick: number;
+}
+
+/**
+ * CHA lane (Pablo, 4 Oct): a card we sell to a team must be buyable back from a dealer at a valid price (<= our value).
+ * Per dealer, her sales of `ref` in the last `window` ticks; only quotes whose highest price is <= `value` (worst case
+ * no loss, Payday slide 7), cheapest first. Structure only (settlements), never text.
+ */
+export function dealerBuyQuotes(trades: readonly DealerTrade[], ref: string, value: number, tick: number, window = 240): DealerBuyQuote[] {
+  const by = new Map<string, DealerTrade[]>();
+  for (const t of trades) if (t.ref === ref && t.side === "sells" && t.tick >= tick - window) by.set(t.dealer, [...(by.get(t.dealer) ?? []), t]);
+  const out: DealerBuyQuote[] = [];
+  for (const [dealer, ts] of by) {
+    const ps = ts.map((t) => t.price).sort((a, b) => a - b);
+    const q = { dealer, median: ps[Math.floor((ps.length - 1) / 2)]!, hi: ps.at(-1)!, n: ps.length, lastTick: Math.max(...ts.map((t) => t.tick)) };
+    if (q.hi <= value) out.push(q);
+  }
+  return out.sort((a, b) => a.hi - b.hi);
+}
