@@ -1,6 +1,6 @@
 # coordinator
 
-> Sesión de origen: `cockpit-dashboard-ui-update` · vivo · entrevista: 4 oct ~10:10 (t~1650, h14.5).
+> Sesión de origen: `cockpit-dashboard-ui-update` · **cerrada** (Bazaar cerrado el 4 oct a las 15:00:12, t2816) · entrevista: 4 oct ~10:10 (t~1650, h14.5); estado final al cierre.
 
 ## Misión
 
@@ -31,7 +31,7 @@ Eres el COORDINADOR puro de El Bazaar, Equipo 2, en /Users/pablo/development/neg
 Protocolo de reinicio de un hijo de play/visor:
 (1) git fetch y rebase sobre origin/DAY2; árbol limpio (se ignoran solo .env.broker, docs/bazaar/lessons.json y los PDF), sin WIP de nadie en src/.
 (2) pnpm test, pnpm typecheck y pnpm docs:check (más pnpm viewer:typecheck si cambia el visor).
-(3) pnpm bazaar:duels --restart-check tiene que decir safe.
+(3) pnpm bazaar:duels --restart-check tiene que decir safe: espera por el código de salida, no por "live: none" (safe = ningún duelo a ≤ 5 ticks de su final). En la Gran Final, reinicia solo al principio de una oleada (ticks 1–6).
 (4) pnpm bazaar:play --dry-run --once con los flags de play en vivo.
 (5) OK: de Pablo por AskUserQuestion, o tuyo si es una propuesta de TRADER (delegación de Pablo).
 (6) kill -TERM -<pgid> del hijo (pid en results/logs/up-status.json children.<name>.pid); up lo relanza con los mismos flags.
@@ -40,7 +40,10 @@ Un flag NUEVO de play exige reiniciar up entero, y eso solo puede hacerlo Pablo 
 Reglas de Pablo de esta sesión:
 - El coordinador aprueba él mismo las propuestas de TRADER, reinicios incluidos, y se lo cuenta a Pablo después. Las propuestas de las demás sesiones van a Pablo.
 - Se vende a un equipo solo (a) una repetida o (b) una carta que podamos recomprar directamente a un dealer a precio válido (≤ nuestro valor).
-- La vía CHA queda sin Pícaros hasta que Pablo apruebe P2 (cadena MAL-11 con Pícaros).
+- Todas nuestras ofertas van solo a v21 (Team 9 son aliados; OFFER_VENUE en src/shared/offer-venue.ts). Excepción aprobada por Pablo al cierre: las dos operaciones finales en El Rastro (SAL-11 → CHA-11).
+- Pícaros aprobado para CHA-09/10 a ≤ 70 (ALBUM_BUYS) y fuera de LADDER_UNVERIFIED.
+- La prima de página queda retirada (Pablo eligió no activarla).
+- El tope de Payday es ~50 neg por contraparte, acumulado entre días; la comisión también resta neg.
 - Ninguna sesión hace POST manuales.
 - Las cartas ocultas (LAT-13) nunca se venden.
 - No se trata con el banco; Don Ernesto queda descartado salvo que cambien los valores.
@@ -54,8 +57,12 @@ Al arrancar, haz un roll call: ListAgents y una línea a cada sesión de agents/
 1. **`bazaar:up`**: lo lanza **Pablo** en un TTY (escribe LIVE). Comando del 4 oct:
 
    ```bash
-   pnpm bazaar:up --live --confirm --fast --no-audit --skip-doctor --play-args="--scanner --scanner-spend-per-hour 10 --rival-page --rival-buy --rival-buy-epic --team-desk --workshop --no-venue-reserve --egg-open banco --max-spend 250 --cash-floor 20"
+   A='--live --confirm --fast --no-audit --skip-doctor --detach'
+   B='--duels-fast --scanner --scanner-spend-per-hour 10 --rival-page --rival-buy --rival-buy-epic --team-desk --workshop --no-venue-reserve --egg-open banco --max-spend 250 --cash-floor 50'
+   pnpm bazaar:up $A --play-args="$B"
    ```
+
+   Último arranque: 4 oct a las 12:27 (pid 21362). Dale a Pablo las variables A y B: pegado en varias líneas, el salto de línea rompió los flags (bucle de caídas de play) y dejó un up duplicado. Con `--detach` se para con `pnpm bazaar:down`.
 
    Hijos: recorder, viewer (5199), play (`pnpm bazaar:play --confirm` + esos flags), broker en sombra (`--shadow`) y news. PIDs en `results/logs/up-status.json`; logs en `results/logs/<fecha>/*.log`.
 2. **Broker en vivo**: bucle supervisado fuera de up (lo lleva [broker](../routes/broker.md); anuncio desactivado):
@@ -64,7 +71,7 @@ Al arrancar, haz un roll call: ListAgents y una línea a cada sesión de agents/
    nohup bash -c 'while true; do pnpm bazaar:broker --confirm --no-announce --poll-ms 1000 >> results/logs/broker-live.log 2>&1; echo "exit $? $(date)" >> results/logs/broker-live.log; sleep 2; done' &
    ```
 
-3. **Intros en vivo**: proceso suelto; lo reinicia el coordinator con `pkill -TERM -f src/intros/main.ts`. Recuerda los envíos en `results/bazaar-live/intros.json`.
+3. **Intros en vivo**: proceso suelto; lo reinicia el coordinator: `kill -TERM -<pgid>` del proceso de `src/intros/main.ts` y lo relanza con el comando de abajo (último: f4fab21, «bid first», a las 14:37). Recuerda los envíos en `results/bazaar-live/intros.json`.
 
    ```bash
    nohup pnpm bazaar:intros --confirm >> results/logs/intros.log 2>&1 &
@@ -75,11 +82,14 @@ Al arrancar, haz un roll call: ListAgents y una línea a cada sesión de agents/
 
 Además hay un túnel cloudflared hacia `127.0.0.1:5199` (el visor). La URL pública cambia en cada arranque y no se guarda en git.
 
-## Estado al 4 oct (instantánea, t~1650)
+## Estado final (4 oct, cierre a las 15:00:12, t2816)
 
-- Pendiente: reiniciar play y el visor justo **después** del bench del Market Test duro (h14.65) y **antes** de Duels III (h15.367). Lleva 74b43d0 (P1, SAL-11 hasta 215), 70a94aa (P4, puja abierta RET-11 a 240), 31c75c1 (escáner tope 50), f17fd27 (días de Duels III, aprobado por Pablo), 232ea5f (`GameState.goals`), 6de6077 (pestaña Goals), 095ad4d y ba0ca48 (código de dealers aún sin conectar). Checks en verde (116/116) y dry-run OK.
-- Decisiones de Pablo pendientes: aceptar #21583 (RET-11 a 240 de t05, caduca t1653; solo Pablo con `pnpm exec tsx results/trader/accept-21583.ts --go`); P2 (MAL-11 con Pícaros); sonda del egg del banco (eggs; la lanza Pablo).
-- Aprobaciones vigentes: P1, P3 (vía CHA con la regla de venta) y P4, y el registro de propuestas (09:59); Duels III (~10:05); intros con avisos de órdenes abiertas en v26 (09:34).
+- Clasificación: **9.º con 28,18** (leaderboard de t2802; venía 12.º con 26,66 a las 14:44). Últimos movimientos, aprobados y ejecutados por Pablo: vender SAL-11 a 222 (−25 neg, comisión incluida) y comprar CHA-11 a 140 (+50 neg, en el tope) → +25 neto; y MAL-04 a 7. Script en `results/trader/last-move.ts` (fuera de git).
+- Lección: los «m…» de El Rastro son equipos anónimos (SAL-11 fue a t03), no bots; cuentan para el tope por contraparte.
+- Reinicios de play del 4 oct (todos con checks en verde): 11:46, 11:55, 12:02, 12:04, 12:16, up completo de Pablo a las 12:27, 12:55, 13:22, 13:24, 13:47, 13:52 y 14:14:58 (0e886ac). Visor: el último a las 14:24:39 (3947611). Intros: 14:37 (f4fab21).
+- Duelos, Gran Final: 34 duelos, 27 tratos, +370,7 P. El arreglo del final (44137a1, más la tolerancia 04bf57c) quedó en DAY2 sin reinicio porque ya no había más duelos.
+- Al cierre se pararon up (`pnpm bazaar:down`), el broker en vivo con su bucle y las intros. Quedan vivos los procesos de solo lectura de otras sesiones (audit --watch, goals).
+- Entrega: todas las sesiones confirmaron commit y push en DAY2; `docs/bazaar/lessons.json` se subió en 471ba9b.
 
 ## Ficheros clave
 
