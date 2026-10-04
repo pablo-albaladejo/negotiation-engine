@@ -8,7 +8,7 @@ Mitad uno a uno del emparejador del market: para cada pareja de repetida y carta
 
 ## Archivos
 
-- **`intros.ts`** — puro: `planIntros`, `introMessages`, `INTRO_PARAMS`; memoria con `loadIntroMemo`/`saveIntroMemo`.
+- **`intros.ts`** — puro: `planIntros`, `introMessages`, `INTRO_PARAMS`; memoria con `loadIntroMemo`/`saveIntroMemo`. `introDemand`: cartas de presentaciones de las últimas 6 h en las que tenemos la repetida; ni los dealers ni El Taller las usan (las repetidas van antes a los equipos).
 - **`main.ts`** — `pnpm bazaar:intros` (`--dry-run --once`; en vivo con `--confirm`, cada `--every-s` segundos, 300 por defecto).
 
 Padre: [`src/`](../AGENTS.md)

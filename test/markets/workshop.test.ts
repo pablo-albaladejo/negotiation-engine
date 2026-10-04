@@ -20,11 +20,13 @@ function world(h: { ref: string; where: string; value: number }[]) {
 }
 
 describe("workshop guardrails", () => {
-  it("never hands in a last free copy, a busy or hidden copy, or mixes rarities; cancels only our own plain asks", () => {
+  it("never hands in a last free copy, a busy or hidden copy, a card with team demand, or mixes rarities", () => {
     fc.assert(
       fc.property(hand, (h) => {
         const w0 = world(h);
         const w = buildWorkshop({ assets: w0.assets, team: "t02", threads: w0.threads, myOffers: { offers: w0.offers }, prices: w0.prices, events: [] });
+        // Duplicates go to teams first: a card we list on El Rastro or a venue keeps every copy out of the Workshop.
+        const offeredRefs = new Set(h.filter((x) => x.where === "ask" || x.where === "venue").map((x) => x.ref));
         for (const r of w.rarities) {
           expect(r.pick.length === 0 || r.pick.length === 3).toBe(true);
           for (const id of r.pick) {
@@ -32,20 +34,35 @@ describe("workshop guardrails", () => {
             expect(h[k]).toBeDefined();
             expect(rarityOf(h[k]!.ref)).toBe(r.rarity);
             expect(h[k]!.ref).not.toBe("LAT-13");
-            expect(["free", "ask"]).toContain(h[k]!.where);
+            expect(h[k]!.where).toBe("free");
+            expect(offeredRefs.has(h[k]!.ref)).toBe(false);
           }
           // Every ref keeps one copy that is neither handed in nor busy in a thread or another venue.
           for (const ref of new Set(r.pick.map((id) => h[id - 100]!.ref))) {
             const kept = h.filter((x, k) => x.ref === ref && !r.pick.includes(100 + k) && x.where === "free");
             expect(kept.length).toBeGreaterThanOrEqual(1);
           }
-          for (const c of r.cancels) expect(r.pick.map((id) => 900 + (id - 100))).toContain(c);
           if (r.rarity === RARITY_LADDER[RARITY_LADDER.length - 1]) expect(r.decision).not.toBe("craft");
         }
         const p = proposeWorkshop(w);
         expect(proposeWorkshop(w, false).intents).toHaveLength(0);
         expect(p.intents.length).toBeLessThanOrEqual(1);
         for (const i of p.intents) expect(i.locks).toEqual(w.rarities.find((r) => r.rarity === w.best)!.pick.map((id) => `asset:${id}`));
+      }),
+    );
+  });
+
+  it("an intros pair or unreadable offers keep the copies out (fails closed)", () => {
+    fc.assert(
+      fc.property(hand, fc.constantFrom(...REFS), (h, introRef) => {
+        const w0 = world(h);
+        const base = { assets: w0.assets, team: "t02", threads: w0.threads, prices: w0.prices, events: [] };
+        const w = buildWorkshop({ ...base, myOffers: { offers: w0.offers }, teamDemand: new Set([introRef]) });
+        for (const r of w.rarities) for (const id of r.pick) expect(h[id - 100]!.ref).not.toBe(introRef);
+        const unread = buildWorkshop({ ...base, myOffers: undefined });
+        expect(unread.blocked).toBeDefined();
+        expect(unread.rarities).toHaveLength(0);
+        expect(proposeWorkshop(unread).intents).toHaveLength(0);
       }),
     );
   });
@@ -63,9 +80,9 @@ describe("workshop guardrails", () => {
     );
   });
 
-  it("live: if a picked copy is busy, gone or would be the last free copy on the fresh read, nothing is cancelled and nothing is POSTed", async () => {
+  it("live: if a picked copy is busy, gone or its card gained team demand on the fresh read, nothing is cancelled or POSTed", async () => {
     await fc.assert(
-      fc.asyncProperty(hand, fc.constantFrom("thread", "gone", "venue"), async (h, change) => {
+      fc.asyncProperty(hand, fc.constantFrom("thread", "gone", "venue", "directed"), async (h, change) => {
         const w0 = world(h);
         const w = buildWorkshop({ assets: w0.assets, team: "t02", threads: w0.threads, myOffers: { offers: w0.offers }, prices: w0.prices, events: [] });
         const intents = proposeWorkshop(w).intents;
@@ -75,7 +92,14 @@ describe("workshop guardrails", () => {
         // The fresh read: the first picked copy changed since the plan.
         const assets = change === "gone" ? w0.assets.filter((a) => a.id !== victim) : w0.assets;
         const threads = change === "thread" ? [...w0.threads, { id: 7777, status: "open", with: "chato", topic: { sell: { assets: [victim] } } }] : w0.threads;
-        const offers = change === "venue" ? [...w0.offers, { id: 8888, maker: "t02", status: "open", venue: "v15", give: { assets: [{ id: victim }] }, want: { cash: 9 } }] : w0.offers;
+        // "directed": another copy of the same card is now offered to a team (team demand), the picked one untouched.
+        const twin = w0.assets.find((a) => a.ref === w0.assets.find((x) => x.id === victim)!.ref && !r.pick.includes(a.id))!;
+        const offers =
+          change === "venue"
+            ? [...w0.offers, { id: 8888, maker: "t02", status: "open", venue: "v15", give: { assets: [{ id: victim }] }, want: { cash: 9 } }]
+            : change === "directed"
+              ? [...w0.offers, { id: 8889, maker: "t02", status: "open", venue: null, to: "t07", thread: null, give: { assets: [{ id: twin.id }] }, want: { cash: 9 } }]
+              : w0.offers;
         const calls: string[] = [];
         const client = {
           me: async () => ({ id: "t02", assets }),
@@ -87,6 +111,7 @@ describe("workshop guardrails", () => {
         const lines = await executeWorkshop(client, intents, w, true);
         expect(calls).toEqual([]);
         expect(lines.some((l) => l.includes("aborted"))).toBe(true);
+        if (change === "directed") expect(lines.some((l) => l.includes("has team demand"))).toBe(true);
       }),
     );
   });

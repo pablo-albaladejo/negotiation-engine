@@ -293,10 +293,9 @@ export interface ModelValuation {
 export interface ModelWorkshopRarity {
   rarity: string;
   next: string | null;
-  spares: { id: number; ref: string; cost: number; askId?: number }[];
+  spares: { id: number; ref: string; cost: number }[];
   ready: boolean;
   pick: number[];
-  cancels: number[];
   cost: number;
   expected: number;
   pool: number;
@@ -310,6 +309,9 @@ export interface ModelWorkshop {
   rarities: ModelWorkshopRarity[];
   best?: string;
   busy: { id: number; ref: string; where: string }[];
+  /** Cards with team demand: kept for teams, never crafted. */
+  demand?: string[];
+  blocked?: string;
   crafts: { id: number; tick?: number; team: string; from?: string; to?: string; card?: string; us: boolean }[];
 }
 

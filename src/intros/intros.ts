@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { MatchPair } from "../broker/matchmaker.js";
 
 /**
@@ -105,6 +106,15 @@ export function loadIntroMemo(file: string): IntroMemo {
   } catch {
     return { sent: [] };
   }
+}
+
+/**
+ * Cards with team demand from intros (Pablo, 4 Oct: duplicates go to teams first): refs of intros sent in the last 6 h
+ * where we hold the spare. Read by the dealers route and the Workshop; an unreadable memo gives no demand.
+ */
+export function introDemand(team: string | null | undefined, file = join(process.cwd(), "results", "bazaar-live", "intros.json"), now = Date.now()): ReadonlySet<string> {
+  if (!team) return new Set();
+  return new Set(loadIntroMemo(file).sent.filter((s) => s.holder === team && s.ts >= now - 6 * 3_600_000).map((s) => s.ref));
 }
 
 export function saveIntroMemo(file: string, memo: IntroMemo): void {

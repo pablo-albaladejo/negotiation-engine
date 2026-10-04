@@ -278,9 +278,9 @@ export function AlbumCards({ board, valuation = null, workshop = null }: { board
           ))}
           <Chip on={missingOnly} label="only missing" onClick={() => setMissingOnly(!missingOnly)} />
         </div>
-        {workshop && workshop.rarities.length > 0 ? (
+        {workshop && (workshop.rarities.length > 0 || workshop.blocked || workshop.demand?.length) ? (
           <span className="nr-muted" style={{ fontSize: 12 }} title="The Workshop: 3 spare copies of one rarity → 1 random card of the next (never scored). GameState.workshop">
-            {`⚒ Workshop: ${workshop.rarities.map((r) => `${r.rarity} ${Math.min(r.spares.length, 3)}/3 ${r.decision}${r.ready ? ` (expected ${r.expected} vs ${r.cost} P)` : ""}`).join(" · ")}`}
+            {`⚒ Workshop: ${workshop.rarities.map((r) => `${r.rarity} ${Math.min(r.spares.length, 3)}/3 ${r.decision}${r.ready ? ` (expected ${r.expected} vs ${r.cost} P)` : ""}`).join(" · ")}${workshop.demand?.length ? ` · kept for teams: ${workshop.demand.join(", ")}` : ""}${workshop.blocked ? ` · ${workshop.blocked}` : ""}`}
           </span>
         ) : null}
         {pages.map((p) => (
