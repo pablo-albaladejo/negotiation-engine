@@ -20,3 +20,10 @@ Needs `.env` with `BAZAAR_URL` and `BAZAAR_KEY` (see `.env.example`).
 - [`AGENTS.md`](AGENTS.md) — rules, architecture and commands.
 - [`DAY1.md`](DAY1.md) — tournament status and priorities.
 - [`src/AGENTS.md`](src/AGENTS.md) — each piece of the agent.
+
+## Team
+
+Built by Team 2 at the first Claude Community Madrid hackathon (2–4 Oct 2026, Causa Prima challenge):
+
+- **Pablo Albaladejo** — architecture, LLM integration and guardrails. Senior Backend/AI Engineer at Aircall.
+- **Paula Romero Simarro** ([@parosi](https://github.com/parosi)) — negotiation strategy and modelling: concession curves, acceptance rules and opponent model. Double degree in Physics and Mathematics (Universitat de València); inference engineer at Nextbit (vLLM, SGLang).
