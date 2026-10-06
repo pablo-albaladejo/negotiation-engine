@@ -119,4 +119,4 @@ BAZAAR_KEY=                               # team key (X-Team-Key), only in .env
 
 ---
 
-*Causa Prima hackathon, Team 2 (Pablo, Paula, Gerard).*
+*Causa Prima hackathon, Team 2 (Pablo, Paula).*
