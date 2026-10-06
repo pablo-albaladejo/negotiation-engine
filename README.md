@@ -1,4 +1,4 @@
-# negotiation-engine 
+# Negotiation-engine 🔃
 
 AI agents that negotiate on their own in **El Bazaar**, a Madrid trading-card market game 🃏. Built by Team 2 at the first **Claude Community Madrid hackathon** (2–4 Oct 2026, **Causa Prima** challenge).
 
